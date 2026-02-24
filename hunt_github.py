@@ -2,19 +2,24 @@ import asyncio
 from framework.engine import ManulEngine
 
 async def main():
-    manul = ManulEngine()
+    manul = ManulEngine(strict=True)
     
     mission = (
-        "1. Navigate to https://github.com/microsoft/playwright "
-        "2. Find the link named 'README.md' in the file list and click it. "
-        "3. Wait 2 seconds for the file content to load. "
-        "4. Scroll down until you see the 'Installation' header. "
-        "5. Verify that the text 'Installation' is present on the screen. "
-        "6. Done."
+        '1. Navigate to "https://github.com/microsoft/playwright-python" '
+        '2. Click the file named "README.md" in the list. '
+        '3. Wait 5 seconds for the markdown content to load. '
+        '4. SCROLL DOWN to read the document. '
+        '5. VERIFY that the page contains the text "Playwright is a Python library to automate". '
+        '6. Done.'
     )
     
-    print("Testing GitHub repository file navigation and content verification")
-    await manul.run_mission(mission)
+    context = (
+        "1. CLICKING: Look for the link with the exact text 'README.md'. "
+        "2. VERIFY: We are looking for the python installation command."
+    )
+    
+    print("Testing GitHub: Clicking README.md and verifying pip install command")
+    await manul.run_mission(mission, strategic_context=context)
 
 if __name__ == "__main__":
     asyncio.run(main())

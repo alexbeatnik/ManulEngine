@@ -27,25 +27,33 @@ class ManulEngine:
         return None
 
     def _extract_text(self, step):
-        # 🧠 Розумний парсер: спочатку подвійні лапки, потім безпечні одинарні
         quotes = re.findall(r'"(.*?)"', step)
         if not quotes:
-            # Ігноруємо апострофи (напр. Pallas's), шукаємо лапки з пробілами
             quotes = re.findall(r"(?:^|\s)'(.*?)'(?:$|\s|[\.,?!])", step)
         return [q.lower() for q in quotes if q]
 
     async def run_mission(self, task: str, strategic_context: str = ""):
-        print(f"\n🐾 Manul v2.33 [Syntax Master] - Apostrophe-Proof...")
+        print(f"\n🐾 Manul v2.39 [Native Planner] - Bypassing AI Amnesia...")
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=self.headless, args=["--disable-gpu", "--no-sandbox"])
             page = await browser.new_page()
             
-            plan_obj = await self._ollama_chat_json(config.PLANNER_SYSTEM_PROMPT, task)
-            if not plan_obj or "steps" not in plan_obj:
-                print("❌ PLANNER FAILED."); await browser.close(); return
+            # 🧠 NATIVE PLANNER (No AI)
+            plan = []
+            if re.match(r'^\s*\d+\.', task):
+                # Split mission by pattern "1. ", "2. " etc.
+                raw_steps = re.split(r'(?=\b\d+\.\s)', task)
+                plan = [s.strip() for s in raw_steps if s.strip()]
+            else:
+                print("    🤖 Using AI Planner for unstructured task...")
+                plan_obj = await self._ollama_chat_json(config.PLANNER_SYSTEM_PROMPT, task)
+                if plan_obj and "steps" in plan_obj:
+                    plan = plan_obj["steps"]
+
+            if not plan:
+                print("❌ PLANNER FAILED: Could not parse steps."); await browser.close(); return
             
-            plan = plan_obj["steps"]
-            print(f"📋 Plan: {len(plan)} steps loaded.")
+            print(f"📋 Plan: {len(plan)} steps loaded flawlessly.")
 
             try:
                 for i, step in enumerate(plan, 1):
@@ -65,8 +73,8 @@ class ManulEngine:
                         await asyncio.sleep(wait_time); continue
 
                     if "SCROLL" in step_up:
-                        print("    📜 Scrolling Down...")
-                        await page.mouse.wheel(0, 600)
+                        print("    📜 Scrolling Down natively...")
+                        await page.evaluate("window.scrollBy(0, 1000);")
                         await asyncio.sleep(2); continue
 
                     if "VERIFY" in step_up or "CHECK" in step_up:
@@ -74,20 +82,36 @@ class ManulEngine:
                         if expected_quotes:
                             print(f"    🕵️ Native Scanner looking for: {expected_quotes}")
                             verified = False
-                            for exp in expected_quotes:
+                            raw_page_text = ""
+                            
+                            # 🛡️ GUARDIAN: Wait if the page is currently navigating/reloading
+                            for attempt in range(4):
                                 try:
-                                    loc = page.locator(f"text=/{exp}/i").first
-                                    await loc.wait_for(state="attached", timeout=5000)
-                                    await loc.scroll_into_view_if_needed(timeout=3000)
-                                    await loc.evaluate("el => { el.style.border = '4px solid green'; el.style.backgroundColor = 'lightgreen'; el.style.color = 'black'; }")
-                                    print(f"    ✅ VERIFIED: Found '{exp}' on the page!")
-                                    verified = True
+                                    # Wait for DOM readiness first
+                                    await page.wait_for_load_state("domcontentloaded", timeout=3000)
+                                    raw_page_text = await page.evaluate("document.body.innerText.toLowerCase()")
                                     break
-                                except: pass
+                                except Exception:
+                                    print("    🔄 Page is navigating, waiting for DOM to settle...")
+                                    await asyncio.sleep(1.5)
+                            
+                            clean_page_text = " ".join(raw_page_text.split())
+                            
+                            for exp in expected_quotes:
+                                clean_exp = " ".join(exp.split())
+                                if clean_exp in clean_page_text:
+                                    print(f"    ✅ VERIFIED: Found '{exp}' in normalized DOM!")
+                                    verified = True
+                                    try:
+                                        loc = page.get_by_text(exp, exact=False).first
+                                        await loc.evaluate("el => { el.style.border = '4px solid green'; }")
+                                    except: pass
+                                    break
                             
                             if verified: continue
                             else:
                                 print(f"    ⚠️ Text not found anywhere on the page.")
+                                print(f"    🩻 X-RAY VISION (first 150 chars): {clean_page_text[:150]}...")
                                 print(f"❌ Step {i} FAILED.")
                                 if self.strict: break
                                 continue
@@ -106,10 +130,17 @@ class ManulEngine:
     async def _execute_step(self, page, step, strategic_context):
         step_l = step.lower()
         mode = "input" if any(x in step_l for x in ["type", "fill", "enter", "search"]) else "clickable"
+        expected_quotes = self._extract_text(step)
         
         for attempt in range(2):
             await asyncio.sleep(2)
-            elements = await self.get_snapshot(page, mode)
+            # Protection when taking a snapshot during page navigation
+            try:
+                elements = await self.get_snapshot(page, mode, expected_quotes)
+            except Exception:
+                await asyncio.sleep(2)
+                continue
+                
             if not elements: continue
             
             exe_obj = await self._ollama_chat_json(
@@ -119,13 +150,12 @@ class ManulEngine:
             if not exe_obj: continue
             
             tid = min(exe_obj.get("id", 0), len(elements) - 1)
-            expected_quotes = self._extract_text(step)
-
+            
             if expected_quotes and mode != "input":
                 for idx, el in enumerate(elements):
                     if any(q in el["current_content"].lower() for q in expected_quotes):
                         if tid != idx:
-                            print(f"    🧠 Smart Override: Target fixed to ID {idx}")
+                            print(f"    🧠 Smart Override: Engine fixed target to ID {idx}")
                             tid = idx
                         break
 
@@ -136,7 +166,7 @@ class ManulEngine:
                 loc = page.locator(target).first
                 if mode == "input":
                     val = expected_quotes[-1] if expected_quotes else "data"
-                    print(f"    🤔 AI Action: Target ID {tid} ({elements[tid]['name']})")
+                    print(f"    🤔 AI Action: Target ID {tid}")
                     print(f"    ⌨️  Inserting natively: '{val}'")
                     await loc.evaluate("el => { el.focus(); el.select(); el.style.border = '4px solid red'; }")
                     await asyncio.sleep(0.5)
@@ -147,13 +177,14 @@ class ManulEngine:
                 
                 await loc.evaluate("el => { el.style.border = '4px solid red'; }")
                 await loc.click(force=True, timeout=10000)
-                print(f"    🖱️  Clicked ID {tid} ({elements[tid]['current_content'][:15]}...)")
+                print(f"    🖱️  Clicked ID {tid}")
                 return True
             except: continue
         return False
 
-    async def get_snapshot(self, page, mode):
-        return await page.evaluate(r"""(mode) => {
+    async def get_snapshot(self, page, mode, expected_texts=None):
+        if expected_texts is None: expected_texts = []
+        return await page.evaluate(r"""([mode, expected_texts]) => {
             const getEls = (sel) => Array.from(document.querySelectorAll(sel)).filter(el => {
                 const r = el.getBoundingClientRect();
                 const text = (el.innerText || "").toLowerCase();
@@ -176,10 +207,27 @@ class ManulEngine:
             }
             
             let tags = (mode === 'input') ? 'input, textarea' : 'button, a, .search_results_list a';
-            return getEls(tags).slice(0, 15).map((el, i) => ({
+            let allEls = getEls(tags);
+
+            if (expected_texts && expected_texts.length > 0) {
+                allEls.sort((a, b) => {
+                    const textA = (a.innerText || a.value || a.placeholder || "").toLowerCase();
+                    const textB = (b.innerText || b.value || b.placeholder || "").toLowerCase();
+                    
+                    let aMatch = expected_texts.some(t => textA.includes(t)) ? 1 : 0;
+                    let bMatch = expected_texts.some(t => textB.includes(t)) ? 1 : 0;
+                    
+                    if (aMatch && expected_texts.some(t => textA.trim() === t)) aMatch = 2;
+                    if (bMatch && expected_texts.some(t => textB.trim() === t)) bMatch = 2;
+
+                    return bMatch - aMatch;
+                });
+            }
+
+            return allEls.slice(0, 15).map((el, i) => ({
                 id: i, tag: el.tagName,
                 name: (el.placeholder || el.id || el.name || "").substring(0, 15),
                 current_content: (el.innerText || el.value || "").replace(/\s+/g, ' ').trim().substring(0, 30),
                 xpath: getXPath(el)
             }));
-        }""", mode)
+        }""", [mode, expected_texts])
