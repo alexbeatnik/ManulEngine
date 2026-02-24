@@ -20,7 +20,8 @@ async def main():
     )
     
     print("Testing OpenStreetMap search for cafes in Dnipro")
-    await manul.run_mission(mission, strategic_context=context)
+    return await manul.run_mission(mission, strategic_context=context)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

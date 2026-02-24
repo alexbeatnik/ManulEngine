@@ -21,7 +21,7 @@ async def main():
     )
     
     print("Testing DuckDuckGo search for 'Rust programming language'")
-    await manul.run_mission(mission, strategic_context=context)
+    return await manul.run_mission(mission, strategic_context=context)
 
 if __name__ == "__main__":
     asyncio.run(main())
