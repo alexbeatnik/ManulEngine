@@ -26,7 +26,22 @@ async def run_test_file(file_path):
 async def main():
     sys.stdout = Logger("last_run.log")
     test_dir = "tests"
-    files_to_run = sorted([os.path.join(test_dir, f) for f in os.listdir(test_dir) if f.startswith('hunt_') and f.endswith('.py')])
+    
+    # 🚀 НОВА ЛОГІКА: Перевіряємо, чи передано ім'я файлу при запуску
+    if len(sys.argv) > 1:
+        target_file = sys.argv[1]
+        # Якщо користувач ввів просто "mega_hunt.py" замість "tests/mega_hunt.py"
+        if not target_file.startswith(test_dir) and not os.path.isabs(target_file):
+            target_file = os.path.join(test_dir, target_file)
+        
+        if not os.path.exists(target_file):
+            print(f"❌ File not found: {target_file}")
+            return
+            
+        files_to_run = [target_file]
+    else:
+        # Якщо нічого не передали - шукаємо всі файли hunt_*.py
+        files_to_run = sorted([os.path.join(test_dir, f) for f in os.listdir(test_dir) if f.startswith('hunt_') and f.endswith('.py')])
     
     print(f"🚀 Manul CLI: Found {len(files_to_run)} tests.")
     results = []

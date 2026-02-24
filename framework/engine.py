@@ -38,7 +38,7 @@ class ManulEngine:
         except: pass
 
     async def run_mission(self, task: str, strategic_context: str = ""):
-        print(f"\n🐾 Manul v0.035 [The All-Seeing Eye] - Ultimate Vision ({self.model})")
+        print(f"\n🐾 Manul v0.041 [The Transparent Mind] - Visible AI Logic ({self.model})")
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=self.headless, args=["--no-sandbox", "--start-maximized"])
             context = await browser.new_context(no_viewport=True)
@@ -46,6 +46,7 @@ class ManulEngine:
             
             plan = [s.strip() for s in re.split(r'(?=\b\d+\.\s)', task) if s.strip()] if re.match(r'^\s*\d+\.', task) else []
             if not plan:
+                print("    🧠 AI AGENT: Planning the mission steps...")
                 obj = await self._ollama_chat_json(config.PLANNER_SYSTEM_PROMPT, task)
                 plan = obj.get("steps", []) if obj else []
 
@@ -75,6 +76,7 @@ class ManulEngine:
                     
                     if re.search(r'\bEXTRACT\b', s_up):
                         var = re.search(r'\{(.*?)\}', step); target = (self._extract_text(step) or [""])[0].replace("’", "")
+                        print(f"    ⚙️ DOM HEURISTICS: Extracting data using JS regex...")
                         val = await page.evaluate(f"""() => {{
                             const row = Array.from(document.querySelectorAll('tr, .tr, [role="row"]')).find(r => r.innerText.toLowerCase().includes('{target}'));
                             if (!row) return null;
@@ -85,24 +87,54 @@ class ManulEngine:
                         else: mission_ok = False; break
 
                     if re.search(r'\bVERIFY\b', s_up) or re.search(r'\bCHECK\b', s_up):
-                        exp = self._extract_text(step); found = False; print(f"    🔍 X-Ray scan for: {exp}")
+                        exp = self._extract_text(step)
+                        is_negative = bool(re.search(r'\b(NOT|HIDDEN|ABSENT)\b', s_up))
+                        
+                        state_check = None
+                        if re.search(r'\bDISABLED\b', s_up): state_check = "disabled"
+                        elif re.search(r'\bENABLED\b', s_up): state_check = "enabled"
+                        
+                        msg = f"    ⚙️ DOM HEURISTICS: X-Ray scan for: {exp}"
+                        if is_negative: msg += " [MUST BE ABSENT]"
+                        if state_check: msg += f" [MUST BE {state_check.upper()}]"
+                        print(msg)
+                        
+                        found = False
                         for _ in range(12):
                             try:
-                                data = await page.evaluate("""() => {
-                                    let t = (document.body.innerText || "") + " ";
-                                    document.querySelectorAll('*').forEach(el => { 
-                                        if(el.title) t += el.title + " "; 
-                                        // 🚀 ФІКС: Беремо динамічну властивість .value, а не статичний атрибут
-                                        if(el.value && typeof el.value === 'string') t += el.value + " "; 
-                                        if(el.shadowRoot) t += Array.from(el.shadowRoot.querySelectorAll('*')).map(e => e.innerText || e.value || '').join(' ');
-                                    });
-                                    return t.toLowerCase();
-                                }""")
-                                if all(e.lower() in " ".join(data.replace("'", "’").split()) for e in exp): found = True; break
+                                if state_check and exp:
+                                    els = await self.get_snapshot(page, "locate", exp)
+                                    if els:
+                                        loc = page.locator(f"xpath={els[0]['xpath']}").first
+                                        is_disabled = await loc.is_disabled()
+                                        if (state_check == "disabled" and is_disabled) or (state_check == "enabled" and not is_disabled):
+                                            found = True; break
+                                else:
+                                    data = await page.evaluate("""() => {
+                                        let t = (document.body.innerText || "") + " ";
+                                        document.querySelectorAll('*').forEach(el => { 
+                                            const st = window.getComputedStyle(el);
+                                            if(st.display === 'none' || st.visibility === 'hidden' || st.opacity === '0') return;
+                                            
+                                            if(el.title) t += el.title + " "; 
+                                            if(el.value && typeof el.value === 'string') t += el.value + " "; 
+                                            if(el.placeholder) t += el.placeholder + " ";
+                                            if(el.shadowRoot) t += Array.from(el.shadowRoot.querySelectorAll('*')).map(e => e.innerText || e.value || '').join(' ');
+                                        });
+                                        return t.toLowerCase();
+                                    }""")
+                                    t_clean = " ".join(data.replace("'", "’").split())
+                                    match_all = all(e.lower() in t_clean for e in exp) if exp else False
+                                    
+                                    if is_negative:
+                                        if not match_all: found = True; break
+                                    else:
+                                        if match_all: found = True; break
                             except: pass
-                            await asyncio.sleep(2)
+                            await asyncio.sleep(1)
+                            
                         if found: print("    ✅ VERIFIED"); continue
-                        else: print("    ❌ NOT FOUND"); mission_ok = False; break
+                        else: print("    ❌ VERIFICATION FAILED"); mission_ok = False; break
 
                     if re.search(r'\bDONE\b', s_up):
                         print(f"    🏁 MISSION ACCOMPLISHED")
@@ -121,6 +153,7 @@ class ManulEngine:
         elif "select" in words or "choose" in words: mode = "select"
         elif "type" in words or "fill" in words or "enter" in words: mode = "input"
         elif "click" in words or "double" in words: mode = "clickable"
+        elif "hover" in words: mode = "hover"
         else: mode = "locate"
 
         expected = self._extract_text(step, preserve_case=(mode in ["input", "select"]))
@@ -191,6 +224,7 @@ class ManulEngine:
             if src_idx == -1: src_idx = 0
             if tgt_idx == -1: tgt_idx = len(els)-1 if len(els)>1 else 0
 
+            print("    ⚙️ DOM HEURISTICS: Executing Drag & Drop matching logic...")
             try:
                 src_loc = page.locator(f"xpath={els[src_idx]['xpath']}").first
                 tgt_loc = page.locator(f"xpath={els[tgt_idx]['xpath']}").first
@@ -218,6 +252,9 @@ class ManulEngine:
                 if exp.lower() in el_name: score += 1000
             score += sum(10 for word in target_words if word in el_name)
             
+            if "checkbox" in step_l and "checkbox" in el_name: score += 3000
+            if "radio" in step_l and "radio" in el_name: score += 3000
+            
             if not search_texts:
                 if "dropdown" in step_l and "combobox" in el_name: score += 5000
                 elif "shadow" in step_l and "shadow" in el_name: score += 5000
@@ -228,18 +265,26 @@ class ManulEngine:
 
         sorted_els = sorted(els, key=lambda x: x.get("score", 0), reverse=True)
         top_els = sorted_els[:8]
+        best_score = top_els[0].get("score", 0)
         
-        if top_els[0].get("score", 0) >= 1000:
+        # 🚀 НОВЕ ЛОГУВАННЯ: ХТО САМЕ ПРИЙНЯВ РІШЕННЯ
+        if best_score >= 10000:
             tid_short = 0
-        elif top_els[0].get("score", 0) >= 100:
+            print(f"    ⚡ CONTEXT MEMORY: Reusing previously located element (Score: {best_score})")
+        elif best_score >= 1000:
             tid_short = 0
+            print(f"    ⚙️ DOM HEURISTICS: High confidence precise match (Score: {best_score})")
+        elif best_score >= 100:
+            tid_short = 0
+            print(f"    ⚙️ DOM HEURISTICS: Probable keyword match (Score: {best_score})")
         else:
             clean_top_els = [{"id": el["id"], "name": el["name"]} for el in top_els]
-            print(f"    🧠 LLM Fallback: Analyzing {len(clean_top_els)} ambiguous elements...")
+            print(f"    🧠 AI AGENT: Ambiguity detected. Analyzing {len(clean_top_els)} UI candidates...")
             obj = await self._ollama_chat_json(config.EXECUTOR_SYSTEM_PROMPT.format(extracted_context="", strategic_context=strategic_context), f"STEP: {step}\nMODE: {mode.upper()}\nELEMENTS: {json.dumps(clean_top_els)}")
             chosen_id = obj.get("id", clean_top_els[0]["id"]) if obj else clean_top_els[0]["id"]
             
             tid_short = next((i for i, el in enumerate(top_els) if el["id"] == chosen_id), 0)
+            print(f"    🎯 AI DECISION: Selected candidate '{top_els[tid_short]['name'][:30]}'")
         
         target_id = top_els[tid_short]["id"]
         target_name = top_els[tid_short]["name"]
@@ -274,15 +319,30 @@ class ManulEngine:
                 return True
                 
             elif mode == "select":
-                texts_to_select = expected if expected else [list(target_words)[0]]
-                print(f"    🗂️  Selected {texts_to_select} from '{target_name[:20]}'")
                 if is_real_select:
+                    valid_options = await loc.evaluate("""(sel, expected) => {
+                        const opts = Array.from(sel.options).map(o => o.text.trim().toLowerCase());
+                        const vals = Array.from(sel.options).map(o => o.value.trim().toLowerCase());
+                        return expected.filter(e => opts.includes(e.toLowerCase()) || vals.includes(e.toLowerCase()));
+                    }""", expected)
+                    
+                    texts_to_select = valid_options if valid_options else (expected if expected else [list(target_words)[0]])
+                    print(f"    🗂️  Selected {texts_to_select} from '{target_name[:20]}'")
+                    
                     try: await loc.select_option(label=texts_to_select)
                     except: await loc.select_option(value=[x.lower() for x in texts_to_select])
                 else:
                     await loc.click(force=True)
                 await asyncio.sleep(2); return True
                 
+            elif mode == "hover":
+                print(f"    🚁  Hovered over '{target_name[:20]}'")
+                if is_shadow:
+                    await page.evaluate(f"window.manulElements[{target_id}].dispatchEvent(new MouseEvent('mouseover', {{bubbles: true, cancelable: true, view: window}}));")
+                else:
+                    await loc.hover(force=True)
+                await asyncio.sleep(2); return True
+
             else:
                 print(f"    🖱️  Clicked '{target_name[:20]}'")
                 if is_shadow:
@@ -355,9 +415,13 @@ class ManulEngine:
                 let isSelect = false;
                 let contextStr = "";
                 
-                if (el.tagName === 'INPUT' && el.type === 'checkbox') {
+                if (el.tagName === 'INPUT' && (el.type === 'checkbox' || el.type === 'radio')) {
                     const tr = el.closest('tr');
                     if (tr) contextStr = tr.innerText.trim().replace(/\s+/g, ' ');
+                    else {
+                        const lbl = el.closest('label') || document.querySelector(`label[for="${el.id}"]`);
+                        if (lbl) contextStr = lbl.innerText.trim();
+                    }
                 } 
                 else if (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') {
                     const lbl = document.querySelector(`label[for="${el.id}"]`);
@@ -388,7 +452,8 @@ class ManulEngine:
                     elName = (el.innerText || el.placeholder || el.getAttribute('value') || el.id || el.name || el.className || "item").trim();
                 }
                 
-                if (el.tagName === "INPUT") elName += ` input`;
+                if (el.tagName === "INPUT") elName += ` input ${el.type || ''}`;
+                
                 if (contextStr) elName = `${contextStr} -> ${elName}`;
                 if (item.is_shadow) elName += ` [SHADOW_DOM]`;
                 
