@@ -1,201 +1,185 @@
-import asyncio
-import json
-import re
-import ollama
+# framework/engine.py
+import asyncio, json, re, ollama
 from playwright.async_api import async_playwright
 from . import config
 
 class ManulEngine:
-    def __init__(self, model="qwen2.5:3b", blueprints=None):
+    def __init__(self, model: str = "qwen2.5:0.5b", headless: bool = False, strict: bool = True):
         self.model = model
+        self.headless = headless
+        self.strict = strict
         self.memory = {}
 
-    async def run_mission(self, task, strategic_context=""):
-        print(f"\n🐾 Manul v2.02 [3B Whisperer] is out for the hunt...")
-        try:
-            resp = ollama.chat(model=self.model, messages=[
-                {"role": "system", "content": config.PLANNER_SYSTEM_PROMPT},
-                {"role": "user", "content": task}
-            ], format="json")
-            plan = json.loads(resp['message']['content']).get("steps") or []
-        except Exception as e:
-            print(f"❌ Planning failure: {e}"); return
+    async def _ollama_chat_json(self, system: str, user: str, retries: int = 2):
+        for attempt in range(retries):
+            try:
+                resp = await asyncio.to_thread(
+                    ollama.chat, model=self.model,
+                    messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+                    format="json"
+                )
+                content = resp["message"]["content"]
+                match = re.search(r'\{.*\}', content, re.DOTALL)
+                result = json.loads(match.group(0)) if match else json.loads(content)
+                if result: return result
+            except:
+                await asyncio.sleep(1)
+        return None
 
+    def _extract_text(self, step):
+        # 🧠 Розумний парсер: спочатку подвійні лапки, потім безпечні одинарні
+        quotes = re.findall(r'"(.*?)"', step)
+        if not quotes:
+            # Ігноруємо апострофи (напр. Pallas's), шукаємо лапки з пробілами
+            quotes = re.findall(r"(?:^|\s)'(.*?)'(?:$|\s|[\.,?!])", step)
+        return [q.lower() for q in quotes if q]
+
+    async def run_mission(self, task: str, strategic_context: str = ""):
+        print(f"\n🐾 Manul v2.33 [Syntax Master] - Apostrophe-Proof...")
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=False)
+            browser = await p.chromium.launch(headless=self.headless, args=["--disable-gpu", "--no-sandbox"])
             page = await browser.new_page()
             
-            for i, step in enumerate(plan, 1):
-                step = str(step)
-                print(f"\n[🚀 STEP {i}] {step}")
-                
-                if any(k in step.upper() for k in ["NAVIGATE", "URL", "LINK", "GO TO"]):
-                    url_match = re.search(r'(https?://[^\s\'"<>]+)', step)
-                    if url_match:
-                        try:
-                            print(f"   🌐 Navigating to {url_match.group(1)}...")
-                            await page.goto(url_match.group(1).strip('"'), wait_until="domcontentloaded", timeout=15000)
-                            await asyncio.sleep(1.5) 
-                        except:
-                            print(f"   ⚠️ Navigation timeout, proceeding anyway...")
-                        continue
+            plan_obj = await self._ollama_chat_json(config.PLANNER_SYSTEM_PROMPT, task)
+            if not plan_obj or "steps" not in plan_obj:
+                print("❌ PLANNER FAILED."); await browser.close(); return
+            
+            plan = plan_obj["steps"]
+            print(f"📋 Plan: {len(plan)} steps loaded.")
 
-                if "WAIT" in step.upper() and "UNTIL" not in step.upper():
-                    wait_match = re.search(r"(\d+)", step)
-                    sec = int(wait_match.group(1)) if wait_match else 2
-                    print(f"   ⏳ Waiting for {sec}s...")
-                    await asyncio.sleep(sec)
-                    continue
-
-                if "DONE" in step.upper(): break
-                step_success = False
-                error_feedback = ""
-
-                for attempt in range(3):
-                    is_heavy = any(k in step.upper() for k in ["VERIFY", "EXTRACT", "TABLE", "H1", "H2"])
-                    await asyncio.sleep(2.0 if is_heavy else 0.8)
+            try:
+                for i, step in enumerate(plan, 1):
+                    step_up = step.upper()
+                    print(f"\n[🚀 STEP {i}] {step}")
                     
-                    elements = await self.get_snapshot(page, step)
-                    
-                    exe_resp = ollama.chat(model=self.model, messages=[
-                        {"role": "system", "content": config.EXECUTOR_SYSTEM_PROMPT.format(
-                            extracted_context=json.dumps(self.memory),
-                            strategic_context=strategic_context
-                        )},
-                        {"role": "user", "content": f"STEP: {step}\nELEMENTS: {json.dumps(elements)}\n{error_feedback}"}
-                    ])
-                    
-                    raw_text = exe_resp['message']['content']
-                    decision = self.parse_hybrid(raw_text)
-                    
-                    action = decision.get("action")
-                    tid = decision.get("id")
-                    thought = decision.get("thought", raw_text[:60]).lower()
-                    print(f"   🤔 Thought: {thought[:120]}...")
+                    if "NAVIGATE" in step_up:
+                        url = re.search(r'(https?://[^\s\'"<>]+)', step)
+                        if url:
+                            await page.goto(url.group(1), wait_until="domcontentloaded", timeout=60000)
+                            await asyncio.sleep(4); continue
 
-                    if tid is not None and not action:
-                        if any(k in step.lower() for k in ["type", "fill", "enter"]): action = "type"
-                        elif "extract" in step.lower(): action = "extract"
-                        elif any(k in step.lower() for k in ["verify", "find", "check"]): action = "verified"
-                        elif "scroll" in step.lower(): action = "scroll"
-                        else: action = "click"
+                    if "WAIT" in step_up:
+                        sec = re.search(r"(\d+)", step)
+                        wait_time = int(sec.group(1)) if sec else 2
+                        print(f"    ⏳ Waiting: {wait_time}s...")
+                        await asyncio.sleep(wait_time); continue
 
-                    try:
-                        target_id = tid if (tid is not None and tid < len(elements)) else 0
-                        loc = page.locator(f'[data-manul-id="{target_id}"]').first
+                    if "SCROLL" in step_up:
+                        print("    📜 Scrolling Down...")
+                        await page.mouse.wheel(0, 600)
+                        await asyncio.sleep(2); continue
 
-                        if action == "type":
-                            quotes = re.findall(r"['\"](.*?)['\"]", step)
-                            val = quotes[-1] if quotes else "data"
-                            for k, v in self.memory.items():
-                                val = val.replace(f"{{{k}}}", str(v))
+                    if "VERIFY" in step_up or "CHECK" in step_up:
+                        expected_quotes = self._extract_text(step)
+                        if expected_quotes:
+                            print(f"    🕵️ Native Scanner looking for: {expected_quotes}")
+                            verified = False
+                            for exp in expected_quotes:
+                                try:
+                                    loc = page.locator(f"text=/{exp}/i").first
+                                    await loc.wait_for(state="attached", timeout=5000)
+                                    await loc.scroll_into_view_if_needed(timeout=3000)
+                                    await loc.evaluate("el => { el.style.border = '4px solid green'; el.style.backgroundColor = 'lightgreen'; el.style.color = 'black'; }")
+                                    print(f"    ✅ VERIFIED: Found '{exp}' on the page!")
+                                    verified = True
+                                    break
+                                except: pass
                             
-                            await loc.scroll_into_view_if_needed()
-                            await loc.click()
-                            await loc.fill("") 
-                            await loc.type(val, delay=40)
-                            
-                            if any(k in step.lower() for k in ["search", "enter", "submit"]):
-                                search_btn = page.locator('button[type="submit"], button:has-text("Search"), .search-button, i.search-icon').first
-                                if await search_btn.is_visible():
-                                    await search_btn.click()
-                                    print(f"   🖱️  Clicked Search Button")
-                                else:
-                                    await page.keyboard.press("Enter")
-                                    print(f"   ⌨️  Pressed Enter")
-                                
-                                try: await page.wait_for_load_state("load", timeout=5000)
-                                except: await asyncio.sleep(1.5)
+                            if verified: continue
                             else:
-                                print(f"   ⌨️  Filled '{val}' into ID {target_id}")
-                                
-                            step_success = True; break
-                        
-                        elif action == "click":
-                            await loc.scroll_into_view_if_needed()
-                            await loc.click(force=True, timeout=5000)
-                            print(f"   🖱️  Clicked ID {target_id}")
-                            step_success = True; break
-                        
-                        elif action == "scroll":
-                            await page.mouse.wheel(0, 600)
-                            await asyncio.sleep(1.0)
-                            print(f"   📜 SPA-Scrolling...")
-                            step_success = True; break
-                        
-                        elif action == "extract":
-                            raw_content = elements[target_id]['current_content']
-                            val_match = re.findall(r"[\d\.%]+", raw_content)
-                            val = val_match[0] if val_match else raw_content
-                            var_name = re.search(r"\{(.*?)\}", step).group(1) if "{" in step else "val"
-                            self.memory[var_name] = val
-                            print(f"   💾 Saved: '{val}' into {{{var_name}}}")
-                            step_success = True; break
+                                print(f"    ⚠️ Text not found anywhere on the page.")
+                                print(f"❌ Step {i} FAILED.")
+                                if self.strict: break
+                                continue
 
-                        elif action == "verified" or "verify" in step.lower():
-                            expected_match = re.search(r"['\"](.*?)['\"]", step)
-                            expected = expected_match.group(1).lower() if expected_match else ""
-                            actual = elements[target_id]['current_content'].lower()
-                            if expected in actual or not expected:
-                                print(f"   ✅ VERIFIED: '{expected}' found in ID {target_id}")
-                                step_success = True; break
-                            else:
-                                error_feedback = f"⚠️ Expected '{expected}' not found. Try scrolling or checking another ID."
-                                print(f"   ⚠️ Missed verification for '{expected}'")
+                    if "DONE" in step_up: break
 
-                    except Exception as e:
-                        error_feedback = f"⚠️ Action Error: {str(e)[:40]}. Pick a different ID."
-                        print(f"   {error_feedback}")
+                    if not await self._execute_step(page, step, strategic_context):
+                        print(f"❌ Step {i} FAILED.")
+                        if self.strict: break 
                 
-                if not step_success and "DONE" not in step.upper():
-                    print(f"💨 Step failed. Continuing mission...")
+                print("\n✨ Mission finished.")
+                await asyncio.sleep(4)
+            finally:
+                await browser.close()
 
-            print("\n✨ Mission finished.")
-            await browser.close()
+    async def _execute_step(self, page, step, strategic_context):
+        step_l = step.lower()
+        mode = "input" if any(x in step_l for x in ["type", "fill", "enter", "search"]) else "clickable"
+        
+        for attempt in range(2):
+            await asyncio.sleep(2)
+            elements = await self.get_snapshot(page, mode)
+            if not elements: continue
+            
+            exe_obj = await self._ollama_chat_json(
+                config.EXECUTOR_SYSTEM_PROMPT.format(extracted_context="", strategic_context=strategic_context),
+                f"STEP: {step}\nMODE: {mode.upper()}\nELEMENTS: {json.dumps(elements)}"
+            )
+            if not exe_obj: continue
+            
+            tid = min(exe_obj.get("id", 0), len(elements) - 1)
+            expected_quotes = self._extract_text(step)
 
-    def parse_hybrid(self, text):
-        decision = {}
-        json_match = re.search(r"\{.*\}", text, re.DOTALL)
-        if json_match:
-            try: decision = json.loads(json_match.group(0))
-            except: pass
-        if not decision.get("id"):
-            id_res = re.search(r"ID[:\s=]+(\d+)", text, re.I)
-            if id_res: decision["id"] = int(id_res.group(1))
-        if not decision.get("action"):
-            for act in ["click", "type", "scroll", "extract", "verified"]:
-                if act in text.lower():
-                    decision["action"] = act; break
-        return decision
+            if expected_quotes and mode != "input":
+                for idx, el in enumerate(elements):
+                    if any(q in el["current_content"].lower() for q in expected_quotes):
+                        if tid != idx:
+                            print(f"    🧠 Smart Override: Target fixed to ID {idx}")
+                            tid = idx
+                        break
 
-    async def get_snapshot(self, page, step):
-        return await page.evaluate("""() => {
+            xpath = elements[tid]["xpath"]
+            target = f"xpath={xpath}"
+            
+            try:
+                loc = page.locator(target).first
+                if mode == "input":
+                    val = expected_quotes[-1] if expected_quotes else "data"
+                    print(f"    🤔 AI Action: Target ID {tid} ({elements[tid]['name']})")
+                    print(f"    ⌨️  Inserting natively: '{val}'")
+                    await loc.evaluate("el => { el.focus(); el.select(); el.style.border = '4px solid red'; }")
+                    await asyncio.sleep(0.5)
+                    await page.keyboard.insert_text(val)
+                    await asyncio.sleep(1)
+                    await page.keyboard.press("Enter")
+                    return True
+                
+                await loc.evaluate("el => { el.style.border = '4px solid red'; }")
+                await loc.click(force=True, timeout=10000)
+                print(f"    🖱️  Clicked ID {tid} ({elements[tid]['current_content'][:15]}...)")
+                return True
+            except: continue
+        return False
+
+    async def get_snapshot(self, page, mode):
+        return await page.evaluate(r"""(mode) => {
             const getEls = (sel) => Array.from(document.querySelectorAll(sel)).filter(el => {
                 const r = el.getBoundingClientRect();
-                const isNoise = el.closest('.copyright, .layers-ui, .vector-sidebar-container, #repos-sticky-header');
+                const text = (el.innerText || "").toLowerCase();
+                const isNoise = el.closest('footer, .copyright, .user-links') || 
+                               text.includes('щоденники') || text.includes('diaries') || 
+                               text.includes('допомога');
+                if (el.tagName === 'INPUT' && ['hidden', 'checkbox', 'radio'].includes(el.type)) return false;
                 return r.width > 0 && r.height > 0 && !isNoise;
             });
-
-            const priorityTags = 'h1, input, textarea, button, h2, h3, p';
-            const extraTags = 'a, td, th, span, li';
             
-            const combined = [...getEls(priorityTags), ...getEls(extraTags)].slice(0, 65);
-
-            return combined.map((el, i) => {
-                el.setAttribute('data-manul-id', i);
-                
-                let metadata = el.name || el.id || el.getAttribute('aria-label') || el.placeholder || "";
-                if (el.tagName.toLowerCase() === 'a' && el.href) {
-                    metadata += " href:" + el.href.replace(window.location.origin, ''); 
+            function getXPath(el) {
+                if (el.id) return `//*[@id="${el.id}"]`;
+                const parts = [];
+                while (el && el.nodeType === Node.ELEMENT_NODE) {
+                    let idx = Array.from(el.parentNode.children).filter(s => s.tagName === el.tagName).indexOf(el) + 1;
+                    parts.unshift(`${el.tagName.toLowerCase()}[${idx}]`);
+                    el = el.parentNode;
                 }
-                if (el.tagName.toLowerCase() === 'input' && el.type) {
-                    metadata += " type:" + el.type;
-                }
-
-                return { 
-                    id: i, tag: el.tagName, 
-                    name: metadata.trim(),
-                    current_content: (el.value || el.innerText || "").replace(/\\s+/g, ' ').trim().substring(0, 100) 
-                };
-            });
-        }""")
+                return `/${parts.join('/')}`;
+            }
+            
+            let tags = (mode === 'input') ? 'input, textarea' : 'button, a, .search_results_list a';
+            return getEls(tags).slice(0, 15).map((el, i) => ({
+                id: i, tag: el.tagName,
+                name: (el.placeholder || el.id || el.name || "").substring(0, 15),
+                current_content: (el.innerText || el.value || "").replace(/\s+/g, ' ').trim().substring(0, 30),
+                xpath: getXPath(el)
+            }));
+        }""", mode)

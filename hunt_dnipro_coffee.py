@@ -7,11 +7,10 @@ async def main():
     mission = (
         "1. Navigate to https://www.openstreetmap.org/. "
         "2. Type 'Cafe Dnipro' into the search box and press Enter. "
-        "3. Wait 2 seconds for the results to load. "
+        "3. Wait 3 seconds for the results to load. "
         "4. SCROLL DOWN the sidebar to see more results. "
-        "5. Find any link that contains the word 'Cafe' or 'Кафе'. "
-        "6. VERIFY that this element contains the text 'Cafe' or 'Кафе'. "
-        "7. Done."
+        "5. Find and VERIFY that the results contain the text 'Cafe' or 'Кафе'. "
+        "6. Done."
     )
     
     context = (
