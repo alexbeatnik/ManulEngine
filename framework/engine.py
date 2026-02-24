@@ -619,24 +619,24 @@ class ManulEngine:
                         await loc.dblclick()
                         await asyncio.sleep(ACTION_WAIT)
                     else:
-                        # For form submit buttons — wait for navigation or network idle
-                        # so the success response is available before VERIFY runs.
-                        is_submit = itype in ("submit",) or (
-                            tag == "button" and not itype or itype == "submit"
+                        # For form submit buttons — wait for the page to fully settle
+                        # so AJAX/redirect success messages are visible before VERIFY.
+                        is_submit = (
+                            itype == "submit"
+                            or (tag == "button" and itype in ("", "submit"))
                         )
                         if is_submit:
+                            # Click once, then wait for navigation OR network idle.
+                            # We do NOT click again in the except — that caused double submit.
+                            await loc.click(force=True)
                             try:
-                                async with page.expect_navigation(
-                                    wait_until="domcontentloaded",
-                                    timeout=8_000,
-                                ):
-                                    await loc.click(force=True)
-                                # Extra settle time for AJAX success messages
-                                await asyncio.sleep(1.5)
+                                # Case A: full page navigation (standard POST form)
+                                await page.wait_for_load_state(
+                                    "networkidle", timeout=10_000
+                                )
                             except Exception:
-                                # No navigation happened (AJAX form) — just wait longer
-                                await loc.click(force=True)
-                                await asyncio.sleep(ACTION_WAIT + 1.5)
+                                # Case B: AJAX form — no navigation, just wait for DOM settle
+                                await asyncio.sleep(3.0)
                         else:
                             await loc.click(force=True)
                             await asyncio.sleep(ACTION_WAIT)
