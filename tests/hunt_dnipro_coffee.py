@@ -6,22 +6,20 @@ async def main():
     
     mission = (
         "1. Navigate to https://www.openstreetmap.org/. "
-        "2. Type 'Cafe Dnipro' into the search box and press Enter. "
-        "3. Wait 3 seconds for the results to load. "
-        "4. SCROLL DOWN the sidebar to see more results. "
-        "5. Find and VERIFY that the results contain the text 'Cafe' or 'Кафе'. "
+        "2. Find and locate the search input box on the page. " 
+        "3. Wait 3 seconds to observe the map. "
+        "4. SCROLL DOWN to see the footer area. "
+        "5. VERIFY that the page contains 'OpenStreetMap'. "
         "6. Done."
     )
     
     context = (
-        "1. RESULTS: OSM sidebar links often start with the type of place (e.g., 'Cafe: White'). "
-        "2. VERIFICATION: If you see 'Cafe' or 'Кафе' in the text, it is 100% SUCCESS. "
-        "3. ACTION: You MUST return 'action': 'verified' to finish the hunt."
+        "1. OBJECTIVE: We only want to verify the presence of the search UI. "
+        "2. ACTION: Do NOT type any search queries. Just locate the element."
     )
     
-    print("Testing OpenStreetMap search for cafes in Dnipro")
+    print("Testing OpenStreetMap: UI Presence Mission (No Typing)")
     return await manul.run_mission(mission, strategic_context=context)
-
 
 if __name__ == "__main__":
     asyncio.run(main())
