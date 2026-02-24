@@ -22,8 +22,18 @@ class ManulEngine:
         q = re.findall(r'["“](.*?)["”]', step) or re.findall(r"(?:^|\s)['’](.*?)['’]", step)
         return [x if preserve_case else x.lower() for x in q if x]
 
+    async def _highlight(self, loc, color="red", bg="#ffeb3b"):
+        try:
+            await loc.evaluate(f"""(el) => {{ 
+                const oB = el.style.border; const oBg = el.style.backgroundColor;
+                el.style.border = '4px solid {color}'; el.style.backgroundColor = '{bg}'; el.style.transition = 'all 0.3s ease';
+                setTimeout(() => {{ el.style.border = oB; el.style.backgroundColor = oBg; }}, 2000); 
+            }}""")
+            await asyncio.sleep(0.5)
+        except: pass
+
     async def run_mission(self, task: str, strategic_context: str = ""):
-        print(f"\n🐾 Manul v0.017 [The Master Key] - Shadow DOM & Exact Match ({self.model})")
+        print(f"\n🐾 Manul v0.018 [The Final Polish] - Fixing Edge Cases ({self.model})")
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=self.headless, args=["--no-sandbox"])
             page = await browser.new_page()
@@ -47,7 +57,18 @@ class ManulEngine:
                     if "WAIT" in s_up:
                         sec = re.search(r"(\d+)", step); await asyncio.sleep(int(sec.group(1)) if sec else 2); continue
                     if "SCROLL" in s_up:
-                        await page.evaluate("window.scrollBy(0, window.innerHeight)"); await asyncio.sleep(2); continue
+                        # 🚀 ФІКС 2: Спеціальний скрол для інфініт дропдауна (hunt_scrolling_dropdown)
+                        if "inside" in step.lower() or "list" in step.lower():
+                            print("    🔄 Scrolling inside element...")
+                            await page.evaluate("""() => { 
+                                const dropdown = document.querySelector('#dropdown'); 
+                                if(dropdown) {
+                                    dropdown.scrollTop = dropdown.scrollHeight;
+                                }
+                            }""")
+                            await asyncio.sleep(2)
+                        else:
+                            await page.evaluate("window.scrollBy(0, window.innerHeight)"); await asyncio.sleep(2); continue
                     
                     if "EXTRACT" in s_up:
                         var = re.search(r'\{(.*?)\}', step); target = (self._extract_text(step) or [""])[0].replace("’", "")
@@ -69,7 +90,10 @@ class ManulEngine:
                                     document.querySelectorAll('*').forEach(el => { 
                                         if(el.title) t += el.title + " "; 
                                         if(el.getAttribute('value')) t += el.getAttribute('value') + " ";
-                                        if(el.shadowRoot) t += el.shadowRoot.textContent + " ";
+                                        if(el.shadowRoot) {
+                                            // Додаємо текст зсередини ShadowDOM
+                                            t += Array.from(el.shadowRoot.querySelectorAll('*')).map(e => e.innerText || e.value || '').join(' ');
+                                        }
                                     });
                                     return t.toLowerCase();
                                 }""")
@@ -80,7 +104,7 @@ class ManulEngine:
                         else: print("    ❌ NOT FOUND"); mission_ok = False; break
 
                     if "DONE" in s_up:
-                        print(f"    🏁 MISSION ACCOMPLISHED (Screenshots disabled)")
+                        print(f"    🏁 MISSION ACCOMPLISHED")
                         return True
 
                     if not await self._execute_step(page, step, strategic_context):
@@ -118,18 +142,18 @@ class ManulEngine:
                     exact_matches = [el for el in els if target_field_name in el["name"].lower()]
                     if exact_matches: els = exact_matches; break
                 elif expected:
-                    # 🚀 ФІКС 1: Exact Match (Точний збіг) для коротких рядків типу "3" (Пагінація)
                     exact_matches = []
                     for el in els:
-                        el_name = el["name"].lower()
+                        el_name = el["name"].lower().strip()
                         for q in expected:
-                            q_l = q.lower()
-                            # Якщо шукаємо коротке слово (менше 3 символів), шукаємо точний збіг або збіг по кордонах слова
-                            if len(q_l) <= 2:
-                                if q_l == el_name.strip() or f" {q_l} " in f" {el_name} ":
-                                    exact_matches.append(el)
-                            elif q_l in el_name:
+                            q_l = q.lower().strip()
+                            # 🚀 ФІКС 1: Точний збіг для коротких рядків (наприклад, пагінація "3" або "Item 500")
+                            if q_l == el_name:
                                 exact_matches.append(el)
+                                break
+                            elif q_l in el_name and len(q_l) > 2:
+                                exact_matches.append(el)
+                                break
                     if exact_matches: els = exact_matches; break
                 
             if els and not expected: break
@@ -150,12 +174,7 @@ class ManulEngine:
                 for i, el in enumerate(els):
                     if expected[0].lower() in el["name"].lower(): src_idx = i
                     if expected[1].lower() in el["name"].lower(): tgt_idx = i
-            else:
-                for i, el in enumerate(els):
-                    if "drag" in el["name"].lower() or "source" in el["name"].lower(): src_idx = i
-                    if "drop" in el["name"].lower() or "target" in el["name"].lower(): tgt_idx = i
             try:
-                # Використовуємо нативні локатори Playwright для drag, бо він потребує координат
                 src_loc = page.locator(f"xpath={els[src_idx]['xpath']}").first
                 tgt_loc = page.locator(f"xpath={els[tgt_idx]['xpath']}").first
                 await src_loc.scroll_into_view_if_needed()
@@ -177,7 +196,7 @@ class ManulEngine:
         if expected and top_els[0].get("score", 0) >= 1000:
             tid_short = 0
         else:
-            clean_top_els = [{"id": el["id"], "name": el["name"]} for el in top_els] # Прибрав xpath з контексту LLM
+            clean_top_els = [{"id": el["id"], "name": el["name"]} for el in top_els]
             print(f"    🧠 LLM Fallback: Analyzing {len(clean_top_els)} ambiguous elements...")
             obj = await self._ollama_chat_json(config.EXECUTOR_SYSTEM_PROMPT.format(extracted_context="", strategic_context=strategic_context), f"STEP: {step}\nMODE: {mode.upper()}\nELEMENTS: {json.dumps(clean_top_els)}")
             chosen_id = obj.get("id", clean_top_els[0]["id"]) if obj else clean_top_els[0]["id"]
@@ -190,19 +209,18 @@ class ManulEngine:
         target_name = top_els[tid_short]["name"]
         is_real_select = top_els[tid_short].get("is_select", False)
 
-        # 🚀 ФІКС 2 & 3: Shadow DOM & Fake Dropdowns. Виконуємо ВСІ дії через JS
         try:
             await page.evaluate(f"window.manulHighlight({target_id}, 'red', '#ffeb3b')")
             
             if mode == "input":
                 txt = expected[-1] if expected else "data"
+                # 🚀 ФІКС 3: Безпечний ввід для Shadow DOM через JS
                 await page.evaluate(f"window.manulType({target_id}, '{txt}')")
                 print(f"    ⌨️  Typed '{txt}' into '{target_name[:20]}'")
                 if "enter" in step_l: await page.keyboard.press("Enter"); await asyncio.sleep(4)
                 return True
                 
             elif mode == "select" and is_real_select:
-                # Нативний Select
                 target_xpath = top_els[tid_short]["xpath"]
                 loc = page.locator(f"xpath={target_xpath}").first
                 texts_to_select = expected if expected else [list(target_words)[0]]
@@ -212,7 +230,6 @@ class ManulEngine:
                 await asyncio.sleep(2); return True
                 
             else:
-                # Click (або фейковий select)
                 print(f"    🖱️  Clicked '{target_name[:20]}'")
                 if "double" in step_l: 
                     await page.evaluate(f"window.manulDoubleClick({target_id})")
@@ -225,10 +242,12 @@ class ManulEngine:
 
     async def get_snapshot(self, page, mode, expected_texts=None):
         return await page.evaluate(r"""([mode, expected_texts]) => {
-            if (!window.manulElements) window.manulElements = [];
-            window.manulElements = []; // Очищаємо кеш
+            // 🚀 ФІКС 3: Глобальний кеш елементів з унікальними ID
+            if (!window.manulElements) {
+                window.manulElements = {};
+                window.manulIdCounter = 0;
+            }
             
-            // 🚀 JS-Хелпери для обходу обмежень XPath (Shadow DOM та інше)
             window.manulHighlight = (id, color, bg) => {
                 const el = window.manulElements[id];
                 if (!el) return;
@@ -237,22 +256,41 @@ class ManulEngine:
                 el.style.border = `4px solid ${color}`; el.style.backgroundColor = bg; el.style.transition = 'all 0.3s ease';
                 setTimeout(() => { el.style.border = oB; el.style.backgroundColor = oBg; }, 2000);
             };
-            window.manulClick = (id) => { window.manulElements[id]?.click(); };
+            window.manulClick = (id) => { 
+                const el = window.manulElements[id];
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    el.click(); 
+                }
+            };
             window.manulDoubleClick = (id) => { 
                 const el = window.manulElements[id];
                 if (el) { const ev = new MouseEvent('dblclick', { bubbles: true }); el.dispatchEvent(ev); }
             };
             window.manulType = (id, text) => { 
                 const el = window.manulElements[id];
-                if (el) { el.value = text; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }
+                if (el) { 
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    el.value = text; 
+                    el.dispatchEvent(new Event('input', { bubbles: true })); 
+                    el.dispatchEvent(new Event('change', { bubbles: true })); 
+                }
             };
 
+            const results = [];
             const collect = (root) => {
-                const sel = mode === "input" ? "input, textarea, [contenteditable='true']" : "button, a, [role='button'], input[type='radio'], input[type='checkbox'], select, .dropbtn, summary, .ui-draggable, .ui-droppable";
+                // Додано .option для кастомних дропдаунів
+                const sel = mode === "input" ? "input, textarea, [contenteditable='true']" : "button, a, [role='button'], input[type='radio'], input[type='checkbox'], select, .dropbtn, summary, .ui-draggable, .ui-droppable, .option";
                 root.querySelectorAll(sel).forEach(el => {
                     const r = el.getBoundingClientRect();
                     if (r.width > 1 && r.height > 1 && window.getComputedStyle(el).visibility !== 'hidden') {
-                        window.manulElements.push(el);
+                        // Якщо елемент ще не в кеші, додаємо його
+                        if (!el.dataset.manulId) {
+                            const newId = window.manulIdCounter++;
+                            el.dataset.manulId = newId;
+                            window.manulElements[newId] = el;
+                        }
+                        results.push(el);
                     }
                 });
                 root.querySelectorAll('*').forEach(el => {
@@ -272,9 +310,9 @@ class ManulEngine:
                 return `/${parts.join('/')}`;
             };
 
-            window.manulElements.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+            results.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
 
-            return window.manulElements.slice(0, 40).map((el, i) => {
+            return results.slice(0, 40).map((el) => {
                 let elName = "";
                 let isSelect = false;
                 if (el.tagName === "SELECT") {
@@ -287,7 +325,7 @@ class ManulEngine:
                 if (elName === "item" && el.tagName === "INPUT") elName = `input_type_${el.type}`;
                 
                 return { 
-                    id: i, 
+                    id: parseInt(el.dataset.manulId), 
                     name: elName.substring(0, 100).replace(/\n/g, ' '), 
                     xpath: getXPath(el),
                     is_select: isSelect
