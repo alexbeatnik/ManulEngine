@@ -6,12 +6,12 @@ from playwright.async_api import async_playwright
 from . import config
 
 class ManulEngine:
-    def __init__(self, model="qwen2.5:14b", blueprints=None):
+    def __init__(self, model="qwen2.5:3b", blueprints=None):
         self.model = model
         self.memory = {}
 
     async def run_mission(self, task, strategic_context=""):
-        print(f"🐾 Manul is out for the hunt...")
+        print(f"\n🐾 Manul v2.02 [3B Whisperer] is out for the hunt...")
         try:
             resp = ollama.chat(model=self.model, messages=[
                 {"role": "system", "content": config.PLANNER_SYSTEM_PROMPT},
@@ -27,16 +27,17 @@ class ManulEngine:
             
             for i, step in enumerate(plan, 1):
                 step = str(step)
-                print(f"[🚀 STEP {i}] {step}")
+                print(f"\n[🚀 STEP {i}] {step}")
                 
-                if any(k in step.upper() for k in ["NAVIGATE", "URL", "LINK"]):
+                if any(k in step.upper() for k in ["NAVIGATE", "URL", "LINK", "GO TO"]):
                     url_match = re.search(r'(https?://[^\s\'"<>]+)', step)
                     if url_match:
                         try:
-                            print(f"   🌐 Navigating...")
-                            await page.goto(url_match.group(1).strip('"'), wait_until="networkidle")
+                            print(f"   🌐 Navigating to {url_match.group(1)}...")
+                            await page.goto(url_match.group(1).strip('"'), wait_until="domcontentloaded", timeout=15000)
+                            await asyncio.sleep(1.5) 
                         except:
-                            await asyncio.sleep(1)
+                            print(f"   ⚠️ Navigation timeout, proceeding anyway...")
                         continue
 
                 if "WAIT" in step.upper() and "UNTIL" not in step.upper():
@@ -51,8 +52,8 @@ class ManulEngine:
                 error_feedback = ""
 
                 for attempt in range(3):
-                    is_heavy = any(k in step.upper() for k in ["VERIFY", "EXTRACT", "TABLE", "H1"])
-                    await asyncio.sleep(2.0 if is_heavy else 0.6)
+                    is_heavy = any(k in step.upper() for k in ["VERIFY", "EXTRACT", "TABLE", "H1", "H2"])
+                    await asyncio.sleep(2.0 if is_heavy else 0.8)
                     
                     elements = await self.get_snapshot(page, step)
                     
@@ -73,9 +74,10 @@ class ManulEngine:
                     print(f"   🤔 Thought: {thought[:120]}...")
 
                     if tid is not None and not action:
-                        if any(k in step.lower() for k in ["type", "fill", "search"]): action = "type"
+                        if any(k in step.lower() for k in ["type", "fill", "enter"]): action = "type"
                         elif "extract" in step.lower(): action = "extract"
-                        elif "verify" in step.lower() or "find" in step.lower(): action = "verified"
+                        elif any(k in step.lower() for k in ["verify", "find", "check"]): action = "verified"
+                        elif "scroll" in step.lower(): action = "scroll"
                         else: action = "click"
 
                     try:
@@ -93,21 +95,32 @@ class ManulEngine:
                             await loc.fill("") 
                             await loc.type(val, delay=40)
                             
-                            search_btn = page.locator('button[type="submit"], button:has-text("Search"), .search-button, i.search-icon').first
-                            if await search_btn.is_visible():
-                                await search_btn.click()
+                            if any(k in step.lower() for k in ["search", "enter", "submit"]):
+                                search_btn = page.locator('button[type="submit"], button:has-text("Search"), .search-button, i.search-icon').first
+                                if await search_btn.is_visible():
+                                    await search_btn.click()
+                                    print(f"   🖱️  Clicked Search Button")
+                                else:
+                                    await page.keyboard.press("Enter")
+                                    print(f"   ⌨️  Pressed Enter")
+                                
+                                try: await page.wait_for_load_state("load", timeout=5000)
+                                except: await asyncio.sleep(1.5)
                             else:
-                                await page.keyboard.press("Enter")
-                            
-                            try: await page.wait_for_load_state("load", timeout=6000)
-                            except: await asyncio.sleep(1.5)
-                            
+                                print(f"   ⌨️  Filled '{val}' into ID {target_id}")
+                                
                             step_success = True; break
                         
                         elif action == "click":
                             await loc.scroll_into_view_if_needed()
                             await loc.click(force=True, timeout=5000)
                             print(f"   🖱️  Clicked ID {target_id}")
+                            step_success = True; break
+                        
+                        elif action == "scroll":
+                            await page.mouse.wheel(0, 600)
+                            await asyncio.sleep(1.0)
+                            print(f"   📜 SPA-Scrolling...")
                             step_success = True; break
                         
                         elif action == "extract":
@@ -127,20 +140,17 @@ class ManulEngine:
                                 print(f"   ✅ VERIFIED: '{expected}' found in ID {target_id}")
                                 step_success = True; break
                             else:
-                                print(f"   ⚠️ Expected '{expected}' not in '{actual}'")
-
-                        elif action == "scroll":
-                            await loc.scroll_into_view_if_needed()
-                            print(f"   📜 Scrolling...")
-                            step_success = True; break
+                                error_feedback = f"⚠️ Expected '{expected}' not found. Try scrolling or checking another ID."
+                                print(f"   ⚠️ Missed verification for '{expected}'")
 
                     except Exception as e:
-                        error_feedback = f"⚠️ Action Error: {str(e)[:40]}"
+                        error_feedback = f"⚠️ Action Error: {str(e)[:40]}. Pick a different ID."
+                        print(f"   {error_feedback}")
                 
                 if not step_success and "DONE" not in step.upper():
-                    print(f"💨 Step failed, moving on...")
+                    print(f"💨 Step failed. Continuing mission...")
 
-            print("✨ Mission finished.")
+            print("\n✨ Mission finished.")
             await browser.close()
 
     def parse_hybrid(self, text):
@@ -162,20 +172,30 @@ class ManulEngine:
         return await page.evaluate("""() => {
             const getEls = (sel) => Array.from(document.querySelectorAll(sel)).filter(el => {
                 const r = el.getBoundingClientRect();
-                return r.width > 0 && r.height > 0 && !el.closest('.copyright, .layers-ui, .vector-menu, .vector-sidebar-container');
+                const isNoise = el.closest('.copyright, .layers-ui, .vector-sidebar-container, #repos-sticky-header');
+                return r.width > 0 && r.height > 0 && !isNoise;
             });
 
-            const priorityTags = 'h1, input, textarea, h2, h3, p, li, button';
-            const extraTags = 'a, td, th, span';
+            const priorityTags = 'h1, input, textarea, button, h2, h3, p';
+            const extraTags = 'a, td, th, span, li';
             
-            const combined = [...getEls(priorityTags), ...getEls(extraTags)].slice(0, 75);
+            const combined = [...getEls(priorityTags), ...getEls(extraTags)].slice(0, 65);
 
             return combined.map((el, i) => {
                 el.setAttribute('data-manul-id', i);
+                
+                let metadata = el.name || el.id || el.getAttribute('aria-label') || el.placeholder || "";
+                if (el.tagName.toLowerCase() === 'a' && el.href) {
+                    metadata += " href:" + el.href.replace(window.location.origin, ''); 
+                }
+                if (el.tagName.toLowerCase() === 'input' && el.type) {
+                    metadata += " type:" + el.type;
+                }
+
                 return { 
                     id: i, tag: el.tagName, 
-                    name: el.name || el.id || el.getAttribute('aria-label') || el.placeholder || "",
-                    current_content: (el.value || el.innerText || "").replace(/\\s+/g, ' ').trim().substring(0, 110) 
+                    name: metadata.trim(),
+                    current_content: (el.value || el.innerText || "").replace(/\\s+/g, ' ').trim().substring(0, 100) 
                 };
             });
         }""")
