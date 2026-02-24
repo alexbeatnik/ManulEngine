@@ -79,10 +79,13 @@ class ManulEngine:
         """
         payload = [
             {
-                "id":      el["id"],
-                "name":    el["name"],
-                "tag":     el.get("tag_name", ""),
-                "data_qa": el.get("data_qa", ""),
+                "id":          el["id"],
+                "name":        el["name"],
+                "tag":         el.get("tag_name", ""),
+                "role":        el.get("role", ""),
+                "data_qa":     el.get("data_qa", ""),
+                "html_id":     el.get("html_id", ""),
+                "icon_classes": el.get("icon_classes", ""),
             }
             for el in candidates
         ]
@@ -170,13 +173,16 @@ class ManulEngine:
 
         for el in els:
             name      = el["name"].lower()
-            tag       = el.get("tag_name", "")        # 'button', 'a', 'input', 'select', ...
-            itype     = el.get("input_type", "")      # 'submit', 'text', 'radio', 'checkbox', ...
+            tag       = el.get("tag_name", "")
+            itype     = el.get("input_type", "")
             data_qa   = el.get("data_qa", "").lower()
+            html_id   = el.get("html_id", "").lower()
+            icons     = el.get("icon_classes", "").lower()
+            aria      = el.get("aria_label", "").lower()
+            role      = el.get("role", "").lower()   # "checkbox", "radio", "button", etc.
             score = 0
 
             # ── Context Memory ──────────────────────────────────────────────
-            # Only reuse when there are no explicit search signals
             if is_blind and self.last_xpath and el["xpath"] == self.last_xpath:
                 score += 10_000
 
@@ -184,15 +190,62 @@ class ManulEngine:
             if target_field and target_field in name:
                 score += 2_000
 
+            # ── Search text matches (name, aria, html_id, icons) ────────────
+            # We compute a "precision" score for each search term:
+            #
+            #   exact_match   → the element name IS the search term (stripped)
+            #                   e.g. search="click me", name="click me"  → +3000
+            #
+            #   tight_match   → search term matches the CORE of the name
+            #                   (name words - context prefix words)
+            #                   e.g. search="click me", name="section -> click me button"
+            #                   core = "click me button", close enough → +1500
+            #
+            #   loose_match   → search term is anywhere in name as substring → +1000
+            #                   BUT penalise proportionally for extra words in name
+            #                   e.g. search="click me" in "double click me" → 1000 - penalty
+            #
+            # This prevents "Double Click Me" from outscoring "Click Me" for "Click Me".
+
+            # Strip context prefix (everything before " -> ") for tighter matching
+            name_core = name.split(" -> ")[-1].strip() if " -> " in name else name
+
             for t in search_texts:
-                if t.lower() in name:
-                    score += 1_000
+                tl = t.lower().strip()
+                if not tl:
+                    continue
+
+                # ── Name matching ──────────────────────────────────────────
+                if name_core == tl or name == tl:
+                    # Perfect match — highest priority
+                    score += 3_000
+                elif name_core.startswith(tl) or name_core.endswith(tl):
+                    # Core starts/ends with our term → very tight
+                    score += 2_000
+                elif tl in name_core:
+                    # Substring in core — apply word-count penalty
+                    # Penalty = 50 per extra word in core vs search term
+                    extra_words = max(0,
+                        len(name_core.split()) - len(tl.split())
+                    )
+                    score += max(200, 1_000 - extra_words * 150)
+                elif tl in name:
+                    # Substring in full name (including context prefix)
+                    extra_words = max(0, len(name.split()) - len(tl.split()))
+                    score += max(100, 800 - extra_words * 100)
+
+                # ── Aria / html_id / icon matching ────────────────────────
+                if tl in aria:        score += 800
+                if tl in html_id:     score += 600
+                if any(w in icons for w in tl.split() if len(w) > 3):
+                    score += 700
 
             score += sum(10 for w in target_words if w in name)
+            score += sum(8  for w in target_words if len(w) > 3 and w in icons)
+            score += sum(15 for w in target_words if len(w) > 3 and w in html_id)
+            score += sum(12 for w in target_words if len(w) > 3 and w in aria)
 
             # ── data-qa / data-testid exact match ───────────────────────────
-            # These attributes are the most reliable signals — they were put
-            # there specifically for automation.
             for t in search_texts:
                 t_l = t.lower().replace(" ", "-").replace("_", "-")
                 if t_l and t_l in data_qa:
@@ -205,25 +258,34 @@ class ManulEngine:
             # This prevents "Signup / Login" navigation link from winning over
             # the actual "Signup" submit button.
             #
-            is_real_button = tag == "button" or (tag == "input" and itype in ("submit", "button", "image"))
+            is_real_button = tag == "button" or role == "button" \
+                          or (tag == "input" and itype in ("submit", "button", "image"))
             is_real_link   = tag == "a"
-            is_real_input  = tag in ("input", "textarea") and itype not in ("submit", "button", "image", "radio", "checkbox")
+            is_real_input  = (tag in ("input", "textarea") and itype not in
+                              ("submit", "button", "image", "radio", "checkbox")) \
+                          or role in ("textbox", "searchbox", "spinbutton")
+            is_real_checkbox = (tag == "input" and itype == "checkbox") or role == "checkbox"
+            is_real_radio    = (tag == "input" and itype == "radio")    or role == "radio"
 
             if wants_button:
-                if is_real_button: score += 2_500   # strong preference for actual buttons
-                if is_real_link:   score -= 1_500   # penalise nav links masquerading as buttons
+                if is_real_button:   score += 2_500
+                if is_real_link:     score -= 1_500
 
             if wants_link:
-                if is_real_link:   score += 2_500
-                if is_real_button: score -= 1_500
+                if is_real_link:     score += 2_500
+                if is_real_button:   score -= 1_500
 
             if wants_input:
-                if is_real_input:  score += 1_000
-                if is_real_button: score -= 500
+                if is_real_input:    score += 1_000
+                if is_real_button:   score -= 500
 
             # ── Checkbox / radio type bonuses ───────────────────────────────
-            if "checkbox" in step_l and "checkbox" in name:  score += 3_000
-            if "radio"    in step_l and "radio"    in name:  score += 3_000
+            if "checkbox" in step_l:
+                if is_real_checkbox: score += 3_000
+                elif "checkbox" in name: score += 1_000
+            if "radio" in step_l:
+                if is_real_radio:    score += 3_000
+                elif "radio" in name: score += 1_000
 
             # ── Blind-mode type hints (no explicit search text) ─────────────
             if not search_texts:
@@ -710,16 +772,72 @@ _SNAPSHOT_JS = r"""([mode, expected_texts]) => {
     };
 
     // ── DOM collection ──
-    const INTERACTIVE = mode==="input"||mode==="locate"
-        ? "input,textarea,[contenteditable='true']"
-        : "button,a,input[type='radio'],input[type='checkbox'],select,.dropbtn,summary,.ui-draggable,.ui-droppable,.option,input";
+    // Base selectors cover standard HTML interactive elements.
+    // Extended selectors capture custom UI libraries:
+    //   - label               → React checkbox trees (demoqa), toggle labels
+    //   - [role="checkbox"]   → ARIA custom checkboxes
+    //   - [role="radio"]      → ARIA custom radios
+    //   - [role="button"]     → ARIA custom buttons
+    //   - [role="tab"]        → Tab widgets
+    //   - [role="option"]     → Custom dropdowns (react-select, etc.)
+    //   - [class*="rct-"]     → React Checkbox Tree nodes
+    //   - [class*="checkbox"] → Generic custom checkbox wrappers
+    //   - [onclick]           → Any element with explicit click handler
+    const INTERACTIVE_INPUT = "input,textarea,[contenteditable='true']";
+    const INTERACTIVE_CLICK = [
+        // Standard
+        "button","a","input[type='radio']","input[type='checkbox']",
+        "select",".dropbtn","summary",
+        ".ui-draggable",".ui-droppable",".option","input",
+        // Labels (often the real click target in custom checkbox trees)
+        "label",
+        // ARIA roles
+        "[role='button']","[role='checkbox']","[role='radio']",
+        "[role='tab']","[role='option']","[role='menuitem']","[role='switch']",
+        // Custom checkbox / tree libraries
+        "[class*='rct-node-clickable']","[class*='rct-title']",
+        "[class*='checkbox']","[class*='check-box']",
+        // Explicit click handlers (catch-all for JS widgets)
+        "[onclick]",
+    ].join(",");
 
+    const INTERACTIVE = (mode==="input"||mode==="locate")
+        ? INTERACTIVE_INPUT
+        : INTERACTIVE_CLICK;
+
+    // Dedup by DOM node (multiple selectors may match the same element)
+    const seen = new Set();
     const results = [];
     const collect = (root, inShadow=false) => {
         root.querySelectorAll(INTERACTIVE).forEach(el => {
+            // Dedup — multiple CSS selectors can match the same DOM node
+            if (seen.has(el)) return;
+            seen.add(el);
+
             const r=el.getBoundingClientRect();
             if (r.width<2||r.height<2) return;
-            if (window.getComputedStyle(el).visibility==='hidden') return;
+            const st = window.getComputedStyle(el);
+            if (st.visibility==='hidden'||st.display==='none') return;
+
+            // For <label> elements: skip bare labels that are just wrappers
+            // for a visible <input> already in the list — keep only labels
+            // that ARE the clickable thing (custom checkbox trees, toggles).
+            if (el.tagName==='LABEL') {
+                const linked = el.htmlFor
+                    ? document.getElementById(el.htmlFor)
+                    : el.querySelector('input');
+                // If the linked input is also visible and not hidden, skip the label
+                // UNLESS the label itself carries meaningful text the input doesn't
+                if (linked) {
+                    const lr = linked.getBoundingClientRect();
+                    if (lr.width > 2 && lr.height > 2
+                        && window.getComputedStyle(linked).display !== 'none') {
+                        // Label wraps a visible input — skip the label, keep the input
+                        return;
+                    }
+                }
+            }
+
             if (!el.dataset.manulId) {
                 const id=window.manulIdCounter++;
                 el.dataset.manulId=id;
@@ -751,37 +869,76 @@ _SNAPSHOT_JS = r"""([mode, expected_texts]) => {
 
     // ── Context label helper ──
     const labelFor = el => {
-        if(el.tagName==='INPUT'&&(el.type==='checkbox'||el.type==='radio')){
-            const tr=el.closest('tr');
-            if(tr) return tr.innerText.trim().replace(/\s+/g,' ');
-            const lbl=el.closest('label')||document.querySelector(`label[for="${el.id}"]`);
-            return lbl?lbl.innerText.trim():'';
+        // Standard checkbox / radio
+        if (el.tagName==='INPUT' && (el.type==='checkbox' || el.type==='radio')) {
+            const tr = el.closest('tr');
+            if (tr) return tr.innerText.trim().replace(/\s+/g,' ');
+            const lbl = el.closest('label') || document.querySelector(`label[for="${el.id}"]`);
+            if (lbl) return lbl.innerText.trim();
         }
-        if(['INPUT','SELECT','TEXTAREA'].includes(el.tagName)){
-            const lbl=document.querySelector(`label[for="${el.id}"]`);
-            if(lbl) return lbl.innerText.trim();
-            let curr=el;
-            while(curr&&curr.tagName!=='BODY'){
-                let prev=curr.previousElementSibling;
-                while(prev){
-                    if(/^H[1-6]$/.test(prev.tagName)||prev.classList.contains('title'))
+
+        // Standard input / select / textarea
+        if (['INPUT','SELECT','TEXTAREA'].includes(el.tagName)) {
+            const lbl = document.querySelector(`label[for="${el.id}"]`);
+            if (lbl) return lbl.innerText.trim();
+            let curr = el;
+            while (curr && curr.tagName !== 'BODY') {
+                let prev = curr.previousElementSibling;
+                while (prev) {
+                    if (/^H[1-6]$/.test(prev.tagName) || prev.classList.contains('title'))
                         return prev.innerText.trim();
-                    prev=prev.previousElementSibling;
+                    prev = prev.previousElementSibling;
                 }
-                curr=curr.parentElement;
+                curr = curr.parentElement;
             }
         }
+
+        // Custom checkbox tree nodes (React Checkbox Tree, demoqa, etc.)
+        // The clickable element is often a <span class="rct-node-clickable"> or
+        // <label class="..."> that contains a <span class="rct-title">text</span>
+        const role = el.getAttribute('role') || '';
+        if (role === 'checkbox' || role === 'radio' ||
+            (el.className && typeof el.className === 'string' &&
+             (el.className.includes('rct-') || el.className.includes('checkbox')))) {
+            // Look for a sibling or child title span
+            const title = el.querySelector('[class*="title"],[class*="label"]')
+                       || el.closest('[class*="node"],[class*="item"],[class*="tree-item"]')
+                            ?.querySelector('[class*="title"],[class*="label"]');
+            if (title) return title.innerText.trim();
+        }
+
         return '';
     };
 
     return results.map(({el,inShadow})=>{
         let name, isSelect=false;
 
+        // Collect all icon classes from child <i> / <svg> / <span> elements
+        // e.g. "fa fa-arrow-circle-o-right" → "arrow circle right" for scoring
+        const iconClasses = Array.from(el.querySelectorAll('i,svg,span[class*="icon"]'))
+            .map(i => i.className || i.getAttribute('class') || '')
+            .join(' ')
+            .replace(/[-_]/g, ' ')   // fa-arrow → fa arrow, arrow-circle → arrow circle
+            .toLowerCase();
+
+        const htmlId    = el.id || '';
+        const ariaLabel = el.getAttribute('aria-label') || el.getAttribute('title') || '';
+
         if(el.tagName==='SELECT'){
             isSelect=true;
             name='dropdown ['+Array.from(el.options).map(o=>o.text.trim()).join(' | ')+']';
         } else {
-            name=(el.innerText||el.placeholder||el.getAttribute('value')||el.id||el.name||el.className||'item').trim();
+            // For icon-only buttons (no innerText), build a rich semantic name
+            const rawText = el.innerText ? el.innerText.trim() : '';
+            name = rawText
+                || ariaLabel
+                || el.placeholder
+                || el.getAttribute('value')
+                || htmlId
+                || el.name
+                || el.className
+                || 'item';
+            name = name.trim();
         }
 
         if(el.tagName==='INPUT') name+=` input ${el.type||''}`;
@@ -791,15 +948,19 @@ _SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         if(inShadow) name+=' [SHADOW_DOM]';
 
         return {
-            id:         parseInt(el.dataset.manulId),
-            name:       name.substring(0,150).replace(/\n/g,' '),
-            xpath:      getXPath(el),
-            is_select:  isSelect,
-            is_shadow:  inShadow,
-            class_name: el.className||'',
-            tag_name:   el.tagName.toLowerCase(),        // 'button', 'a', 'input', ...
-            input_type: el.type ? el.type.toLowerCase() : '',  // 'submit', 'text', 'radio', ...
-            data_qa:    el.getAttribute('data-qa') || el.getAttribute('data-testid') || '',
+            id:          parseInt(el.dataset.manulId),
+            name:        name.substring(0,150).replace(/\n/g,' '),
+            xpath:       getXPath(el),
+            is_select:   isSelect,
+            is_shadow:   inShadow,
+            class_name:  el.className||'',
+            tag_name:    el.tagName.toLowerCase(),
+            input_type:  el.type ? el.type.toLowerCase() : '',
+            data_qa:     el.getAttribute('data-qa') || el.getAttribute('data-testid') || '',
+            html_id:     htmlId,
+            icon_classes: iconClasses,
+            aria_label:  ariaLabel,
+            role:        el.getAttribute('role') || '',
         };
     });
 }"""
