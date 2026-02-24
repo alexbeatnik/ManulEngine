@@ -525,6 +525,8 @@ class ManulEngine:
         is_sel   = el.get("is_select", False)
         is_shad  = el.get("is_shadow", False)
         el_id    = el["id"]
+        tag      = el.get("tag_name", "")
+        itype    = el.get("input_type", "")
 
         # ── Drag & Drop ───────────────────────
         if mode == "drag":
@@ -611,12 +613,33 @@ class ManulEngine:
                 if is_shad:
                     fn = "manulDoubleClick" if "double" in step_l else "manulClick"
                     await page.evaluate(f"window.{fn}({el_id})")
+                    await asyncio.sleep(ACTION_WAIT)
                 else:
                     if "double" in step_l:
                         await loc.dblclick()
+                        await asyncio.sleep(ACTION_WAIT)
                     else:
-                        await loc.click(force=True)
-                await asyncio.sleep(ACTION_WAIT)
+                        # For form submit buttons — wait for navigation or network idle
+                        # so the success response is available before VERIFY runs.
+                        is_submit = itype in ("submit",) or (
+                            tag == "button" and not itype or itype == "submit"
+                        )
+                        if is_submit:
+                            try:
+                                async with page.expect_navigation(
+                                    wait_until="domcontentloaded",
+                                    timeout=8_000,
+                                ):
+                                    await loc.click(force=True)
+                                # Extra settle time for AJAX success messages
+                                await asyncio.sleep(1.5)
+                            except Exception:
+                                # No navigation happened (AJAX form) — just wait longer
+                                await loc.click(force=True)
+                                await asyncio.sleep(ACTION_WAIT + 1.5)
+                        else:
+                            await loc.click(force=True)
+                            await asyncio.sleep(ACTION_WAIT)
                 return True
 
         except Exception as ex:
@@ -731,13 +754,32 @@ _VISIBLE_TEXT_JS = """() => {
     let t = (document.body.innerText || "") + " ";
     document.querySelectorAll('*').forEach(el => {
         const st = window.getComputedStyle(el);
-        if (st.display==='none'||st.visibility==='hidden'||st.opacity==='0') return;
+        // Include elements that are visible OR are alert/success messages
+        // (some sites use display:block on .alert after POST but innerText
+        //  is already in body.innerText — this catches edge cases)
+        const isHidden = st.display === 'none'
+                      || st.visibility === 'hidden'
+                      || st.opacity === '0';
+
+        // Always include alert / notification elements regardless of computed style,
+        // because some sites toggle them via JS after AJAX and computed style may
+        // briefly be stale in the Playwright snapshot.
+        const isAlert = el.classList && (
+            el.classList.contains('alert') ||
+            el.classList.contains('success') ||
+            el.classList.contains('notification') ||
+            el.classList.contains('message') ||
+            el.getAttribute('role') === 'alert'
+        );
+
+        if (isHidden && !isAlert) return;
+
         if (el.title)       t += el.title + " ";
-        if (el.value && typeof el.value==='string') t += el.value + " ";
+        if (el.value && typeof el.value === 'string') t += el.value + " ";
         if (el.placeholder) t += el.placeholder + " ";
         if (el.shadowRoot)
             t += Array.from(el.shadowRoot.querySelectorAll('*'))
-                      .map(e=>e.innerText||e.value||'').join(' ');
+                      .map(e => e.innerText || e.value || '').join(' ');
     });
     return t.toLowerCase();
 }"""
