@@ -7,9 +7,9 @@ async def main():
         "1. Navigate to https://testautomationpractice.blogspot.com/ "
         "2. Find the 'Scrolling DropDown' input field. "
         "3. Click the input to open the large list. "
-        "4. SCROLL DOWN inside the list to find 'Item 500'. "
-        "5. Select 'Item 500'. "
-        "6. VERIFY that the input field shows 'Item 500'. "
+        "4. SCROLL DOWN inside the list to find 'Item 100'. "
+        "5. Select 'Item 100'. "
+        "6. VERIFY that the input field shows 'Item 100'. "
         "7. Done."
     )
     print("🐾 Running: Infinite Scroll Dropdown Test")
