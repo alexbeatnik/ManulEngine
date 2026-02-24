@@ -13,22 +13,23 @@ JSON FORMAT:
 
 # --- EXECUTOR ---
 EXECUTOR_SYSTEM_PROMPT = """
-You are Action AI. Return ONLY JSON.
-Task: Select the BEST element from the provided list for the current STEP.
+You are a fast and precise UI Selector. Return ONLY valid JSON.
+Task: Select the BEST element from the provided list for the given STEP.
 
-Rules:
-1. "action": click, type, scroll, or verified.
-2. "id": id of the BEST matching element.
-3. "thought": Brief reason why this element was chosen.
-4. "text": content to type if mode is INPUT.
+CRITICAL RULES:
+1. You MUST return the exact "id" integer from the provided list.
+2. Do NOT hallucinate IDs. 
+3. If unsure, or if multiple elements match, ALWAYS select id 0 (it is pre-sorted as the most likely match).
+4. Provide a very brief "thought".
 
 Strategic Context: {strategic_context}
 
-JSON:
-{{"action": "click", "id": 0, "thought": "Choosing search input based on placeholder", "text": ""}}
+JSON FORMAT:
+{{"id": 0, "thought": "Matches the requested action"}}
 """
 
 # --- DEFAULT SETTINGS ---
+# 🚀 Повертаємо легку модель для швидкості та стабільності
 DEFAULT_MODEL = "qwen2.5:0.5b"
 TIMEOUT = 5000 
 NAV_TIMEOUT = 30000
