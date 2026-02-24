@@ -22,18 +22,8 @@ class ManulEngine:
         q = re.findall(r'["“](.*?)["”]', step) or re.findall(r"(?:^|\s)['’](.*?)['’]", step)
         return [x if preserve_case else x.lower() for x in q if x]
 
-    async def _highlight(self, loc, color="red", bg="#ffeb3b"):
-        try:
-            await loc.evaluate(f"""(el) => {{ 
-                const oB = el.style.border; const oBg = el.style.backgroundColor;
-                el.style.border = '4px solid {color}'; el.style.backgroundColor = '{bg}'; el.style.transition = 'all 0.3s ease';
-                setTimeout(() => {{ el.style.border = oB; el.style.backgroundColor = oBg; }}, 2000); 
-            }}""")
-            await asyncio.sleep(0.5)
-        except: pass
-
     async def run_mission(self, task: str, strategic_context: str = ""):
-        print(f"\n🐾 Manul v0.016 [The Flawless Vision] - Smart Filtering ({self.model})")
+        print(f"\n🐾 Manul v0.017 [The Master Key] - Shadow DOM & Exact Match ({self.model})")
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=self.headless, args=["--no-sandbox"])
             page = await browser.new_page()
@@ -123,14 +113,23 @@ class ManulEngine:
         for i in range(5):
             els = await self.get_snapshot(page, mode, [q.lower() for q in expected])
             
-            # ⚡ ФІКС 1: Розумний фільтр. НЕ чіпаємо масив для Drag & Drop, бо там потрібно зберегти ВСІ елементи
             if mode != "drag":
                 if target_field_name:
                     exact_matches = [el for el in els if target_field_name in el["name"].lower()]
                     if exact_matches: els = exact_matches; break
                 elif expected:
-                    # Тепер, завдяки новому get_snapshot, "United Kingdom" ідеально знайдеться в name select-а
-                    exact_matches = [el for el in els if any(q.lower() in el["name"].lower() for q in expected)]
+                    # 🚀 ФІКС 1: Exact Match (Точний збіг) для коротких рядків типу "3" (Пагінація)
+                    exact_matches = []
+                    for el in els:
+                        el_name = el["name"].lower()
+                        for q in expected:
+                            q_l = q.lower()
+                            # Якщо шукаємо коротке слово (менше 3 символів), шукаємо точний збіг або збіг по кордонах слова
+                            if len(q_l) <= 2:
+                                if q_l == el_name.strip() or f" {q_l} " in f" {el_name} ":
+                                    exact_matches.append(el)
+                            elif q_l in el_name:
+                                exact_matches.append(el)
                     if exact_matches: els = exact_matches; break
                 
             if els and not expected: break
@@ -141,41 +140,25 @@ class ManulEngine:
         if mode == "locate":
             print(f"    🔎 Located: '{els[0]['name']}'")
             try:
-                loc = page.locator(f"xpath={els[0]['xpath']}").first
-                await loc.scroll_into_view_if_needed()
-                await self._highlight(loc, "blue", "#e0f7fa")
+                await page.evaluate(f"window.manulHighlight({els[0]['id']}, 'blue', '#e0f7fa')")
             except: pass
             return True
 
-        # 🚀 ФІКС 2: Ідеальний Drag & Drop (шукає в невідфільтрованому масиві)
         if mode == "drag":
-            src_idx, tgt_idx = -1, -1
-            
+            src_idx, tgt_idx = 0, len(els)-1
             if len(expected) >= 2:
                 for i, el in enumerate(els):
-                    if expected[0].lower() in el["name"].lower() and src_idx == -1: src_idx = i
+                    if expected[0].lower() in el["name"].lower(): src_idx = i
                     if expected[1].lower() in el["name"].lower(): tgt_idx = i
-            elif len(expected) == 1:
-                # Якщо дали тільки ціль ('Drop here'), source шукаємо за словом drag
-                for i, el in enumerate(els):
-                    if "drag" in el["name"].lower() and src_idx == -1: src_idx = i
-                    if expected[0].lower() in el["name"].lower(): tgt_idx = i
             else:
                 for i, el in enumerate(els):
-                    if ("drag" in el["name"].lower() or "source" in el["name"].lower()) and src_idx == -1: src_idx = i
+                    if "drag" in el["name"].lower() or "source" in el["name"].lower(): src_idx = i
                     if "drop" in el["name"].lower() or "target" in el["name"].lower(): tgt_idx = i
-            
-            # Fallback
-            if src_idx == -1: src_idx = 0
-            if tgt_idx == -1: tgt_idx = len(els)-1 if len(els)>1 else 0
-
             try:
+                # Використовуємо нативні локатори Playwright для drag, бо він потребує координат
                 src_loc = page.locator(f"xpath={els[src_idx]['xpath']}").first
                 tgt_loc = page.locator(f"xpath={els[tgt_idx]['xpath']}").first
                 await src_loc.scroll_into_view_if_needed()
-                await self._highlight(src_loc, "red", "#ffcccc")
-                await self._highlight(tgt_loc, "green", "#ccffcc")
-                print(f"    🔄 Dragging '{els[src_idx]['name'][:20]}' to '{els[tgt_idx]['name'][:20]}'")
                 await src_loc.drag_to(tgt_loc); await asyncio.sleep(2); return True
             except: return False
 
@@ -194,7 +177,7 @@ class ManulEngine:
         if expected and top_els[0].get("score", 0) >= 1000:
             tid_short = 0
         else:
-            clean_top_els = [{"id": el["id"], "name": el["name"], "xpath": el["xpath"]} for el in top_els]
+            clean_top_els = [{"id": el["id"], "name": el["name"]} for el in top_els] # Прибрав xpath з контексту LLM
             print(f"    🧠 LLM Fallback: Analyzing {len(clean_top_els)} ambiguous elements...")
             obj = await self._ollama_chat_json(config.EXECUTOR_SYSTEM_PROMPT.format(extracted_context="", strategic_context=strategic_context), f"STEP: {step}\nMODE: {mode.upper()}\nELEMENTS: {json.dumps(clean_top_els)}")
             chosen_id = obj.get("id", clean_top_els[0]["id"]) if obj else clean_top_els[0]["id"]
@@ -203,32 +186,38 @@ class ManulEngine:
             for idx, el in enumerate(top_els):
                 if el["id"] == chosen_id: tid_short = idx; break
         
-        target_xpath = top_els[tid_short]["xpath"]
+        target_id = top_els[tid_short]["id"]
         target_name = top_els[tid_short]["name"]
+        is_real_select = top_els[tid_short].get("is_select", False)
 
+        # 🚀 ФІКС 2 & 3: Shadow DOM & Fake Dropdowns. Виконуємо ВСІ дії через JS
         try:
-            loc = page.locator(f"xpath={target_xpath}").first
-            await loc.scroll_into_view_if_needed()
-            await self._highlight(loc)
+            await page.evaluate(f"window.manulHighlight({target_id}, 'red', '#ffeb3b')")
             
             if mode == "input":
                 txt = expected[-1] if expected else "data"
-                await loc.fill(""); await loc.type(txt, delay=50)
+                await page.evaluate(f"window.manulType({target_id}, '{txt}')")
                 print(f"    ⌨️  Typed '{txt}' into '{target_name[:20]}'")
                 if "enter" in step_l: await page.keyboard.press("Enter"); await asyncio.sleep(4)
                 return True
-            elif mode == "select":
+                
+            elif mode == "select" and is_real_select:
+                # Нативний Select
+                target_xpath = top_els[tid_short]["xpath"]
+                loc = page.locator(f"xpath={target_xpath}").first
                 texts_to_select = expected if expected else [list(target_words)[0]]
                 print(f"    🗂️  Selected {texts_to_select} from '{target_name[:20]}'")
-                try: 
-                    await loc.select_option(label=texts_to_select)
-                except: 
-                    await loc.select_option(value=[x.lower() for x in texts_to_select])
+                try: await loc.select_option(label=texts_to_select)
+                except: await loc.select_option(value=[x.lower() for x in texts_to_select])
                 await asyncio.sleep(2); return True
+                
             else:
+                # Click (або фейковий select)
                 print(f"    🖱️  Clicked '{target_name[:20]}'")
-                if "double" in step_l: await loc.dblclick()
-                else: await loc.click(force=True, timeout=5000)
+                if "double" in step_l: 
+                    await page.evaluate(f"window.manulDoubleClick({target_id})")
+                else: 
+                    await page.evaluate(f"window.manulClick({target_id})")
                 await asyncio.sleep(2); return True
         except Exception as ex: 
             print(f"    ❌ Execution Error: {ex}")
@@ -236,13 +225,34 @@ class ManulEngine:
 
     async def get_snapshot(self, page, mode, expected_texts=None):
         return await page.evaluate(r"""([mode, expected_texts]) => {
-            const results = [];
+            if (!window.manulElements) window.manulElements = [];
+            window.manulElements = []; // Очищаємо кеш
+            
+            // 🚀 JS-Хелпери для обходу обмежень XPath (Shadow DOM та інше)
+            window.manulHighlight = (id, color, bg) => {
+                const el = window.manulElements[id];
+                if (!el) return;
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const oB = el.style.border; const oBg = el.style.backgroundColor;
+                el.style.border = `4px solid ${color}`; el.style.backgroundColor = bg; el.style.transition = 'all 0.3s ease';
+                setTimeout(() => { el.style.border = oB; el.style.backgroundColor = oBg; }, 2000);
+            };
+            window.manulClick = (id) => { window.manulElements[id]?.click(); };
+            window.manulDoubleClick = (id) => { 
+                const el = window.manulElements[id];
+                if (el) { const ev = new MouseEvent('dblclick', { bubbles: true }); el.dispatchEvent(ev); }
+            };
+            window.manulType = (id, text) => { 
+                const el = window.manulElements[id];
+                if (el) { el.value = text; el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }
+            };
+
             const collect = (root) => {
                 const sel = mode === "input" ? "input, textarea, [contenteditable='true']" : "button, a, [role='button'], input[type='radio'], input[type='checkbox'], select, .dropbtn, summary, .ui-draggable, .ui-droppable";
                 root.querySelectorAll(sel).forEach(el => {
                     const r = el.getBoundingClientRect();
                     if (r.width > 1 && r.height > 1 && window.getComputedStyle(el).visibility !== 'hidden') {
-                        results.push(el);
+                        window.manulElements.push(el);
                     }
                 });
                 root.querySelectorAll('*').forEach(el => {
@@ -262,12 +272,13 @@ class ManulEngine:
                 return `/${parts.join('/')}`;
             };
 
-            results.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+            window.manulElements.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
 
-            return results.slice(0, 40).map((el, i) => {
+            return window.manulElements.slice(0, 40).map((el, i) => {
                 let elName = "";
+                let isSelect = false;
                 if (el.tagName === "SELECT") {
-                    // 🚀 ФІКС 3: Збираємо всі опції в ім'я тегу Select, щоб Hard Match працював як магія!
+                    isSelect = true;
                     let optionsText = Array.from(el.options).map(o => o.text.trim()).join(' | ');
                     elName = `${el.id || el.name || 'dropdown'} [${optionsText}]`;
                 } else {
@@ -275,7 +286,11 @@ class ManulEngine:
                 }
                 if (elName === "item" && el.tagName === "INPUT") elName = `input_type_${el.type}`;
                 
-                // Обрізаємо занадто довгі імена, щоб не ламати JSON
-                return { id: i, name: elName.substring(0, 150).replace(/\n/g, ' '), xpath: getXPath(el) };
+                return { 
+                    id: i, 
+                    name: elName.substring(0, 100).replace(/\n/g, ' '), 
+                    xpath: getXPath(el),
+                    is_select: isSelect
+                };
             });
         }""", [mode, expected_texts or []])
