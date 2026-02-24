@@ -36,14 +36,12 @@ class ManulEngine:
         except: pass
 
     async def run_mission(self, task: str, strategic_context: str = ""):
-        print(f"\n🐾 Manul v0.019 [The Grand Finale] - Fullscreen & Quiet Mode ({self.model})")
+        print(f"\n🐾 Manul v0.020 [The Precision Strike] - Absolute Accuracy ({self.model})")
         async with async_playwright() as p:
-            # 🚀 ФІКС 1: Відкриття браузера на весь екран
             browser = await p.chromium.launch(
                 headless=self.headless, 
                 args=["--no-sandbox", "--start-maximized"]
             )
-            # no_viewport=True дозволяє браузеру зайняти весь доступний простір вікна
             context = await browser.new_context(no_viewport=True)
             page = await context.new_page()
             
@@ -136,7 +134,6 @@ class ManulEngine:
             if field_match: target_field_name = field_match.group(1).lower()
 
         els = []
-        # 🚀 ФІКС 2: Тихий скрол. Скролимо тільки якщо нічого не знайшли.
         for i in range(5):
             els = await self.get_snapshot(page, mode, [q.lower() for q in expected])
             
@@ -150,45 +147,41 @@ class ManulEngine:
                         el_name = el["name"].lower().strip()
                         for q in expected:
                             q_l = q.lower().strip()
-                            # 🚀 ФІКС 4: Покращений Exact Match для Pagination
-                            if q_l == el_name or (len(q_l) <= 2 and f" {q_l} " in f" {el_name} "):
-                                exact_matches.append(el)
-                                break
-                            elif len(q_l) > 2 and q_l in el_name:
-                                exact_matches.append(el)
-                                break
+                            # 🚀 ФІКС 1: Ультра-жорсткий точний збіг для пагінації (довжина <= 2 символи)
+                            if len(q_l) <= 2:
+                                if q_l == el_name:
+                                    exact_matches.append(el)
+                                    break
+                            else:
+                                if q_l in el_name:
+                                    exact_matches.append(el)
+                                    break
                     if exact_matches: els = exact_matches; break
             else:
-                # 🚀 ФІКС 3: Зберігаємо ВСІ елементи для Drag & Drop, щоб не видалити потрібні
                 if els: break 
                 
             if els and not expected: break
             
-            # Робимо скрол тільки якщо це не перша спроба і ми нічого не знайшли
             if i < 4:
                 await page.evaluate("window.scrollBy(0, 500)"); await asyncio.sleep(1)
         
         if not els: return False
 
         if mode == "locate":
-            # 🚀 ФІКС 2.1: Не скролимо екран до елемента, якщо це просто перевірка наявності (locate)
             print(f"    🔎 Located: '{els[0]['name']}'")
             return True
 
         if mode == "drag":
             src_idx, tgt_idx = -1, -1
-            # Шукаємо за лапками
             if len(expected) >= 2:
                 for i, el in enumerate(els):
                     if expected[0].lower() in el["name"].lower() and src_idx == -1: src_idx = i
                     if expected[1].lower() in el["name"].lower(): tgt_idx = i
             elif len(expected) == 1:
-                # 'Drop here' в лапках, а 'Drag me' без лапок
                 for i, el in enumerate(els):
                     if ("drag" in el["name"].lower() or "source" in el["name"].lower()) and src_idx == -1: src_idx = i
                     if expected[0].lower() in el["name"].lower(): tgt_idx = i
             
-            # Якщо не знайшли, беремо перший і останній як fallback
             if src_idx == -1: src_idx = 0
             if tgt_idx == -1: tgt_idx = len(els)-1 if len(els)>1 else 0
 
@@ -211,9 +204,9 @@ class ManulEngine:
                 if exp.lower() in el_name: score += 1000
             score += sum(10 for word in target_words if word in el_name)
             
-            # 🚀 ФІКС 5: Бонус для кастомних інпутів (Combo Box / Dropdown), якщо текст не був вказаний в лапках
-            if not expected and ("dropdown" in step_l or "combo" in step_l) and ("input" in el_name or "comboBox" in el_name):
-                score += 500
+            # 🚀 ФІКС 2: Додаємо скоринг для пошуку інпуту Scrolling Dropdown
+            if not expected and ("dropdown" in step_l or "combo" in step_l) and "comboBox" in el_name:
+                score += 5000
                 
             el["score"] = score
 
@@ -301,7 +294,8 @@ class ManulEngine:
 
             const results = [];
             const collect = (root) => {
-                const sel = mode === "input" ? "input, textarea, [contenteditable='true']" : "button, a, [role='button'], input[type='radio'], input[type='checkbox'], select, .dropbtn, summary, .ui-draggable, .ui-droppable, .option";
+                // 🚀 ФІКС 2: Додаємо просто "input" у селектори, щоб знайти кастомні дропдауни
+                const sel = mode === "input" || mode === "locate" ? "input, textarea, [contenteditable='true']" : "button, a, [role='button'], input[type='radio'], input[type='checkbox'], select, .dropbtn, summary, .ui-draggable, .ui-droppable, .option, input";
                 root.querySelectorAll(sel).forEach(el => {
                     const r = el.getBoundingClientRect();
                     if (r.width > 1 && r.height > 1 && window.getComputedStyle(el).visibility !== 'hidden') {
@@ -332,7 +326,9 @@ class ManulEngine:
 
             results.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
 
-            return results.slice(0, 50).map((el) => {
+            // 🚀 ФІКС 3: БІЛЬШЕ НІЯКОГО ОБРІЗАННЯ ТУТ!
+            // Ми повертаємо весь масив, а обрізаємо його (top_els) вже в Python, щоб не збивати ID
+            return results.map((el) => {
                 let elName = "";
                 let isSelect = false;
                 if (el.tagName === "SELECT") {
@@ -342,11 +338,13 @@ class ManulEngine:
                 } else {
                     elName = (el.innerText || el.placeholder || el.getAttribute('value') || el.id || el.name || el.className || "item").trim();
                 }
-                if (elName === "item" && el.tagName === "INPUT") elName = `input_type_${el.type} id_${el.id}`;
+                
+                // Додаємо id до імені input, щоб евристика легше його знайшла
+                if (el.tagName === "INPUT") elName += ` id_${el.id || 'input'}`;
                 
                 return { 
                     id: parseInt(el.dataset.manulId), 
-                    name: elName.substring(0, 100).replace(/\n/g, ' '), 
+                    name: elName.substring(0, 150).replace(/\n/g, ' '), 
                     xpath: getXPath(el),
                     is_select: isSelect
                 };
