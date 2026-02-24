@@ -33,7 +33,7 @@ class ManulEngine:
         except: pass
 
     async def run_mission(self, task: str, strategic_context: str = ""):
-        print(f"\n🐾 Manul v0.015 [The Iron Grip] - Zero Hallucinations ({self.model})")
+        print(f"\n🐾 Manul v0.016 [The Flawless Vision] - Smart Filtering ({self.model})")
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=self.headless, args=["--no-sandbox"])
             page = await browser.new_page()
@@ -114,10 +114,8 @@ class ManulEngine:
 
         expected = self._extract_text(step, preserve_case=(mode in ["input", "select"]))
         
-        # 🚀 ФІКС 1: Розумний парсинг для Input (Шукаємо назву поля, якщо текст у лапках)
         target_field_name = None
         if mode == "input" and expected:
-            # Якщо є слова типу "username", "password", "email" поруч зі словом "field" або "into"
             field_match = re.search(r'into\s+the\s+([a-zA-Z0-9_]+)\s+field', step_l) or re.search(r'into\s+([a-zA-Z0-9_]+)', step_l)
             if field_match: target_field_name = field_match.group(1).lower()
 
@@ -125,19 +123,17 @@ class ManulEngine:
         for i in range(5):
             els = await self.get_snapshot(page, mode, [q.lower() for q in expected])
             
-            # ⚡ ФІКС 2: Більш агресивний Hard Match
-            if target_field_name:
-                exact_matches = [el for el in els if target_field_name in el["name"].lower()]
-                if exact_matches: els = exact_matches; break
-            elif expected:
-                exact_matches = [el for el in els if any(q.lower() in el["name"].lower() for q in expected)]
-                if exact_matches: els = exact_matches; break
-            elif mode == "drag":
-                # Для Drag & Drop перевіряємо, чи є слова drag/drop в назвах
-                if any("drag" in el["name"].lower() for el in els) and any("drop" in el["name"].lower() for el in els): break
-            
-            if els and not expected: break # Якщо лапок не було і щось знайшли
-            
+            # ⚡ ФІКС 1: Розумний фільтр. НЕ чіпаємо масив для Drag & Drop, бо там потрібно зберегти ВСІ елементи
+            if mode != "drag":
+                if target_field_name:
+                    exact_matches = [el for el in els if target_field_name in el["name"].lower()]
+                    if exact_matches: els = exact_matches; break
+                elif expected:
+                    # Тепер, завдяки новому get_snapshot, "United Kingdom" ідеально знайдеться в name select-а
+                    exact_matches = [el for el in els if any(q.lower() in el["name"].lower() for q in expected)]
+                    if exact_matches: els = exact_matches; break
+                
+            if els and not expected: break
             await page.evaluate("window.scrollBy(0, 500)"); await asyncio.sleep(1)
         
         if not els: return False
@@ -151,24 +147,35 @@ class ManulEngine:
             except: pass
             return True
 
-        # 🚀 ФІКС 3: Залізобетонний Drag & Drop
+        # 🚀 ФІКС 2: Ідеальний Drag & Drop (шукає в невідфільтрованому масиві)
         if mode == "drag":
-            src_idx, tgt_idx = 0, len(els)-1
+            src_idx, tgt_idx = -1, -1
+            
             if len(expected) >= 2:
                 for i, el in enumerate(els):
-                    if expected[0].lower() in el["name"].lower(): src_idx = i
+                    if expected[0].lower() in el["name"].lower() and src_idx == -1: src_idx = i
                     if expected[1].lower() in el["name"].lower(): tgt_idx = i
+            elif len(expected) == 1:
+                # Якщо дали тільки ціль ('Drop here'), source шукаємо за словом drag
+                for i, el in enumerate(els):
+                    if "drag" in el["name"].lower() and src_idx == -1: src_idx = i
+                    if expected[0].lower() in el["name"].lower(): tgt_idx = i
             else:
                 for i, el in enumerate(els):
-                    if "drag" in el["name"].lower() or "source" in el["name"].lower(): src_idx = i
+                    if ("drag" in el["name"].lower() or "source" in el["name"].lower()) and src_idx == -1: src_idx = i
                     if "drop" in el["name"].lower() or "target" in el["name"].lower(): tgt_idx = i
+            
+            # Fallback
+            if src_idx == -1: src_idx = 0
+            if tgt_idx == -1: tgt_idx = len(els)-1 if len(els)>1 else 0
+
             try:
                 src_loc = page.locator(f"xpath={els[src_idx]['xpath']}").first
                 tgt_loc = page.locator(f"xpath={els[tgt_idx]['xpath']}").first
                 await src_loc.scroll_into_view_if_needed()
                 await self._highlight(src_loc, "red", "#ffcccc")
                 await self._highlight(tgt_loc, "green", "#ccffcc")
-                print(f"    🔄 Dragging '{els[src_idx]['name']}' to '{els[tgt_idx]['name']}'")
+                print(f"    🔄 Dragging '{els[src_idx]['name'][:20]}' to '{els[tgt_idx]['name'][:20]}'")
                 await src_loc.drag_to(tgt_loc); await asyncio.sleep(2); return True
             except: return False
 
@@ -184,8 +191,7 @@ class ManulEngine:
         sorted_els = sorted(els, key=lambda x: x.get("score", 0), reverse=True)
         top_els = sorted_els[:8]
         
-        # ⚡ БАЙПАС ШІ: Майже завжди вибираємо самі!
-        if top_els[0].get("score", 0) >= 1000:
+        if expected and top_els[0].get("score", 0) >= 1000:
             tid_short = 0
         else:
             clean_top_els = [{"id": el["id"], "name": el["name"], "xpath": el["xpath"]} for el in top_els]
@@ -199,11 +205,6 @@ class ManulEngine:
         
         target_xpath = top_els[tid_short]["xpath"]
         target_name = top_els[tid_short]["name"]
-        
-        # 🚀 ФІКС 4: Якщо ми вибрали <option>, ми піднімаємось до батьківського <select>!
-        if mode == "select" and "/option[" in target_xpath:
-            target_xpath = target_xpath.split("/option[")[0]
-            print(f"    🔼 Promoted <option> to parent <select>")
 
         try:
             loc = page.locator(f"xpath={target_xpath}").first
@@ -213,19 +214,19 @@ class ManulEngine:
             if mode == "input":
                 txt = expected[-1] if expected else "data"
                 await loc.fill(""); await loc.type(txt, delay=50)
-                print(f"    ⌨️  Typed '{txt}' into '{target_name}'")
+                print(f"    ⌨️  Typed '{txt}' into '{target_name[:20]}'")
                 if "enter" in step_l: await page.keyboard.press("Enter"); await asyncio.sleep(4)
                 return True
             elif mode == "select":
                 texts_to_select = expected if expected else [list(target_words)[0]]
-                print(f"    🗂️  Selected {texts_to_select} from '{target_name}'")
+                print(f"    🗂️  Selected {texts_to_select} from '{target_name[:20]}'")
                 try: 
                     await loc.select_option(label=texts_to_select)
                 except: 
                     await loc.select_option(value=[x.lower() for x in texts_to_select])
                 await asyncio.sleep(2); return True
             else:
-                print(f"    🖱️  Clicked '{target_name}'")
+                print(f"    🖱️  Clicked '{target_name[:20]}'")
                 if "double" in step_l: await loc.dblclick()
                 else: await loc.click(force=True, timeout=5000)
                 await asyncio.sleep(2); return True
@@ -237,8 +238,7 @@ class ManulEngine:
         return await page.evaluate(r"""([mode, expected_texts]) => {
             const results = [];
             const collect = (root) => {
-                // ПОВЕРНУТО <option> для зручності пошуку
-                const sel = mode === "input" ? "input, textarea, [contenteditable='true']" : "button, a, [role='button'], input[type='radio'], input[type='checkbox'], select, option, .dropbtn, summary, .ui-draggable, .ui-droppable";
+                const sel = mode === "input" ? "input, textarea, [contenteditable='true']" : "button, a, [role='button'], input[type='radio'], input[type='checkbox'], select, .dropbtn, summary, .ui-draggable, .ui-droppable";
                 root.querySelectorAll(sel).forEach(el => {
                     const r = el.getBoundingClientRect();
                     if (r.width > 1 && r.height > 1 && window.getComputedStyle(el).visibility !== 'hidden') {
@@ -267,12 +267,15 @@ class ManulEngine:
             return results.slice(0, 40).map((el, i) => {
                 let elName = "";
                 if (el.tagName === "SELECT") {
-                    let optionsText = Array.from(el.options).map(o => o.text).join(' ').substring(0, 30);
-                    elName = el.id || el.name || el.getAttribute('aria-label') || optionsText || "dropdown_menu";
+                    // 🚀 ФІКС 3: Збираємо всі опції в ім'я тегу Select, щоб Hard Match працював як магія!
+                    let optionsText = Array.from(el.options).map(o => o.text.trim()).join(' | ');
+                    elName = `${el.id || el.name || 'dropdown'} [${optionsText}]`;
                 } else {
                     elName = (el.innerText || el.placeholder || el.getAttribute('value') || el.id || el.name || el.className || "item").trim();
                 }
                 if (elName === "item" && el.tagName === "INPUT") elName = `input_type_${el.type}`;
-                return { id: i, name: elName.substring(0, 40).replace(/\n/g, ' '), xpath: getXPath(el) };
+                
+                // Обрізаємо занадто довгі імена, щоб не ламати JSON
+                return { id: i, name: elName.substring(0, 150).replace(/\n/g, ' '), xpath: getXPath(el) };
             });
         }""", [mode, expected_texts or []])
