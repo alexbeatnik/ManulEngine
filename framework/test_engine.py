@@ -9,7 +9,7 @@ from framework.engine import ManulEngine
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MONSTER DOM  —  Each trap section is labelled clearly.
-# Original 12 traps preserved verbatim; 12 new traps appended below.
+# Original 24 traps preserved; 4 new extreme traps appended below.
 # ─────────────────────────────────────────────────────────────────────────────
 MONSTER_DOM = """
 <!DOCTYPE html>
@@ -17,15 +17,11 @@ MONSTER_DOM = """
 <head><title>Monster DOM</title></head>
 <body>
 
-<!-- ══════════════ ORIGINAL 12 TRAPS ══════════════ -->
-
-<!-- Trap 1 -->
 <fieldset>
     <legend>Suggession Class</legend>
     <input type="text" id="trap_legend_input" placeholder="Type here">
 </fieldset>
 
-<!-- Trap 2 -->
 <div>
     <label for="trap_phantom_chk">Option 1</label>
     <input type="checkbox" id="trap_phantom_chk">
@@ -37,14 +33,12 @@ MONSTER_DOM = """
     </select>
 </div>
 
-<!-- Trap 3 -->
 <div>
     <button id="trap_hidden_btn" style="display: none;">Submit Login</button>
     <div id="trap_fake_btn" class="button" role="button">Submit Login</div>
     <input type="submit" id="trap_real_btn" value="Submit Login">
 </div>
 
-<!-- Trap 4 -->
 <div id="host"></div>
 <script>
     const host   = document.getElementById('host');
@@ -58,32 +52,27 @@ MONSTER_DOM = """
     shadow.appendChild(input);
 </script>
 
-<!-- Trap 5 -->
 <div>
     <button id="trap_aria_btn" aria-label="Close Window">X</button>
     <div id="trap_wrong_aria" role="button">Close Window</div>
 </div>
 
-<!-- Trap 6 -->
 <div>
     <button id="trap_btn_partial1">Save and Continue</button>
     <button id="trap_btn_exact">Save</button>
     <button id="trap_btn_partial2">Save Draft</button>
 </div>
 
-<!-- Trap 7 -->
 <div>
     <label for="trap_opacity_chk">Accept Terms</label>
     <input type="checkbox" id="trap_opacity_chk" style="opacity: 0.01;">
 </div>
 
-<!-- Trap 8 -->
 <div>
     <input type="text" id="trap_placeholder_input" placeholder="Secret Token">
     <div id="trap_placeholder_div">Secret Token</div>
 </div>
 
-<!-- Trap 9 -->
 <fieldset>
     <legend>Subscribe?</legend>
     <input type="radio" id="trap_radio_yes" name="sub" value="yes">
@@ -92,29 +81,21 @@ MONSTER_DOM = """
     <label for="trap_radio_no">No</label>
 </fieldset>
 
-<!-- Trap 10 -->
 <div>
-    <div id="trap_role_chk" role="checkbox" aria-checked="false" aria-label="Remember Me"></div>
+    <div id="trap_role_chk" role="checkbox" aria-checked="false" aria-label="Remember Me" style="display:inline-block; width:20px; height:20px; border:1px solid #000;"></div>
     <input type="text" id="trap_wrong_input" aria-label="Remember Me">
 </div>
 
-<!-- Trap 11 -->
 <div>
     <button id="trap_text_btn">Confirm Order</button>
     <button id="trap_qa_btn" data-qa="confirm-order">Click Here</button>
 </div>
 
-<!-- Trap 12 -->
 <div>
     <button id="trap_btn_login">Register Portal</button>
     <a href="/login" id="trap_link_login">Register Portal</a>
 </div>
 
-<!-- ══════════════ NEW 12 TRAPS ══════════════ -->
-
-<!-- Trap 13: Same field name in two sections — pick the one in correct section.
-     Step says "Fill 'Email' field in the Login Form section" →
-     must pick trap_section_login, NOT trap_section_signup. -->
 <section id="login-form-section">
     <h3>Login Form</h3>
     <label for="trap_section_login">Email</label>
@@ -126,31 +107,23 @@ MONSTER_DOM = """
     <input type="email" id="trap_section_signup" placeholder="Signup email">
 </section>
 
-<!-- Trap 14: Icon-only button — no visible text, action clue lives in icon classes.
-     Step says "Click the search button" → must pick the button with fa-search icon. -->
 <div>
     <button id="trap_icon_wrong">Filter</button>
     <button id="trap_icon_search"><i class="fa fa-search"></i></button>
     <button id="trap_icon_close"><i class="fa fa-times"></i></button>
 </div>
 
-<!-- Trap 15: Disabled element avoidance.
-     Step says "Click the 'Submit' button" → must skip the disabled one. -->
 <div>
     <button id="trap_disabled_btn" disabled>Submit</button>
     <button id="trap_enabled_btn">Submit</button>
 </div>
 
-<!-- Trap 16: Input[type=number] vs input[type=text] — same label.
-     Step says "Fill 'Quantity' field with '5'" → prefers text/number input, not button. -->
 <div>
     <button id="trap_qty_btn">Quantity</button>
     <label for="trap_qty_input">Quantity</label>
     <input type="number" id="trap_qty_input" min="1">
 </div>
 
-<!-- Trap 17: Nested vs flat label association.
-     Step says "Click the checkbox for 'Newsletter'" → wrapping label IS the correct target. -->
 <div>
     <label id="trap_newsletter_label">
         <input type="checkbox" id="trap_newsletter_chk">
@@ -159,54 +132,37 @@ MONSTER_DOM = """
     <div id="trap_newsletter_div">Newsletter</div>
 </div>
 
-<!-- Trap 18: Homonyms — "Delete" appears on two buttons; data-qa disambiguates.
-     Step says "Click the 'Delete' button for the selected item" →
-     data-qa="delete-selected" wins over generic id. -->
 <div>
     <button id="trap_delete_all" data-qa="delete-all">Delete</button>
     <button id="trap_delete_selected" data-qa="delete-selected">Delete</button>
 </div>
 
-<!-- Trap 19: Readonly input — must remove readonly before typing.
-     Step says "Fill 'Promo Code' field with 'MANUL2025'" → only input is readonly. -->
 <div>
     <label for="trap_readonly_input">Promo Code</label>
     <input type="text" id="trap_readonly_input" readonly value="PLACEHOLDER">
     <button id="trap_readonly_btn">Promo Code</button>
 </div>
 
-<!-- Trap 20: Title attribute as last-resort label.
-     Step says "Click the 'Settings' button" → button has only a title, no text. -->
 <div>
     <button id="trap_title_wrong">Options</button>
     <button id="trap_title_btn" title="Settings">⚙</button>
 </div>
 
-<!-- Trap 21: Link vs button — step explicitly says "button" but both exist with same text.
-     Step says "Click the 'Download' button" → must pick button, not <a>. -->
 <div>
     <a href="/download" id="trap_download_link">Download</a>
     <button id="trap_download_btn">Download</button>
 </div>
 
-<!-- Trap 22: Two inputs with identical placeholder, different types.
-     Step says "Fill the 'password' field with 'hunter2'" → must pick type=password, not text. -->
 <div>
     <input type="text"     id="trap_pw_text"  placeholder="password">
     <input type="password" id="trap_pw_pass"  placeholder="password">
 </div>
 
-<!-- Trap 23: Floating label (label becomes placeholder, is inside the input wrapper).
-     Step says "Fill 'Card Number' field with '4242 4242 4242 4242'" →
-     must find the actual input, not the floating-label span. -->
 <div class="floating-field">
     <span id="trap_float_label" class="float-label">Card Number</span>
     <input type="text" id="trap_float_input" data-qa="card-number">
 </div>
 
-<!-- Trap 24: Table row checkbox — pick the checkbox in the row that matches text, not any checkbox.
-     Step says "Select the checkbox for product 'Laptop'" →
-     must pick trap_chk_laptop, not trap_chk_phone. -->
 <table>
     <tr>
         <td><input type="checkbox" id="trap_chk_phone"></td>
@@ -220,16 +176,28 @@ MONSTER_DOM = """
     </tr>
 </table>
 
+<div id="cookie_banner" style="display: none;">
+    <button id="trap_cookie_btn">Accept Cookies</button>
+</div>
+
+<div>
+    <button id="trap_zero_pixel_btn" style="width: 0; height: 0; padding: 0; border: none; overflow: hidden;">Close Ad if exists</button>
+</div>
+
+<div>
+    <label for="trap_promo_optional_input">Promotion Code if exists</label>
+    <input type="text" id="trap_promo_optional_input">
+</div>
+
 </body>
 </html>
 """
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Test catalogue
 # ─────────────────────────────────────────────────────────────────────────────
 TESTS = [
-    # ── ORIGINAL 12 ────────────────────────────────────────────────────────
+    # ── ORIGINAL 24 ────────────────────────────────────────────────────────
     {
         "name": "1. Legend Form Extraction",
         "desc": "fieldset/legend used as input label — must find the actual <input>, not the <legend>",
@@ -314,8 +282,6 @@ TESTS = [
         "mode": "clickable", "search_texts": ["Register Portal"], "target_field": None,
         "expected": "trap_link_login",
     },
-
-    # ── NEW 12 ──────────────────────────────────────────────────────────────
     {
         "name": "13. Section Context Disambiguation",
         "desc": "'Email' field appears in two sections; step mentions 'Login Form' — must pick login one",
@@ -400,14 +366,44 @@ TESTS = [
         "mode": "clickable", "search_texts": ["Laptop"], "target_field": None,
         "expected": "trap_chk_laptop",
     },
-]
 
+    # ── NEW EXTREME TRAPS (Testing "if exists" logic) ──────────────────────
+    {
+        "name": "25. The Ghost of Cookies Past (Display None + Optional)",
+        "desc": "Button is display: none. Step has 'if exists'. Resolver must return None, execute_step must catch and return True.",
+        "step": "Click the 'Accept Cookies' button if exists",
+        "mode": "clickable", "search_texts": ["Accept Cookies"], "target_field": None,
+        "expected": None,  # We EXPECT the resolver to fail to find it, and execute_step to handle it.
+    },
+    {
+        "name": "26. Zero-Pixel Sabotage (Optional)",
+        "desc": "Button exists in DOM but is 0x0. JS scraper ignores it. Step has 'if exists'. Should skip.",
+        "step": "Click the 'Close Ad' button if exists",
+        "mode": "clickable", "search_texts": ["Close Ad"], "target_field": None,
+        "expected": None,
+    },
+    {
+        "name": "27. The Decoy 'If Exists' text",
+        "desc": "The target label LITERALLY contains the text 'if exists'. The engine should NOT skip it, but successfully fill it.",
+        "step": "Fill 'Promotion Code if exists' field with 'DISCOUNT'",
+        "mode": "input", "search_texts": ["Promotion Code if exists"], "target_field": "promotion code if exists",
+        "expected": "trap_promo_optional_input",
+    },
+    {
+        "name": "28. Missing Target with 'Optional' keyword",
+        "desc": "Element completely absent from DOM. Step has keyword 'optional'. Should skip gracefully.",
+        "step": "Click the 'Dismiss Popup' button optional",
+        "mode": "clickable", "search_texts": ["Dismiss Popup"], "target_field": None,
+        "expected": None,
+    },
+]
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Guard logic (mirrors _execute_step guards in engine.py)
 # ─────────────────────────────────────────────────────────────────────────────
 def _apply_guards(el: dict, mode: str, search_texts: list[str]) -> str | None:
     """Return a rejection reason string, or None if element passes."""
+    if el is None: return None # Optional targets will be None, skip guard check
     tag   = el.get("tag_name", "")
     itype = el.get("input_type", "")
     role  = el.get("role", "")
@@ -428,15 +424,15 @@ def _apply_guards(el: dict, mode: str, search_texts: list[str]) -> str | None:
 
     return None
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Runner
 # ─────────────────────────────────────────────────────────────────────────────
 async def run_laboratory():
     print("\n" + "=" * 60)
-    print("🧪  MANUL ENGINE LABORATORY — The Chaos Chamber (24 traps)")
+    print("🧪  MANUL ENGINE LABORATORY — The Chaos Chamber (28 traps)")
     print("=" * 60)
 
+    # Note: we test using execute_step directly for optional traps to see the full flow
     manul = ManulEngine(headless=True)
 
     async with async_playwright() as p:
@@ -452,51 +448,82 @@ async def run_laboratory():
             print(f"   📋 {t['desc']}")
             print(f"   🐾 Step : {t['step']}")
 
-            failed_ids: set[int] = set()
-            el = await manul._resolve_element(
-                page           = page,
-                step           = t["step"],
-                mode           = t["mode"],
-                search_texts   = t["search_texts"],
-                target_field   = t["target_field"],
-                strategic_context = "",
-                failed_ids     = failed_ids,
-            )
+            # Clear context memory between steps to avoid false positives from previous traps
+            manul.last_xpath = None 
 
-            if el is None:
-                msg = "FAILED — resolver returned None"
-                print(f"   ❌ {msg}")
-                failed += 1
-                failures.append(f"{t['name']}: {msg}")
-                print("   " + "─" * 56)
-                continue
+            if "if exists" in t["step"].lower() or "optional" in t["step"].lower():
+                # For optional traps, we must test the FULL _execute_step logic, 
+                # because the skipping logic lives there, not in _resolve_element.
+                result = await manul._execute_step(page, t["step"], "")
+                
+                # If expected is None, it means we WANTED it to skip gracefully (return True)
+                if t["expected"] is None:
+                    if result is True:
+                        print("   ✅ PASSED  → Optional element skipped gracefully")
+                        passed += 1
+                    else:
+                        print("   ❌ FAILED — Engine crashed or returned False instead of skipping")
+                        failed += 1
+                        failures.append(f"{t['name']}: Failed to skip optional element")
+                else:
+                    # Decoy trap (Trap 27) - it has "if exists" in name, but we EXPECT it to find it
+                    el = await manul._resolve_element(page, t["step"], t["mode"], t["search_texts"], t["target_field"], "", set())
+                    found_id = el.get("html_id", "") if el else None
+                    if found_id == t["expected"]:
+                         print(f"   ✅ PASSED  → '{found_id}' via Heuristics (Decoy bypass successful)")
+                         passed += 1
+                    else:
+                         print(f"   ❌ FAILED — expected '{t['expected']}', got '{found_id}'")
+                         failed += 1
+                         failures.append(f"{t['name']}: Decoy logic failed")
 
-            rejection = _apply_guards(el, t["mode"], t["search_texts"])
-            if rejection:
-                msg = f"FAILED — guard rejected '{el.get('html_id')}' ({rejection})"
-                print(f"   ❌ {msg}")
-                failed += 1
-                failures.append(f"{t['name']}: {msg}")
-                print("   " + "─" * 56)
-                continue
-
-            found_id  = el.get("html_id", "")
-            score     = el.get("score", 0)
-            resolver  = (
-                "SEMANTIC CACHE"  if score >= 20_000 else
-                "CONTEXT MEMORY"  if score >= 10_000 else
-                f"HEURISTICS (score {score})" if score >= 500 else
-                "AI AGENT"
-            )
-
-            if found_id == t["expected"]:
-                print(f"   ✅ PASSED  → '{found_id}'  via {resolver}")
-                passed += 1
             else:
-                msg = f"FAILED — got '{found_id}', expected '{t['expected']}' (score {score})"
-                print(f"   ❌ {msg}")
-                failed += 1
-                failures.append(f"{t['name']}: {msg}")
+                # Standard resolve testing for normal traps
+                failed_ids: set[int] = set()
+                el = await manul._resolve_element(
+                    page              = page,
+                    step              = t["step"],
+                    mode              = t["mode"],
+                    search_texts      = t["search_texts"],
+                    target_field      = t["target_field"],
+                    strategic_context = "",
+                    failed_ids        = failed_ids,
+                )
+
+                if el is None:
+                    msg = "FAILED — resolver returned None"
+                    print(f"   ❌ {msg}")
+                    failed += 1
+                    failures.append(f"{t['name']}: {msg}")
+                    print("   " + "─" * 56)
+                    continue
+
+                rejection = _apply_guards(el, t["mode"], t["search_texts"])
+                if rejection:
+                    msg = f"FAILED — guard rejected '{el.get('html_id')}' ({rejection})"
+                    print(f"   ❌ {msg}")
+                    failed += 1
+                    failures.append(f"{t['name']}: {msg}")
+                    print("   " + "─" * 56)
+                    continue
+
+                found_id  = el.get("html_id", "")
+                score     = el.get("score", 0)
+                resolver  = (
+                    "SEMANTIC CACHE"  if score >= 20_000 else
+                    "CONTEXT MEMORY"  if score >= 10_000 else
+                    f"HEURISTICS (score {score})" if score >= 500 else
+                    "AI AGENT"
+                )
+
+                if found_id == t["expected"]:
+                    print(f"   ✅ PASSED  → '{found_id}'  via {resolver}")
+                    passed += 1
+                else:
+                    msg = f"FAILED — got '{found_id}', expected '{t['expected']}' (score {score})"
+                    print(f"   ❌ {msg}")
+                    failed += 1
+                    failures.append(f"{t['name']}: {msg}")
 
             print("   " + "─" * 56)
 
@@ -520,7 +547,6 @@ async def run_laboratory():
         await browser.close()
 
     return passed == len(TESTS)
-
 
 if __name__ == "__main__":
     asyncio.run(run_laboratory())

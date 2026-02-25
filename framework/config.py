@@ -1,47 +1,66 @@
+# framework/config.py
+"""
+ManulEngine configuration.
+Settings are read from .env file (via python-dotenv) or environment variables.
+All values can be overridden in code via ManulEngine(model=..., ai_threshold=...).
+"""
+
 import os
-import re
-from dotenv import load_dotenv
+import re as _re
 
-# Load variables from .env file
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv optional — fall back to os.environ
 
-# ── Environment Configurations ────────────────────────────────────────────────
+# ── Core ──────────────────────────────────────────────────────────────────────
 DEFAULT_MODEL = os.getenv("MANUL_MODEL", "qwen2.5:0.5b")
 HEADLESS_MODE = os.getenv("MANUL_HEADLESS", "False").lower() in ("true", "1", "yes", "t")
+TIMEOUT       = int(os.getenv("MANUL_TIMEOUT",     "5000"))
+NAV_TIMEOUT   = int(os.getenv("MANUL_NAV_TIMEOUT", "30000"))
 
-TIMEOUT     = int(os.getenv("MANUL_TIMEOUT", "5000"))
-NAV_TIMEOUT = int(os.getenv("MANUL_NAV_TIMEOUT", "30000"))
+# ── Confidence threshold ───────────────────────────────────────────────────────
 
-# Read custom AI threshold (Standard Points) from .env
-_env_threshold = os.getenv("MANUL_AI_THRESHOLD")
-ENV_AI_THRESHOLD = int(_env_threshold) if _env_threshold else None
+_env_threshold  = os.getenv("MANUL_AI_THRESHOLD")
+ENV_AI_THRESHOLD: "int | None" = int(_env_threshold) if _env_threshold else None
 
-# ── Confidence threshold logic ────────────────────────────────────────────────
 
 def _threshold_for_model(model_name: str) -> int:
-    """Auto-derive threshold points based on model parameter count."""
-    m = re.search(r'(\d+(?:\.\d+)?)\s*b', model_name.lower())
+    """
+    Auto-derive LLM confidence threshold from model parameter count.
+    Larger models can handle more ambiguity → higher threshold before calling AI.
+
+        < 1 b   →  500
+        1–4 b   →  750
+        5–9 b   → 1 000
+       10–19 b  → 1 500
+       20 b+    → 2 000
+    """
+    m = _re.search(r'(\d+(?:\.\d+)?)\s*b', model_name.lower())
     if not m:
         return 500
     size = float(m.group(1))
-    if   size < 1:  return 500
-    elif size < 5:  return 750
-    elif size < 10: return 1_000
-    elif size < 20: return 1_500
-    else:           return 2_000
+    if   size < 1:    return 500
+    elif size < 5:    return 750
+    elif size < 10:   return 1_000
+    elif size < 20:   return 1_500
+    else:             return 2_000
 
-def get_threshold(model_name: str, custom_threshold: int | None = None) -> int:
+
+def get_threshold(model_name: str, custom_threshold: "int | None" = None) -> int:
     """
-    Determines the final AI threshold score:
-    1. Code Priority: If passed directly via ManulEngine(ai_threshold=...).
-    2. Env Priority: If MANUL_AI_THRESHOLD is set in .env.
-    3. Fallback: Auto-calculated by model size.
+    Priority:
+      1. custom_threshold  (passed directly to ManulEngine)
+      2. MANUL_AI_THRESHOLD in .env
+      3. Auto-calculated from model size
     """
     if custom_threshold is not None:
         return custom_threshold
     if ENV_AI_THRESHOLD is not None:
         return ENV_AI_THRESHOLD
     return _threshold_for_model(model_name)
+
 
 # ── Planner prompt ─────────────────────────────────────────────────────────────
 PLANNER_SYSTEM_PROMPT = """\
@@ -58,7 +77,8 @@ OUTPUT FORMAT:
 {"steps": ["1. Step one", "2. Step two", "..."]}
 """
 
-# ── Executor prompts ───────────────────────────────────────────────────────────
+# ── Executor prompts (model-size aware) ───────────────────────────────────────
+
 _RULES_CORE = """\
 Each element has:
   id           – integer (RETURN THIS)
@@ -72,7 +92,7 @@ Each element has:
 RULES (apply in order):
 ① Return INTEGER id only:  {"id": 3, "thought": "one sentence"}
 ② data_qa exact match  → highest priority, beats everything else.
-③ disabled elements    → NEVER pick.
+③ disabled elements    → NEVER pick (they have huge negative score).
 ④ Step says "button"   → prefer tag=button; AVOID tag=a / type=radio / type=checkbox.
    Step says "link"    → prefer tag=a; AVOID button.
    Step says "field"   → prefer input[text/email/password/tel] or textarea.
@@ -87,6 +107,7 @@ RULES (apply in order):
 ⑩ tie-break            → lower id wins.
 """
 
+# Tiny (< 1 b) — minimal tokens
 EXECUTOR_PROMPT_TINY = """\
 You are a UI element picker for browser automation.
 CONTEXT: {strategic_context}
@@ -95,6 +116,7 @@ CONTEXT: {strategic_context}
 Return ONLY: {"id": <integer>, "thought": "<one sentence>"}
 """
 
+# Small (1–6 b)
 EXECUTOR_PROMPT_SMALL = """\
 You are a precise UI Element Selector for a browser automation agent.
 CONTEXT: {strategic_context}
@@ -105,6 +127,7 @@ Given a browser STEP and a list of UI ELEMENTS, return the id of the best match.
 OUTPUT (nothing else): {"id": 0, "thought": "one sentence"}
 """
 
+# Large (7 b+) — with worked examples
 EXECUTOR_PROMPT_LARGE = """\
 You are a precise UI Element Selector for a browser automation agent.
 CONTEXT: {strategic_context}
@@ -122,9 +145,15 @@ EXAMPLES:
 OUTPUT (nothing else): {"id": 0, "thought": "one sentence"}
 """
 
+
 def get_executor_prompt(model_name: str) -> str:
-    m = re.search(r'(\d+(?:\.\d+)?)\s*b', model_name.lower())
+    """Return executor prompt sized for the model's parameter count."""
+    m = _re.search(r'(\d+(?:\.\d+)?)\s*b', model_name.lower())
     size = float(m.group(1)) if m else 0.5
     if   size < 1:  return EXECUTOR_PROMPT_TINY
     elif size < 7:  return EXECUTOR_PROMPT_SMALL
     else:           return EXECUTOR_PROMPT_LARGE
+
+
+# Legacy alias
+EXECUTOR_SYSTEM_PROMPT = EXECUTOR_PROMPT_SMALL
