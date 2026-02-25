@@ -102,7 +102,7 @@ Requirements: - Python 3.10+ - Playwright - Ollama
 ## 1️⃣ Clone the Repository
 
 ``` bash
-git clone https://github.com/yourusername/browser-manul.git
+git clone https://github.com/alexbeatnik/browser-manul.git
 cd browser-manul
 ```
 
