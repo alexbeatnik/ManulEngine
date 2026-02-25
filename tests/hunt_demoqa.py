@@ -1,0 +1,77 @@
+import asyncio
+from framework.engine import ManulEngine
+
+
+async def main():
+    manul = ManulEngine()
+
+    mission = (
+        # ── 1. Forms ──────────────────────────────────────────────────────────
+        "1. NAVIGATE to https://demoqa.com/text-box\n"
+        "2. Fill 'Full Name' field with 'Ghost Manul'\n"
+        "3. Fill 'Email' field with 'ghost@manul.ai'\n"
+        "4. Fill 'Current Address' field with '42 Shadow Lane'\n"
+        "5. Fill 'Permanent Address' field with '7 Phantom Street'\n"
+        "6. Click the 'Submit' button\n"
+        "7. VERIFY that 'Ghost Manul' and 'ghost@manul.ai' are present.\n"
+
+        # ── 2. Checkbox tree ──────────────────────────────────────────────────
+        "8. NAVIGATE to https://demoqa.com/checkbox\n"
+        "9. Click the checkbox for 'Home'\n"
+        "10. VERIFY that 'You have selected' is present.\n"
+
+        # ── 3. Radio buttons ──────────────────────────────────────────────────
+        "11. NAVIGATE to https://demoqa.com/radio-button\n"
+        "12. Click the radio button for 'Impressive'\n"
+        "13. VERIFY that 'Impressive' is present.\n"
+
+        # ── 4. Web Tables ─────────────────────────────────────────────────────
+        "14. NAVIGATE to https://demoqa.com/webtables\n"
+        "15. EXTRACT the Salary of 'Alden' into {alden_salary}\n"
+        "16. VERIFY that '2000' is present.\n"
+
+        # ── 5. Buttons: single / double / right-click ─────────────────────────
+        "17. NAVIGATE to https://demoqa.com/buttons\n"
+        "18. DOUBLE CLICK the 'Double Click Me' button\n"
+        "19. VERIFY that 'You have done a double click' is present.\n"
+        "20. Click the 'Click Me' button\n"
+        "21. VERIFY that 'You have done a dynamic click' is present.\n"
+
+        # ── 6. Links ──────────────────────────────────────────────────────────
+        "22. NAVIGATE to https://demoqa.com/links\n"
+        "23. Click on the 'Home' link\n"
+
+        # ── 7. Select menu ────────────────────────────────────────────────────
+        "24. NAVIGATE to https://demoqa.com/select-menu\n"
+        "25. Select 'Purple' from the 'Select Value' dropdown\n"
+        "26. VERIFY that 'Purple' is present.\n"
+
+        # ── 8. Date picker ────────────────────────────────────────────────────
+        "27. NAVIGATE to https://demoqa.com/date-picker\n"
+        "28. Fill 'Date Of Birth' field with '01/15/1990'\n"
+        "29. VERIFY that '01/15/1990' is present.\n"
+
+        # ── 9. Slider ─────────────────────────────────────────────────────────
+        # (scroll to make it visible, then verify page loaded)
+        "30. NAVIGATE to https://demoqa.com/slider\n"
+        "31. VERIFY that 'Slider' is present.\n"
+
+        # ── 10. Done ──────────────────────────────────────────────────────────
+        "32. DONE."
+    )
+
+    print("🐾 Running DEMOQA GAUNTLET: The Full Elements Challenge")
+    success = await manul.run_mission(mission)
+
+    if success:
+        print("\n🏆 PERFECT HUNT! Manul mastered all DemoQA elements! 🏆")
+        print(f"📊 Collected Data: {manul.memory}")
+    else:
+        print("\n💀 Mission Failed.")
+        print(f"📊 Partial Data: {manul.memory}")
+
+    return success
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
