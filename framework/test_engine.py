@@ -9,7 +9,7 @@ from framework.engine import ManulEngine
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MONSTER DOM  —  Each trap section is labelled clearly.
-# Original 24 traps + 4 optional traps + 6 integration-battle traps = 34.
+# Original 24 traps + 4 optional traps + 6 bug-fix traps + 12 hunt-site traps = 46.
 # ─────────────────────────────────────────────────────────────────────────────
 MONSTER_DOM = """
 <!DOCTYPE html>
@@ -230,6 +230,83 @@ MONSTER_DOM = """
 <div>
     <label for="trap_jsclick_chk">Enable Notifications</label>
     <input type="checkbox" id="trap_jsclick_chk">
+</div>
+
+<!-- ── TRAPS 35-46: Patterns from real hunt-site tests ─────────────── -->
+
+<!-- 35. Textarea vs Input (Mega: Address) -->
+<div>
+    <label for="trap_addr_textarea">Address</label>
+    <input type="text" id="trap_addr_text_decoy" placeholder="City name">
+    <textarea id="trap_addr_textarea" placeholder="Full address"></textarea>
+</div>
+
+<!-- 36-37. Double Click Me vs Click Me (DemoQA) -->
+<div>
+    <button id="trap_dblclick_btn" ondblclick="this.dataset.clicked='double'">Double Click Me</button>
+    <button id="trap_singleclick_btn">Click Me</button>
+</div>
+
+<!-- 38. Date input type priority (DemoQA/ExpandTesting) -->
+<div>
+    <label for="trap_date_input">Start Date</label>
+    <input type="date" id="trap_date_input">
+    <label for="trap_date_notes">Start Date Notes</label>
+    <input type="text" id="trap_date_notes">
+</div>
+
+<!-- 39. Search input (Wikipedia: Search Wikipedia) -->
+<div>
+    <input type="search" id="trap_search_input" placeholder="Search Articles" aria-label="Search Articles">
+    <button id="trap_search_btn">Search</button>
+</div>
+
+<!-- 40. Pagination links (Mega: Click on page 3) -->
+<nav>
+    <a href="#" id="trap_page_1">1</a>
+    <a href="#" id="trap_page_2">2</a>
+    <a href="#" id="trap_page_3">3</a>
+    <a href="#" id="trap_page_next">Next</a>
+</nav>
+
+<!-- 41. Day-of-week checkboxes (Mega/Rahul: Monday/Wednesday) -->
+<div>
+    <label for="trap_day_mon">Monday</label>
+    <input type="checkbox" id="trap_day_mon">
+    <label for="trap_day_tue">Tuesday</label>
+    <input type="checkbox" id="trap_day_tue">
+    <label for="trap_day_wed">Wednesday</label>
+    <input type="checkbox" id="trap_day_wed">
+    <label for="trap_day_thu">Thursday</label>
+    <input type="checkbox" id="trap_day_thu">
+</div>
+
+<!-- 42. Country dropdown (Mega: Select Japan from Country) -->
+<div>
+    <label for="trap_country_select">Country</label>
+    <select id="trap_country_select">
+        <option>Select Country</option>
+        <option>India</option>
+        <option>Japan</option>
+        <option>United States</option>
+    </select>
+</div>
+
+<!-- 43. Hover button (Rahul: Mouse Hover) -->
+<div>
+    <button id="trap_hover_btn" onmouseover="this.dataset.hovered='yes'">Mouse Hover</button>
+</div>
+
+<!-- 44-45. Checkbox toggle — check then uncheck (Rahul) -->
+<div>
+    <label for="trap_toggle_chk">Accept Marketing</label>
+    <input type="checkbox" id="trap_toggle_chk">
+</div>
+
+<!-- 46. Fill + Enter (Wikipedia: Fill search and press Enter) -->
+<div>
+    <input type="search" id="trap_enter_input" placeholder="Wiki Search" aria-label="Wiki Search"
+           onkeydown="if(event.key==='Enter') this.dataset.entered='yes'">
 </div>
 
 </body>
@@ -485,6 +562,102 @@ TESTS = [
         "execute_step": True,
         "verify_checked": True,
     },
+
+    # ── TRAPS 35-46: Patterns from Real Hunt-Site Tests ────────────────
+    {
+        "name": "35. Textarea vs Input — Address (Mega)",
+        "desc": "Mega site: 'Fill Address textarea' must pick <textarea>, not nearby <input type=text>.",
+        "step": "Fill 'Address' textarea with 'Selenium Avenue, 42'",
+        "mode": "input", "search_texts": ["Address"], "target_field": "address",
+        "expected": "trap_addr_textarea",
+    },
+    {
+        "name": "36. Exact 'Click Me' vs Partial 'Double Click Me' (DemoQA)",
+        "desc": "DemoQA: 'Click Me' must beat 'Double Click Me' — exact match wins over partial.",
+        "step": "Click the 'Click Me' button",
+        "mode": "clickable", "search_texts": ["Click Me"], "target_field": None,
+        "expected": "trap_singleclick_btn",
+    },
+    {
+        "name": "37. Date Input Type Priority (DemoQA/ExpandTesting)",
+        "desc": "Two inputs share label 'Start Date'; type=date must beat type=text.",
+        "step": "Fill 'Start Date' field with '2026-01-01'",
+        "mode": "input", "search_texts": ["Start Date"], "target_field": "start date",
+        "expected": "trap_date_input",
+    },
+    {
+        "name": "38. Search Input by Type+ARIA (Wikipedia)",
+        "desc": "Wikipedia: input[type=search] with aria-label must be found for fill mode.",
+        "step": "Fill 'Search Articles' field with 'Pallas cat'",
+        "mode": "input", "search_texts": ["Search Articles"], "target_field": "search articles",
+        "expected": "trap_search_input",
+    },
+    {
+        "name": "39. Pagination Link by Number (Mega)",
+        "desc": "Mega: 'Click on page 3' must resolve to the <a> with text '3', not 'Next'.",
+        "step": "Click on page '3' in the pagination list",
+        "mode": "clickable", "search_texts": ["3"], "target_field": None,
+        "expected": "trap_page_3",
+    },
+    {
+        "name": "40. Day Checkbox Disambiguation (Mega/Rahul)",
+        "desc": "Four day-of-week checkboxes; 'Wednesday' must pick the right one.",
+        "step": "Click the checkbox for 'Wednesday'",
+        "mode": "clickable", "search_texts": ["Wednesday"], "target_field": None,
+        "expected": "trap_day_wed",
+    },
+    {
+        "name": "41. Country Dropdown Resolution (Mega)",
+        "desc": "Mega: 'Select Japan from Country dropdown' must resolve to the <select>.",
+        "step": "Select 'Japan' from the 'Country' dropdown",
+        "mode": "select", "search_texts": ["Japan", "Country"], "target_field": None,
+        "expected": "trap_country_select",
+    },
+    {
+        "name": "42. Double-Click Full Flow (DemoQA/Mega)",
+        "desc": "'DOUBLE CLICK' must resolve correct button AND fire dblclick event.",
+        "step": "DOUBLE CLICK the 'Double Click Me' button",
+        "mode": "clickable", "search_texts": ["Double Click Me"], "target_field": None,
+        "expected": "trap_dblclick_btn",
+        "execute_step": True,
+        "verify_attr": {"selector": "#trap_dblclick_btn", "attr": "data-clicked", "value": "double"},
+    },
+    {
+        "name": "43. Hover Full Flow (Rahul)",
+        "desc": "'HOVER over the Mouse Hover button' must resolve + fire mouseover event.",
+        "step": "HOVER over the 'Mouse Hover' button",
+        "mode": "hover", "search_texts": ["Mouse Hover"], "target_field": None,
+        "expected": "trap_hover_btn",
+        "execute_step": True,
+        "verify_attr": {"selector": "#trap_hover_btn", "attr": "data-hovered", "value": "yes"},
+    },
+    {
+        "name": "44. Select Option Full Flow (Mega)",
+        "desc": "'Select Japan from Country' must resolve <select> AND pick the right <option>.",
+        "step": "Select 'Japan' from the 'Country' dropdown",
+        "mode": "select", "search_texts": ["Japan", "Country"], "target_field": None,
+        "expected": "trap_country_select",
+        "execute_step": True,
+        "verify_select": {"selector": "#trap_country_select", "value": "Japan"},
+    },
+    {
+        "name": "45. Checkbox Toggle — Check (Rahul pt1)",
+        "desc": "Rahul: 'Check the checkbox' must toggle it ON. Verify checked=True.",
+        "step": "Check the 'Accept Marketing' checkbox",
+        "mode": "clickable", "search_texts": ["Accept Marketing"], "target_field": None,
+        "expected": "trap_toggle_chk",
+        "execute_step": True,
+        "verify_checked": True,
+    },
+    {
+        "name": "46. Checkbox Toggle — Uncheck (Rahul pt2)",
+        "desc": "Rahul: clicking same checkbox again must toggle it OFF. Verify checked=False.",
+        "step": "Click the checkbox for 'Accept Marketing'",
+        "mode": "clickable", "search_texts": ["Accept Marketing"], "target_field": None,
+        "expected": "trap_toggle_chk",
+        "execute_step": True,
+        "verify_checked": False,
+    },
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -518,7 +691,7 @@ def _apply_guards(el: dict, mode: str, search_texts: list[str]) -> str | None:
 # ─────────────────────────────────────────────────────────────────────────────
 async def run_laboratory():
     print("\n" + "=" * 60)
-    print("🧪  MANUL ENGINE LABORATORY — The Chaos Chamber (34 traps)")
+    print("🧪  MANUL ENGINE LABORATORY — The Chaos Chamber (46 traps)")
     print("=" * 60)
 
     # Note: we test using execute_step directly for optional traps to see the full flow
@@ -548,19 +721,47 @@ async def run_laboratory():
                     print(f"   ❌ {msg}")
                     failed += 1
                     failures.append(f"{t['name']}: {msg}")
-                elif t.get("verify_checked") is not None:
-                    actual = await page.locator(f"#{t['expected']}").is_checked()
-                    if actual == t["verify_checked"]:
-                        print(f"   ✅ PASSED  → '{t['expected']}' checked={actual} via _execute_step")
+                else:
+                    verify_ok = True
+                    verify_detail = ""
+
+                    if t.get("verify_checked") is not None:
+                        actual = await page.locator(f"#{t['expected']}").is_checked()
+                        if actual != t["verify_checked"]:
+                            verify_ok = False
+                            verify_detail = f"checked={actual}, expected {t['verify_checked']}"
+                        else:
+                            verify_detail = f"checked={actual}"
+
+                    elif t.get("verify_attr"):
+                        va = t["verify_attr"]
+                        actual = await page.locator(va["selector"]).get_attribute(va["attr"])
+                        if actual != va["value"]:
+                            verify_ok = False
+                            verify_detail = f"{va['attr']}='{actual}', expected '{va['value']}'"
+                        else:
+                            verify_detail = f"{va['attr']}='{actual}'"
+
+                    elif t.get("verify_select"):
+                        vs = t["verify_select"]
+                        actual = await page.locator(vs["selector"]).evaluate(
+                            "sel => sel.options[sel.selectedIndex].text.trim()"
+                        )
+                        if actual != vs["value"]:
+                            verify_ok = False
+                            verify_detail = f"selected='{actual}', expected '{vs['value']}'"
+                        else:
+                            verify_detail = f"selected='{actual}'"
+
+                    if verify_ok:
+                        desc = f"'{t['expected']}' {verify_detail}" if verify_detail else ""
+                        print(f"   ✅ PASSED  → {desc} via _execute_step")
                         passed += 1
                     else:
-                        msg = f"FAILED — '{t['expected']}' checked={actual}, expected {t['verify_checked']}"
+                        msg = f"FAILED — '{t['expected']}' {verify_detail}"
                         print(f"   ❌ {msg}")
                         failed += 1
                         failures.append(f"{t['name']}: {msg}")
-                else:
-                    print(f"   ✅ PASSED  → via _execute_step")
-                    passed += 1
 
             elif "if exists" in t["step"].lower() or "optional" in t["step"].lower():
                 # For optional traps, we must test the FULL _execute_step logic, 
