@@ -38,12 +38,15 @@ NAV_WAIT = 2.0
 # ─────────────────────────────────────────────
 
 class ManulEngine:
-    def __init__(self, model: str = config.DEFAULT_MODEL, headless: bool = False, **_kwargs):
-        self.model = model
-        self.headless = headless
-        self.memory: dict = {}
+    def __init__(self, model: str | None = None, headless: bool | None = None, ai_threshold: int | None = None, **_kwargs):
+        self.model        = model if model is not None else config.DEFAULT_MODEL
+        self.headless     = headless if headless is not None else config.HEADLESS_MODE
+        self.memory: dict           = {}
         self.last_xpath: str | None = None
         self.learned_elements: dict = {}
+        
+        self._threshold       = config.get_threshold(self.model, ai_threshold)
+        self._executor_prompt = config.get_executor_prompt(self.model)
 
     # ── LLM ──────────────────────────────────
 
@@ -90,24 +93,37 @@ class ManulEngine:
             f"MODE: {mode.upper()}\n"
             f"ELEMENTS:\n{json.dumps(payload, ensure_ascii=False)}"
         )
-        system = config.EXECUTOR_SYSTEM_PROMPT.format(strategic_context=strategic_context)
+        
+        system = self._executor_prompt.replace("{strategic_context}", strategic_context)
         obj = await self._llm_json(system, prompt)
-        if not obj:
+        
+        if not obj or not isinstance(obj, dict):
+            print("    ⚠️ AI returned invalid format. Falling back to Heuristics Top 1.")
             return 0
 
-        raw_id = obj.get("id", None)
+        raw_id = None
+        for key in ["id", '"id"', "'id'", "ID", "Id"]:
+            if key in obj:
+                raw_id = obj[key]
+                break
+
         chosen_id: int | None = None
         try:
-            chosen_id = int(raw_id)
+            if raw_id is not None:
+                chosen_id = int(raw_id)
         except (TypeError, ValueError):
             chosen_id = None
 
         thought = obj.get("thought", "")
+        if not thought:
+            thought = obj.get('"thought"', "No thought provided.")
+
         if chosen_id is not None:
             idx = next((i for i, el in enumerate(candidates) if el["id"] == chosen_id), 0)
         else:
             idx = 0
-        print(f"    🎯 AI DECISION: '{candidates[idx]['name'][:80]}' — {thought}")
+            
+        print(f"    🎯 AI DECISION: '{candidates[idx]['name'][:40]}' — {thought}")
         return idx
 
     # ── Visual feedback ───────────────────────
@@ -163,6 +179,9 @@ class ManulEngine:
             role      = el.get("role", "").lower()
             score = 0
 
+            if el.get("disabled") or el.get("aria_disabled") == "true":
+                score -= 50_000
+
             if learned and el["name"] == learned["name"] and tag == learned["tag"]:
                 score += 20_000
 
@@ -179,6 +198,14 @@ class ManulEngine:
                 tl = t.lower().strip()
                 if not tl:
                     continue
+
+                if tl == aria:
+                    score += 5_000
+                t_dashed = tl.replace(" ", "-").replace("_", "-")
+                if t_dashed == data_qa or tl == data_qa:
+                    score += 10_000
+                elif t_dashed in data_qa:
+                    score += 3_000
 
                 if name_core == tl or name == tl or context_prefix == tl:
                     score += 3_000
@@ -205,7 +232,6 @@ class ManulEngine:
                         if partial:
                             score += partial * 80
 
-                if tl in aria:        score += 800
                 if tl in html_id:     score += 600
                 if any(w in icons for w in tl.split() if len(w) > 3):
                     score += 700
@@ -221,38 +247,39 @@ class ManulEngine:
                 if matched_icons:
                     score += len(matched_icons) * 800
 
-            for t in search_texts:
-                t_l = t.lower().replace(" ", "-").replace("_", "-")
-                if t_l and t_l in data_qa:
-                    score += 5_000
-
-            is_real_button = tag == "button" or role == "button" \
-                          or (tag == "input" and itype in ("submit", "button", "image"))
+            is_native_button = tag == "button" or (tag == "input" and itype in ("submit", "button", "image", "reset"))
+            is_real_button = is_native_button or role == "button"
             is_real_link   = tag == "a"
             is_real_input  = (tag in ("input", "textarea") and itype not in
-                              ("submit", "button", "image", "radio", "checkbox")) \
+                              ("submit", "button", "image", "reset", "radio", "checkbox")) \
                           or role in ("textbox", "searchbox", "spinbutton")
             is_real_checkbox = (tag == "input" and itype == "checkbox") or role == "checkbox"
             is_real_radio    = (tag == "input" and itype == "radio")    or role == "radio"
 
             if wants_button:
-                if is_real_button:   score += 300
+                if is_native_button: score += 500
+                elif is_real_button: score += 300
                 if is_real_link:     score -= 300
 
             if wants_link:
-                if is_real_link:     score += 300
+                if is_real_link:     score += 500
                 if is_real_button:   score -= 300
 
             if wants_input:
-                if is_real_input:    score += 300
+                if is_real_input:    score += 500
                 if is_real_button:   score -= 300
+                if itype == "password" and any("password" in t.lower() for t in search_texts + [target_field or ""]):
+                    score += 5_000
 
             if "checkbox" in step_l:
-                if is_real_checkbox: score += 1000
+                if is_real_checkbox: score += 5_000
                 elif "checkbox" in name: score += 200
+                else: score -= 5_000
+                
             if "radio" in step_l:
-                if is_real_radio:    score += 1000
+                if is_real_radio:    score += 5_000
                 elif "radio" in name: score += 200
+                else: score -= 5_000
 
             if not search_texts:
                 if "dropdown" in step_l and "combobox" in name:    score += 5_000
@@ -294,12 +321,25 @@ class ManulEngine:
             exact = []
             for el in els:
                 name = el["name"].lower().strip()
+                aria = el.get("aria_label", "").lower().strip()
+                d_qa = el.get("data_qa", "").lower().strip()
+                
                 if target_field and target_field in name:
                     exact.append(el)
                     continue
                 for q in search_texts:
                     q_l = q.lower().strip()
+                    if not q_l: continue
+                    
+                    q_dash = q_l.replace(" ", "-").replace("_", "-")
+                    
                     if (len(q_l) <= 2 and q_l == name) or (len(q_l) > 2 and q_l in name):
+                        exact.append(el)
+                        break
+                    elif q_l == aria or q_l in aria:
+                        exact.append(el)
+                        break
+                    elif q_dash == d_qa or q_dash in d_qa or q_l == d_qa:
                         exact.append(el)
                         break
 
@@ -329,12 +369,12 @@ class ManulEngine:
             print(f"    ⚡ CONTEXT MEMORY: Reusing last element (score {best_score})")
             return top[0]
 
-        if best_score >= 500:
-            label = "High confidence" if best_score >= 1_000 else "Keyword"
-            print(f"    ⚙️  DOM HEURISTICS: {label} match (score {best_score})")
+        if best_score >= self._threshold:
+            label = "High confidence" if best_score >= self._threshold * 2 else "Keyword"
+            print(f"    ⚙️  DOM HEURISTICS: {label} match (score {best_score} >= threshold {self._threshold})")
             return top[0]
 
-        print(f"    🧠 AI AGENT: Ambiguity detected, analysing {len(top)} candidates…")
+        print(f"    🧠 AI AGENT: Score {best_score} < threshold {self._threshold}. Analysing {len(top)} candidates…")
         idx = await self._llm_select_element(step, mode, top, strategic_context)
         return top[idx]
 
@@ -651,13 +691,11 @@ class ManulEngine:
             role     = el.get("role", "")
 
             is_phantom = False
-            missing_term = search_texts[0] if search_texts else (target_field or "Target")
             
             if mode == "input" and itype in ("radio", "checkbox", "button", "submit", "image"):
                 print(f"    👻 ANTI-PHANTOM GUARD: Rejecting '{name[:80]}' because it is a {itype} (cannot type).")
                 is_phantom = True
             
-            # 🚀 ФІКС 2: Дозволяємо клікати по кастомних dropdown items (div, li)
             elif mode == "select":
                 is_valid_select = (tag == "select") or (role in ("option", "menuitem")) or ("item" in name.lower()) or ("dropdown" in name.lower())
                 if not is_valid_select:
@@ -866,7 +904,6 @@ class ManulEngine:
                         if not await self._handle_extract(page, step):
                             ok = False; break
 
-                    # 🚀 ФІКС 1: Видалили слово CHECK з регулярки верифікації
                     elif re.search(r'\b(VERIFY)\b', s_up):
                         if not await self._handle_verify(page, step):
                             ok = False; break
@@ -964,6 +1001,7 @@ _SNAPSHOT_JS = r"""([mode, expected_texts]) => {
 
     const seen = new Set();
     const results = [];
+    
     const collect = (root, inShadow=false) => {
         root.querySelectorAll(INTERACTIVE).forEach(el => {
             if (seen.has(el)) return;
@@ -974,7 +1012,7 @@ _SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             const st = window.getComputedStyle(el);
             if (st.visibility==='hidden'||st.display==='none') return;
 
-            if (el.tagName==='LABEL') {
+            if (el.tagName==='LABEL' && !inShadow) {
                 const linked = el.htmlFor
                     ? document.getElementById(el.htmlFor)
                     : el.querySelector('input');
@@ -1018,12 +1056,22 @@ _SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         if (el.tagName==='INPUT' && (el.type==='checkbox' || el.type==='radio')) {
             const tr = el.closest('tr');
             if (tr) return tr.innerText.trim().replace(/\s+/g,' ');
-            const lbl = el.closest('label') || document.querySelector(`label[for="${el.id}"]`);
+            
+            if (el.id) {
+                const globalLbl = document.querySelector(`label[for="${el.id}"]`);
+                if (globalLbl) return globalLbl.innerText.trim();
+            }
+            
+            const lbl = el.closest('label');
             if (lbl) return lbl.innerText.trim();
         }
 
         if (['INPUT','SELECT','TEXTAREA'].includes(el.tagName)) {
-            const lbl = document.querySelector(`label[for="${el.id}"]`);
+            if (el.id) {
+                const globalLbl = document.querySelector(`label[for="${el.id}"]`);
+                if (globalLbl) return globalLbl.innerText.trim();
+            }
+            const lbl = el.closest('label');
             if (lbl) return lbl.innerText.trim();
             
             const fieldset = el.closest('fieldset');
@@ -1085,26 +1133,30 @@ _SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             name = name.trim();
         }
 
-        if(el.tagName==='INPUT') name+=` input ${el.type||''}`;
+        if (el.tagName === 'INPUT' && !['submit', 'button', 'image', 'reset'].includes(el.type ? el.type.toLowerCase() : '')) {
+            name += ` input ${el.type || ''}`;
+        }
 
         const ctx=labelFor(el);
-        if(ctx)    name=`${ctx} -> ${name}`;
+        if(ctx && ctx !== name) name=`${ctx} -> ${name}`;
         if(inShadow) name+=' [SHADOW_DOM]';
 
         return {
-            id:          parseInt(el.dataset.manulId),
-            name:        name.substring(0,150).replace(/\n/g,' '),
-            xpath:       getXPath(el),
-            is_select:   isSelect,
-            is_shadow:   inShadow,
-            class_name:  el.className||'',
-            tag_name:    el.tagName.toLowerCase(),
-            input_type:  el.type ? el.type.toLowerCase() : '',
-            data_qa:     el.getAttribute('data-qa') || el.getAttribute('data-testid') || '',
-            html_id:     htmlId,
-            icon_classes: iconClasses,
-            aria_label:  ariaLabel,
-            role:        el.getAttribute('role') || '',
+            id:            parseInt(el.dataset.manulId),
+            name:          name.substring(0,150).replace(/\n/g,' '),
+            xpath:         getXPath(el),
+            is_select:     isSelect,
+            is_shadow:     inShadow,
+            class_name:    el.className||'',
+            tag_name:      el.tagName.toLowerCase(),
+            input_type:    el.type ? el.type.toLowerCase() : '',
+            data_qa:       el.getAttribute('data-qa') || el.getAttribute('data-testid') || '',
+            html_id:       htmlId,
+            icon_classes:  iconClasses,
+            aria_label:    ariaLabel,
+            role:          el.getAttribute('role') || '',
+            disabled:      el.hasAttribute('disabled') || el.disabled || false,
+            aria_disabled: el.getAttribute('aria-disabled') || ''
         };
     });
 }"""
