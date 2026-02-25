@@ -57,7 +57,7 @@ async def main():
         # ── Dynamic table ──────────────────────────────────────────────────
         "34. SCROLL DOWN\n"
         "35. EXTRACT the Amount of 'Jack' into {jack_amount}\n"
-        "36. EXTRACT the Amount of 'John' into {john_amount}\n"
+        "36. EXTRACT the Amount of 'Joe' into {john_amount}\n"
         "37. VERIFY that '32' is present.\n"
 
         # ── Mouse hover ────────────────────────────────────────────────────
