@@ -5,11 +5,14 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 class Logger:
     def __init__(self, filename):
-        self.terminal, self.log = sys.stdout, open(filename, "w", encoding="utf-8")
+        self.terminal = sys.stdout
+        self.log = open(filename, "w", encoding="utf-8")
     def write(self, message):
-        self.terminal.write(message); self.log.write(message)
+        self.terminal.write(message)
+        self.log.write(message)
     def flush(self):
-        self.terminal.flush(); self.log.flush()
+        self.terminal.flush()
+        self.log.flush()
 
 async def run_test_file(file_path):
     print(f"\n{'='*50}\n🐾 EXECUTING: {os.path.basename(file_path)}\n{'='*50}")
@@ -17,42 +20,61 @@ async def run_test_file(file_path):
         spec = importlib.util.spec_from_file_location("test_module", file_path)
         test_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(test_module)
-        # 🔥 ПРЯМЕ ОТРИМАННЯ РЕЗУЛЬТАТУ
         result = await test_module.main()
         return result 
     except Exception as e:
-        print(f"\n❌ ERROR: {e}"); return False
+        print(f"\n❌ ERROR: {e}")
+        return False
+
+async def run_direct_mission(prompt):
+    from framework.engine import ManulEngine
+    print(f"\n{'='*50}\n🐾 EXECUTING DIRECT HUNT\n{'='*50}")
+    print(f"📜 Target: {prompt}")
+    
+    manul = ManulEngine(headless=False)
+    try:
+        await manul.run_mission(prompt, keep_open=True)
+    except KeyboardInterrupt:
+        pass
 
 async def main():
     sys.stdout = Logger("last_run.log")
     test_dir = "tests"
     
-    # 🚀 НОВА ЛОГІКА: Перевіряємо, чи передано ім'я файлу при запуску
+    # 🐾 ЛОГІКА CLI 🐾
     if len(sys.argv) > 1:
-        target_file = sys.argv[1]
-        # Якщо користувач ввів просто "mega_hunt.py" замість "tests/mega_hunt.py"
-        if not target_file.startswith(test_dir) and not os.path.isabs(target_file):
-            target_file = os.path.join(test_dir, target_file)
+        target = sys.argv[1]
         
-        if not os.path.exists(target_file):
-            print(f"❌ File not found: {target_file}")
-            return
+        is_file = target.endswith('.py') or os.path.exists(target) or os.path.exists(os.path.join(test_dir, target))
+        
+        if is_file:
+            if not target.startswith(test_dir) and not os.path.isabs(target):
+                target = os.path.join(test_dir, target)
             
-        files_to_run = [target_file]
+            if not os.path.exists(target):
+                print(f"❌ File not found: {target}")
+                return
+            
+            files_to_run = [target]
+        else:
+            await run_direct_mission(target)
+            return
     else:
-        # Якщо нічого не передали - шукаємо всі файли hunt_*.py
         files_to_run = sorted([os.path.join(test_dir, f) for f in os.listdir(test_dir) if f.startswith('hunt_') and f.endswith('.py')])
     
-    print(f"🚀 Manul CLI: Found {len(files_to_run)} tests.")
+    print(f"🐱 Manul CLI: Found {len(files_to_run)} targets in hunting grounds.")
     results = []
     for f in files_to_run:
         success = await run_test_file(f)
         results.append((os.path.basename(f), "PASS" if success else "FAIL"))
 
-    print(f"\n\n{'='*20} SUMMARY {'='*20}")
+    print(f"\n\n{'='*20} HUNT SUMMARY {'='*20}")
     for file, status in results:
         print(f"{'✅' if status == 'PASS' else '❌'} {file.ljust(30)} {status}")
-    print('='*49)
+    print('='*54)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n🐾 Manul returned to the den.")

@@ -18,10 +18,14 @@ def _substitute_memory(text: str, memory: dict) -> str:
 
 
 def _extract_quoted(step: str, preserve_case: bool = False) -> list[str]:
-    """Return all quoted strings from a step."""
+    """Return all quoted strings from a step, preserving their order."""
     step = step.replace("\u2019", "'").replace("\u2018", "'")
-    found = re.findall(r'[\u201c\u201d"](.*?)[\u201c\u201d"]', step) \
-            or re.findall(r"(?:^|\s)['\u2018\u2019](.*?)['\u2018\u2019]", step)
+    step = step.replace("\u201c", '"').replace("\u201d", '"')
+    
+    # 🚀 ФІКС: Знаходимо і подвійні, і одинарні лапки за один прохід
+    matches = re.findall(r'"([^"]*)"|\'([^\']*)\'', step)
+    found = [m[0] if m[0] else m[1] for m in matches]
+    
     return [x if preserve_case else x.lower() for x in found if x]
 
 
@@ -36,16 +40,15 @@ NAV_WAIT = 2.0
 
 class ManulEngine:
     def __init__(self, model: str = config.DEFAULT_MODEL, headless: bool = False, **_kwargs):
-        # **_kwargs absorbs legacy params like `strict=True` without crashing
         self.model = model
         self.headless = headless
         self.memory: dict = {}
         self.last_xpath: str | None = None
+        self.learned_elements: dict = {}  # 🚀 СЕМАНТИЧНИЙ КЕШ
 
     # ── LLM ──────────────────────────────────
 
     async def _llm_json(self, system: str, user: str) -> dict | None:
-        """Call Ollama and parse JSON from the response."""
         try:
             resp = await asyncio.to_thread(
                 ollama.chat,
@@ -64,7 +67,6 @@ class ManulEngine:
             return None
 
     async def _llm_plan(self, task: str) -> list[str]:
-        """Ask the LLM to turn a free-form task into an ordered step list."""
         print("    🧠 AI PLANNER: Generating mission steps...")
         obj = await self._llm_json(config.PLANNER_SYSTEM_PROMPT, task)
         return obj.get("steps", []) if obj else []
@@ -72,11 +74,6 @@ class ManulEngine:
     async def _llm_select_element(
         self, step: str, mode: str, candidates: list[dict], strategic_context: str
     ) -> int:
-        """
-        Ask the LLM to pick the best element from a short candidate list.
-        Returns the index inside `candidates` (not the raw element id).
-        Small models (qwen2.5:0.5b) sometimes return id as a string — we coerce it.
-        """
         payload = [
             {
                 "id":          el["id"],
@@ -99,13 +96,12 @@ class ManulEngine:
         if not obj:
             return 0
 
-        # Coerce id: small models may return "0", "id", or omit the field entirely
         raw_id = obj.get("id", None)
         chosen_id: int | None = None
         try:
             chosen_id = int(raw_id)
         except (TypeError, ValueError):
-            chosen_id = None  # fall back to first candidate
+            chosen_id = None
 
         thought = obj.get("thought", "")
         if chosen_id is not None:
@@ -134,11 +130,7 @@ class ManulEngine:
     # ── DOM snapshot ──────────────────────────
 
     async def _snapshot(self, page, mode: str, texts: list[str]) -> list[dict]:
-        """Collect interactive elements from the page (including shadow DOM)."""
-        return await page.evaluate(
-            _SNAPSHOT_JS,
-            [mode, texts or []],
-        )
+        return await page.evaluate(_SNAPSHOT_JS, [mode, texts or []])
 
     # ── Element selection ─────────────────────
 
@@ -151,13 +143,15 @@ class ManulEngine:
         target_field: str | None,
         is_blind: bool,
     ) -> list[dict]:
-        """Attach a heuristic score to every element."""
         step_l = step.lower()
         target_words = set(re.findall(r'\b[a-z0-9]{3,}\b', step_l))
 
         wants_button = bool(re.search(r'\bbutton\b', step_l))
         wants_link   = bool(re.search(r'\blink\b', step_l))
         wants_input  = bool(re.search(r'\bfield\b|\binput\b|\btextarea\b|\btype\b|\bfill\b', step_l))
+
+        cache_key = (mode, tuple([t.lower() for t in search_texts]), target_field)
+        learned = self.learned_elements.get(cache_key)
 
         for el in els:
             name      = el["name"].lower()
@@ -170,15 +164,17 @@ class ManulEngine:
             role      = el.get("role", "").lower()
             score = 0
 
-            # ── Context Memory ──────────────────────────────────────────────
+            # ── Learned Memory ──
+            if learned and el["name"] == learned["name"] and tag == learned["tag"]:
+                score += 20_000
+
+            # ── Context Memory ──
             if is_blind and self.last_xpath and el["xpath"] == self.last_xpath:
                 score += 10_000
 
-            # ── Field / target name match ───────────────────────────────────
             if target_field and target_field in name:
                 score += 2_000
 
-            # ── Search text matches (name, aria, html_id, icons) ────────────
             name_core = name.split(" -> ")[-1].strip() if " -> " in name else name
 
             for t in search_texts:
@@ -207,13 +203,11 @@ class ManulEngine:
             score += sum(15 for w in target_words if len(w) > 3 and w in html_id)
             score += sum(12 for w in target_words if len(w) > 3 and w in aria)
 
-            # ── data-qa / data-testid exact match ───────────────────────────
             for t in search_texts:
                 t_l = t.lower().replace(" ", "-").replace("_", "-")
                 if t_l and t_l in data_qa:
                     score += 5_000
 
-            # ── Element-type context bonuses / penalties ────────────────────
             is_real_button = tag == "button" or role == "button" \
                           or (tag == "input" and itype in ("submit", "button", "image"))
             is_real_link   = tag == "a"
@@ -224,26 +218,24 @@ class ManulEngine:
             is_real_radio    = (tag == "input" and itype == "radio")    or role == "radio"
 
             if wants_button:
-                if is_real_button:   score += 2_500
-                if is_real_link:     score -= 1_500
+                if is_real_button:   score += 300
+                if is_real_link:     score -= 300
 
             if wants_link:
-                if is_real_link:     score += 2_500
-                if is_real_button:   score -= 1_500
+                if is_real_link:     score += 300
+                if is_real_button:   score -= 300
 
             if wants_input:
-                if is_real_input:    score += 1_000
-                if is_real_button:   score -= 500
+                if is_real_input:    score += 300
+                if is_real_button:   score -= 300
 
-            # ── Checkbox / radio type bonuses ───────────────────────────────
             if "checkbox" in step_l:
-                if is_real_checkbox: score += 3_000
-                elif "checkbox" in name: score += 1_000
+                if is_real_checkbox: score += 400
+                elif "checkbox" in name: score += 200
             if "radio" in step_l:
-                if is_real_radio:    score += 3_000
-                elif "radio" in name: score += 1_000
+                if is_real_radio:    score += 400
+                elif "radio" in name: score += 200
 
-            # ── Blind-mode type hints (no explicit search text) ─────────────
             if not search_texts:
                 if "dropdown" in step_l and "combobox" in name:    score += 5_000
                 elif "shadow" in step_l and "shadow"   in name:    score += 5_000
@@ -266,16 +258,10 @@ class ManulEngine:
         strategic_context: str,
         failed_ids: set,
     ) -> dict | None:
-        """
-        Locate the target element with up to 5 scroll-and-retry attempts.
-        Uses heuristics first; falls back to LLM only when genuinely ambiguous.
-        Filters out elements present in `failed_ids` (Self-Healing).
-        """
         is_blind = not search_texts and not target_field
 
         for attempt in range(5):
             raw_els = await self._snapshot(page, mode, [t.lower() for t in search_texts])
-            # Filter out broken elements
             els = [e for e in raw_els if e["id"] not in failed_ids]
 
             if not els:
@@ -317,18 +303,43 @@ class ManulEngine:
         top = scored[:8]
         best_score = top[0].get("score", 0)
 
-        if best_score >= 10_000:
-            print(f"    ⚡ CONTEXT MEMORY: reusing last element (score {best_score})")
+        if best_score >= 20_000:
+            print(f"    🧠 SEMANTIC CACHE: Reusing learned element (score {best_score})")
             return top[0]
 
-        if best_score >= 100:
+        if best_score >= 10_000:
+            print(f"    ⚡ CONTEXT MEMORY: Reusing last element (score {best_score})")
+            return top[0]
+
+        if best_score >= 500:
             label = "High confidence" if best_score >= 1_000 else "Keyword"
             print(f"    ⚙️  DOM HEURISTICS: {label} match (score {best_score})")
             return top[0]
 
+        # 🚀 ШІ отримує шанс подумати
         print(f"    🧠 AI AGENT: Ambiguity detected, analysing {len(top)} candidates…")
         idx = await self._llm_select_element(step, mode, top, strategic_context)
-        return top[idx]
+        ai_choice = top[idx]
+
+        # 🚀 SMART ANTI-PHANTOM GUARD: Перевіряємо рішення ШІ
+        if not is_blind:
+            search_terms = [t.lower() for t in search_texts]
+            if target_field: search_terms.append(target_field.lower())
+            
+            # Чи є хоч одне слово з пошуку в атрибутах вибраного елемента?
+            target_words = set(re.findall(r'\b[a-z0-9]{3,}\b', " ".join(search_terms)))
+            element_text = f"{ai_choice['name']} {ai_choice.get('html_id', '')} {ai_choice.get('data_qa', '')}".lower()
+            
+            if target_words:
+                is_match_found = any(w in element_text for w in target_words)
+                
+                # Дозволяємо пропускати, якщо це кнопка, або якщо слово знайдено
+                if not is_match_found and mode != "clickable":
+                     missing_term = search_texts[0] if search_texts else target_field
+                     print(f"    👻 ANTI-PHANTOM GUARD: AI chose '{ai_choice['name']}', but target '{missing_term}' is missing from it. Rejecting.")
+                     return None
+
+        return ai_choice
 
     # ── High-level step handlers ──────────────
 
@@ -358,20 +369,30 @@ class ManulEngine:
         var_m = re.search(r'\{(.*?)\}', step)
         target = (_extract_quoted(step) or [""])[0].replace("'", "")
         print("    ⚙️  DOM HEURISTICS: Extracting data via JS…")
+        
         val = await page.evaluate(f"""() => {{
-            const row = Array.from(document.querySelectorAll('tr,[role="row"]'))
-                            .find(r => r.innerText.toLowerCase().includes('{target}'));
-            if (!row) return null;
-            const td = Array.from(row.querySelectorAll('td'))
-                            .find(c => c.innerText.includes('%'))
-                     || Array.from(row.querySelectorAll('td'))
-                            .find(c => !isNaN(parseFloat(c.innerText)));
-            return td ? td.innerText.trim() : null;
+            const t = "{target.lower()}";
+            const row = Array.from(document.querySelectorAll('tr, [role="row"]'))
+                             .find(r => r.innerText.toLowerCase().includes(t));
+            
+            if (row) {{
+                const tds = Array.from(row.querySelectorAll('td'));
+                if (tds.length > 0) {{
+                    const numTd = tds.find(c => c.innerText.includes('%') || c.innerText.includes('$') || c.innerText.includes('Rs.') || !isNaN(parseFloat(c.innerText.trim())));
+                    if (numTd) return numTd.innerText.trim();
+                    return tds[tds.length - 1].innerText.trim();
+                }}
+                return row.innerText.trim();
+            }}
+            
+            return null;
         }}""")
+        
         if val and var_m:
             self.memory[var_m.group(1)] = val.strip()
-            print(f"    📦 COLLECTED: {val}")
+            print(f"    📦 COLLECTED: {val.strip()}")
             return True
+            
         return False
 
     async def _handle_verify(self, page, step: str) -> bool:
@@ -432,7 +453,6 @@ class ManulEngine:
         return False
 
     async def _do_drag(self, page, step: str, expected: list[str], _hint_id: int) -> bool:
-        """Resolve source + target elements for a drag-and-drop action."""
         all_els = await self._snapshot(page, "drag", [])
         if not all_els:
             return False
@@ -500,7 +520,7 @@ class ManulEngine:
         if search_texts or target_field:
             self.last_xpath = None
 
-        # ── Self-Healing Loop ─────────────────
+        cache_key = (mode, tuple([t.lower() for t in search_texts]), target_field)
         failed_ids = set()
         MAX_HEALING_ATTEMPTS = 3
 
@@ -523,16 +543,26 @@ class ManulEngine:
             tag      = el.get("tag_name", "")
             itype    = el.get("input_type", "")
 
+            # 🚀 Жорсткий захист від галюцинацій типу "Input radio" для вводу тексту
+            if mode == "input" and itype in ("radio", "checkbox", "button", "submit", "image"):
+                print(f"    👻 ANTI-PHANTOM GUARD: Rejecting '{name}' because it is a {itype} (cannot type).")
+                failed_ids.add(el_id)
+                self.last_xpath = None
+                continue 
+
             if mode == "drag":
                 return await self._do_drag(page, step, expected, el_id)
 
             loc = page.locator(f"xpath={xpath}").first
 
-            if not is_shad:
-                await loc.scroll_into_view_if_needed()
-                await self._highlight(page, loc)
-            else:
-                await self._highlight(page, el_id, by_js_id=True)
+            try:
+                if not is_shad:
+                    await loc.scroll_into_view_if_needed(timeout=2000)
+                    await self._highlight(page, loc)
+                else:
+                    await self._highlight(page, el_id, by_js_id=True)
+            except Exception:
+                pass
 
             try:
                 act_timeout = 3000
@@ -558,6 +588,8 @@ class ManulEngine:
                     if "enter" in step_l:
                         await page.keyboard.press("Enter")
                         await asyncio.sleep(4)
+                    
+                    self.learned_elements[cache_key] = {"name": name, "tag": tag}
                     self.last_xpath = None
                     return True
 
@@ -579,6 +611,8 @@ class ManulEngine:
                             await loc.select_option(value=[o.lower() for o in opts], timeout=act_timeout)
                     else:
                         await loc.click(force=True, timeout=act_timeout)
+                    
+                    self.learned_elements[cache_key] = {"name": name, "tag": tag}
                     await asyncio.sleep(ACTION_WAIT)
                     return True
 
@@ -591,6 +625,8 @@ class ManulEngine:
                         )
                     else:
                         await loc.hover(force=True, timeout=act_timeout)
+                    
+                    self.learned_elements[cache_key] = {"name": name, "tag": tag}
                     await asyncio.sleep(ACTION_WAIT)
                     return True
 
@@ -618,6 +654,8 @@ class ManulEngine:
                             else:
                                 await loc.click(force=True, timeout=act_timeout)
                                 await asyncio.sleep(ACTION_WAIT)
+                    
+                    self.learned_elements[cache_key] = {"name": name, "tag": tag}
                     return True
 
             except Exception as ex:
@@ -633,7 +671,7 @@ class ManulEngine:
     # ── Mission runner ────────────────────────
 
     async def run_mission(self, task: str, strategic_context: str = "") -> bool:
-        print(f"\n🐾 ManulEngine [{self.model}]  — Self-Healing AI")
+        print(f"\n🐱 ManulEngine v0.01 [{self.model}] — Manul went hunting...")
 
         async with async_playwright() as p:
             browser = await p.chromium.launch(
@@ -656,7 +694,7 @@ class ManulEngine:
             try:
                 for i, raw_step in enumerate(plan, 1):
                     step = _substitute_memory(raw_step, self.memory)
-                    print(f"\n[🚀 STEP {i}] {step}")
+                    print(f"\n[🐾 STEP {i}] {step}")
                     s_up = step.upper()
 
                     if re.search(r'\bNAVIGATE\b', s_up):
@@ -679,12 +717,12 @@ class ManulEngine:
                             ok = False; break
 
                     elif re.search(r'\bDONE\b', s_up):
-                        print("    🏁 MISSION ACCOMPLISHED")
+                        print("    🏁 HUNT SUCCESSFUL")
                         return True
 
                     else:
                         if not await self._execute_step(page, step, strategic_context):
-                            print("    ❌ MISSION FAILED")
+                            print("    ❌ HUNT FAILED")
                             ok = False; break
 
             finally:
