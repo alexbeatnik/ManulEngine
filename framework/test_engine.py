@@ -9,7 +9,7 @@ from framework.engine import ManulEngine
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MONSTER DOM  —  Each trap section is labelled clearly.
-# Original 24 traps + 4 optional traps + 6 bug-fix traps + 12 hunt-site traps = 46.
+# Original 24 traps + 4 optional + 6 bug-fix + 12 hunt-site + 14 normal = 60.
 # ─────────────────────────────────────────────────────────────────────────────
 MONSTER_DOM = """
 <!DOCTYPE html>
@@ -308,6 +308,97 @@ MONSTER_DOM = """
     <input type="search" id="trap_enter_input" placeholder="Wiki Search" aria-label="Wiki Search"
            onkeydown="if(event.key==='Enter') this.dataset.entered='yes'">
 </div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!-- NORMAL ELEMENTS 47-60: No tricks, pure functionality checks       -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+
+<!-- 47. Simple text input -->
+<div>
+    <label for="norm_fullname">Full Name</label>
+    <input type="text" id="norm_fullname">
+</div>
+
+<!-- 48. Simple email input -->
+<div>
+    <label for="norm_email">Work Email</label>
+    <input type="email" id="norm_email" placeholder="your@email.com">
+</div>
+
+<!-- 49. Simple text input (another variant) -->
+<div>
+    <label for="norm_token">API Token</label>
+    <input type="text" id="norm_token">
+</div>
+
+<!-- 50. Simple textarea -->
+<div>
+    <label for="norm_comment">Comment</label>
+    <textarea id="norm_comment" rows="3"></textarea>
+</div>
+
+<!-- 51. Simple button -->
+<div>
+    <button id="norm_submit_btn" onclick="this.dataset.done='yes'">Send Message</button>
+</div>
+
+<!-- 52. Simple link -->
+<div>
+    <a href="#about" id="norm_about_link">About Us</a>
+</div>
+
+<!-- 53. Readonly input (fill via JS) -->
+<div>
+    <label for="norm_readonly">Coupon Code</label>
+    <input type="text" id="norm_readonly" readonly value="OLD-CODE">
+</div>
+
+<!-- 54. Input + Enter key -->
+<div>
+    <label for="norm_login_user">Username</label>
+    <input type="text" id="norm_login_user"
+           onkeydown="if(event.key==='Enter') this.dataset.submitted='yes'">
+</div>
+
+<!-- 55. Simple radio group -->
+<fieldset>
+    <legend>Gender</legend>
+    <input type="radio" id="norm_radio_male" name="gender" value="male">
+    <label for="norm_radio_male">Male</label>
+    <input type="radio" id="norm_radio_female" name="gender" value="female">
+    <label for="norm_radio_female">Female</label>
+</fieldset>
+
+<!-- 56-57. Simple checkbox + verify -->
+<div>
+    <label for="norm_agree_chk">I Agree</label>
+    <input type="checkbox" id="norm_agree_chk">
+</div>
+
+<!-- 58. Simple native <select> -->
+<div>
+    <label for="norm_color_select">Favorite Color</label>
+    <select id="norm_color_select">
+        <option>-- pick --</option>
+        <option>Red</option>
+        <option>Green</option>
+        <option>Blue</option>
+    </select>
+</div>
+
+<!-- 59. Verify text presence / absence -->
+<div id="norm_message_box">Operation completed successfully</div>
+<div id="norm_hidden_error" style="display:none">Critical failure</div>
+
+<!-- 60. Extract from table -->
+<table id="norm_price_table">
+    <thead><tr><th>Product</th><th>Price</th></tr></thead>
+    <tbody>
+        <tr><td>Keyboard</td><td>$49</td></tr>
+        <tr><td>Monitor</td><td>$299</td></tr>
+        <tr><td>Mouse</td><td>$25</td></tr>
+    </tbody>
+</table>
 
 </body>
 </html>
@@ -658,6 +749,131 @@ TESTS = [
         "execute_step": True,
         "verify_checked": False,
     },
+
+    # ── NORMAL ELEMENTS 47-60: Straightforward Sanity Checks ──────────
+    {
+        "name": "47. Simple Text Input Fill (DemoQA: Full Name)",
+        "desc": "No tricks — label+input pair. Must fill and verify value.",
+        "step": "Fill 'Full Name' field with 'Ghost Manul'",
+        "mode": "input", "search_texts": ["Full Name"], "target_field": "full name",
+        "expected": "norm_fullname",
+        "execute_step": True,
+        "verify_value": {"selector": "#norm_fullname", "value": "Ghost Manul"},
+    },
+    {
+        "name": "48. Email Input Fill (DemoQA/ExpandTesting)",
+        "desc": "type=email input with label. Must fill correctly.",
+        "step": "Fill 'Work Email' field with 'ghost@manul.ai'",
+        "mode": "input", "search_texts": ["Work Email"], "target_field": "work email",
+        "expected": "norm_email",
+        "execute_step": True,
+        "verify_value": {"selector": "#norm_email", "value": "ghost@manul.ai"},
+    },
+    {
+        "name": "49. Text Input Fill — API Token",
+        "desc": "Simple text input with unique label. Must fill correctly.",
+        "step": "Fill 'API Token' field with 'SuperSecret123'",
+        "mode": "input", "search_texts": ["API Token"], "target_field": "api token",
+        "expected": "norm_token",
+        "execute_step": True,
+        "verify_value": {"selector": "#norm_token", "value": "SuperSecret123"},
+    },
+    {
+        "name": "50. Textarea Fill (Mega: Comment/Address)",
+        "desc": "Simple <textarea> fill. Must type multi-word text.",
+        "step": "Fill 'Comment' field with 'Great product, highly recommended'",
+        "mode": "input", "search_texts": ["Comment"], "target_field": "comment",
+        "expected": "norm_comment",
+        "execute_step": True,
+        "verify_value": {"selector": "#norm_comment", "value": "Great product, highly recommended"},
+    },
+    {
+        "name": "51. Simple Button Click (DemoQA: Submit)",
+        "desc": "Single button, no ambiguity. Click must fire onclick handler.",
+        "step": "Click the 'Send Message' button",
+        "mode": "clickable", "search_texts": ["Send Message"], "target_field": None,
+        "expected": "norm_submit_btn",
+        "execute_step": True,
+        "verify_attr": {"selector": "#norm_submit_btn", "attr": "data-done", "value": "yes"},
+    },
+    {
+        "name": "52. Simple Link Click (DemoQA: About Us)",
+        "desc": "Single <a> link. 'Click the link' must resolve to it.",
+        "step": "Click the 'About Us' link",
+        "mode": "clickable", "search_texts": ["About Us"], "target_field": None,
+        "expected": "norm_about_link",
+    },
+    {
+        "name": "53. Readonly Input Fill via JS (Rahul: Coupon Code)",
+        "desc": "readonly input must be unlocked and filled via JS injection.",
+        "step": "Fill 'Coupon Code' field with 'MANUL2026'",
+        "mode": "input", "search_texts": ["Coupon Code"], "target_field": "coupon code",
+        "expected": "norm_readonly",
+        "execute_step": True,
+        "verify_value": {"selector": "#norm_readonly", "value": "MANUL2026"},
+    },
+    {
+        "name": "54. Fill + Press Enter (Wikipedia: Search)",
+        "desc": "'Fill Username and press Enter' must type AND send Enter key.",
+        "step": "Fill 'Username' field with 'admin' and press Enter",
+        "mode": "input", "search_texts": ["Username"], "target_field": "username",
+        "expected": "norm_login_user",
+        "execute_step": True,
+        "verify_attr": {"selector": "#norm_login_user", "attr": "data-submitted", "value": "yes"},
+    },
+    {
+        "name": "55. Simple Radio Select (Mega/Rahul: Gender)",
+        "desc": "Gender radio group. 'Female' must resolve to correct radio.",
+        "step": "Click the radio button for 'Female'",
+        "mode": "clickable", "search_texts": ["Female"], "target_field": None,
+        "expected": "norm_radio_female",
+        "execute_step": True,
+        "verify_checked": True,
+    },
+    {
+        "name": "56. Simple Checkbox Check (ExpandTesting)",
+        "desc": "Check 'I Agree' checkbox. Must toggle ON.",
+        "step": "Check the 'I Agree' checkbox",
+        "mode": "clickable", "search_texts": ["I Agree"], "target_field": None,
+        "expected": "norm_agree_chk",
+        "execute_step": True,
+        "verify_checked": True,
+    },
+    {
+        "name": "57. VERIFY Checked State (ExpandTesting/Mega)",
+        "desc": "Engine run_mission calls _handle_verify. Must confirm 'I Agree' is checked.",
+        "step": "VERIFY that 'I Agree' is checked.",
+        "verify_step": True,
+        "expected_result": True,
+    },
+    {
+        "name": "58. Simple Select Option (Mega: Color)",
+        "desc": "Pick 'Blue' from a clean <select>. Must select the correct <option>.",
+        "step": "Select 'Blue' from the 'Favorite Color' dropdown",
+        "mode": "select", "search_texts": ["Blue", "Favorite Color"], "target_field": None,
+        "expected": "norm_color_select",
+        "execute_step": True,
+        "verify_select": {"selector": "#norm_color_select", "value": "Blue"},
+    },
+    {
+        "name": "59. VERIFY Text Present + NOT Present (all sites)",
+        "desc": "Must find visible text and confirm hidden text is absent.",
+        "verify_step": True,
+        "step": "VERIFY that 'Operation completed successfully' is present.",
+        "expected_result": True,
+        "followup": {
+            "step": "VERIFY that 'Critical failure' is NOT present.",
+            "expected_result": True,
+        },
+    },
+    {
+        "name": "60. EXTRACT from Table (Mega/Rahul/ExpandTesting)",
+        "desc": "Extract 'Monitor' price from a standard HTML table. Must return '$299'.",
+        "step": "EXTRACT the Price of 'Monitor' into {monitor_price}",
+        "extract_step": True,
+        "expected_var": "monitor_price",
+        "expected_value": "$299",
+    },
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -691,7 +907,7 @@ def _apply_guards(el: dict, mode: str, search_texts: list[str]) -> str | None:
 # ─────────────────────────────────────────────────────────────────────────────
 async def run_laboratory():
     print("\n" + "=" * 60)
-    print("🧪  MANUL ENGINE LABORATORY — The Chaos Chamber (46 traps)")
+    print("🧪  MANUL ENGINE LABORATORY — The Chaos Chamber (60 tests)")
     print("=" * 60)
 
     # Note: we test using execute_step directly for optional traps to see the full flow
@@ -713,7 +929,43 @@ async def run_laboratory():
             # Clear context memory between steps to avoid false positives from previous traps
             manul.last_xpath = None 
 
-            if t.get("execute_step"):
+            if t.get("extract_step"):
+                # EXTRACT test — calls _handle_extract and checks memory
+                manul.memory.clear()
+                result = await manul._handle_extract(page, t["step"])
+                actual_val = manul.memory.get(t["expected_var"], None)
+                if result and actual_val == t["expected_value"]:
+                    print(f"   ✅ PASSED  → {{{t['expected_var']}}} = '{actual_val}'")
+                    passed += 1
+                else:
+                    msg = f"FAILED — got '{actual_val}', expected '{t['expected_value']}'"
+                    print(f"   ❌ {msg}")
+                    failed += 1
+                    failures.append(f"{t['name']}: {msg}")
+
+            elif t.get("verify_step"):
+                # VERIFY test — calls _handle_verify
+                result = await manul._handle_verify(page, t["step"])
+                if result == t["expected_result"]:
+                    print(f"   ✅ PASSED  → VERIFY returned {result}")
+                    passed += 1
+                else:
+                    msg = f"FAILED — VERIFY returned {result}, expected {t['expected_result']}"
+                    print(f"   ❌ {msg}")
+                    failed += 1
+                    failures.append(f"{t['name']}: {msg}")
+                # Handle followup verify (e.g., NOT present check)
+                if t.get("followup") and result == t["expected_result"]:
+                    fu = t["followup"]
+                    fu_result = await manul._handle_verify(page, fu["step"])
+                    if fu_result == fu["expected_result"]:
+                        print(f"   ✅ FOLLOWUP  → VERIFY NOT returned {fu_result}")
+                    else:
+                        msg = f"FOLLOWUP FAILED — VERIFY returned {fu_result}, expected {fu['expected_result']}"
+                        print(f"   ❌ {msg}")
+                        # Don't double-count; the main test already counted
+
+            elif t.get("execute_step"):
                 # Full _execute_step flow — tests mode detection + scoring + action
                 result = await manul._execute_step(page, t["step"], "")
                 if not result:
@@ -752,6 +1004,15 @@ async def run_laboratory():
                             verify_detail = f"selected='{actual}', expected '{vs['value']}'"
                         else:
                             verify_detail = f"selected='{actual}'"
+
+                    elif t.get("verify_value"):
+                        vv = t["verify_value"]
+                        actual = await page.locator(vv["selector"]).input_value()
+                        if actual != vv["value"]:
+                            verify_ok = False
+                            verify_detail = f"value='{actual}', expected '{vv['value']}'"
+                        else:
+                            verify_detail = f"value='{actual}'"
 
                     if verify_ok:
                         desc = f"'{t['expected']}' {verify_detail}" if verify_detail else ""
