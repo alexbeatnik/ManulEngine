@@ -1,11 +1,11 @@
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 import asyncio
 import re
 from playwright.async_api import async_playwright
-from framework.engine import ManulEngine
+from engine import ManulEngine
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MONSTER DOM  —  Each trap section is labelled clearly.

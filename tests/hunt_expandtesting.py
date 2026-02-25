@@ -1,5 +1,5 @@
 import asyncio
-from framework.engine import ManulEngine
+from engine import ManulEngine
 
 async def main():
     manul = ManulEngine(headless=False)
