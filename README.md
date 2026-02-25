@@ -1,4 +1,4 @@
-# 🐱 ManulEngine v0.01 --- The Mastermind
+# 🐱 ManulEngine v0.02 --- The Mastermind
 
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for
 browser automation and E2E testing.
@@ -13,6 +13,33 @@ heuristics, and the reasoning of local neural networks.
 It is fast, private, and highly resilient to UI changes.
 
 > The Manul goes hunting and never returns without its prey.
+
+------------------------------------------------------------------------
+
+## 📁 Project Structure
+
+```
+browser-manul/
+├── manul.py              CLI runner (test files, inline prompts, unit tests)
+├── requirements.txt      Python dependencies
+├── .env                  Runtime configuration (model, threshold, headless)
+├── engine/               Core automation engine package
+│   ├── __init__.py       Public API — exports ManulEngine
+│   ├── prompts.py        Configuration, thresholds, LLM prompts
+│   ├── helpers.py        Pure utility functions and timing constants
+│   ├── js_scripts.py     JavaScript injected into the browser (DOM snapshot)
+│   ├── scoring.py        Heuristic element-scoring algorithm (20+ rules)
+│   ├── core.py           ManulEngine class (LLM, resolution, mission runner)
+│   ├── actions.py        Action execution mixin (click, type, select, hover, drag)
+│   └── test/
+│       └── test_engine.py  60-trap Monster DOM unit test suite
+└── tests/                Integration hunt tests (real websites)
+    ├── hunt_demoqa.py
+    ├── hunt_expandtesting.py
+    ├── hunt_mega.py
+    ├── hunt_rahul.py
+    └── hunt_wikipedia.py
+```
 
 ------------------------------------------------------------------------
 
@@ -61,15 +88,6 @@ hidden deep in the shadow tree as easily as standard DOM elements.
 
 ------------------------------------------------------------------------
 
-### 🧬 Semantic Cache & Context Memory
-
--   **Cache (20,000+ points):** Manul "learns" elements it successfully
-    resolved via AI, skipping the LLM in future runs.
--   **Memory (10,000+ points):** The engine maintains context of the
-    last active element to continue logical action chains.
-
-------------------------------------------------------------------------
-
 # 🛠️ Installation
 
 ManulEngine runs fully locally on your machine.
@@ -88,16 +106,7 @@ cd browser-manul
 ## 2️⃣ Setup Environment
 
 ``` bash
-python -m venv env
-
-# Windows
-env\Scripts\activate
-
-# Linux / macOS
-source env/bin/activate
-
 pip install playwright ollama python-dotenv
-
 python -m playwright install chromium
 ```
 
@@ -119,7 +128,28 @@ MANUL_TIMEOUT=5000
 
 ------------------------------------------------------------------------
 
-# 🚀 Quick Start
+# �️ CLI Usage
+
+``` bash
+# Run all integration tests (tests/hunt_*.py)
+python manul.py
+
+# Run a specific test
+python manul.py hunt_demoqa.py
+
+# Run in headless mode
+python manul.py --headless
+
+# Run inline mission
+python manul.py "1. NAVIGATE to https://example.com  2. Click the 'More' link  3. DONE."
+
+# Run engine unit tests (60 traps)
+python manul.py test
+```
+
+------------------------------------------------------------------------
+
+# �🚀 Quick Start
 
 Create a test file:
 
@@ -127,7 +157,7 @@ Create a test file:
 
 ``` python
 import asyncio
-from framework.engine import ManulEngine
+from engine import ManulEngine
 
 async def main():
     # Settings are automatically loaded from .env
@@ -182,17 +212,32 @@ if __name__ == "__main__":
 
 # 🐾 Chaos Chamber Verified
 
-The engine is battle-tested against the **24 Deadly DOM Traps**,
+The engine is battle-tested against **60 DOM Traps** (Monster DOM),
 successfully handling:
 
--   The Legend Trap (finding inputs via fieldset/legend)
--   Data-QA Supremacy (prioritizing automation-specific attributes)
--   ARIA Recognition (locating elements via hidden labels)
--   Ghost Opacity (interacting with near-transparent elements)
--   Readonly Hijacking (typing into locked fields)
+-   **24 core traps:** Legend Form, Phantom Guard, ARIA Recognition,
+    Shadow DOM, Data-QA Supremacy, Ghost Opacity, Readonly Hijacking,
+    Section Context, Icon-Only Buttons, Disabled Avoidance, and more.
+-   **4 optional traps:** "if exists" / "optional" keyword handling
+    with exact-match guarding against false positives.
+-   **6 bug-regression traps:** Check/Uncheck mode detection, Select
+    triple collision, Optional partial-match decoy, data-qa hyphen
+    mapping, Native checkbox JS click.
+-   **12 hunt-site pattern traps:** Textarea vs Input, Double-click,
+    Date input, Search input, Pagination, Day checkboxes, Country
+    dropdown, Hover, Checkbox toggle, Fill+Enter.
+-   **14 normal element tests:** Simple form fills, button clicks, link
+    clicks, readonly fill, radio, checkbox, VERIFY text/checked,
+    EXTRACT from table.
+
+Run the full suite:
+
+``` bash
+python manul.py test
+```
 
 ------------------------------------------------------------------------
 
-**Version:** 0.01
+**Version:** 0.02
 **Codename:** The Mastermind
 **Status:** Hunting...

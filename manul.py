@@ -8,8 +8,7 @@ Usage:
   python manul.py tests/hunt_login.py         run one test by path
   python manul.py --headless                  run all tests headless
   python manul.py hunt_login.py --headless    run one test headless
-  python manul.py "1. Navigate to ..."        run an inline mission prompt
-"""
+  python manul.py "1. Navigate to ..."        run an inline mission prompt  python manul.py test                        run engine unit tests (60 traps)"""
 
 import asyncio
 import importlib.util
@@ -63,7 +62,7 @@ async def _run_file(path: str, headless: bool) -> bool:
             result = await module.main(headless=headless)
         else:
             # Monkey-patch ManulEngine to honour the CLI headless flag
-            from framework import engine as _engine
+            from engine import core as _engine
             _OrigEngine = _engine.ManulEngine
             class _PatchedEngine(_OrigEngine):
                 def __init__(self, *a, **kw):
@@ -86,7 +85,7 @@ async def _run_file(path: str, headless: bool) -> bool:
 
 # ── Run inline mission prompt ─────────────────────────────────────────────────
 async def _run_prompt(prompt: str, headless: bool) -> None:
-    from framework.engine import ManulEngine
+    from engine import ManulEngine
     print(f"\n{'='*54}")
     print("🐾 EXECUTING DIRECT HUNT")
     print(f"{'='*54}")
@@ -128,6 +127,13 @@ async def main() -> None:
 
     # Decide what to run
     target = args[0] if args else None
+
+    # ── Engine unit tests ─────────────────────────────────────────────────
+    if target == "test":
+        from engine.test.test_engine import run_laboratory
+        success = await run_laboratory()
+        sys.exit(0 if success else 1)
+
     is_prompt = (
         target is not None
         and not target.endswith(".py")

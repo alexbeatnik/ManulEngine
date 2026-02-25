@@ -1,8 +1,15 @@
-# framework/config.py
+# engine/prompts.py
 """
-ManulEngine configuration.
-Settings are read from .env file (via python-dotenv) or environment variables.
+ManulEngine configuration, thresholds, and LLM prompts.
+
+Reads settings from .env (via python-dotenv) or environment variables.
 All values can be overridden in code via ManulEngine(model=..., ai_threshold=...).
+
+Exports:
+    DEFAULT_MODEL, HEADLESS_MODE, TIMEOUT, NAV_TIMEOUT — core settings
+    get_threshold()       — model-aware confidence threshold
+    get_executor_prompt() — model-size-aware executor prompt
+    PLANNER_SYSTEM_PROMPT — planner system prompt
 """
 
 import os
