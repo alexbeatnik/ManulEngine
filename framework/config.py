@@ -1,11 +1,70 @@
 # framework/config.py
+"""
+ManulEngine configuration.
+Settings are read from .env file (via python-dotenv) or environment variables.
+All values can be overridden in code via ManulEngine(model=..., ai_threshold=...).
+"""
 
-# ─────────────────────────────────────────────
-# PLANNER
-# Turns a free-form task description into an ordered JSON step list.
-# The LLM is only called here when the user doesn't provide pre-numbered steps.
-# ─────────────────────────────────────────────
-PLANNER_SYSTEM_PROMPT = """You are a QA Automation Planner for a browser agent.
+import os
+import re as _re
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv optional — fall back to os.environ
+
+# ── Core ──────────────────────────────────────────────────────────────────────
+DEFAULT_MODEL = os.getenv("MANUL_MODEL", "qwen2.5:0.5b")
+HEADLESS_MODE = os.getenv("MANUL_HEADLESS", "False").lower() in ("true", "1", "yes", "t")
+TIMEOUT       = int(os.getenv("MANUL_TIMEOUT",     "5000"))
+NAV_TIMEOUT   = int(os.getenv("MANUL_NAV_TIMEOUT", "30000"))
+
+# ── Confidence threshold ───────────────────────────────────────────────────────
+
+_env_threshold  = os.getenv("MANUL_AI_THRESHOLD")
+ENV_AI_THRESHOLD: "int | None" = int(_env_threshold) if _env_threshold else None
+
+
+def _threshold_for_model(model_name: str) -> int:
+    """
+    Auto-derive LLM confidence threshold from model parameter count.
+    Larger models can handle more ambiguity → higher threshold before calling AI.
+
+        < 1 b   →  500
+        1–4 b   →  750
+        5–9 b   → 1 000
+       10–19 b  → 1 500
+       20 b+    → 2 000
+    """
+    m = _re.search(r'(\d+(?:\.\d+)?)\s*b', model_name.lower())
+    if not m:
+        return 500
+    size = float(m.group(1))
+    if   size < 1:    return 500
+    elif size < 5:    return 750
+    elif size < 10:   return 1_000
+    elif size < 20:   return 1_500
+    else:             return 2_000
+
+
+def get_threshold(model_name: str, custom_threshold: "int | None" = None) -> int:
+    """
+    Priority:
+      1. custom_threshold  (passed directly to ManulEngine)
+      2. MANUL_AI_THRESHOLD in .env
+      3. Auto-calculated from model size
+    """
+    if custom_threshold is not None:
+        return custom_threshold
+    if ENV_AI_THRESHOLD is not None:
+        return ENV_AI_THRESHOLD
+    return _threshold_for_model(model_name)
+
+
+# ── Planner prompt ─────────────────────────────────────────────────────────────
+PLANNER_SYSTEM_PROMPT = """\
+You are a QA Automation Planner for a browser agent.
 Your ONLY job: convert the user's task into a strict, ordered JSON step list.
 
 RULES:
@@ -18,94 +77,83 @@ OUTPUT FORMAT:
 {"steps": ["1. Step one", "2. Step two", "..."]}
 """
 
-# ─────────────────────────────────────────────
-# EXECUTOR
-# Picks the best element from a short candidate list.
-# Called only when heuristic scoring is genuinely ambiguous (score < 500).
-# ─────────────────────────────────────────────
-EXECUTOR_SYSTEM_PROMPT = """You are a precise UI Element Selector for a browser automation agent.
+# ── Executor prompts (model-size aware) ───────────────────────────────────────
 
-CONTEXT: {strategic_context}
+_RULES_CORE = """\
+Each element has:
+  id           – integer (RETURN THIS)
+  name         – visible text / aria-label / "Section -> element text"
+  tag          – html tag: input, button, a, select, label, div …
+  role         – aria role: button, checkbox, radio, textbox …
+  data_qa      – data-qa / data-testid (strongest automation signal)
+  html_id      – html id attribute
+  icon_classes – icon css classes: "fa arrow circle right"
 
-YOUR TASK:
-Given a browser STEP and a list of visible UI ELEMENTS, return the integer id of the
-element that best matches the step's intent.
-
-Each element has these fields:
-  id           – unique integer (USE THIS in your response)
-  name         – visible text, placeholder, aria-label, or "Section -> element text"
-  tag          – HTML tag: "input", "button", "a", "select", "label", "div", etc.
-  role         – ARIA role: "button", "checkbox", "radio", "textbox", etc.
-  data_qa      – data-qa / data-testid attribute (strongest automation signal)
-  html_id      – HTML id attribute
-  icon_classes – CSS classes of child <i>/<svg> icons, normalized: "fa arrow circle right"
-
-═══════════════════════════════════════════════════
-DISAMBIGUATION RULES  (read ALL before deciding)
-═══════════════════════════════════════════════════
-
-① INTEGER id ONLY — never return a string:
-    CORRECT:   {{"id": 3, "thought": "..."}}
-    INCORRECT: {{"id": "3", "thought": "..."}}
-
-② Never invent ids not present in the list.
-
-③ ELEMENT TYPE MATCHING — the most important rule:
-   • Step says "button"           → prefer tag="button" or role="button"
-                                     AVOID tag="a" (link) or tag="input" type=radio/checkbox
-   • Step says "link"             → prefer tag="a"
-                                     AVOID tag="button"
-   • Step says "field" / "fill"   → prefer tag="input" type=text/email/password/tel
-                                     or tag="textarea"
-                                     REJECT: radio, checkbox, submit, button
-   • Step says "dropdown" / "list" / "multi-selection box" / "select"
-                                  → prefer tag="select" (name starts with "dropdown [")
-                                     AVOID checkboxes or radio buttons
-   • Step says "checkbox"         → prefer type=checkbox or role=checkbox
-   • Step says "radio"            → prefer type=radio or role=radio
-
-④ ICON-ONLY BUTTONS — when element has empty/short name but step mentions:
-   "arrow", "submit", "send", "search", "close", "next", "subscribe"
-   → check icon_classes for those keywords.
-   Example: step "Click the arrow button" + icon_classes="fa arrow circle right" → MATCH!
-   Example: step "Click the subscribe arrow" + html_id="subscribe" → MATCH!
-
-⑤ STRONG AUTOMATION SIGNALS (highest priority if present):
-   data_qa   → exact automation attribute, almost certainly correct
-   html_id   → also very reliable when it matches step keywords
-
-⑥ LOCATE / FIND steps are SOFT — they just identify context for the NEXT action.
-   If the step says "Find", "Locate", "Identify" with no clear match:
-   → Pick the element whose name contains the MOST words from the step.
-   → Never pick a completely unrelated element (radio when step mentions text).
-   → If all candidates are wrong, pick id=0 (first in list).
-
-⑦ TYPO TOLERANCE — field labels may have typos on the page:
-   "Suggession Class" ≈ "Suggestion Class" ≈ "Type to Select" (same field)
-   "Subscribtion"     ≈ "Subscription"
-   → Match by WORD OVERLAP, not exact text.
-   → For input fields: check placeholder, html_id, and nearby label context.
-
-⑧ SECTION CONTEXT — names follow "Section -> element_name" format.
-   Example: "New User Signup! -> Name input text"
-   The part AFTER "->" is the element's own label.
-   Prefer elements where the section context matches the step's context clues.
-
-⑨ TIE-BREAKING — if multiple elements match equally:
-   → Prefer the one with lower id (elements are ordered top-to-bottom on page).
-
-⑩ ONE-SENTENCE thought is REQUIRED explaining your choice.
-   Return ONLY valid JSON, nothing else.
-
-═══════════════════════════════════════════════════
-OUTPUT FORMAT
-═══════════════════════════════════════════════════
-{{"id": 0, "thought": "Brief one-sentence reason"}}
+RULES (apply in order):
+① Return INTEGER id only:  {"id": 3, "thought": "one sentence"}
+② data_qa exact match  → highest priority, beats everything else.
+③ disabled elements    → NEVER pick (they have huge negative score).
+④ Step says "button"   → prefer tag=button; AVOID tag=a / type=radio / type=checkbox.
+   Step says "link"    → prefer tag=a; AVOID button.
+   Step says "field"   → prefer input[text/email/password/tel] or textarea.
+   Step says "dropdown"→ prefer tag=select (name starts "dropdown [").
+   Step says "checkbox"→ ONLY type=checkbox or role=checkbox; penalise everything else.
+   Step says "radio"   → ONLY type=radio or role=radio.
+⑤ password step        → prefer input[type=password] over input[type=text].
+⑥ aria-label exact match → strong signal; beats same-text visible elements.
+⑦ icon-only buttons    → match icon_classes words against step keywords.
+⑧ section context      → "Section -> name"; prefer matching section.
+⑨ typo tolerance       → "Suggession" ≈ "Suggestion" (word overlap).
+⑩ tie-break            → lower id wins.
 """
 
-# ─────────────────────────────────────────────
-# Runtime settings
-# ─────────────────────────────────────────────
-DEFAULT_MODEL = "qwen2.5:0.5b"
-TIMEOUT       = 5_000    # ms — general Playwright timeout
-NAV_TIMEOUT   = 30_000   # ms — page navigation timeout
+# Tiny (< 1 b) — minimal tokens
+EXECUTOR_PROMPT_TINY = """\
+You are a UI element picker for browser automation.
+CONTEXT: {strategic_context}
+
+""" + _RULES_CORE + """
+Return ONLY: {"id": <integer>, "thought": "<one sentence>"}
+"""
+
+# Small (1–6 b)
+EXECUTOR_PROMPT_SMALL = """\
+You are a precise UI Element Selector for a browser automation agent.
+CONTEXT: {strategic_context}
+
+Given a browser STEP and a list of UI ELEMENTS, return the id of the best match.
+
+""" + _RULES_CORE + """
+OUTPUT (nothing else): {"id": 0, "thought": "one sentence"}
+"""
+
+# Large (7 b+) — with worked examples
+EXECUTOR_PROMPT_LARGE = """\
+You are a precise UI Element Selector for a browser automation agent.
+CONTEXT: {strategic_context}
+
+Given a browser STEP and a list of UI ELEMENTS, return the id of the best match.
+
+""" + _RULES_CORE + """
+EXAMPLES:
+  Step: Fill 'Email' field  →  pick input[type=text/email], NOT radio/button.
+  Step: Click 'Close' button + icon_classes "fa times"  →  icon match wins.
+  Step: Click 'Delete' for selected + data_qa "delete-selected"  →  data_qa wins.
+  Step: Click checkbox 'Remember Me' + role=checkbox div + type=text input  →  role=checkbox wins.
+  Step: Fill password field  →  input[type=password] wins over input[type=text].
+
+OUTPUT (nothing else): {"id": 0, "thought": "one sentence"}
+"""
+
+
+def get_executor_prompt(model_name: str) -> str:
+    """Return executor prompt sized for the model's parameter count."""
+    m = _re.search(r'(\d+(?:\.\d+)?)\s*b', model_name.lower())
+    size = float(m.group(1)) if m else 0.5
+    if   size < 1:  return EXECUTOR_PROMPT_TINY
+    elif size < 7:  return EXECUTOR_PROMPT_SMALL
+    else:           return EXECUTOR_PROMPT_LARGE
+
+
+# Legacy alias
+EXECUTOR_SYSTEM_PROMPT = EXECUTOR_PROMPT_SMALL
