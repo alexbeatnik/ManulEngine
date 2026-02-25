@@ -98,7 +98,7 @@ Threshold auto-calculation by model size: `<1b → 500`, `1-4b → 750`, `5-9b �
 - The anti-phantom guard only applies to `input` and `select` modes — don't extend to `clickable`.
 - Check/uncheck detection uses `"check" in lower` but `"uncheck" in lower` takes priority — order matters.
 - Optional step guard requires the search term to match text/value/aria **exactly** (case-insensitive).
-- `_do_drag` receives `source_id` — always find the source element by `source_id`, never assume `raw_els[0]`.
+- `_do_drag` receives `source_id` — finds the source element by `source_id` with `raw_els[0]` as last-resort fallback.
 - `_handle_verify` must respect `is_negative` for `checked` state — return `not checked` when step says "is not checked".
 - CLI `--headless` monkey-patch must target **both** `engine.core.ManulEngine` **and** `engine.ManulEngine` (the package re-export), because hunts import from the package level.
 
@@ -107,13 +107,14 @@ Threshold auto-calculation by model size: `<1b → 500`, `1-4b → 750`, `5-9b �
 Each element dict returned by `SNAPSHOT_JS` contains:
 
 ```
-id, name, tag_name, input_type, xpath, role, disabled,
-aria_label, data_qa, html_id, icon_classes, is_select,
-is_shadow, checked, options, value, aria_disabled
+id, name, xpath, is_select, is_shadow, class_name,
+tag_name, input_type, data_qa, html_id, icon_classes,
+aria_label, role, disabled, aria_disabled
 ```
 
 - `name` includes section context: `"Section -> Element Name input text"`.
   The scoring strips `" input <type>"` suffix and splits on `" -> "` to get the core name.
+- For `<select>` elements, `name` becomes `"dropdown [Option A | Option B | ...]"` (options are embedded into the name string, not a separate field).
 - `is_shadow` = True means the element lives inside a shadow root — use `window.manulClick(id)` / `window.manulType(id, text)` instead of Playwright locators.
 
 ## Resolution fallback chain
