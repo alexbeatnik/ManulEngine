@@ -151,22 +151,10 @@ class ManulEngine:
         target_field: str | None,
         is_blind: bool,
     ) -> list[dict]:
-        """
-        Attach a heuristic score to every element.
-        Higher score → better match without asking the LLM.
-
-        Context Memory (last_xpath bonus) is applied ONLY when the step gives us
-        no other way to identify the target — i.e. truly blind actions like
-        "SCROLL DOWN inside the list" after opening a dropdown.
-
-        Element-type scoring prevents confusing a navigation <a> with a <button>
-        that happens to share the same keyword (e.g. "Signup / Login" link vs
-        "Signup" submit button).
-        """
+        """Attach a heuristic score to every element."""
         step_l = step.lower()
         target_words = set(re.findall(r'\b[a-z0-9]{3,}\b', step_l))
 
-        # Detect what kind of element the step is asking for
         wants_button = bool(re.search(r'\bbutton\b', step_l))
         wants_link   = bool(re.search(r'\blink\b', step_l))
         wants_input  = bool(re.search(r'\bfield\b|\binput\b|\btextarea\b|\btype\b|\bfill\b', step_l))
@@ -179,7 +167,7 @@ class ManulEngine:
             html_id   = el.get("html_id", "").lower()
             icons     = el.get("icon_classes", "").lower()
             aria      = el.get("aria_label", "").lower()
-            role      = el.get("role", "").lower()   # "checkbox", "radio", "button", etc.
+            role      = el.get("role", "").lower()
             score = 0
 
             # ── Context Memory ──────────────────────────────────────────────
@@ -191,23 +179,6 @@ class ManulEngine:
                 score += 2_000
 
             # ── Search text matches (name, aria, html_id, icons) ────────────
-            # We compute a "precision" score for each search term:
-            #
-            #   exact_match   → the element name IS the search term (stripped)
-            #                   e.g. search="click me", name="click me"  → +3000
-            #
-            #   tight_match   → search term matches the CORE of the name
-            #                   (name words - context prefix words)
-            #                   e.g. search="click me", name="section -> click me button"
-            #                   core = "click me button", close enough → +1500
-            #
-            #   loose_match   → search term is anywhere in name as substring → +1000
-            #                   BUT penalise proportionally for extra words in name
-            #                   e.g. search="click me" in "double click me" → 1000 - penalty
-            #
-            # This prevents "Double Click Me" from outscoring "Click Me" for "Click Me".
-
-            # Strip context prefix (everything before " -> ") for tighter matching
             name_core = name.split(" -> ")[-1].strip() if " -> " in name else name
 
             for t in search_texts:
@@ -215,26 +186,17 @@ class ManulEngine:
                 if not tl:
                     continue
 
-                # ── Name matching ──────────────────────────────────────────
                 if name_core == tl or name == tl:
-                    # Perfect match — highest priority
                     score += 3_000
                 elif name_core.startswith(tl) or name_core.endswith(tl):
-                    # Core starts/ends with our term → very tight
                     score += 2_000
                 elif tl in name_core:
-                    # Substring in core — apply word-count penalty
-                    # Penalty = 50 per extra word in core vs search term
-                    extra_words = max(0,
-                        len(name_core.split()) - len(tl.split())
-                    )
+                    extra_words = max(0, len(name_core.split()) - len(tl.split()))
                     score += max(200, 1_000 - extra_words * 150)
                 elif tl in name:
-                    # Substring in full name (including context prefix)
                     extra_words = max(0, len(name.split()) - len(tl.split()))
                     score += max(100, 800 - extra_words * 100)
 
-                # ── Aria / html_id / icon matching ────────────────────────
                 if tl in aria:        score += 800
                 if tl in html_id:     score += 600
                 if any(w in icons for w in tl.split() if len(w) > 3):
@@ -252,12 +214,6 @@ class ManulEngine:
                     score += 5_000
 
             # ── Element-type context bonuses / penalties ────────────────────
-            #
-            # The core insight: when a step says "button", prefer <button> and
-            # <input type=submit> over <a href>. When it says "link", prefer <a>.
-            # This prevents "Signup / Login" navigation link from winning over
-            # the actual "Signup" submit button.
-            #
             is_real_button = tag == "button" or role == "button" \
                           or (tag == "input" and itype in ("submit", "button", "image"))
             is_real_link   = tag == "a"
@@ -308,15 +264,19 @@ class ManulEngine:
         search_texts: list[str],
         target_field: str | None,
         strategic_context: str,
+        failed_ids: set,
     ) -> dict | None:
         """
         Locate the target element with up to 5 scroll-and-retry attempts.
         Uses heuristics first; falls back to LLM only when genuinely ambiguous.
+        Filters out elements present in `failed_ids` (Self-Healing).
         """
         is_blind = not search_texts and not target_field
 
         for attempt in range(5):
-            els = await self._snapshot(page, mode, [t.lower() for t in search_texts])
+            raw_els = await self._snapshot(page, mode, [t.lower() for t in search_texts])
+            # Filter out broken elements
+            els = [e for e in raw_els if e["id"] not in failed_ids]
 
             if not els:
                 if attempt < 4:
@@ -324,11 +284,9 @@ class ManulEngine:
                     await asyncio.sleep(1)
                 continue
 
-            # Drag-and-drop: just needs two elements
             if mode == "drag":
                 break
 
-            # Quick exact-match pass
             exact = []
             for el in els:
                 name = el["name"].lower().strip()
@@ -368,20 +326,21 @@ class ManulEngine:
             print(f"    ⚙️  DOM HEURISTICS: {label} match (score {best_score})")
             return top[0]
 
-        # Genuinely ambiguous → ask the LLM
         print(f"    🧠 AI AGENT: Ambiguity detected, analysing {len(top)} candidates…")
         idx = await self._llm_select_element(step, mode, top, strategic_context)
         return top[idx]
 
     # ── High-level step handlers ──────────────
 
-    async def _handle_navigate(self, page, step: str):
-        url = re.search(r'(https?://[^\s\'"<>]+)', step)
-        if not url:
-            return
-        await page.goto(url.group(1), wait_until="domcontentloaded", timeout=config.NAV_TIMEOUT)
+    async def _handle_navigate(self, page, step: str) -> bool:
+        u = re.search(r'((?:https?|file)://[^\s\'"<>]+)', step)
+        if not u:
+            print("    ❌ Invalid URL")
+            return False
+        await page.goto(u.group(1), wait_until="domcontentloaded", timeout=config.NAV_TIMEOUT)
         self.last_xpath = None
         await asyncio.sleep(NAV_WAIT)
+        return True
 
     async def _handle_scroll(self, page, step: str):
         step_l = step.lower()
@@ -423,7 +382,6 @@ class ManulEngine:
             "enabled"  if re.search(r'\bENABLED\b',  step.upper()) else None
         )
 
-        # "is checked" / "is not checked" — verify checkbox/radio state, not text
         is_checked_verify = bool(re.search(r'\bchecked\b', step.lower()))
 
         msg = f"    ⚙️  DOM HEURISTICS: Scanning for {expected}"
@@ -434,9 +392,7 @@ class ManulEngine:
 
         for _ in range(12):
             try:
-                # ── Checkbox/radio state verification ──
                 if is_checked_verify and expected:
-                    # Find elements whose label matches; inspect .checked property
                     snapshot = await self._snapshot(page, "locate", [expected[0].lower()])
                     for el in snapshot:
                         if expected[0].lower() in el["name"].lower():
@@ -446,9 +402,8 @@ class ManulEngine:
                             if ok:
                                 print("    ✅ VERIFIED")
                                 return True
-                            break  # found element, state wrong → keep retrying
+                            break
 
-                # ── Element state (disabled/enabled) ──
                 elif state_check and expected:
                     els = await self._snapshot(page, "locate", expected)
                     if els:
@@ -460,7 +415,6 @@ class ManulEngine:
                             print("    ✅ VERIFIED")
                             return True
 
-                # ── Visible text presence ──
                 else:
                     text = await page.evaluate(_VISIBLE_TEXT_JS)
                     clean = " ".join(text.replace("\u2019", "'").split())
@@ -476,175 +430,6 @@ class ManulEngine:
 
         print("    ❌ VERIFICATION FAILED")
         return False
-
-    # ── Action dispatcher ─────────────────────
-
-    async def _execute_step(self, page, step: str, strategic_context: str) -> bool:
-        step_l = step.lower()
-        words = set(re.findall(r'\b[a-z0-9]+\b', step_l))
-
-        if "drag" in words and "drop" in words:  mode = "drag"
-        elif "select" in words or "choose" in words: mode = "select"
-        elif any(w in words for w in ("type", "fill", "enter")): mode = "input"
-        elif "click" in words or "double" in words: mode = "clickable"
-        elif "hover" in words: mode = "hover"
-        else: mode = "locate"
-
-        preserve = mode in ("input", "select")
-        expected = _extract_quoted(step, preserve_case=preserve)
-
-        # Split "fill X into field Y" → search=[Y], type=X
-        target_field: str | None = None
-        txt_to_type = ""
-        search_texts: list[str] = []
-
-        if mode == "input" and expected:
-            txt_to_type = expected[-1]
-            search_texts = expected[:-1]
-            m = re.search(r'(?:into\s+the\s+|into\s+)([a-zA-Z0-9_]+)\s*field', step_l)
-            if m and m.group(1) not in ("that", "the", "a", "an"):
-                target_field = m.group(1).lower()
-        else:
-            search_texts = expected
-
-        # ── Resolve ───────────────────────────
-        # Clear stale memory if this step has explicit search signals —
-        # prevents "context memory" from hijacking a completely different element.
-        if search_texts or target_field:
-            self.last_xpath = None
-
-        el = await self._resolve_element(
-            page, step, mode, search_texts, target_field, strategic_context
-        )
-        if el is None:
-            return False
-
-        self.last_xpath = el["xpath"]
-        name     = el["name"]
-        xpath    = el["xpath"]
-        is_sel   = el.get("is_select", False)
-        is_shad  = el.get("is_shadow", False)
-        el_id    = el["id"]
-        tag      = el.get("tag_name", "")
-        itype    = el.get("input_type", "")
-
-        # ── Drag & Drop ───────────────────────
-        if mode == "drag":
-            return await self._do_drag(page, step, expected, el_id)
-
-        loc = page.locator(f"xpath={xpath}").first
-
-        # Scroll + highlight
-        if not is_shad:
-            await loc.scroll_into_view_if_needed()
-            await self._highlight(page, loc)
-        else:
-            await self._highlight(page, el_id, by_js_id=True)
-
-        try:
-            # ── Input ─────────────────────────
-            if mode == "input":
-                print(f"    ⌨️  Typed '{txt_to_type}' → '{name[:30]}'")
-                if is_shad:
-                    await page.evaluate(f"window.manulType({el_id}, '{txt_to_type}')")
-                else:
-                    # Check if element is readonly (e.g. datepicker widgets)
-                    is_readonly = await loc.evaluate("el => el.readOnly || el.hasAttribute('readonly')")
-                    if is_readonly:
-                        # For readonly inputs: use JS to set value directly and fire events
-                        escaped = txt_to_type.replace("'", "\\'")
-                        await page.evaluate(f"""el => {{
-                            el.removeAttribute('readonly');
-                            el.value = '{escaped}';
-                            el.dispatchEvent(new Event('input', {{bubbles: true}}));
-                            el.dispatchEvent(new Event('change', {{bubbles: true}}));
-                            el.dispatchEvent(new KeyboardEvent('keydown', {{bubbles: true}}));
-                        }}""", await loc.element_handle())
-                    else:
-                        await loc.fill("")
-                        await loc.type(txt_to_type, delay=50)
-                if "enter" in step_l:
-                    await page.keyboard.press("Enter")
-                    await asyncio.sleep(4)
-                # After typing into a field, clear context memory so the NEXT step
-                # (e.g. "click the arrow button next to this field") doesn't accidentally
-                # reuse the input element when there are no other search signals.
-                self.last_xpath = None
-                return True
-
-            # ── Select ────────────────────────
-            elif mode == "select":
-                if is_sel:
-                    valid = await loc.evaluate(
-                        """(sel, exp) => exp.filter(e =>
-                            Array.from(sel.options).some(o =>
-                                o.text.trim().toLowerCase() === e.toLowerCase() ||
-                                o.value.trim().toLowerCase() === e.toLowerCase()
-                            ))""",
-                        expected,
-                    )
-                    opts = valid or expected or [list(set(re.findall(r'\b[a-z0-9]{3,}\b', step_l)))[0]]
-                    print(f"    🗂️  Selected {opts} from '{name[:30]}'")
-                    try:
-                        await loc.select_option(label=opts)
-                    except Exception:
-                        await loc.select_option(value=[o.lower() for o in opts])
-                else:
-                    await loc.click(force=True)
-                await asyncio.sleep(ACTION_WAIT)
-                return True
-
-            # ── Hover ─────────────────────────
-            elif mode == "hover":
-                print(f"    🚁  Hovered '{name[:30]}'")
-                if is_shad:
-                    await page.evaluate(
-                        f"window.manulElements[{el_id}].dispatchEvent("
-                        "new MouseEvent('mouseover',{bubbles:true,cancelable:true,view:window}))"
-                    )
-                else:
-                    await loc.hover(force=True)
-                await asyncio.sleep(ACTION_WAIT)
-                return True
-
-            # ── Click / Double-click ──────────
-            else:
-                print(f"    🖱️  Clicked '{name[:30]}'")
-                if is_shad:
-                    fn = "manulDoubleClick" if "double" in step_l else "manulClick"
-                    await page.evaluate(f"window.{fn}({el_id})")
-                    await asyncio.sleep(ACTION_WAIT)
-                else:
-                    if "double" in step_l:
-                        await loc.dblclick()
-                        await asyncio.sleep(ACTION_WAIT)
-                    else:
-                        # For form submit buttons — wait for the page to fully settle
-                        # so AJAX/redirect success messages are visible before VERIFY.
-                        is_submit = (
-                            itype == "submit"
-                            or (tag == "button" and itype in ("", "submit"))
-                        )
-                        if is_submit:
-                            # Click once, then wait for navigation OR network idle.
-                            # We do NOT click again in the except — that caused double submit.
-                            await loc.click(force=True)
-                            try:
-                                # Case A: full page navigation (standard POST form)
-                                await page.wait_for_load_state(
-                                    "networkidle", timeout=10_000
-                                )
-                            except Exception:
-                                # Case B: AJAX form — no navigation, just wait for DOM settle
-                                await asyncio.sleep(3.0)
-                        else:
-                            await loc.click(force=True)
-                            await asyncio.sleep(ACTION_WAIT)
-                return True
-
-        except Exception as ex:
-            print(f"    ❌ Action error: {ex}")
-            return False
 
     async def _do_drag(self, page, step: str, expected: list[str], _hint_id: int) -> bool:
         """Resolve source + target elements for a drag-and-drop action."""
@@ -676,17 +461,179 @@ class ManulEngine:
             await self._highlight(page, all_els[tgt_idx]["id"], "green", "#ccffcc", by_js_id=True)
             print(f"    🔄 Dragging '{all_els[src_idx]['name'][:25]}'"
                   f" → '{all_els[tgt_idx]['name'][:25]}'")
-            await src_loc.drag_to(tgt_loc)
+            await src_loc.drag_to(tgt_loc, timeout=3000)
             await asyncio.sleep(ACTION_WAIT)
             return True
         except Exception as ex:
             print(f"    ❌ Drag error: {ex}")
             return False
 
+    # ── Action dispatcher ─────────────────────
+
+    async def _execute_step(self, page, step: str, strategic_context: str) -> bool:
+        step_l = step.lower()
+        words = set(re.findall(r'\b[a-z0-9]+\b', step_l))
+
+        if "drag" in words and "drop" in words:  mode = "drag"
+        elif "select" in words or "choose" in words: mode = "select"
+        elif any(w in words for w in ("type", "fill", "enter")): mode = "input"
+        elif "click" in words or "double" in words: mode = "clickable"
+        elif "hover" in words: mode = "hover"
+        else: mode = "locate"
+
+        preserve = mode in ("input", "select")
+        expected = _extract_quoted(step, preserve_case=preserve)
+
+        target_field: str | None = None
+        txt_to_type = ""
+        search_texts: list[str] = []
+
+        if mode == "input" and expected:
+            txt_to_type = expected[-1]
+            search_texts = expected[:-1]
+            m = re.search(r'(?:into\s+the\s+|into\s+)([a-zA-Z0-9_]+)\s*field', step_l)
+            if m and m.group(1) not in ("that", "the", "a", "an"):
+                target_field = m.group(1).lower()
+        else:
+            search_texts = expected
+
+        if search_texts or target_field:
+            self.last_xpath = None
+
+        # ── Self-Healing Loop ─────────────────
+        failed_ids = set()
+        MAX_HEALING_ATTEMPTS = 3
+
+        for attempt in range(MAX_HEALING_ATTEMPTS):
+            el = await self._resolve_element(
+                page, step, mode, search_texts, target_field, strategic_context, failed_ids
+            )
+            
+            if el is None:
+                if attempt > 0:
+                    print("    💀 SELF-HEALING FAILED: No more candidates found.")
+                return False
+
+            self.last_xpath = el["xpath"]
+            name     = el["name"]
+            xpath    = el["xpath"]
+            is_sel   = el.get("is_select", False)
+            is_shad  = el.get("is_shadow", False)
+            el_id    = el["id"]
+            tag      = el.get("tag_name", "")
+            itype    = el.get("input_type", "")
+
+            if mode == "drag":
+                return await self._do_drag(page, step, expected, el_id)
+
+            loc = page.locator(f"xpath={xpath}").first
+
+            if not is_shad:
+                await loc.scroll_into_view_if_needed()
+                await self._highlight(page, loc)
+            else:
+                await self._highlight(page, el_id, by_js_id=True)
+
+            try:
+                act_timeout = 3000
+
+                if mode == "input":
+                    print(f"    ⌨️  Typed '{txt_to_type}' → '{name[:30]}'")
+                    if is_shad:
+                        await page.evaluate(f"window.manulType({el_id}, '{txt_to_type}')")
+                    else:
+                        is_readonly = await loc.evaluate("el => el.readOnly || el.hasAttribute('readonly')")
+                        if is_readonly:
+                            escaped = txt_to_type.replace("'", "\\'")
+                            await page.evaluate(f"""el => {{
+                                el.removeAttribute('readonly');
+                                el.value = '{escaped}';
+                                el.dispatchEvent(new Event('input', {{bubbles: true}}));
+                                el.dispatchEvent(new Event('change', {{bubbles: true}}));
+                                el.dispatchEvent(new KeyboardEvent('keydown', {{bubbles: true}}));
+                            }}""", await loc.element_handle())
+                        else:
+                            await loc.fill("", timeout=act_timeout)
+                            await loc.type(txt_to_type, delay=50, timeout=act_timeout)
+                    if "enter" in step_l:
+                        await page.keyboard.press("Enter")
+                        await asyncio.sleep(4)
+                    self.last_xpath = None
+                    return True
+
+                elif mode == "select":
+                    if is_sel:
+                        valid = await loc.evaluate(
+                            """(sel, exp) => exp.filter(e =>
+                                Array.from(sel.options).some(o =>
+                                    o.text.trim().toLowerCase() === e.toLowerCase() ||
+                                    o.value.trim().toLowerCase() === e.toLowerCase()
+                                ))""",
+                            expected,
+                        )
+                        opts = valid or expected or [list(set(re.findall(r'\b[a-z0-9]{3,}\b', step_l)))[0]]
+                        print(f"    🗂️  Selected {opts} from '{name[:30]}'")
+                        try:
+                            await loc.select_option(label=opts, timeout=act_timeout)
+                        except Exception:
+                            await loc.select_option(value=[o.lower() for o in opts], timeout=act_timeout)
+                    else:
+                        await loc.click(force=True, timeout=act_timeout)
+                    await asyncio.sleep(ACTION_WAIT)
+                    return True
+
+                elif mode == "hover":
+                    print(f"    🚁  Hovered '{name[:30]}'")
+                    if is_shad:
+                        await page.evaluate(
+                            f"window.manulElements[{el_id}].dispatchEvent("
+                            "new MouseEvent('mouseover',{bubbles:true,cancelable:true,view:window}))"
+                        )
+                    else:
+                        await loc.hover(force=True, timeout=act_timeout)
+                    await asyncio.sleep(ACTION_WAIT)
+                    return True
+
+                else:
+                    print(f"    🖱️  Clicked '{name[:30]}'")
+                    if is_shad:
+                        fn = "manulDoubleClick" if "double" in step_l else "manulClick"
+                        await page.evaluate(f"window.{fn}({el_id})")
+                        await asyncio.sleep(ACTION_WAIT)
+                    else:
+                        if "double" in step_l:
+                            await loc.dblclick(timeout=act_timeout)
+                            await asyncio.sleep(ACTION_WAIT)
+                        else:
+                            is_submit = (
+                                itype == "submit"
+                                or (tag == "button" and itype in ("", "submit"))
+                            )
+                            if is_submit:
+                                await loc.click(force=True, timeout=act_timeout)
+                                try:
+                                    await page.wait_for_load_state("networkidle", timeout=10_000)
+                                except Exception:
+                                    await asyncio.sleep(3.0)
+                            else:
+                                await loc.click(force=True, timeout=act_timeout)
+                                await asyncio.sleep(ACTION_WAIT)
+                    return True
+
+            except Exception as ex:
+                err_msg = str(ex).split('\n')[0][:80]
+                print(f"    ❌ Action error: {err_msg}...")
+                print(f"    🚑 SELF-HEALING: Rejecting candidate {el_id} and retrying...")
+                failed_ids.add(el_id)
+                self.last_xpath = None
+                await asyncio.sleep(1)
+
+        return False
+
     # ── Mission runner ────────────────────────
 
     async def run_mission(self, task: str, strategic_context: str = "") -> bool:
-        print(f"\n🐾 ManulEngine [{self.model}]  — Transparent AI")
+        print(f"\n🐾 ManulEngine [{self.model}]  — Self-Healing AI")
 
         async with async_playwright() as p:
             browser = await p.chromium.launch(
@@ -696,7 +643,6 @@ class ManulEngine:
             ctx  = await browser.new_context(no_viewport=True)
             page = await ctx.new_page()
 
-            # ── Parse or plan steps ──────────
             if re.match(r'^\s*\d+\.', task):
                 plan = [s.strip() for s in re.split(r'(?=\b\d+\.\s)', task) if s.strip()]
             else:
@@ -714,7 +660,8 @@ class ManulEngine:
                     s_up = step.upper()
 
                     if re.search(r'\bNAVIGATE\b', s_up):
-                        await self._handle_navigate(page, step)
+                        if not await self._handle_navigate(page, step):
+                            ok = False; break
 
                     elif re.search(r'\bWAIT\b', s_up):
                         n = re.search(r'(\d+)', step)
@@ -737,7 +684,7 @@ class ManulEngine:
 
                     else:
                         if not await self._execute_step(page, step, strategic_context):
-                            print("    ❌ ACTION FAILED")
+                            print("    ❌ MISSION FAILED")
                             ok = False; break
 
             finally:
@@ -754,16 +701,10 @@ _VISIBLE_TEXT_JS = """() => {
     let t = (document.body.innerText || "") + " ";
     document.querySelectorAll('*').forEach(el => {
         const st = window.getComputedStyle(el);
-        // Include elements that are visible OR are alert/success messages
-        // (some sites use display:block on .alert after POST but innerText
-        //  is already in body.innerText — this catches edge cases)
         const isHidden = st.display === 'none'
                       || st.visibility === 'hidden'
                       || st.opacity === '0';
 
-        // Always include alert / notification elements regardless of computed style,
-        // because some sites toggle them via JS after AJAX and computed style may
-        // briefly be stale in the Playwright snapshot.
         const isAlert = el.classList && (
             el.classList.contains('alert') ||
             el.classList.contains('success') ||
@@ -785,10 +726,8 @@ _VISIBLE_TEXT_JS = """() => {
 }"""
 
 _SNAPSHOT_JS = r"""([mode, expected_texts]) => {
-    // ── Persistent element registry ──
     if (!window.manulElements)  { window.manulElements = {}; window.manulIdCounter = 0; }
 
-    // ── Injected helpers (idempotent) ──
     window.manulHighlight = (id, color, bg) => {
         const el = window.manulElements[id]; if (!el) return;
         el.scrollIntoView({ behavior:'smooth', block:'center' });
@@ -813,33 +752,16 @@ _SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         el.dispatchEvent(new Event('change',{bubbles:true}));
     };
 
-    // ── DOM collection ──
-    // Base selectors cover standard HTML interactive elements.
-    // Extended selectors capture custom UI libraries:
-    //   - label               → React checkbox trees (demoqa), toggle labels
-    //   - [role="checkbox"]   → ARIA custom checkboxes
-    //   - [role="radio"]      → ARIA custom radios
-    //   - [role="button"]     → ARIA custom buttons
-    //   - [role="tab"]        → Tab widgets
-    //   - [role="option"]     → Custom dropdowns (react-select, etc.)
-    //   - [class*="rct-"]     → React Checkbox Tree nodes
-    //   - [class*="checkbox"] → Generic custom checkbox wrappers
-    //   - [onclick]           → Any element with explicit click handler
     const INTERACTIVE_INPUT = "input,textarea,[contenteditable='true']";
     const INTERACTIVE_CLICK = [
-        // Standard
         "button","a","input[type='radio']","input[type='checkbox']",
         "select",".dropbtn","summary",
         ".ui-draggable",".ui-droppable",".option","input",
-        // Labels (often the real click target in custom checkbox trees)
         "label",
-        // ARIA roles
         "[role='button']","[role='checkbox']","[role='radio']",
         "[role='tab']","[role='option']","[role='menuitem']","[role='switch']",
-        // Custom checkbox / tree libraries
         "[class*='rct-node-clickable']","[class*='rct-title']",
         "[class*='checkbox']","[class*='check-box']",
-        // Explicit click handlers (catch-all for JS widgets)
         "[onclick]",
     ].join(",");
 
@@ -847,12 +769,10 @@ _SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         ? INTERACTIVE_INPUT
         : INTERACTIVE_CLICK;
 
-    // Dedup by DOM node (multiple selectors may match the same element)
     const seen = new Set();
     const results = [];
     const collect = (root, inShadow=false) => {
         root.querySelectorAll(INTERACTIVE).forEach(el => {
-            // Dedup — multiple CSS selectors can match the same DOM node
             if (seen.has(el)) return;
             seen.add(el);
 
@@ -861,20 +781,14 @@ _SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             const st = window.getComputedStyle(el);
             if (st.visibility==='hidden'||st.display==='none') return;
 
-            // For <label> elements: skip bare labels that are just wrappers
-            // for a visible <input> already in the list — keep only labels
-            // that ARE the clickable thing (custom checkbox trees, toggles).
             if (el.tagName==='LABEL') {
                 const linked = el.htmlFor
                     ? document.getElementById(el.htmlFor)
                     : el.querySelector('input');
-                // If the linked input is also visible and not hidden, skip the label
-                // UNLESS the label itself carries meaningful text the input doesn't
                 if (linked) {
                     const lr = linked.getBoundingClientRect();
                     if (lr.width > 2 && lr.height > 2
                         && window.getComputedStyle(linked).display !== 'none') {
-                        // Label wraps a visible input — skip the label, keep the input
                         return;
                     }
                 }
@@ -893,10 +807,8 @@ _SNAPSHOT_JS = r"""([mode, expected_texts]) => {
     };
     collect(document);
 
-    // Sort top-to-bottom
     results.sort((a,b)=>a.el.getBoundingClientRect().top-b.el.getBoundingClientRect().top);
 
-    // ── XPath helper ──
     const getXPath = el => {
         if(el.id) return `//*[@id="${el.id}"]`;
         const parts=[];
@@ -909,9 +821,7 @@ _SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         return `/${parts.join('/')}`;
     };
 
-    // ── Context label helper ──
     const labelFor = el => {
-        // Standard checkbox / radio
         if (el.tagName==='INPUT' && (el.type==='checkbox' || el.type==='radio')) {
             const tr = el.closest('tr');
             if (tr) return tr.innerText.trim().replace(/\s+/g,' ');
@@ -919,7 +829,6 @@ _SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             if (lbl) return lbl.innerText.trim();
         }
 
-        // Standard input / select / textarea
         if (['INPUT','SELECT','TEXTAREA'].includes(el.tagName)) {
             const lbl = document.querySelector(`label[for="${el.id}"]`);
             if (lbl) return lbl.innerText.trim();
@@ -935,17 +844,13 @@ _SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             }
         }
 
-        // Custom checkbox tree nodes (React Checkbox Tree, demoqa, etc.)
-        // The clickable element is often a <span class="rct-node-clickable"> or
-        // <label class="..."> that contains a <span class="rct-title">text</span>
         const role = el.getAttribute('role') || '';
         if (role === 'checkbox' || role === 'radio' ||
             (el.className && typeof el.className === 'string' &&
              (el.className.includes('rct-') || el.className.includes('checkbox')))) {
-            // Look for a sibling or child title span
             const title = el.querySelector('[class*="title"],[class*="label"]')
                        || el.closest('[class*="node"],[class*="item"],[class*="tree-item"]')
-                            ?.querySelector('[class*="title"],[class*="label"]');
+                             ?.querySelector('[class*="title"],[class*="label"]');
             if (title) return title.innerText.trim();
         }
 
@@ -955,12 +860,10 @@ _SNAPSHOT_JS = r"""([mode, expected_texts]) => {
     return results.map(({el,inShadow})=>{
         let name, isSelect=false;
 
-        // Collect all icon classes from child <i> / <svg> / <span> elements
-        // e.g. "fa fa-arrow-circle-o-right" → "arrow circle right" for scoring
         const iconClasses = Array.from(el.querySelectorAll('i,svg,span[class*="icon"]'))
             .map(i => i.className || i.getAttribute('class') || '')
             .join(' ')
-            .replace(/[-_]/g, ' ')   // fa-arrow → fa arrow, arrow-circle → arrow circle
+            .replace(/[-_]/g, ' ')
             .toLowerCase();
 
         const htmlId    = el.id || '';
@@ -970,7 +873,6 @@ _SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             isSelect=true;
             name='dropdown ['+Array.from(el.options).map(o=>o.text.trim()).join(' | ')+']';
         } else {
-            // For icon-only buttons (no innerText), build a rich semantic name
             const rawText = el.innerText ? el.innerText.trim() : '';
             name = rawText
                 || ariaLabel
