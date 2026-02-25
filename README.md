@@ -1,16 +1,16 @@
 # 🐱 ManulEngine v0.01 --- The Mastermind
 
-**ManulEngine** is a relentless hybrid (neuro-symbolic) framework for
+ManulEngine is a relentless hybrid (neuro-symbolic) framework for
 browser automation and E2E testing.
 
-Instead of writing brittle CSS/XPath locators that break on every UI
-update, you write tests in **plain English**.\
-Instead of paying for expensive cloud APIs and waiting seconds for every
-click, you use **micro-LLMs locally**.
+Forget brittle CSS/XPath locators that break on every UI update---write
+tests in plain English.
+Stop paying for expensive cloud APIs and waiting seconds for every
+click---leverage local micro-LLMs via Ollama.
 
 Manul combines the blazing speed of Playwright, powerful JavaScript DOM
-heuristics, and the reasoning of local neural networks (via Ollama).\
-It is designed to be fast, private, and highly resilient to UI changes.
+heuristics, and the reasoning of local neural networks.
+It is fast, private, and highly resilient to UI changes.
 
 > The Manul goes hunting and never returns without its prey.
 
@@ -21,11 +21,22 @@ It is designed to be fast, private, and highly resilient to UI changes.
 ### ⚡ Heuristics-First Architecture
 
 95% of the heavy lifting (element finding, assertions, DOM parsing) is
-handled by ultra-fast JavaScript.\
+handled by ultra-fast JavaScript.
 The AI steps in only when genuine ambiguity arises.
 
-Result: dramatically faster execution than AI-first automation
-approaches.
+**Result:** Execution speeds significantly faster than "AI-first"
+automation approaches.
+
+------------------------------------------------------------------------
+
+### 🎛️ Adjustable AI Threshold (Paranoia Level)
+
+Control the engine's confidence via `.env` using a scoring system:
+
+-   **Low (200--500):** Blazing speed. Manul trusts its heuristic
+    algorithms for most tasks.
+-   **High (10,000+):** "Paranoid" mode. The AI Agent verifies almost
+    every step for maximum precision.
 
 ------------------------------------------------------------------------
 
@@ -33,69 +44,35 @@ approaches.
 
 Strict protection against LLM hallucinations.
 
-If the model tries to: - Type text into a radio button - Select an
-option from a checkbox - Perform an illogical action
+If the model tries to: - Type into a radio button
+- Click a hidden element
 
-The Guard: 1. Blocks the action\
-2. Rejects the candidate\
+The Guard: 1. Blocks the action
+2. Blacklists the element
 3. Triggers a self-healing cycle
 
 ------------------------------------------------------------------------
 
-### 🚑 Self-Healing Loops
+### 🌑 Shadow DOM Penetration
 
-If an element is: - Missing\
-- Blocked\
-- Rejected
-
-Manul: - Adds it to a blocklist\
-- Scrolls if needed\
-- Retries up to 5 times
+Manul sees no barriers.
+The engine automatically pierces Shadow Roots, interacting with elements
+hidden deep in the shadow tree as easily as standard DOM elements.
 
 ------------------------------------------------------------------------
 
-### 🧠 Semantic Cache
+### 🧬 Semantic Cache & Context Memory
 
-When Manul successfully resolves a complex element using AI, it learns
-it.
-
-Future interactions: - Skip the LLM\
-- Execute instantly\
-- Receive high internal scoring (20,000+)
-
-------------------------------------------------------------------------
-
-### 📊 Structured Table Extractor
-
-Dynamically parses tables into:
-
-``` python
-List[Dict]
-```
-
-Manul: - Matches your natural language request\
-- Aligns it with actual table headers\
-- Extracts precise cell data without hardcoded logic
-
-------------------------------------------------------------------------
-
-### 🔒 Zero Data Leak
-
-All website data: - Stays local\
-- Is never sent to the cloud\
-- Is never stored externally
-
-Ideal for: - Fintech\
-- Healthcare\
-- Secure enterprise networks
+-   **Cache (20,000+ points):** Manul "learns" elements it successfully
+    resolved via AI, skipping the LLM in future runs.
+-   **Memory (10,000+ points):** The engine maintains context of the
+    last active element to continue logical action chains.
 
 ------------------------------------------------------------------------
 
 # 🛠️ Installation
 
-ManulEngine runs fully locally.
-
-Requirements: - Python 3.10+ - Playwright - Ollama
+ManulEngine runs fully locally on your machine.
 
 ------------------------------------------------------------------------
 
@@ -108,40 +85,36 @@ cd browser-manul
 
 ------------------------------------------------------------------------
 
-## 2️⃣ Setup Python Environment
+## 2️⃣ Setup Environment
 
 ``` bash
 python -m venv env
 
-# Linux / macOS
-source env/bin/activate  
-
 # Windows
-# env\Scripts\activate   
+env\Scripts\activate
 
-pip install playwright ollama
-```
+# Linux / macOS
+source env/bin/activate
 
-------------------------------------------------------------------------
+pip install playwright ollama python-dotenv
 
-## 3️⃣ Install Playwright Browsers
-
-``` bash
 python -m playwright install chromium
 ```
 
 ------------------------------------------------------------------------
 
-## 4️⃣ Install and Run Ollama
+## 3️⃣ Configuration (.env)
 
-Recommended model:
+Create a `.env` file in the root directory:
 
-    qwen2.5:0.5b
+``` env
+MANUL_MODEL=qwen2.5:0.5b
+MANUL_HEADLESS=False
 
-Download and run:
+# AI Threshold: 500 (standard), 10000 (maximum verification)
+MANUL_AI_THRESHOLD=500
 
-``` bash
-ollama run qwen2.5:0.5b
+MANUL_TIMEOUT=5000
 ```
 
 ------------------------------------------------------------------------
@@ -157,111 +130,69 @@ import asyncio
 from framework.engine import ManulEngine
 
 async def main():
-    manul = ManulEngine(headless=False)
+    # Settings are automatically loaded from .env
+    manul = ManulEngine()
 
     mission = (
-        "1. NAVIGATE to https://the-internet.herokuapp.com/login\n"
-        "2. Fill 'Username' field with 'tomsmith'\n"
-        "3. Fill 'Password' field with 'SuperSecretPassword!'\n"
-        "4. Click the 'Login' button\n"
-        "5. VERIFY that 'You logged into a secure area!' is present.\n"
-        "6. DONE."
+        "1. NAVIGATE to https://demoqa.com/text-box\n"
+        "2. Fill 'Full Name' field with 'Ghost Manul'\n"
+        "3. Click the 'Submit' button\n"
+        "4. VERIFY that 'Ghost Manul' is present.\n"
+        "5. DONE."
     )
 
-    print("🐾 Running LOGIN HUNT...")
-    success = await manul.run_mission(mission)
-
-    if success:
-        print("🏆 HUNT SUCCESSFUL")
-    else:
-        print("❌ HUNT FAILED")
+    await manul.run_mission(mission)
 
 if __name__ == "__main__":
     asyncio.run(main())
-```
-
-Run:
-
-``` bash
-python tests/hunt_mission.py
 ```
 
 ------------------------------------------------------------------------
 
 # 📜 Available Commands
 
-### Navigation
+  -----------------------------------------------------------------------
+  Category                                    Command
+  ------------------------------------------- ---------------------------
+  Navigation                                  Maps to \[URL\]
 
-    NAVIGATE to [URL]
+  Input                                       Fill \[Field\] with
+                                              \[Text\], Type \[Text\]
+                                              into \[Field\]
 
-### Input
+  Click                                       Click \[Element\], DOUBLE
+                                              CLICK \[Element\]
 
-    Fill [Field] with [Text]
-    Type [Text] into [Field]
+  Selection                                   Select \[Option\] from
+                                              \[Dropdown\], Check
+                                              \[Checkbox\]
 
-### Click
+  Data                                        EXTRACT \[Target\] into
+                                              {variable}
 
-    Click [Element]
-    DOUBLE CLICK [Element]
+  Verification                                VERIFY that \[Text\] is
+                                              present/absent, VERIFY that
+                                              \[Element\] is
+                                              checked/disabled
 
-### Checkbox / Radio
-
-    Check [Checkbox]
-    Uncheck [Checkbox]
-
-### Dropdown
-
-    Select [Option] from [Dropdown]
-
-### Hover
-
-    HOVER over [Element]
-
-### Scroll
-
-    SCROLL DOWN
-
-### Extract
-
-    EXTRACT [Target] into {variable}
-
-### Verify
-
-    VERIFY that [Text] is present
-    VERIFY that [Text] is absent
-    VERIFY that [Element] is checked
-    VERIFY that [Element] is disabled
-
-### Finish
-
-    DONE
+  Finish                                      DONE
+  -----------------------------------------------------------------------
 
 ------------------------------------------------------------------------
 
-# 🤝 Roadmap & Contributing
+# 🐾 Chaos Chamber Verified
 
-Version 0.01 is the first public release.
+The engine is battle-tested against the **24 Deadly DOM Traps**,
+successfully handling:
 
-Manul already: - Completes 50-step Wikipedia marathons\
-- Works with Shadow DOM\
-- Extracts multi-dimensional tables\
-- Uses local LLMs without sacrificing speed
-
-------------------------------------------------------------------------
-
-# 🐾 Philosophy
-
-Manul is not just an AI agent.
-
-It is: - Deterministic heuristics\
-- Neural fallback\
-- Strict validation layer\
-- Self-healing automation engine
-
-AI is only a tool.\
-Control always remains in the engine.
+-   The Legend Trap (finding inputs via fieldset/legend)
+-   Data-QA Supremacy (prioritizing automation-specific attributes)
+-   ARIA Recognition (locating elements via hidden labels)
+-   Ghost Opacity (interacting with near-transparent elements)
+-   Readonly Hijacking (typing into locked fields)
 
 ------------------------------------------------------------------------
 
-**Version:** 0.01\
+**Version:** 0.01
 **Codename:** The Mastermind
+**Status:** Hunting...
