@@ -9,7 +9,7 @@ from framework.engine import ManulEngine
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MONSTER DOM  —  Each trap section is labelled clearly.
-# Original 24 traps preserved; 4 new extreme traps appended below.
+# Original 24 traps + 4 optional traps + 6 integration-battle traps = 34.
 # ─────────────────────────────────────────────────────────────────────────────
 MONSTER_DOM = """
 <!DOCTYPE html>
@@ -187,6 +187,49 @@ MONSTER_DOM = """
 <div>
     <label for="trap_promo_optional_input">Promotion Code if exists</label>
     <input type="text" id="trap_promo_optional_input">
+</div>
+
+<!-- ── TRAPS 29-34: Real bugs from integration test battles ──────────── -->
+
+<div>
+    <label for="trap_check_agree_chk">Agree to Terms</label>
+    <input type="checkbox" id="trap_check_agree_chk">
+    <label for="trap_check_agree_input">Agree to Terms</label>
+    <input type="text" id="trap_check_agree_input" placeholder="signature">
+</div>
+
+<div>
+    <label for="trap_uncheck_renew_chk">Auto-Renew</label>
+    <input type="checkbox" id="trap_uncheck_renew_chk" checked>
+    <button id="trap_uncheck_renew_btn">Auto-Renew Settings</button>
+</div>
+
+<div>
+    <label for="trap_priority_chk">Priority</label>
+    <input type="checkbox" id="trap_priority_chk">
+    <input type="radio" id="trap_priority_radio" name="prio" value="urgent">
+    <label for="trap_priority_radio">Urgent</label>
+    <label for="trap_priority_select">Priority</label>
+    <select id="trap_priority_select">
+        <option>--</option>
+        <option>Low</option>
+        <option>Medium</option>
+        <option>Urgent</option>
+    </select>
+</div>
+
+<div>
+    <button id="trap_partial_decoy_btn">Ad Settings</button>
+</div>
+
+<div>
+    <input type="text" id="trap_addr_decoy" placeholder="Enter your address">
+    <input type="text" id="trap_dqa_ship" data-qa="shipping-address">
+</div>
+
+<div>
+    <label for="trap_jsclick_chk">Enable Notifications</label>
+    <input type="checkbox" id="trap_jsclick_chk">
 </div>
 
 </body>
@@ -396,6 +439,52 @@ TESTS = [
         "mode": "clickable", "search_texts": ["Dismiss Popup"], "target_field": None,
         "expected": None,
     },
+
+    # ── TRAPS 29-34: Real Bugs from Integration Test Battles ───────────
+    {
+        "name": "29. Check Mode — Checkbox Priority",
+        "desc": "Bug: 'check' didn't trigger clickable mode. Checkbox must beat same-named text input when step says 'checkbox'.",
+        "step": "Check the 'Agree to Terms' checkbox",
+        "mode": "clickable", "search_texts": ["Agree to Terms"], "target_field": None,
+        "expected": "trap_check_agree_chk",
+    },
+    {
+        "name": "30. Uncheck Mode — Checkbox over Button",
+        "desc": "Bug: 'uncheck' didn't trigger clickable mode. Checkbox must beat button with similar text.",
+        "step": "Uncheck the 'Auto-Renew' checkbox",
+        "mode": "clickable", "search_texts": ["Auto-Renew"], "target_field": None,
+        "expected": "trap_uncheck_renew_chk",
+    },
+    {
+        "name": "31. Select Triple Collision (select > checkbox + radio)",
+        "desc": "Bug: checkbox outscored <select> in select mode. Select must beat BOTH checkbox AND radio.",
+        "step": "Select 'Urgent' from the 'Priority' dropdown",
+        "mode": "select", "search_texts": ["Urgent", "Priority"], "target_field": None,
+        "expected": "trap_priority_select",
+    },
+    {
+        "name": "32. Optional Partial-Match Decoy (must skip)",
+        "desc": "Bug: optional steps clicked partial-match elements. 'Banner Ad' not in 'Ad Settings' — must skip.",
+        "step": "Click the 'Banner Ad' button if exists",
+        "mode": "clickable", "search_texts": ["Banner Ad"], "target_field": None,
+        "expected": None,
+    },
+    {
+        "name": "33. data-qa Hyphen-Space Mapping",
+        "desc": "data-qa='shipping-address' must match search text 'Shipping Address' via hyphen-space conversion.",
+        "step": "Fill 'Shipping Address' field with '456 Oak Ave'",
+        "mode": "input", "search_texts": ["Shipping Address"], "target_field": "shipping address",
+        "expected": "trap_dqa_ship",
+    },
+    {
+        "name": "34. Native Checkbox JS Click (full _execute_step)",
+        "desc": "Bug: loc.click(force=True) failed on native checkboxes. Full flow must toggle via JS el.click().",
+        "step": "Check the 'Enable Notifications' checkbox",
+        "mode": "clickable", "search_texts": ["Enable Notifications"], "target_field": None,
+        "expected": "trap_jsclick_chk",
+        "execute_step": True,
+        "verify_checked": True,
+    },
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -429,7 +518,7 @@ def _apply_guards(el: dict, mode: str, search_texts: list[str]) -> str | None:
 # ─────────────────────────────────────────────────────────────────────────────
 async def run_laboratory():
     print("\n" + "=" * 60)
-    print("🧪  MANUL ENGINE LABORATORY — The Chaos Chamber (28 traps)")
+    print("🧪  MANUL ENGINE LABORATORY — The Chaos Chamber (34 traps)")
     print("=" * 60)
 
     # Note: we test using execute_step directly for optional traps to see the full flow
@@ -451,7 +540,29 @@ async def run_laboratory():
             # Clear context memory between steps to avoid false positives from previous traps
             manul.last_xpath = None 
 
-            if "if exists" in t["step"].lower() or "optional" in t["step"].lower():
+            if t.get("execute_step"):
+                # Full _execute_step flow — tests mode detection + scoring + action
+                result = await manul._execute_step(page, t["step"], "")
+                if not result:
+                    msg = "FAILED — _execute_step returned False"
+                    print(f"   ❌ {msg}")
+                    failed += 1
+                    failures.append(f"{t['name']}: {msg}")
+                elif t.get("verify_checked") is not None:
+                    actual = await page.locator(f"#{t['expected']}").is_checked()
+                    if actual == t["verify_checked"]:
+                        print(f"   ✅ PASSED  → '{t['expected']}' checked={actual} via _execute_step")
+                        passed += 1
+                    else:
+                        msg = f"FAILED — '{t['expected']}' checked={actual}, expected {t['verify_checked']}"
+                        print(f"   ❌ {msg}")
+                        failed += 1
+                        failures.append(f"{t['name']}: {msg}")
+                else:
+                    print(f"   ✅ PASSED  → via _execute_step")
+                    passed += 1
+
+            elif "if exists" in t["step"].lower() or "optional" in t["step"].lower():
                 # For optional traps, we must test the FULL _execute_step logic, 
                 # because the skipping logic lives there, not in _resolve_element.
                 result = await manul._execute_step(page, t["step"], "")
