@@ -163,11 +163,9 @@ class ManulEngine:
             role      = el.get("role", "").lower()
             score = 0
 
-            # ── Learned Memory ──
             if learned and el["name"] == learned["name"] and tag == learned["tag"]:
                 score += 20_000
 
-            # ── Context Memory ──
             if is_blind and self.last_xpath and el["xpath"] == self.last_xpath:
                 score += 10_000
 
@@ -278,7 +276,6 @@ class ManulEngine:
         strategic_context: str,
         failed_ids: set,
     ) -> dict | None:
-        """Повертає найкращого кандидата. Тут НЕМАЄ Anti-Phantom Guard!"""
         is_blind = not search_texts and not target_field
 
         for attempt in range(5):
@@ -369,15 +366,18 @@ class ManulEngine:
         var_m = re.search(r'\{(.*?)\}', step)
         target = (_extract_quoted(step) or [""])[0].replace("'", "").replace('"', '')
         step_l = step.lower()
+        
+        safe_target = target.lower().replace('`', '').replace('\\', '\\\\')
+        safe_step = step_l.replace('`', '').replace('\\', '\\\\')
+        
         print("    ⚙️  DOM HEURISTICS: Extracting data via structured JS Dict…")
         
         for attempt in range(5):
             val = await page.evaluate(f"""() => {{
-                const target = "{target.lower()}";
-                const stepText = "{step_l}";
+                const target = `{safe_target}`;
+                const stepText = `{safe_step}`;
                 const stepWords = stepText.split(/[^a-z0-9]+/);
 
-                // 1. Wikipedia-style key-value infoboxes (th -> td)
                 const allRows = Array.from(document.querySelectorAll('tr, [role="row"]'));
                 for (const row of allRows) {{
                     const ths = row.querySelectorAll('th');
@@ -389,7 +389,6 @@ class ManulEngine:
                     }}
                 }}
 
-                // 2. Build List of Dicts for structured grid tables
                 const tables = document.querySelectorAll('table, [role="table"], .table-display');
                 let candidates = [];
 
@@ -431,7 +430,6 @@ class ManulEngine:
                     }}
                 }}
 
-                // 3. Match step context to table headers dynamically
                 if (candidates.length > 0) {{
                     let bestCandidate = candidates[0];
                     let bestScore = -1;
@@ -469,7 +467,6 @@ class ManulEngine:
                     return tds[tds.length - 1].innerText.trim();
                 }}
 
-                // 4. Absolute fallback
                 const row = allRows.find(r => r.innerText.toLowerCase().includes(target));
                 if (row) {{
                      const tds = Array.from(row.querySelectorAll('td'));
@@ -599,9 +596,9 @@ class ManulEngine:
         words = set(re.findall(r'\b[a-z0-9]+\b', step_l))
 
         if "drag" in words and "drop" in words:  mode = "drag"
-        elif "select" in words or "choose" in words: mode = "select"
         elif any(w in words for w in ("type", "fill", "enter")): mode = "input"
-        elif "click" in words or "double" in words: mode = "clickable"
+        elif ("select" in words or "choose" in words) and not any(w in words for w in ("checkbox", "radio")): mode = "select"
+        elif any(w in words for w in ("click", "double", "check", "uncheck", "checkbox", "radio")): mode = "clickable"
         elif "hover" in words: mode = "hover"
         else: mode = "locate"
 
@@ -648,20 +645,41 @@ class ManulEngine:
             el_id    = el["id"]
             tag      = el.get("tag_name", "")
             itype    = el.get("input_type", "")
+            data_qa  = el.get("data_qa", "")
+            icons    = el.get("icon_classes", "")
+            html_id  = el.get("html_id", "")
+            role     = el.get("role", "")
 
-            # 🚀 СМАРТ ANTI-PHANTOM GUARD працює ТІЛЬКИ ТУТ
             is_phantom = False
+            missing_term = search_texts[0] if search_texts else (target_field or "Target")
+            
             if mode == "input" and itype in ("radio", "checkbox", "button", "submit", "image"):
                 print(f"    👻 ANTI-PHANTOM GUARD: Rejecting '{name[:80]}' because it is a {itype} (cannot type).")
                 is_phantom = True
-            elif mode == "select" and tag != "select":
-                print(f"    👻 ANTI-PHANTOM GUARD: Rejecting '{name[:80]}', but it's not a SELECT. Rejecting.")
-                is_phantom = True
+            
+            # 🚀 ФІКС 2: Дозволяємо клікати по кастомних dropdown items (div, li)
+            elif mode == "select":
+                is_valid_select = (tag == "select") or (role in ("option", "menuitem")) or ("item" in name.lower()) or ("dropdown" in name.lower())
+                if not is_valid_select:
+                    print(f"    👻 ANTI-PHANTOM GUARD: Rejecting '{name[:80]}', it doesn't look like a select/option. Rejecting.")
+                    is_phantom = True
+
+            elif mode == "clickable" and search_texts:
+                primary_target = search_texts[0].lower()
+                target_words = set(re.findall(r'[a-z0-9]+', primary_target))
+                element_text = f"{name} {html_id} {data_qa} {el.get('aria_label', '')}".lower()
+                if target_words:
+                    match_found = any(w in element_text for w in target_words)
+                    if not match_found and not icons:
+                        print(f"    👻 ANTI-PHANTOM GUARD: Rejecting '{name[:80]}' (no text match for '{primary_target}').")
+                        is_phantom = True
 
             if is_phantom:
-                print(f"    🚑 SELF-HEALING: Adding candidate {el_id} to blocklist and retrying...")
+                print(f"    🚑 SELF-HEALING: Adding candidate {el_id} to blocklist, scrolling and retrying...")
                 failed_ids.add(el_id)
                 self.last_xpath = None
+                await page.evaluate("window.scrollBy(0, 500)")
+                await asyncio.sleep(1)
                 continue
 
             if mode == "locate":
@@ -848,7 +866,8 @@ class ManulEngine:
                         if not await self._handle_extract(page, step):
                             ok = False; break
 
-                    elif re.search(r'\b(VERIFY|CHECK)\b', s_up):
+                    # 🚀 ФІКС 1: Видалили слово CHECK з регулярки верифікації
+                    elif re.search(r'\b(VERIFY)\b', s_up):
                         if not await self._handle_verify(page, step):
                             ok = False; break
 
