@@ -8,7 +8,9 @@ Usage:
   python manul.py tests/hunt_login.py         run one test by path
   python manul.py --headless                  run all tests headless
   python manul.py hunt_login.py --headless    run one test headless
-  python manul.py "1. Navigate to ..."        run an inline mission prompt  python manul.py test                        run engine unit tests (60 traps)"""
+  python manul.py "1. Navigate to ..."        run an inline mission prompt
+  python manul.py test                        run engine unit tests (60 traps)
+"""
 
 import asyncio
 import importlib.util
@@ -51,20 +53,6 @@ async def _run_file(path: str, headless: bool) -> bool:
     print(f"🐾 EXECUTING: {os.path.basename(path)}")
     print(f"{'='*54}")
 
-    def isatty(self) -> bool:           # needed by some libraries
-        return False
-
-    def close(self) -> None:
-        self._file.close()
-
-
-# ── Execute a single hunt_*.py file ──────────────────────────────────────────
-async def _run_file(path: str, headless: bool) -> bool:
-    """Import a hunt_*.py module and call its main(), injecting headless if accepted."""
-    print(f"\n{'='*54}")
-    print(f"🐾 EXECUTING: {os.path.basename(path)}")
-    print(f"{'='*54}")
-
     try:
         spec   = importlib.util.spec_from_file_location("_hunt_module", path)
         module = importlib.util.module_from_spec(spec)           # type: ignore[arg-type]
@@ -76,6 +64,7 @@ async def _run_file(path: str, headless: bool) -> bool:
             result = await module.main(headless=headless)
         else:
             # Monkey-patch ManulEngine to honour the CLI headless flag
+            import engine as _engine_pkg
             from engine import core as _engine
             _OrigEngine = _engine.ManulEngine
             class _PatchedEngine(_OrigEngine):
@@ -83,10 +72,12 @@ async def _run_file(path: str, headless: bool) -> bool:
                     kw.setdefault("headless", headless)
                     super().__init__(*a, **kw)
             _engine.ManulEngine = _PatchedEngine
+            _engine_pkg.ManulEngine = _PatchedEngine
             try:
                 result = await module.main()
             finally:
                 _engine.ManulEngine = _OrigEngine
+                _engine_pkg.ManulEngine = _OrigEngine
 
         return bool(result)
 
@@ -175,36 +166,6 @@ async def main() -> None:
             success = await _run_file(path, headless)
             elapsed = time.perf_counter() - t0
             results.append((os.path.basename(path), "PASS" if success else "FAIL", elapsed))
-
-        files = _collect(target)
-        print(f"🐱 Manul CLI: Found {len(files)} target(s) in hunting grounds.")
-
-        results: list[tuple[str, str, float]] = []
-        total_start = time.perf_counter()
-
-        for path in files:
-            t0      = time.perf_counter()
-            success = await _run_file(path, headless)
-            elapsed = time.perf_counter() - t0
-            results.append((os.path.basename(path), "PASS" if success else "FAIL", elapsed))
-
-        total = time.perf_counter() - total_start
-        passed = sum(1 for _, s, _ in results if s == "PASS")
-
-        # ── Summary ───────────────────────────────────────────────────────
-        print(f"\n\n{'='*20} HUNT SUMMARY {'='*20}")
-        for name, status, secs in results:
-            icon  = "✅" if status == "PASS" else "❌"
-            timer = f"{secs:5.1f}s"
-            print(f"{icon} {name.ljust(34)} {status}  {timer}")
-        print("="*54)
-        print(f"   {passed}/{len(results)} passed  •  total {total:.1f}s")
-        print("="*54)
-        print(f"\n📄 Full log saved to: {LOG_FILE}")
-
-    finally:
-        sys.stdout = tee._term
-        tee.close()
 
         total = time.perf_counter() - total_start
         passed = sum(1 for _, s, _ in results if s == "PASS")

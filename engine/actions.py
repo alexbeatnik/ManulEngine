@@ -113,6 +113,10 @@ class _ActionsMixin:
                         checked = await loc.is_checked(timeout=2000)
                     except Exception:
                         checked = False
+                    if is_negative:
+                        ok = not checked
+                        print(f"    {'✅' if ok else '❌'} Checkbox not-checked={ok}")
+                        return ok
                     print(f"    {'✅' if checked else '❌'} Checkbox checked={checked}")
                     return checked
                 if retry < 11:
@@ -185,7 +189,8 @@ class _ActionsMixin:
             print(f"    ❌ Drop target '{target_text}' not found")
             return False
 
-        src_loc  = page.locator(f"xpath={raw_els[0]['xpath']}").first
+        src_el = next((el for el in raw_els if el["id"] == source_id), raw_els[0])
+        src_loc  = page.locator(f"xpath={src_el['xpath']}").first
         dest_loc = page.locator(f"xpath={dest['xpath']}").first
 
         try:
