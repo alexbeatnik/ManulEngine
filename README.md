@@ -1,14 +1,21 @@
 # 🐱 ManulEngine v0.02 --- The Mastermind
 
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for
+ManulEngine is a relentless hybrid (neuro-symbolic) framework for
 browser automation and E2E testing.
 
 Forget brittle CSS/XPath locators that break on every UI update---write
 tests in plain English.
 Stop paying for expensive cloud APIs and waiting seconds for every
 click---leverage local micro-LLMs via Ollama.
+Forget brittle CSS/XPath locators that break on every UI update---write
+tests in plain English.
+Stop paying for expensive cloud APIs and waiting seconds for every
+click---leverage local micro-LLMs via Ollama.
 
 Manul combines the blazing speed of Playwright, powerful JavaScript DOM
+heuristics, and the reasoning of local neural networks.
+It is fast, private, and highly resilient to UI changes.
 heuristics, and the reasoning of local neural networks.
 It is fast, private, and highly resilient to UI changes.
 
@@ -49,8 +56,22 @@ browser-manul/
 
 95% of the heavy lifting (element finding, assertions, DOM parsing) is
 handled by ultra-fast JavaScript.
+handled by ultra-fast JavaScript.
 The AI steps in only when genuine ambiguity arises.
 
+**Result:** Execution speeds significantly faster than "AI-first"
+automation approaches.
+
+------------------------------------------------------------------------
+
+### 🎛️ Adjustable AI Threshold (Paranoia Level)
+
+Control the engine's confidence via `.env` using a scoring system:
+
+-   **Low (200--500):** Blazing speed. Manul trusts its heuristic
+    algorithms for most tasks.
+-   **High (10,000+):** "Paranoid" mode. The AI Agent verifies almost
+    every step for maximum precision.
 **Result:** Execution speeds significantly faster than "AI-first"
 automation approaches.
 
@@ -73,7 +94,11 @@ Strict protection against LLM hallucinations.
 
 If the model tries to: - Type into a radio button
 - Click a hidden element
+If the model tries to: - Type into a radio button
+- Click a hidden element
 
+The Guard: 1. Blocks the action
+2. Blacklists the element
 The Guard: 1. Blocks the action
 2. Blacklists the element
 3. Triggers a self-healing cycle
@@ -91,6 +116,7 @@ hidden deep in the shadow tree as easily as standard DOM elements.
 # 🛠️ Installation
 
 ManulEngine runs fully locally on your machine.
+ManulEngine runs fully locally on your machine.
 
 ------------------------------------------------------------------------
 
@@ -103,6 +129,7 @@ cd browser-manul
 
 ------------------------------------------------------------------------
 
+## 2️⃣ Setup Environment
 ## 2️⃣ Setup Environment
 
 ``` bash
@@ -162,6 +189,8 @@ from engine import ManulEngine
 async def main():
     # Settings are automatically loaded from .env
     manul = ManulEngine()
+    # Settings are automatically loaded from .env
+    manul = ManulEngine()
 
     mission = (
         "1. NAVIGATE to https://demoqa.com/text-box\n"
@@ -169,8 +198,14 @@ async def main():
         "3. Click the 'Submit' button\n"
         "4. VERIFY that 'Ghost Manul' is present.\n"
         "5. DONE."
+        "1. NAVIGATE to https://demoqa.com/text-box\n"
+        "2. Fill 'Full Name' field with 'Ghost Manul'\n"
+        "3. Click the 'Submit' button\n"
+        "4. VERIFY that 'Ghost Manul' is present.\n"
+        "5. DONE."
     )
 
+    await manul.run_mission(mission)
     await manul.run_mission(mission)
 
 if __name__ == "__main__":
@@ -181,6 +216,32 @@ if __name__ == "__main__":
 
 # 📜 Available Commands
 
+  -----------------------------------------------------------------------
+  Category                                    Command
+  ------------------------------------------- ---------------------------
+  Navigation                                  Maps to \[URL\]
+
+  Input                                       Fill \[Field\] with
+                                              \[Text\], Type \[Text\]
+                                              into \[Field\]
+
+  Click                                       Click \[Element\], DOUBLE
+                                              CLICK \[Element\]
+
+  Selection                                   Select \[Option\] from
+                                              \[Dropdown\], Check
+                                              \[Checkbox\]
+
+  Data                                        EXTRACT \[Target\] into
+                                              {variable}
+
+  Verification                                VERIFY that \[Text\] is
+                                              present/absent, VERIFY that
+                                              \[Element\] is
+                                              checked/disabled
+
+  Finish                                      DONE
+  -----------------------------------------------------------------------
   -----------------------------------------------------------------------
   Category                                    Command
   ------------------------------------------- ---------------------------
@@ -240,4 +301,5 @@ python manul.py test
 
 **Version:** 0.02
 **Codename:** The Mastermind
+**Status:** Hunting...
 **Status:** Hunting...
