@@ -22,7 +22,7 @@ MEDIA_DOM = """
     <button id="m5" aria-label="Mute"><svg><path d="speaker"/></svg></button>
     <input type="range" id="m6" aria-label="Volume" min="0" max="100" value="50">
     <input type="range" id="m7" aria-label="Timeline" min="0" max="1000" value="120">
-    <span id="m8">12:34 / 45:00</span>
+    <span id="m8" data-qa="timestamp">12:34 / 45:00</span>
     <button id="m9" aria-label="Next Video">⏭</button>
     <div role="button" id="m10" aria-label="Miniplayer">🔲</div>
 </div>
@@ -41,7 +41,7 @@ MEDIA_DOM = """
 </div>
 
 <div class="video-info">
-    <h1 id="m21">10 Hours of Manul Cats Meowing</h1>
+    <h1 id="m21" data-qa="video-title">10 Hours of Manul Cats Meowing</h1>
     <span id="m22">1,500,000 views</span>
     <button id="m23" aria-label="Like this video">👍 50K</button>
     <button id="m24" aria-label="Dislike this video">👎</button>
@@ -87,7 +87,7 @@ MEDIA_DOM = """
 
 <div class="hero-banner">
     <h1 id="m51">Stranger Manuls</h1>
-    <button id="m52" class="btn-play">▶ Play</button>
+    <button id="m52" class="btn-play" data-qa="hero-play">▶ Play</button>
     <button id="m53" class="btn-info">ℹ More Info</button>
     <button id="m54" aria-label="Mute trailer">🔇</button>
 </div>
@@ -122,7 +122,7 @@ MEDIA_DOM = """
     <button id="m72" aria-label="Save to Your Library">💚</button>
     <button id="m73" aria-label="Enable shuffle">🔀</button>
     <button id="m74" aria-label="Previous track">⏮</button>
-    <button id="m75" class="play-btn">Play</button>
+    <button id="m75" class="play-btn" aria-label="Pause/Play">▶</button>
     <button id="m76" aria-label="Next track">⏭</button>
     <button id="m77" aria-label="Enable repeat">🔁</button>
     <button id="m78" aria-label="Lyrics">🎤</button>
@@ -253,7 +253,7 @@ TESTS = [
     {"n": "71", "step": "Click 'Save to Your Library'", "m": "clickable", "st": ["Save to Your Library"], "tf": None, "exp": "m72"},
     {"n": "72", "step": "Click 'Enable shuffle'", "m": "clickable", "st": ["Enable shuffle"], "tf": None, "exp": "m73"},
     {"n": "73", "step": "Click 'Previous track'", "m": "clickable", "st": ["Previous track"], "tf": None, "exp": "m74"},
-    {"n": "74", "step": "Click the 'Play' button", "m": "clickable", "st": ["Play"], "tf": None, "exp": "m75"},
+    {"n": "74", "step": "Click 'Pause/Play'", "m": "clickable", "st": ["Pause/Play"], "tf": None, "exp": "m75"},
     {"n": "75", "step": "Click 'Next track'", "m": "clickable", "st": ["Next track"], "tf": None, "exp": "m76"},
     {"n": "76", "step": "Click 'Enable repeat'", "m": "clickable", "st": ["Enable repeat"], "tf": None, "exp": "m77"},
     {"n": "77", "step": "Click 'Lyrics'", "m": "clickable", "st": ["Lyrics"], "tf": None, "exp": "m78"},

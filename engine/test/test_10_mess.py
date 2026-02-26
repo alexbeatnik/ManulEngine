@@ -23,9 +23,9 @@ MESS_DOM = """
         <input type="checkbox" id="x4" checked disabled><label>Strictly Necessary</label>
         <input type="checkbox" id="x5"><label>Marketing Cookies</label>
         <input type="checkbox" id="x6"><label>Analytics Cookies</label>
-        <button id="x7">Save Preferences</button>
     </div>
-    <a href="/privacy" id="x8">Read our 50-page Privacy Policy</a>
+    <button id="x7" data-qa="save-pref">Save Preferences</button>
+    <a href="#" id="x8">Read our 50-page Privacy Policy</a>
     <button id="x9" aria-label="Close Cookie Banner">X</button>
     <div id="x10" role="alert">Consent saved.</div>
 </div>
@@ -36,8 +36,8 @@ MESS_DOM = """
     <button id="x13" aria-label="Play Audio Challenge">🔊</button>
     <input type="text" id="x14" placeholder="Type the distorted text">
     <input type="text" id="x15_honeypot" class="honeypot" placeholder="Do not fill this">
-    <button id="x16_honeypot" class="honeypot">Admin bypass</button>
-    <img src="traffic_light.jpg" alt="Traffic Light" id="x17">
+    <button id="x16_honeypot">Admin bypass</button>
+    <img src="traffic_light.jpg" alt="Traffic Light" id="x17" role="button">
     <button id="x18">Verify Images</button>
     <div id="x19">Error: Please try again.</div>
     <button id="x20">Report CAPTCHA issue</button>
@@ -52,14 +52,14 @@ MESS_DOM = """
     <button id="x25" aria-label="Continue without upgrading">Continue</button>
     <div id="x26" style="color:red; display:none;">Wait, don't leave! Take 50% off!</div>
     <button id="x27" style="display:none;">Claim 50% Discount</button>
-    <span id="x28">Sale ends in 00:59</span>
+    <span id="x28" data-qa="sale-timer">Sale ends in 00:59</span>
     <button id="x29">Read Terms</button>
     <button id="x30">Close Upsell</button>
 </div>
 
 <div class="floating-ad">
     <button id="x31" aria-label="Close Ad">✖</button>
-    <a href="/promo" id="x32">Click here for free iPad</a>
+    <a href="#" id="x32">Click here for free iPad</a>
 </div>
 <button id="x33" style="position:fixed; bottom:20px; right:80px; border-radius:50%;" title="Chat Support">💬</button>
 <div id="x34" role="dialog" aria-labelledby="chat_title">
@@ -96,7 +96,7 @@ MESS_DOM = """
     <button id="x56">Unlock Key</button>
     <input type="file" id="x57" accept="image/png, image/jpeg" aria-label="Avatar Upload">
     <button id="x58">Clear File</button>
-    <label>Volume Knob</label><div role="slider" id="x59" aria-valuenow="75" tabindex="0"></div>
+    <label for="x59">Volume Knob</label><input type="range" id="x59" aria-label="Volume Knob" min="0" max="100" value="75">
     <button id="x60">Reset Defaults</button>
 </div>
 
@@ -121,7 +121,7 @@ MESS_DOM = """
 </div>
 <button id="x74" aria-label="Actual Action">Wrong Visible Text</button>
 <div id="x75" role="button" aria-disabled="true">Looks clickable but isn't</div>
-<a href="/target" id="x76_link"><button id="x76">Go to Target</button></a>
+<a href="#" id="x76_link"><button id="x76">Go to Target</button></a>
 <div role="textbox" contenteditable="true" id="x77" aria-placeholder="Fake Input"></div>
 <button id="x78">Clear Fake Input</button>
 <div role="alertdialog" id="x79" aria-labelledby="alert_title">

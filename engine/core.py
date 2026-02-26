@@ -260,11 +260,13 @@ class ManulEngine(_ActionsMixin):
             search_terms = [t.lower() for t in search_texts]
             if target_field:
                 search_terms.append(target_field.lower())
-            guard_words  = set(re.findall(r'\b[a-z0-9]{3,}\b', " ".join(search_terms)))
+            guard_words  = set(re.findall(r'\b[a-z0-9]{2,}\b', " ".join(search_terms)))
             element_text = (
                 f"{ai_choice['name']} "
                 f"{ai_choice.get('html_id', '')} "
-                f"{ai_choice.get('data_qa', '')}"
+                f"{ai_choice.get('data_qa', '')} "
+                f"{ai_choice.get('aria_label', '')} "
+                f"{ai_choice.get('placeholder', '')}"
             ).lower()
             if guard_words and not any(w in element_text for w in guard_words):
                 missing = search_texts[0] if search_texts else target_field

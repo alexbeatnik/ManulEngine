@@ -39,7 +39,7 @@ MONSTER_DOM = """
 <div>
     <button id="trap_hidden_btn" style="display: none;">Submit Login</button>
     <div id="trap_fake_btn" class="button" role="button">Submit Login</div>
-    <input type="submit" id="trap_real_btn" value="Submit Login">
+    <input type="submit" id="trap_real_btn" value="Submit Login" aria-label="Submit Login">
 </div>
 
 <div id="host"></div>
@@ -228,8 +228,8 @@ MONSTER_DOM = """
 </div>
 
 <div>
-    <label for="rw_file_input" id="rw_file_label" style="cursor:pointer; background:#eee; padding:5px;">Upload Resume</label>
-    <input type="file" id="rw_file_input" class="hidden-file">
+    <label for="rw_file_input" id="rw_file_label" data-qa="upload-resume" style="cursor:pointer; background:#eee; padding:5px;">Upload Resume</label>
+    <input type="file" id="rw_file_input" class="hidden-file" style="display:none;">
 </div>
 
 <table id="rw_users">

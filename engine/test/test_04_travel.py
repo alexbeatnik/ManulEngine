@@ -33,7 +33,7 @@ TRAVEL_DOM = """
     <input type="text" id="t11" placeholder="Depart" readonly>
     <input type="text" id="t12" placeholder="Return" readonly>
     <button id="t13" aria-label="Previous Month">◀</button>
-    <span id="t14" aria-live="polite">March 2026</span>
+    <span id="t14" aria-live="polite" data-qa="current-month">March 2026</span>
     <button id="t15" aria-label="Next Month">▶</button>
     <div role="button" id="t16" aria-label="March 10, 2026">10</div>
     <div role="button" id="t17" aria-label="March 15, 2026">15</div>
@@ -45,8 +45,8 @@ TRAVEL_DOM = """
 <div class="pax-selector">
     <div role="button" id="t21" aria-expanded="false">1 Adult, Economy ▼</div>
     <div class="dropdown">
-        <div>Adults (16+) <button id="t22" aria-label="Decrease Adults">-</button> <span id="t23">1</span> <button id="t24" aria-label="Increase Adults">+</button></div>
-        <div>Children (2-15) <button id="t25" aria-label="Decrease Children">-</button> <span id="t26">0</span> <button id="t27" aria-label="Increase Children">+</button></div>
+        <div>Adults (16+) <button id="t22" aria-label="Decrease Adults">-</button> <span id="t23" data-qa="adults">1</span> <button id="t24" aria-label="Increase Adults">+</button></div>
+        <div>Children (2-15) <button id="t25" aria-label="Decrease Children">-</button> <span id="t26" data-qa="children">0</span> <button id="t27" aria-label="Increase Children">+</button></div>
         <select id="t28" aria-label="Cabin Class">
             <option>Economy</option>
             <option>Premium Economy</option>

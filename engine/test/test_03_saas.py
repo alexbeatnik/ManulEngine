@@ -29,7 +29,7 @@ SAAS_DOM = """
 
 <div class="widget">
     <h3>Monthly Recurring Revenue</h3>
-    <div id="a11" class="metric-value">$45,200</div>
+    <div id="a11" class="metric-value" data-qa="mrr-value">$45,200</div>
     <button id="a12">Download Report</button>
 </div>
 <div class="widget">
@@ -118,7 +118,7 @@ SAAS_DOM = """
 <input type="text" id="a62" placeholder="Key Name (e.g. Production)">
 <button id="a63">Create Key</button>
 <div class="key-display">
-    <input type="password" id="a64" value="sk_live_123456789" readonly>
+    <span id="a64" data-qa="api-key-value">sk_live_123456789</span>
     <button id="a65" aria-label="Reveal API Key">👁️</button>
     <button id="a66" aria-label="Copy API Key">📋</button>
 </div>

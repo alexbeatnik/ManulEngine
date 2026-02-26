@@ -90,8 +90,8 @@ SOCIAL_DOM = """
 <button id="s62">Mark all as read</button>
 <button id="s63">Filter by Mentions</button>
 <div role="button" id="s64" aria-label="Notification Settings">⚙️</div>
-<div class="notif-card"><a href="/post/1" id="s65">Alex liked your photo</a></div>
-<div class="notif-card"><button id="s66">Turn off notifications for this post</button></div>
+<div class="notif-item"><a href="/post/1" id="s65" data-qa="notif-alex">Alex liked your photo</a></div>
+<div class="notif-item"><button id="s66" data-qa="notif-mute">Turn off notifications for this post</button></div>
 <div class="tab" id="s67">All</div>
 <div class="tab" id="s68">Verified</div>
 <div class="tab" id="s69">Mentions</div>

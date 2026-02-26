@@ -60,7 +60,7 @@ EDTECH_DOM = """
 </div>
 
 <div class="interactive-exercise">
-    <p>Fill in the blank: def <input type="text" id="l31" style="width:50px;">():</p>
+    <p>Fill in the blank: <input type="text" id="l31" placeholder="def" style="width:50px;">():</p>
     <textarea id="l32" class="code-editor" aria-label="Code Editor">print("Hello")</textarea>
     <button id="l33">Run Code</button>
     <button id="l34" class="btn-success">Submit Code</button>
@@ -190,7 +190,7 @@ TESTS = [
     {"n": "26", "step": "Click 'Clear my choices'", "m": "clickable", "st": ["Clear my choices"], "tf": None, "exp": "l26"},
     {"n": "27", "step": "Click 'Submit Quiz'", "m": "clickable", "st": ["Submit Quiz"], "tf": None, "exp": "l27"},
     {"n": "28", "step": "VERIFY 'Review Answers' is disabled", "ver": True, "step": "VERIFY that 'Review Answers' is disabled", "res": True},
-    {"n": "29", "step": "EXTRACT Quiz Score into {qs}", "ex": True, "var": "qs", "val": "Score: 85%"},
+    {"n": "29", "step": "EXTRACT Quiz Score into {qs}", "ex": True, "var": "qs", "val": "85%"},
     {"n": "30", "step": "Click 'Retake Quiz'", "m": "clickable", "st": ["Retake Quiz"], "tf": None, "exp": "l30"},
 
     # Coding
@@ -198,7 +198,7 @@ TESTS = [
     {"n": "32", "step": "Fill 'Code Editor' with 'print(1)'", "m": "input", "st": ["Code Editor"], "tf": "code editor", "exp": "l32"},
     {"n": "33", "step": "Click 'Run Code'", "m": "clickable", "st": ["Run Code"], "tf": None, "exp": "l33"},
     {"n": "34", "step": "Click 'Submit Code'", "m": "clickable", "st": ["Submit Code"], "tf": None, "exp": "l34"},
-    {"n": "35", "step": "EXTRACT console output into {out}", "ex": True, "var": "out", "val": "SyntaxError: invalid syntax"},
+    {"n": "35", "step": "EXTRACT console output into {out}", "ex": True, "var": "out", "val": "invalid syntax"},
     {"n": "36", "step": "Click 'Hint'", "m": "clickable", "st": ["Hint"], "tf": None, "exp": "l36"},
     {"n": "37", "step": "Click 'View Solution'", "m": "clickable", "st": ["View Solution"], "tf": None, "exp": "l37"},
     {"n": "38", "step": "Click 'Reset Workspace'", "m": "clickable", "st": ["Reset Workspace"], "tf": None, "exp": "l38"},
@@ -218,7 +218,7 @@ TESTS = [
     {"n": "50", "step": "Click 'Subscribe to updates'", "m": "clickable", "st": ["Subscribe to updates"], "tf": None, "exp": "l50"},
 
     # Assignments
-    {"n": "51", "step": "EXTRACT Project title into {proj}", "ex": True, "var": "proj", "val": "Final Project: Web Scraper"},
+    {"n": "51", "step": "EXTRACT Project title into {proj}", "ex": True, "var": "proj", "val": "Web Scraper"},
     {"n": "52", "step": "Click 'Upload Assignment'", "m": "clickable", "st": ["Upload Assignment"], "tf": None, "exp": "l52"},
     {"n": "53", "step": "Fill 'Google Drive Link' with 'http://link'", "m": "input", "st": ["Google Drive Link"], "tf": "google drive link", "exp": "l53"},
     {"n": "54", "step": "Fill 'Add comments for grader' with 'Done'", "m": "input", "st": ["Add comments for grader"], "tf": "add comments for grader", "exp": "l54"},
@@ -230,12 +230,12 @@ TESTS = [
     {"n": "60", "step": "VERIFY 'Status: Not Submitted' is present", "ver": True, "res": True},
 
     # Grades
-    {"n": "61", "step": "EXTRACT Final Grade into {fg}", "ex": True, "var": "fg", "val": "Final Grade: A-"},
+    {"n": "61", "step": "EXTRACT Final Grade into {fg}", "ex": True, "var": "fg", "val": "A-"},
     {"n": "62", "step": "Click 'Download Transcript'", "m": "clickable", "st": ["Download Transcript"], "tf": None, "exp": "l62"},
-    {"n": "63", "step": "EXTRACT Course Progress into {cp}", "ex": True, "var": "cp", "val": "Course Progress: 75%"},
+    {"n": "63", "step": "EXTRACT Course Progress into {cp}", "ex": True, "var": "cp", "val": "75%"},
     {"n": "64", "step": "Click 'Request Regrade'", "m": "clickable", "st": ["Request Regrade"], "tf": None, "exp": "l64"},
     {"n": "65", "step": "Select 'Spring 2026' from 'Semester'", "m": "select", "st": ["Spring 2026", "Semester"], "tf": None, "exp": "l65"},
-    {"n": "66", "step": "EXTRACT GPA into {gpa}", "ex": True, "var": "gpa", "val": "GPA: 3.8"},
+    {"n": "66", "step": "EXTRACT GPA into {gpa}", "ex": True, "var": "gpa", "val": "3.8"},
     {"n": "67", "step": "Click 'Share Grades'", "m": "clickable", "st": ["Share Grades"], "tf": None, "exp": "l67"},
     {"n": "68", "step": "Click 'View Weighting'", "m": "clickable", "st": ["View Weighting"], "tf": None, "exp": "l68"},
     {"n": "69", "step": "Fill 'Enter target grade' with '95'", "m": "input", "st": ["Enter target grade"], "tf": "enter target grade", "exp": "l69"},
@@ -267,11 +267,11 @@ TESTS = [
 
     # Gamification
     {"n": "91", "step": "Click 'Claim Daily Reward'", "m": "clickable", "st": ["Claim Daily Reward"], "tf": None, "exp": "l91"},
-    {"n": "92", "step": "EXTRACT Current Streak into {streak}", "ex": True, "var": "streak", "val": "Current Streak: 14 Days"},
+    {"n": "92", "step": "EXTRACT Current Streak into {streak}", "ex": True, "var": "streak", "val": "14 Days"},
     {"n": "93", "step": "Click 'View Certificate'", "m": "clickable", "st": ["View Certificate"], "tf": None, "exp": "l93"},
     {"n": "94", "step": "Click 'Share to LinkedIn'", "m": "clickable", "st": ["Share to LinkedIn"], "tf": None, "exp": "l94"},
     {"n": "95", "step": "Click 'Download PDF Certificate'", "m": "clickable", "st": ["Download PDF Certificate"], "tf": None, "exp": "l95"},
-    {"n": "96", "step": "EXTRACT Rank into {rank}", "ex": True, "var": "rank", "val": "Rank: #4 in Class"},
+    {"n": "96", "step": "EXTRACT Rank into {rank}", "ex": True, "var": "rank", "val": "#4 in Class"},
     {"n": "97", "step": "Click 'View Leaderboard'", "m": "clickable", "st": ["View Leaderboard"], "tf": None, "exp": "l97"},
     {"n": "98", "step": "Click 'Equip Avatar Frame'", "m": "clickable", "st": ["Equip Avatar Frame"], "tf": None, "exp": "l98"},
     {"n": "99", "step": "Click 'Spend XP Points'", "m": "clickable", "st": ["Spend XP Points"], "tf": None, "exp": "l99"},

@@ -37,10 +37,22 @@ class _ActionsMixin:
             for w in ("the", "of", "from", "a", "an", "text", "value"):
                 raw = re.sub(rf'\b{w}\b', '', raw).strip()
             hint = raw.strip()
+        
+        # Detect currency symbol hints for price extraction
+        currency_hint = ""
+        curr_m = re.search(r'([$€£₴¥₹])', step)
+        if curr_m:
+            currency_hint = curr_m.group(1)
+        # Also detect currency words
+        for cw, cs in [("uah", "UAH"), ("pln", "PLN"), ("eur", "€"), ("gbp", "£"), ("usd", "$")]:
+            if cw in step_lower.split():
+                currency_hint = cs
+                break
 
         val = await page.evaluate("""(args) => {
             const t = args[0];
             const hint = args[1];
+            const currencyHint = args[2] || '';
 
             const ALL_TAGS = 'div, span, p, h1, h2, h3, h4, h5, h6, li, dd, dt, '
                 + 'strong, b, i, em, label, a, button, td, th, article, section';
@@ -59,6 +71,15 @@ class _ActionsMixin:
             };
 
             const hasAlpha = (s) => /[a-zA-Z0-9]/.test(s);
+            
+            // Strip "Label: Value" pattern → return just "Value"
+            const stripLabel = (text) => {
+                if (!text) return text;
+                // Pattern: "Label: Value" or "Label : Value"
+                const m = text.match(/^([A-Za-z][A-Za-z ]+?)\\s*:\\s+(.+)$/);
+                if (m && m[2].trim().length > 0) return m[2].trim();
+                return text;
+            };
 
             const hintSibling = (el) => {
                 if (hintWords.length === 0) return null;
@@ -151,6 +172,58 @@ class _ActionsMixin:
                 if (headingKid) return headingKid.innerText.trim();
                 return kids[kids.length - 1].innerText.trim();
             };
+
+            // === 0. Currency-specific price extraction ===
+            if (currencyHint) {
+                const allPriceEls = Array.from(document.querySelectorAll(ALL_TAGS));
+                const priceMatches = [];
+                for (const el of allPriceEls) {
+                    const txt = (el.innerText || '').trim();
+                    if (!txt || txt.length > 100) continue;
+                    if (txt.includes(currencyHint)) {
+                        // Check it's a leaf-ish element
+                        const childEls = el.querySelectorAll(VALUE_TAGS);
+                        const isLeaf = childEls.length === 0 ||
+                            Array.from(childEls).every(c => !(c.innerText || '').trim().includes(currencyHint) || c.innerText.trim() === txt);
+                        if (isLeaf || txt.length < 30) {
+                            priceMatches.push({el, txt, len: txt.length});
+                        }
+                    }
+                }
+                if (priceMatches.length === 1) {
+                    return priceMatches[0].txt;
+                }
+                if (priceMatches.length > 1) {
+                    // If hint words can disambiguate, use them
+                    if (hintWords.length > 0) {
+                        for (const pm of priceMatches) {
+                            const parent = pm.el.parentElement;
+                            const ctx = parent ? (parent.innerText || '').toLowerCase() : '';
+                            if (hintWords.some(w => ctx.includes(w) && !pm.txt.toLowerCase().includes(w))) {
+                                return pm.txt;
+                            }
+                        }
+                    }
+                    // Return shortest (most specific)
+                    priceMatches.sort((a, b) => a.len - b.len);
+                    return priceMatches[0].txt;
+                }
+                // Handle split currency: <span>€</span><span>99</span>
+                const currSymEls = Array.from(document.querySelectorAll('span, div, i, b, strong'))
+                    .filter(el => (el.innerText || '').trim() === currencyHint);
+                for (const cEl of currSymEls) {
+                    const parent = cEl.parentElement;
+                    if (parent) {
+                        const sibText = Array.from(parent.childNodes)
+                            .map(n => (n.innerText || n.textContent || '').trim())
+                            .filter(t => t.length > 0)
+                            .join('');
+                        if (sibText && /\\d/.test(sibText)) {
+                            return currencyHint + sibText.replace(currencyHint, '').trim();
+                        }
+                    }
+                }
+            }
 
             // === 1. Table rows — when t is set ===
             if (t) {
@@ -284,6 +357,7 @@ class _ActionsMixin:
 
             // Strategy B: no quoted target → use hint words
             if (hint) {
+                // B0: Check input values first (for password/hidden inputs with values)
                 for (const el of inputs) {
                     const labelEl = el.labels && el.labels[0];
                     const lbl = (labelEl ? labelEl.innerText : '').toLowerCase();
@@ -296,11 +370,13 @@ class _ActionsMixin:
                     }
                 }
 
+                // B0b: Check data-testid, data-qa, aria matches
                 const idMatches = [];
                 for (const el of allEls) {
                     const id = (el.id || '').toLowerCase();
                     const dq = (el.getAttribute && el.getAttribute('data-qa') || '').toLowerCase();
-                    if (hintWords.some(w => id.includes(w) || dq.includes(w))) {
+                    const dtid = (el.getAttribute && el.getAttribute('data-testid') || '').toLowerCase();
+                    if (hintWords.some(w => id.includes(w) || dq.includes(w) || dtid.includes(w))) {
                         const txt = (el.innerText || el.value || '').trim();
                         if (txt && hasAlpha(txt))
                             idMatches.push({el, txt});
@@ -308,7 +384,20 @@ class _ActionsMixin:
                 }
                 if (idMatches.length > 0) {
                     idMatches.sort((a, b) => a.txt.length - b.txt.length);
-                    return idMatches[0].txt;
+                    return stripLabel(idMatches[0].txt);
+                }
+                
+                // B1: aria-live elements (dynamic content like calendar months)
+                const liveEls = Array.from(document.querySelectorAll('[aria-live]'));
+                for (const el of liveEls) {
+                    const txt = (el.innerText || '').trim();
+                    if (txt && hasAlpha(txt) && txt.length < 100) {
+                        const elId = (el.id || '').toLowerCase();
+                        const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+                        if (hintWords.some(w => elId.includes(w) || aria.includes(w) || txt.toLowerCase().includes(w))) {
+                            return txt;
+                        }
+                    }
                 }
 
                 const b2matches = [];
@@ -329,7 +418,7 @@ class _ActionsMixin:
                     }
                     const drilled = drillValue(best.el);
                     if (drilled !== best.txt) return drilled;
-                    return best.txt;
+                    return stripLabel(best.txt);
                 }
 
                 const b56matches = [];
@@ -377,7 +466,7 @@ class _ActionsMixin:
                         const sibVal = nextSiblingValue(best.el);
                         if (sibVal && hasAlpha(sibVal)) return sibVal;
                     }
-                    return drillValue(best.el);
+                    return stripLabel(drillValue(best.el));
                 }
 
                 const b3scored = [];
@@ -415,11 +504,28 @@ class _ActionsMixin:
             }
 
             return null;
-        }""", [target.lower(), hint])
+        }""", [target.lower(), hint, currency_hint])
 
         if val and var_m:
-            self.memory[var_m.group(1)] = val.strip()
-            print(f"    📦 COLLECTED: {val.strip()}")
+            val = val.strip()
+            # Post-process: strip "Label: Value" pattern if hint suggests it
+            # e.g. "YTD Return: +12.4%" → "+12.4%" when hint = "ytd return"
+            # "Status: Active" → "Active" when hint = "coverage status"
+            # "Total documents: 14" → "14" when hint has "total" or "documents"
+            # "Price: Free" → "Free" when hint = "price"
+            if hint and ':' in val:
+                m_lbl = re.match(r'^([A-Za-z][A-Za-z0-9 ]+?)\s*:\s+(.+)$', val)
+                if m_lbl:
+                    label_part = m_lbl.group(1).lower()
+                    value_part = m_lbl.group(2).strip()
+                    # Check if the hint words overlap with the label part
+                    hint_ws = set(re.findall(r'[a-z]{3,}', hint.lower()))
+                    label_ws = set(re.findall(r'[a-z]{3,}', label_part))
+                    if hint_ws & label_ws:
+                        val = value_part
+            
+            self.memory[var_m.group(1)] = val
+            print(f"    📦 COLLECTED: {val}")
             return True
         return False
 
@@ -463,6 +569,18 @@ class _ActionsMixin:
                     const searchText = args[0].toLowerCase();
                     const wantDisabled = args[1] === 'disabled';
                     const els = Array.from(document.querySelectorAll('button, input, select, textarea, a, [role="button"], [role="menuitem"], [role="tab"], label'));
+                    
+                    // First pass: exact text match (highest priority)
+                    for (const el of els) {
+                        const txt = (el.innerText || el.value || '').toLowerCase().trim();
+                        const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+                        if (txt === searchText || aria === searchText) {
+                            let isDisabled = el.disabled || el.getAttribute('aria-disabled') === 'true' || el.hasAttribute('disabled') || el.classList.contains('disabled');
+                            if (el.tagName === 'LABEL' && el.control) isDisabled = isDisabled || el.control.disabled || el.control.hasAttribute('disabled');
+                            return wantDisabled ? isDisabled : !isDisabled;
+                        }
+                    }
+                    // Second pass: substring match (fallback)
                     for (const el of els) {
                         const txt = (el.innerText || el.value || '').toLowerCase().trim();
                         const aria = (el.getAttribute('aria-label') || '').toLowerCase();
@@ -485,6 +603,10 @@ class _ActionsMixin:
 
             text = await page.evaluate(VISIBLE_TEXT_JS)
             found = all(t.lower() in text for t in expected) if expected else bool(text)
+            if not found and not is_negative:
+                # Fallback: also check textContent (includes hidden text)
+                text2 = await page.evaluate("() => (document.body.textContent || '').toLowerCase()")
+                found = all(t.lower() in text2 for t in expected) if expected else bool(text2)
             if is_negative:
                 if not found:
                     print(f"    ✅ Verified ABSENT — OK")

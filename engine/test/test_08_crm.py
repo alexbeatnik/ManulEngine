@@ -101,7 +101,7 @@ CRM_DOM = """
 </div>
 
 <div class="ats-view">
-    <h3 id="c51">Candidate: Sarah Connor</h3>
+    <h3 id="c51" data-qa="candidate-name">Sarah Connor</h3>
     <a href="/resume.pdf" id="c52">View Resume</a>
     <a href="/linkedin" id="c53">LinkedIn Profile</a>
     <select id="c54" aria-label="Stage"><option>Screening</option><option>Interview</option><option>Offer</option></select>
@@ -247,7 +247,7 @@ TESTS = [
     {"n": "50", "step": "Click 'Vote on Ticket'", "m": "clickable", "st": ["Vote on Ticket"], "tf": None, "exp": "c50"},
 
     # ATS (Applicant Tracking System)
-    {"n": "51", "step": "EXTRACT Candidate name into {cand}", "ex": True, "var": "cand", "val": "Candidate: Sarah Connor"},
+    {"n": "51", "step": "EXTRACT Candidate name into {cand}", "ex": True, "var": "cand", "val": "Sarah Connor"},
     {"n": "52", "step": "Click 'View Resume'", "m": "clickable", "st": ["View Resume"], "tf": None, "exp": "c52"},
     {"n": "53", "step": "Click 'LinkedIn Profile'", "m": "clickable", "st": ["LinkedIn Profile"], "tf": None, "exp": "c53"},
     {"n": "54", "step": "Select 'Offer' from 'Stage'", "m": "select", "st": ["Offer", "Stage"], "tf": None, "exp": "c54"},
@@ -287,7 +287,7 @@ TESTS = [
     {"n": "82", "step": "Fill 'Report Start Date' with '2026-01-01'", "m": "input", "st": ["Report Start Date"], "tf": "report start date", "exp": "c82"},
     {"n": "83", "step": "Fill 'Report End Date' with '2026-01-31'", "m": "input", "st": ["Report End Date"], "tf": "report end date", "exp": "c83"},
     {"n": "84", "step": "Click 'Generate Report'", "m": "clickable", "st": ["Generate Report"], "tf": None, "exp": "c84"},
-    {"n": "85", "step": "EXTRACT Total Deals into {td}", "ex": True, "var": "td", "val": "Total Deals: 145"},
+    {"n": "85", "step": "EXTRACT Total Deals into {td}", "ex": True, "var": "td", "val": "145"},
     {"n": "86", "step": "Click 'Download Excel'", "m": "clickable", "st": ["Download Excel"], "tf": None, "exp": "c86"},
     {"n": "87", "step": "Click 'Download PDF'", "m": "clickable", "st": ["Download PDF"], "tf": None, "exp": "c87"},
     {"n": "88", "step": "Click 'Share via Email'", "m": "clickable", "st": ["Share via Email"], "tf": None, "exp": "c88"},

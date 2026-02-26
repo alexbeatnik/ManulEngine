@@ -23,7 +23,7 @@ FINTECH_DOM = """
     </div>
     <button id="f5">Add Funds</button>
     <button id="f6">Withdraw</button>
-    <button id="f7" data-testid="quick-transfer">Quick Transfer</button>
+    <button id="f7" data-testid="quick-xfer">Quick Transfer</button>
     <a href="/statements" id="f8">Download Statements</a>
     <div role="switch" id="f9" aria-checked="false">Hide zero balances</div>
     <button id="f10" aria-label="Account Settings">⚙️</button>

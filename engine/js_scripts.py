@@ -113,9 +113,14 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
                     ? document.getElementById(el.htmlFor)
                     : el.querySelector('input');
                 if (linked) {
-                    const lr = linked.getBoundingClientRect();
-                    if (lr.width > 2 && lr.height > 2 && window.getComputedStyle(linked).display !== 'none') {
-                        return;
+                    // If linked input is a hidden file input, KEEP the label (it acts as the click target)
+                    if (linked.type === 'file') {
+                        // Keep this label — don't skip it
+                    } else {
+                        const lr = linked.getBoundingClientRect();
+                        if (lr.width > 2 && lr.height > 2 && window.getComputedStyle(linked).display !== 'none') {
+                            return;
+                        }
                     }
                 }
             }

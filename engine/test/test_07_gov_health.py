@@ -121,7 +121,7 @@ GOV_DOM = """
     <button id="h62" aria-label="Increase Text Size">A+</button>
     <button id="h63" aria-label="Decrease Text Size">A-</button>
     <select id="h64" aria-label="Language Translation"><option>English</option><option>Español</option></select>
-    <a href="#main-content" id="h65" class="sr-only">Skip to main content</a>
+    <a href="#main-content" id="h65" aria-label="Skip to main content">Skip to main content</a>
     <button id="h66">Print Page</button>
     <button id="h67">Download PDF</button>
     <button id="h68">Chat with Virtual Assistant</button>

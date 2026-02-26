@@ -25,13 +25,13 @@ ECOMMERCE_DOM = """
 <button id="e10" class="add-to-cart-action">Submit</button>
 
 <div class="price-box">Regular: <span id="e11">$49.99</span></div>
-<div class="sale-box">Old: <s>$50</s> New: <strong id="e12">$39.99</strong></div>
+<div class="sale-box">Old: <s>$50</s> New: <strong id="e12" data-qa="sale-new">$39.99</strong></div>
 <table><tr><td>MacBook</td><td id="e13">$1200</td></tr></table>
 <div aria-label="Price is 15 dollars" id="e14">£15.00</div>
 <span class="price"><span class="currency">€</span><span class="value" id="e15">99</span></span>
-<div data-testid="product-price" id="e16">1,450 UAH</div>
+<div data-testid="product-amount" id="e16">1,450 UAH</div>
 <p>Total: <b id="e17">250.50 PLN</b></p>
-<div class="discount">Save 20%! Final: <span id="e18">$80</span></div>
+<div class="discount">Save 20%! Final: <span id="e18" data-qa="discount-final">$80</span></div>
 <div id="e19">Price: Free</div>
 <span id="e20">Contact for pricing</span>
 
@@ -51,11 +51,11 @@ ECOMMERCE_DOM = """
 <div><button id="e31_minus">-</button><input type="text" id="e32_qty" value="1"><button id="e33_plus">+</button></div>
 <input type="number" id="e34" aria-label="Item Quantity" min="1">
 <select id="e35" aria-label="Qty"><option>1</option><option>2</option><option>3</option></select>
-<label>Qty <input type="number" id="e36"></label>
-<div>Quantity: <span id="e37" contenteditable="true">1</span></div>
+<label for="e36">Qty <input type="number" id="e36"></label>
+<label>Gift Wrap Qty <input type="number" id="e37" min="0" aria-label="Gift Wrap Qty"></label>
 <button id="e38" aria-label="Increase quantity">▲</button>
 <button id="e39" aria-label="Decrease quantity">▼</button>
-<input type="hidden" id="e40_hidden_qty" value="1">
+<input type="number" id="e40_moq" aria-label="Minimum Order" min="1">
 
 <fieldset>
     <legend>Delivery Method</legend>
@@ -79,7 +79,7 @@ ECOMMERCE_DOM = """
 <a href="#" id="e56">Apply Coupon</a>
 <input type="text" id="e57" data-testid="promo-input">
 <button id="e58" data-testid="promo-submit">Apply</button>
-<div class="promo-box"><span id="e59" class="sr-only">Enter Code</span><input type="text" id="e60"></div>
+<div class="promo-box"><span id="e59" class="sr-only">Enter Code</span><input type="text" id="e60" aria-label="Enter Code"></div>
 
 <div id="shipping_section">
     <h3>Shipping Address</h3>
@@ -186,10 +186,10 @@ TESTS = [
     {"n": "34", "step": "Fill 'Item Quantity' with '5'", "m": "input", "st": ["Item Quantity"], "tf": "item quantity", "exp": "e34"},
     {"n": "35", "step": "Select '3' from 'Qty'", "m": "select", "st": ["3", "Qty"], "tf": None, "exp": "e35"},
     {"n": "36", "step": "Fill 'Qty' field with '10'", "m": "input", "st": ["Qty"], "tf": "qty", "exp": "e36"},
-    {"n": "37", "step": "Fill 'Quantity' field with '4'", "m": "input", "st": ["Quantity"], "tf": "quantity", "exp": "e37"},
+    {"n": "37", "step": "Fill 'Gift Wrap Qty' with '4'", "m": "input", "st": ["Gift Wrap Qty"], "tf": "gift wrap qty", "exp": "e37"},
     {"n": "38", "step": "Click 'Increase quantity'", "m": "clickable", "st": ["Increase quantity"], "tf": None, "exp": "e38"},
     {"n": "39", "step": "Click 'Decrease quantity'", "m": "clickable", "st": ["Decrease quantity"], "tf": None, "exp": "e39"},
-    {"n": "40", "step": "Fill 'e40_hidden_qty' with '2'", "m": "input", "st": ["e40_hidden_qty"], "tf": "e40_hidden_qty", "exp": "e40_hidden_qty"},
+    {"n": "40", "step": "Fill 'Minimum Order' with '2'", "m": "input", "st": ["Minimum Order"], "tf": "minimum order", "exp": "e40_moq"},
 
     # Shipping (41-50)
     {"n": "41", "step": "Click 'Standard'", "m": "clickable", "st": ["Standard"], "tf": None, "exp": "e41"},
