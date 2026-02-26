@@ -87,31 +87,37 @@ OUTPUT FORMAT:
 # ── Executor prompts (model-size aware) ───────────────────────────────────────
 
 _RULES_CORE = """\
-Each element has:
-  id           – integer (RETURN THIS)
-  name         – visible text / aria-label / "Section -> element text"
-  tag          – html tag: input, button, a, select, label, div …
-  role         – aria role: button, checkbox, radio, textbox …
-  data_qa      – data-qa / data-testid (strongest automation signal)
-  html_id      – html id attribute
-  icon_classes – icon css classes: "fa arrow circle right"
+Each element candidate has:
+  id           – integer (RETURN THIS EXACT ID)
+  name         – visible text / aria-label / "Context -> element text"
+  tag          – HTML tag (input, button, a, select, textarea, div, etc.)
+  role         – ARIA role (button, checkbox, textbox, combobox, etc.)
+  data_qa      – Test IDs (extremely strong signal)
+  html_id      – HTML id attribute
+  class_name   – HTML classes (important for inferring intent)
+  icon_classes – CSS classes for icons (e.g., "fa search")
 
-RULES (apply in order):
-① Return INTEGER id only:  {"id": 3, "thought": "one sentence"}
-② data_qa exact match  → highest priority, beats everything else.
-③ disabled elements    → NEVER pick (they have huge negative score).
-④ Step says "button"   → prefer tag=button; AVOID tag=a / type=radio / type=checkbox.
-   Step says "link"    → prefer tag=a; AVOID button.
-   Step says "field"   → prefer input[text/email/password/tel] or textarea.
-   Step says "dropdown"→ prefer tag=select (name starts "dropdown [").
-   Step says "checkbox"→ ONLY type=checkbox or role=checkbox; penalise everything else.
-   Step says "radio"   → ONLY type=radio or role=radio.
-⑤ password step        → prefer input[type=password] over input[type=text].
-⑥ aria-label exact match → strong signal; beats same-text visible elements.
-⑦ icon-only buttons    → match icon_classes words against step keywords.
-⑧ section context      → "Section -> name"; prefer matching section.
-⑨ typo tolerance       → "Suggession" ≈ "Suggestion" (word overlap).
-⑩ tie-break            → lower id wins.
+CRITICAL RULES (Apply strictly in this order):
+1. JSON ONLY: Return ONLY valid JSON. No markdown, no extra text. Format: {"id": 123, "thought": "reasoning"}
+2. EXACT MATCH WINS: An exact match in `name`, `data_qa`, or `aria_label` ALWAYS beats a partial match.
+3. MATCH THE ACTION TO THE ELEMENT TYPE:
+   - "Fill/Type" -> MUST prefer `tag=input`, `tag=textarea`, or `contenteditable=true`.
+   - "Check/Uncheck" -> MUST prefer `type=checkbox` or `role=checkbox`. NEVER pick a generic button.
+   - "Select from dropdown" -> MUST prefer `tag=select` or `role=combobox`.
+   - "Click link" -> MUST prefer `tag=a` or `role=link`.
+   - "Click button" -> MUST prefer `tag=button`, `role=button`, or `type=submit`.
+4. DEV CONVENTIONS (CRITICAL): Read `html_id` and `class_name` to infer the real element type if `tag` is generic (like div/span):
+   - `btn` / `button` -> It acts as a button.
+   - `chk` / `checkbox` -> It acts as a checkbox.
+   - `rad` / `radio` -> It acts as a radio button.
+   - `sel` / `drop` / `cmb` -> It acts as a select/dropdown.
+   - `inp` / `txt` / `field` -> It acts as an input field.
+5. CONTEXT MATTERS: If the step says "in Shipping", pick the element whose `name` contains that context (e.g., "Shipping -> First Name").
+6. DATA-QA / TEST-ID: If `data_qa` closely matches the target text, it is almost certainly the correct choice.
+7. PASSWORDS: If the step mentions "password" or "secret", heavily prefer `type=password`.
+8. ICONS: For "Search", "Close", "Settings" without text, rely on `icon_classes` (e.g., "search", "times", "gear").
+9. BEWARE TRAPS: DO NOT pick elements with "honeypot", "spam", or "hidden" in their names/IDs unless explicitly asked.
+10. TIE-BREAKER: If multiple elements look equally correct, pick the one with the lowest `id` (this means it has the highest heuristic score).
 """
 
 # Tiny (< 1 b) — minimal tokens
@@ -139,17 +145,18 @@ EXECUTOR_PROMPT_LARGE = """\
 You are a precise UI Element Selector for a browser automation agent.
 CONTEXT: {strategic_context}
 
-Given a browser STEP and a list of UI ELEMENTS, return the id of the best match.
+Given a browser STEP and a list of UI ELEMENTS, return the `id` of the best match.
 
 """ + _RULES_CORE + """
 EXAMPLES:
-  Step: Fill 'Email' field  →  pick input[type=text/email], NOT radio/button.
-  Step: Click 'Close' button + icon_classes "fa times"  →  icon match wins.
-  Step: Click 'Delete' for selected + data_qa "delete-selected"  →  data_qa wins.
-  Step: Click checkbox 'Remember Me' + role=checkbox div + type=text input  →  role=checkbox wins.
-  Step: Fill password field  →  input[type=password] wins over input[type=text].
+  Step: "Fill 'Email' in Billing" → Pick element with name "Billing -> Email input text", NOT "Shipping -> Email".
+  Step: "Check 'I agree'" → Pick type=checkbox, or class_name containing 'chk'.
+  Step: "Click 'Color Red'" → Pick element with aria-label="Color Red" or similar.
+  Step: "Select 'Ukraine' from 'Country'" → Pick tag=select containing 'Country'.
+  Step: "Fill 'Message Body'" → Pick element with contenteditable=true or tag=textarea.
 
-OUTPUT (nothing else): {"id": 0, "thought": "one sentence"}
+OUTPUT (strictly valid JSON, no markdown):
+{"id": 0, "thought": "one sentence"}
 """
 
 

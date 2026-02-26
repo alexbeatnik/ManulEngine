@@ -83,6 +83,7 @@ class ManulEngine(_ActionsMixin):
                 "role":         el.get("role", ""),
                 "data_qa":      el.get("data_qa", ""),
                 "html_id":      el.get("html_id", ""),
+                "class_name":   el.get("class_name", ""), # <--- ДОДАНО ПІДТРИМКУ КЛАСІВ ДЛЯ ШІ
                 "icon_classes": el.get("icon_classes", ""),
             }
             for el in candidates
@@ -92,15 +93,20 @@ class ManulEngine(_ActionsMixin):
             f"MODE: {mode.upper()}\n"
             f"ELEMENTS:\n{json.dumps(payload, ensure_ascii=False)}"
         )
-        system = self._executor_prompt.format(strategic_context=strategic_context)
+        system = self._executor_prompt.replace("{strategic_context}", strategic_context)
         obj = await self._llm_json(system, prompt)
         if not obj or not isinstance(obj, dict):
             return 0
 
         raw_id = obj.get("id", None)
-        chosen_id: int | None = None
+        if raw_id is None: # fallback for generic keys
+            for key in ["id", '"id"', "ID"]:
+                if key in obj:
+                    raw_id = obj[key]
+                    break
+
         try:
-            chosen_id = int(raw_id)
+            chosen_id = int(raw_id) if raw_id is not None else None
         except (TypeError, ValueError):
             chosen_id = None
 
