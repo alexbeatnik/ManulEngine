@@ -509,10 +509,6 @@ class _ActionsMixin:
         if val and var_m:
             val = val.strip()
             # Post-process: strip "Label: Value" pattern if hint suggests it
-            # e.g. "YTD Return: +12.4%" → "+12.4%" when hint = "ytd return"
-            # "Status: Active" → "Active" when hint = "coverage status"
-            # "Total documents: 14" → "14" when hint has "total" or "documents"
-            # "Price: Free" → "Free" when hint = "price"
             if hint and ':' in val:
                 m_lbl = re.match(r'^([A-Za-z][A-Za-z0-9 ]+?)\s*:\s+(.+)$', val)
                 if m_lbl:
@@ -698,9 +694,18 @@ class _ActionsMixin:
                 if is_optional: return True
                 raise
 
+            # ── ДОДАНО: ЛОГІКА СКРОЛУ ПРИ ВІДМОВІ АГЕНТА ──
             if el is None:
-                if mode == "locate" or is_optional: return True
-                return False
+                if is_optional: return True
+                if attempt < 2:
+                    print("    🔄 Target not found or rejected by AI. Scrolling and retrying...")
+                    await page.evaluate("window.scrollBy(0, window.innerHeight / 2)")
+                    await asyncio.sleep(1)
+                    continue
+                else:
+                    if mode != "locate":
+                        print("    💀 SELF-HEALING FAILED: No valid elements found after retries.")
+                    return False
 
             if el["id"] in failed_ids: continue
 
@@ -715,7 +720,11 @@ class _ActionsMixin:
             if mode == "locate":
                 try:
                     loc = page.locator(f"xpath={xpath}").first
-                    if not is_shad: await loc.scroll_into_view_if_needed(timeout=2000)
+                    if not is_shad: 
+                        await loc.scroll_into_view_if_needed(timeout=2000)
+                        await self._highlight(page, loc)
+                    else:
+                        await self._highlight(page, el_id, by_js_id=True)
                 except Exception: pass
                 print(f"    🔍 Located '{name[:40]}'")
                 return True
@@ -724,7 +733,11 @@ class _ActionsMixin:
 
             loc = page.locator(f"xpath={xpath}").first
             try:
-                if not is_shad: await loc.scroll_into_view_if_needed(timeout=2000)
+                if not is_shad: 
+                    await loc.scroll_into_view_if_needed(timeout=2000)
+                    await self._highlight(page, loc)
+                else:
+                    await self._highlight(page, el_id, by_js_id=True)
             except Exception: pass
 
             try:

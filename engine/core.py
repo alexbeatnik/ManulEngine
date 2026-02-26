@@ -73,7 +73,7 @@ class ManulEngine(_ActionsMixin):
 
     async def _llm_select_element(
         self, step: str, mode: str, candidates: list[dict], strategic_context: str
-    ) -> int:
+    ) -> "int | None":
         """Ask the LLM to pick the best element from scored candidates."""
         payload = [
             {
@@ -83,7 +83,7 @@ class ManulEngine(_ActionsMixin):
                 "role":         el.get("role", ""),
                 "data_qa":      el.get("data_qa", ""),
                 "html_id":      el.get("html_id", ""),
-                "class_name":   el.get("class_name", ""), # <--- ДОДАНО ПІДТРИМКУ КЛАСІВ ДЛЯ ШІ
+                "class_name":   el.get("class_name", ""),
                 "icon_classes": el.get("icon_classes", ""),
             }
             for el in candidates
@@ -104,6 +104,12 @@ class ManulEngine(_ActionsMixin):
                 if key in obj:
                     raw_id = obj[key]
                     break
+
+        # ── ОБРОБКА ВІДМОВИ ШІ (REJECTION) ──
+        if raw_id is None or str(raw_id).lower() == "null":
+            thought = obj.get("thought", "No matching element found.")
+            print(f"    🚫 AI REJECTED CANDIDATES: '{thought}'")
+            return None
 
         try:
             chosen_id = int(raw_id) if raw_id is not None else None
@@ -253,6 +259,14 @@ class ManulEngine(_ActionsMixin):
             idx = await self._llm_select_element(step, mode, top, strategic_context)
         except Exception:
             idx = 0
+            
+        # ── ДОДАНО: Якщо ШІ відмовився, заносимо кандидатів у чорний список ──
+        if idx is None:
+            if failed_ids is not None:
+                for c in top:
+                    failed_ids.add(c["id"])
+            return None
+
         ai_choice = top[idx]
 
         # Anti-phantom guard — only for input/select modes

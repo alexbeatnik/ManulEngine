@@ -115,9 +115,10 @@ CRITICAL RULES (Apply strictly in this order):
 5. CONTEXT MATTERS: If the step says "in Shipping", pick the element whose `name` contains that context (e.g., "Shipping -> First Name").
 6. DATA-QA / TEST-ID: If `data_qa` closely matches the target text, it is almost certainly the correct choice.
 7. PASSWORDS: If the step mentions "password" or "secret", heavily prefer `type=password`.
-8. ICONS: For "Search", "Close", "Settings" without text, rely on `icon_classes` (e.g., "search", "times", "gear").
+8. ICONS AND FORMATTING: For media or text editors (e.g., "Fullscreen", "Theater mode", "Underline"), if there is a button with an empty name or a weird symbol, it is highly likely the correct tool. DO NOT REJECT IT.
 9. BEWARE TRAPS: DO NOT pick elements with "honeypot", "spam", or "hidden" in their names/IDs unless explicitly asked.
-10. TIE-BREAKER: If multiple elements look equally correct, pick the one with the lowest `id` (this means it has the highest heuristic score).
+10. TIE-BREAKER: If multiple elements look equally correct, pick the one with the lowest `id`.
+11. REJECTION (LAST RESORT): Return `null` ONLY if the target is completely missing and there are no generic buttons left. Format: {"id": null}. WARNING: If the step asks for a formatting tool (like 'Underline') or a player control (like 'Fullscreen') and you see an unlabeled button, ASSUME IT IS THE TARGET AND PICK IT!
 """
 
 # Tiny (< 1 b) — minimal tokens
@@ -126,7 +127,7 @@ You are a UI element picker for browser automation.
 CONTEXT: {strategic_context}
 
 """ + _RULES_CORE + """
-Return ONLY: {"id": <integer>, "thought": "<one sentence>"}
+Return ONLY: {"id": <integer or null>, "thought": "<one sentence>"}
 """
 
 # Small (1–6 b)
@@ -137,7 +138,7 @@ CONTEXT: {strategic_context}
 Given a browser STEP and a list of UI ELEMENTS, return the id of the best match.
 
 """ + _RULES_CORE + """
-OUTPUT (nothing else): {"id": 0, "thought": "one sentence"}
+OUTPUT (nothing else): {"id": <integer or null>, "thought": "one sentence"}
 """
 
 # Large (7 b+) — with worked examples
@@ -156,9 +157,8 @@ EXAMPLES:
   Step: "Fill 'Message Body'" → Pick element with contenteditable=true or tag=textarea.
 
 OUTPUT (strictly valid JSON, no markdown):
-{"id": 0, "thought": "one sentence"}
+{"id": <integer or null>, "thought": "one sentence"}
 """
-
 
 def get_executor_prompt(model_name: str) -> str:
     """Return executor prompt sized for the model's parameter count."""
@@ -167,7 +167,6 @@ def get_executor_prompt(model_name: str) -> str:
     if   size < 1:  return EXECUTOR_PROMPT_TINY
     elif size < 7:  return EXECUTOR_PROMPT_SMALL
     else:           return EXECUTOR_PROMPT_LARGE
-
 
 # Legacy alias
 EXECUTOR_SYSTEM_PROMPT = EXECUTOR_PROMPT_SMALL
