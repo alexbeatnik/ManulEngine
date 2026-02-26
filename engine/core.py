@@ -273,7 +273,6 @@ class ManulEngine(_ActionsMixin):
         except Exception:
             idx = 0
             
-        # ── ДОДАНО: Якщо ШІ відмовився, заносимо кандидатів у чорний список ──
         if idx is None:
             if failed_ids is not None:
                 for c in top:
@@ -338,7 +337,7 @@ class ManulEngine(_ActionsMixin):
             try:
                 for i, raw_step in enumerate(plan, 1):
                     step = substitute_memory(raw_step, self.memory)
-                    print(f"\n[🚀 STEP {i}] {step}")
+                    print(f"\n[🐾 STEP {i}] {step}")
                     s_up = step.upper()
 
                     if re.search(r'\bNAVIGATE\b', s_up):

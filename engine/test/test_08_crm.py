@@ -389,7 +389,7 @@ async def run_suite():
         print(f"\n{'=' * 70}")
         print(f"📊 SCORE: {passed}/{len(TESTS)} passed")
         if failures:
-            print("\n💀 Failures:")
+            print("\n🙀 Failures:")
             for f in failures:
                 print(f"   • {f}")
         if passed == len(TESTS):

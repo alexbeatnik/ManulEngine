@@ -294,7 +294,7 @@ TESTS = [
 
 async def run_suite():
     print(f"\n{'=' * 70}")
-    print("💀 THE UNHOLY MESS & FINAL BOSS: 100 REAL-WORLD TRAPS")
+    print("🙀 THE UNHOLY MESS & FINAL BOSS: 100 REAL-WORLD TRAPS")
     print(f"{'=' * 70}")
 
     manul = ManulEngine(headless=True)
@@ -374,7 +374,7 @@ async def run_suite():
         print(f"\n{'=' * 70}")
         print(f"📊 SCORE: {passed}/{len(TESTS)} passed")
         if failures:
-            print("\n💀 Failures:")
+            print("\n🙀 Failures:")
             for f in failures:
                 print(f"   • {f}")
         if passed == len(TESTS):

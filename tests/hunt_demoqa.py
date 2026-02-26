@@ -70,7 +70,7 @@ async def main():
         print("\n🏆 PERFECT HUNT! Manul mastered all DemoQA elements! 🏆")
         print(f"📊 Collected Data: {manul.memory}")
     else:
-        print("\n💀 Mission Failed.")
+        print("\n🙀 Mission Failed.")
         print(f"📊 Partial Data: {manul.memory}")
 
     return success

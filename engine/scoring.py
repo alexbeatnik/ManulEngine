@@ -90,7 +90,14 @@ def score_elements(
 
             if tl == aria or tl == ph:
                 score += 5_000
-                
+            elif len(tl) > 2 and (
+                aria.startswith(tl + " (") or aria.startswith(tl + " [")
+            ):
+                # Partial aria match for "Keyword (shortcut)" patterns:
+                # "fullscreen" matches "Fullscreen (f)"
+                # "underline"  matches "Underline (Ctrl+U)"
+                score += 3_000
+
             t_dashed = tl.replace(" ", "-").replace("_", "-")
             
             if t_dashed == data_qa or tl == data_qa:

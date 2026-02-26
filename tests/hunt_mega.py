@@ -101,7 +101,7 @@ async def main():
         print("\n🏆 FATALITY! Manul completely dominated the test page! 🏆")
         print(f"📊 Collected Data: {manul.memory}")
     else:
-        print("\n💀 Mission Failed. The prey escaped.")
+        print("\n🙀 Mission Failed. The prey escaped.")
 
     return success
 

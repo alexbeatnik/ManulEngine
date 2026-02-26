@@ -98,7 +98,7 @@ async def _run_prompt(prompt: str, headless: bool) -> None:
 
     manul  = ManulEngine(headless=headless)
     result = await manul.run_mission(prompt)
-    status = "✅ ACCOMPLISHED" if result else "💀 FAILED"
+    status = "✅ ACCOMPLISHED" if result else "🙀 FAILED"
     print(f"\n{status}")
 
 
@@ -230,7 +230,7 @@ async def main() -> None:
             return
 
         files = _collect(target)
-        print(f"🐱 Manul CLI: Found {len(files)} target(s) in hunting grounds.")
+        print(f"😼 Manul CLI: Found {len(files)} target(s) in hunting grounds.")
 
         results: list[tuple[str, str, float]] = []
         total_start = time.perf_counter()

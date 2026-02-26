@@ -663,7 +663,7 @@ async def run_laboratory():
 
         print(f"\n{'=' * 70}")
         print(f"📊 SCORE: {passed}/{len(TESTS)} passed")
-        if failures: print("\n💀 Failures:"); [print(f"   • {f}") for f in failures]
+        if failures: print("\n🙀 Failures:"); [print(f"   • {f}") for f in failures]
         if passed == len(TESTS): print("\n🏆 FLAWLESS VICTORY! The Manul engine is unbreakable!")
         print("=" * 70)
         await browser.close()
