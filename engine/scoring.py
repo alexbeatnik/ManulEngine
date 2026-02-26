@@ -40,16 +40,17 @@ def score_elements(
     learned = learned_elements.get(cache_key)
 
     for el in els:
-        name       = el["name"].lower()
+        name       = el["name"].lower() if isinstance(el["name"], str) else ""
         tag        = el.get("tag_name", "")
         itype      = el.get("input_type", "")
-        data_qa    = el.get("data_qa", "").lower()
-        html_id    = el.get("html_id", "").lower()
-        class_name = el.get("class_name", "").lower()
-        icons      = el.get("icon_classes", "").lower()
-        aria       = el.get("aria_label", "").lower()
-        role       = el.get("role", "").lower()
-        ph         = el.get("placeholder", "").lower()
+        data_qa    = el.get("data_qa", "").lower() if isinstance(el.get("data_qa", ""), str) else ""
+        html_id    = el.get("html_id", "").lower() if isinstance(el.get("html_id", ""), str) else ""
+        class_name = el.get("class_name", "")
+        class_name = class_name.lower() if isinstance(class_name, str) else ""
+        icons      = el.get("icon_classes", "").lower() if isinstance(el.get("icon_classes", ""), str) else ""
+        aria       = el.get("aria_label", "").lower() if isinstance(el.get("aria_label", ""), str) else ""
+        role       = el.get("role", "").lower() if isinstance(el.get("role", ""), str) else ""
+        ph         = el.get("placeholder", "").lower() if isinstance(el.get("placeholder", ""), str) else ""
         
         # Об'єднуємо всі технічні атрибути для пошуку патернів розробників
         dev_names = f"{html_id} {class_name} {data_qa}"

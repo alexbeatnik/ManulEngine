@@ -186,7 +186,7 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
     return results.map(({el, inShadow}) => {
         let name, isSelect = false;
         const iconClasses = Array.from(el.querySelectorAll('i, svg, span[class*="icon"]'))
-            .map(i => i.className || i.getAttribute('class') || '')
+            .map(i => (typeof i.className === 'string' ? i.className : (i.getAttribute('class') || '')))
             .join(' ').replace(/[-_]/g, ' ').toLowerCase();
 
         const htmlId    = el.id || el.getAttribute('for') || '';
@@ -225,7 +225,7 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             is_select:     isSelect,
             is_shadow:     inShadow,
             is_contenteditable: isEditable,
-            class_name:    el.className || '',
+            class_name:    (typeof el.className === 'string' ? el.className : (el.getAttribute('class') || '')),
             tag_name:      el.tagName.toLowerCase(),
             input_type:    el.type ? el.type.toLowerCase() : '',
             data_qa:       el.getAttribute('data-qa') || el.getAttribute('data-testid') || '',
