@@ -17,8 +17,12 @@ drag-and-drop, click/type/select/hover via _execute_step).
 import asyncio
 import json
 import re
-import ollama
 from playwright.async_api import async_playwright
+
+try:
+    import ollama  # type: ignore
+except Exception:  # pragma: no cover
+    ollama = None
 
 from . import prompts
 from .helpers import substitute_memory
@@ -48,6 +52,9 @@ class ManulEngine(_ActionsMixin):
 
     async def _llm_json(self, system: str, user: str) -> dict | None:
         """Send a system+user prompt to the local LLM and parse JSON response."""
+        if ollama is None:
+            print("    ⚠️  LLM unavailable: Python package 'ollama' is not installed.")
+            return None
         try:
             resp = await asyncio.to_thread(
                 ollama.chat,
@@ -253,6 +260,12 @@ class ManulEngine(_ActionsMixin):
             print(f"    ⚙️  DOM HEURISTICS: {label} match (score {best_score})")
             return top[0]
 
+        # Explicit AI disable switch: threshold <= 0 means "never call the LLM".
+        # (Useful for deterministic runs and environments without Ollama.)
+        if self._threshold <= 0:
+            print(f"    ⚙️  DOM HEURISTICS: AI disabled (threshold {self._threshold}); using best candidate (score {best_score})")
+            return top[0]
+
         # Genuinely ambiguous → ask the LLM
         print(f"    🧠 AI AGENT: Ambiguity detected, analysing {len(top)} candidates…")
         try:
@@ -313,6 +326,9 @@ class ManulEngine(_ActionsMixin):
                 plan = [s.strip() for s in re.split(r'(?=\b\d+\.\s)', task) if s.strip()]
             else:
                 plan = await self._llm_plan(task)
+
+            if not plan and not re.match(r'^\s*\d+\.', task):
+                print("    ❌ No plan produced. If you're running without Ollama, provide a numbered step list.")
 
             if not plan:
                 await browser.close()

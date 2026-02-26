@@ -22,7 +22,11 @@ engine/
   js_scripts.py            SNAPSHOT_JS (DOM collector), VISIBLE_TEXT_JS
   helpers.py               substitute_memory(), extract_quoted(), timing constants
   test/
-    test_engine.py          60-trap Monster DOM unit test suite
+    test_engine.py          synthetic DOM micro-suite (no Playwright)
+    test_01_ecommerce.py    synthetic DOM scenario pack
+    test_02_social.py       synthetic DOM scenario pack
+    ...
+    test_10_mess.py         synthetic DOM scenario pack
 tests/
   hunt_demoqa.py            integration: forms, checkboxes, radios, tables
   hunt_expandtesting.py     integration: login, inputs, dropdown
@@ -67,7 +71,7 @@ Detected from step keywords:
 env\Scripts\activate          # Windows
 source env/bin/activate       # Linux/Mac
 
-# Unit tests (60 traps, no browser, no LLM)
+# Synthetic unit tests (no Playwright / no real browser)
 python manul.py test
 
 # Integration tests (needs Playwright browsers + running Ollama)
@@ -76,7 +80,13 @@ python manul.py hunt_demoqa.py # single hunt
 python manul.py --headless     # headless mode
 ```
 
-**Rule:** after any engine change, `python manul.py test` must stay **60/60**.
+**Rule:** after any engine change, `python manul.py test` must exit with code **0**.
+
+Tip (deterministic runs): set `MANUL_AI_THRESHOLD=0` to force heuristics-only resolution and avoid any LLM fallback during tests.
+
+Note: `MANUL_AI_THRESHOLD` gates the **element picker** LLM fallback. If the user passes a **free-text** task (not a numbered step list), `run_mission()` will still call the LLM planner to generate steps.
+
+Offline mode: the engine can run without Ollama for numbered missions if `MANUL_AI_THRESHOLD=0` (no element-picker calls). Free-text planning still requires Ollama.
 
 ## Configuration (.env)
 
@@ -89,6 +99,10 @@ python manul.py --headless     # headless mode
 | `MANUL_NAV_TIMEOUT` | `30000` | Navigation timeout (ms) |
 
 Threshold auto-calculation by model size: `<1b → 500`, `1-4b → 750`, `5-9b → 1000`, `10-19b → 1500`, `20b+ → 2000`.
+
+Important: the threshold is a *gate* for calling the LLM.
+- Lower threshold → fewer LLM calls (heuristics win more often)
+- Higher threshold → more LLM calls ("paranoid" disambiguation)
 
 ## Common pitfalls
 
@@ -111,6 +125,8 @@ id, name, xpath, is_select, is_shadow, class_name,
 tag_name, input_type, data_qa, html_id, icon_classes,
 aria_label, role, disabled, aria_disabled
 ```
+
+Depending on the element type, the snapshot may also include fields like `placeholder`, `value`, `checked`, and `is_contenteditable`.
 
 - `name` includes section context: `"Section -> Element Name input text"`.
   The scoring strips `" input <type>"` suffix and splits on `" -> "` to get the core name.

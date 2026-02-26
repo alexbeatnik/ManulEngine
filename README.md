@@ -32,7 +32,11 @@ browser-manul/
 │   ├── core.py           ManulEngine class (LLM, resolution, mission runner)
 │   ├── actions.py        Action execution mixin (click, type, select, hover, drag)
 │   └── test/
-│       └── test_engine.py  60-trap Monster DOM unit test suite
+│       ├── test_engine.py       Engine micro-suite (synthetic DOM, no browser)
+│       ├── test_01_ecommerce.py  Scenario pack: ecommerce (synthetic DOM)
+│       ├── test_02_social.py     Scenario pack: social (synthetic DOM)
+│       ├── ...                  More packs (see engine/test/)
+│       └── test_10_mess.py       Scenario pack: misc edge-cases (synthetic DOM)
 └── tests/                Integration hunt tests (real websites)
     ├── hunt_demoqa.py
     ├── hunt_expandtesting.py
@@ -58,12 +62,27 @@ automation approaches.
 
 ### 🎛️ Adjustable AI Threshold (Paranoia Level)
 
-Control the engine's confidence via `.env` using a scoring system:
+Control how quickly Manul falls back to the local LLM via `.env`:
+
+- **Lower threshold** → fewer AI calls (heuristics win more often)
+- **Higher threshold** → more AI calls ("paranoid" verification / disambiguation)
 
 -   **Low (200--500):** Blazing speed. Manul trusts its heuristic
     algorithms for most tasks.
--   **High (10,000+):** "Paranoid" mode. The AI Agent verifies almost
-    every step for maximum precision.
+-   **Default (auto):** Derived from model size (see `engine/prompts.py`).
+-   **High (2,000+):** More AI involvement on ambiguous steps.
+
+Tip: set `MANUL_AI_THRESHOLD=0` to force **heuristics-only** runs (never call the LLM).
+
+Note: if you pass a **free-text** task (not a numbered step list), Manul will still use the LLM planner to generate steps.
+To avoid Ollama entirely, provide a numbered mission.
+
+### 📴 AI disabled / offline mode
+
+If you don't want (or can't run) Ollama:
+
+- Set `MANUL_AI_THRESHOLD=0` — disables the **element picker** LLM fallback.
+- Provide a **numbered mission** — otherwise the free-text **planner** still needs the LLM.
 
 ------------------------------------------------------------------------
 
@@ -108,8 +127,15 @@ cd browser-manul
 ## 2️⃣ Setup Environment
 
 ``` bash
-pip install playwright ollama python-dotenv
+pip install -r requirements.txt
 python -m playwright install chromium
+```
+
+If you want AI fallback, install + run Ollama locally:
+
+```bash
+ollama pull qwen2.5:0.5b
+ollama serve
 ```
 
 ------------------------------------------------------------------------
@@ -122,10 +148,12 @@ Create a `.env` file in the root directory:
 MANUL_MODEL=qwen2.5:0.5b
 MANUL_HEADLESS=False
 
-# AI Threshold: 500 (standard), 10000 (maximum verification)
-MANUL_AI_THRESHOLD=500
+# AI Threshold: lower = fewer AI calls, higher = more AI calls
+# MANUL_AI_THRESHOLD=0
+# MANUL_AI_THRESHOLD=500
 
 MANUL_TIMEOUT=5000
+MANUL_NAV_TIMEOUT=30000
 ```
 
 ------------------------------------------------------------------------
@@ -145,8 +173,27 @@ python manul.py --headless
 # Run inline mission
 python manul.py "1. NAVIGATE to https://example.com  2. Click the 'More' link  3. DONE."
 
-# Run engine unit tests (60 traps)
+# Run synthetic engine tests (no Playwright)
 python manul.py test
+```
+
+------------------------------------------------------------------------
+
+## 🌍 Integration hunts (real sites)
+
+Files under `tests/hunt_*.py` are **integration hunts**: they open real websites and execute end-to-end flows.
+
+Prerequisites:
+
+- Playwright browsers installed: `python -m playwright install chromium`
+- Network access (sites can change and may be flaky)
+- Ollama **only if** you want AI fallback on ambiguous steps
+
+Deterministic tip (no AI calls):
+
+```bash
+# PowerShell (heuristics-only)
+$env:MANUL_AI_THRESHOLD=0; python manul.py hunt_wikipedia.py
 ```
 
 ------------------------------------------------------------------------
@@ -214,28 +261,20 @@ if __name__ == "__main__":
 
 # 🐾 Chaos Chamber Verified
 
-The engine is battle-tested against **60 DOM Traps** (Monster DOM),
-successfully handling:
+The engine is battle-tested in a synthetic DOM laboratory (no Playwright)
+plus real-site integration hunts.
 
--   **24 core traps:** Legend Form, Phantom Guard, ARIA Recognition,
-    Shadow DOM, Data-QA Supremacy, Ghost Opacity, Readonly Hijacking,
-    Section Context, Icon-Only Buttons, Disabled Avoidance, and more.
--   **4 optional traps:** "if exists" / "optional" keyword handling
-    with exact-match guarding against false positives.
--   **6 bug-regression traps:** Check/Uncheck mode detection, Select
-    triple collision, Optional partial-match decoy, data-qa hyphen
-    mapping, Native checkbox JS click.
--   **12 hunt-site pattern traps:** Textarea vs Input, Double-click,
-    Date input, Search input, Pagination, Day checkboxes, Country
-    dropdown, Hover, Checkbox toggle, Fill+Enter.
--   **14 normal element tests:** Simple form fills, button clicks, link
-    clicks, readonly fill, radio, checkbox, VERIFY text/checked,
-    EXTRACT from table.
+-   **Synthetic DOM packs:** scenario suites under `engine/test/` (ecommerce, social, saas, travel, fintech, media, gov/health, crm, edtech, mess).
+-   **Engine micro-suite:** core edge-cases and regressions in `engine/test/test_engine.py`.
+-   **Integration hunts:** real-site flows under `tests/hunt_*.py` (requires Playwright; Ollama only if you want AI fallback).
 
-Run the full suite:
+Run the synthetic suite:
 
 ``` bash
 python manul.py test
+
+# PowerShell (heuristics-only, deterministic)
+$env:MANUL_AI_THRESHOLD=0; python manul.py test
 ```
 
 ------------------------------------------------------------------------
