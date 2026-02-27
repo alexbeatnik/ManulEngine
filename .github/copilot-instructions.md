@@ -34,6 +34,7 @@ engine/
     test_10_mess.py         synthetic DOM scenario pack
     test_11_cyber.py        synthetic DOM scenario pack
     test_12_ai_modes.py     synthetic DOM unit: Always-AI/strict/rejection
+    test_13_controls_cache.py synthetic DOM unit: persistent controls cache hit/miss
 tests/
   hunt_demoqa.hunt          integration: forms, checkboxes, radios, tables
   hunt_expandtesting.hunt   integration: login, inputs, dynamic tables
@@ -52,6 +53,7 @@ tests/
 5. **AI Rejection & Anti-phantom guard** — LLM can return `{"id": null}` if no plausible target is found. Engine handles `null` by blacklisting the current candidates and triggering self-healing.
 6. **Action** — type / click / select / hover / drag. Non-shadow interactions primarily use Playwright with `force=True` plus retries; Shadow DOM interactions use a **JS fallback** (`window.manulClick`, `window.manulType`) to bypass elements that Playwright cannot target.
 7. **Self-healing** — on failure or AI rejection, scroll down, blacklist bad IDs, and retry (up to 3 retries). Each element-resolution attempt may also scroll-and-retry internally.
+8. **Persistent controls cache** — successful control resolutions are stored in a per-site folder with separate per-page subfolders (page-object style), each containing `controls.json`, and reused on later runs. Cached controls are reused only if a matching live candidate still exists in the current snapshot; changed controls overwrite previous entries for that URL page.
 
 ## Interaction modes
 
@@ -129,9 +131,8 @@ source env/bin/activate       # Linux/Mac
 python manul.py test
 
 # Integration tests (needs Playwright browsers; Ollama optional)
-python manul.py                # run all tests/*.hunt scripts
-python manul.py hunt_demoqa.hunt # single hunt
-python manul.py some_folder/   # all *.hunt in folder
+python manul.py               # run all hunt_*.py scripts
+python manul.py hunt_wikipedia.py # single hunt
 python manul.py --headless     # headless mode
 
 
@@ -144,6 +145,7 @@ Ollama is optional, but required for:
 
 **Rule:** after any engine change, `python manul.py test` must exit with code **0**.
 Tip: Set `MANUL_AI_THRESHOLD=0` to force heuristics-only resolution. This ensures deterministic unit tests without making expensive/variable LLM calls.
+Note: `python manul.py test` disables persistent controls cache by default for deterministic synthetic suites. `test_13_controls_cache.py` explicitly enables cache in a temporary `cache/run_<datetime>` folder and removes it after the test.
 
 ## Configuration (.env)
 
@@ -155,6 +157,8 @@ Tip: Set `MANUL_AI_THRESHOLD=0` to force heuristics-only resolution. This ensure
 | `MANUL_AI_THRESHOLD` | auto | Score threshold before LLM fallback |
 | `MANUL_AI_ALWAYS` | `False` | If `True`, always ask the LLM picker (bypasses heuristic short-circuits) |
 | `MANUL_AI_POLICY` | `prior` | How to treat heuristic score in LLM picker: `prior` (hint) or `strict` (force max-score) |
+| `MANUL_CONTROLS_CACHE_ENABLED` | `True` | Enables persistent per-site controls cache |
+| `MANUL_CONTROLS_CACHE_DIR` | `cache` | Directory for persistent controls cache files |
 | `MANUL_LOG_NAME_MAXLEN` | `0` | If > 0, truncates element names in logs (whitespace is compacted regardless) |
 | `MANUL_LOG_THOUGHT_MAXLEN` | `0` | If > 0, truncates LLM "thought" strings in logs |
 | `MANUL_TIMEOUT` | `5000` | Default action timeout (ms) |
@@ -168,6 +172,7 @@ Suggested `.env` for mixed mode (the current default expectation):
 MANUL_AI_THRESHOLD=500
 MANUL_AI_ALWAYS=False
 MANUL_AI_POLICY=prior
+MANUL_CONTROLS_CACHE_ENABLED=True
 ```
 
 Dotenv precedence note:

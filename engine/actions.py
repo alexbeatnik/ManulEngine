@@ -9,6 +9,33 @@ class _ActionsMixin:
     def _fmt_el_name(self, name: object) -> str:
         return compact_log_field(name, "MANUL_LOG_NAME_MAXLEN")
 
+    def _remember_resolved_control(
+        self,
+        *,
+        page,
+        cache_key: tuple,
+        mode: str,
+        search_texts: list[str],
+        target_field: str | None,
+        element: dict,
+    ) -> None:
+        self.learned_elements[cache_key] = {
+            "name": str(element.get("name", "")),
+            "tag": str(element.get("tag_name", "")),
+        }
+        persist = getattr(self, "_persist_control_cache_entry", None)
+        if callable(persist):
+            try:
+                persist(
+                    page=page,
+                    mode=mode,
+                    search_texts=search_texts,
+                    target_field=target_field,
+                    element=element,
+                )
+            except (OSError, ValueError, TypeError) as exc:
+                print(f"    ⚠️  CONTROL CACHE: persist skipped ({type(exc).__name__})")
+
     async def _handle_navigate(self, page, step: str) -> bool:
         url = re.search(r'(https?://[^\s\'"<>]+)', step)
         if not url: return False
@@ -756,7 +783,14 @@ class _ActionsMixin:
                     if "enter" in step_l:
                         await page.keyboard.press("Enter")
                         await asyncio.sleep(4)
-                    self.learned_elements[cache_key] = {"name": name, "tag": tag}
+                    self._remember_resolved_control(
+                        page=page,
+                        cache_key=cache_key,
+                        mode=mode,
+                        search_texts=search_texts,
+                        target_field=target_field,
+                        element=el,
+                    )
                     self.last_xpath = None
                     return True
 
@@ -793,7 +827,14 @@ class _ActionsMixin:
                     print(f"    🚁  Hovered '{self._fmt_el_name(name)}'")
                     if is_shad: await page.evaluate(f"window.manulElements[{el_id}].dispatchEvent(new MouseEvent('mouseover',{{bubbles:true,cancelable:true,view:window}}))")
                     else: await loc.hover(force=True, timeout=3000)
-                    self.learned_elements[cache_key] = {"name": name, "tag": tag}
+                    self._remember_resolved_control(
+                        page=page,
+                        cache_key=cache_key,
+                        mode=mode,
+                        search_texts=search_texts,
+                        target_field=target_field,
+                        element=el,
+                    )
                     await asyncio.sleep(ACTION_WAIT)
                     return True
 
@@ -814,7 +855,14 @@ class _ActionsMixin:
                                 try: await page.wait_for_load_state("networkidle", timeout=10_000)
                                 except Exception: await asyncio.sleep(3.0)
                         await asyncio.sleep(ACTION_WAIT)
-                    self.learned_elements[cache_key] = {"name": name, "tag": tag}
+                    self._remember_resolved_control(
+                        page=page,
+                        cache_key=cache_key,
+                        mode=mode,
+                        search_texts=search_texts,
+                        target_field=target_field,
+                        element=el,
+                    )
                     return True
 
             except Exception as ex:

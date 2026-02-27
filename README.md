@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.02 — The Mastermind
+# 😼 ManulEngine v0.03 — The Mastermind
 
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 
@@ -147,6 +147,35 @@ MANUL_LOG_NAME_MAXLEN=160
 MANUL_LOG_THOUGHT_MAXLEN=220
 ```
 
+Persistent controls cache (per-site folder + per-URL file):
+
+```env
+# Enable/disable disk cache for resolved controls
+MANUL_CONTROLS_CACHE_ENABLED=True
+
+# Optional custom directory (default: repo-root cache/)
+# MANUL_CONTROLS_CACHE_DIR=cache
+```
+
+Layout example:
+
+```text
+cache/
+    example.com/
+        root/
+            controls.json
+        text-box/
+            controls.json
+```
+
+If a cached control for a URL is resolved again with updated attributes, the entry is overwritten.
+Each distinct page URL gets its own cache file, so dynamic routes like
+`/user/dsdfddg/1/medication-list` and `/user/zzxxyyq/2/medication-list`
+are stored separately.
+
+Synthetic `engine/test` runs via `python manul.py test` disable this cache by default
+for deterministic, side-effect-free results.
+
 Create `.env` by copying the template:
 
 ```bash
@@ -189,10 +218,7 @@ MANUL_NAV_TIMEOUT=30000
 python manul.py
 
 # Run a specific hunt
-python manul.py hunt_demoqa.hunt
-
-# Run all hunts from a custom folder
-python manul.py custom_folder/
+python manul.py hunt_wikipedia.py
 
 # Run in headless mode
 python manul.py --headless
@@ -249,9 +275,9 @@ python manul.py tests/hunt_mission.hunt
 
 ## 🐾 Chaos Chamber Verified (1100+ Tests)
 
-The engine is battle-tested with **1177+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
+The engine is battle-tested with **1100+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
 
-* **Synthetic DOM packs:** 11 scenario suites under `engine/test/`.
+* **Synthetic DOM packs:** scenario suites under `engine/test/`.
 * **AI modes regression suite:** `engine/test/test_12_ai_modes.py` (Always-AI, strict override, AI rejection).
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
@@ -266,7 +292,7 @@ $env:MANUL_AI_THRESHOLD=0; python manul.py test
 
 ---
 
-**Version:** 0.02
+**Version:** 0.03
 
 **Codename:** The Mastermind
 
