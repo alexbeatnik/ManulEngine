@@ -19,6 +19,8 @@ import datetime
 import json
 import re
 import time
+from pathlib import Path
+from urllib.parse import urlparse
 from playwright.async_api import async_playwright
 
 try:
@@ -46,9 +48,160 @@ class ManulEngine(_ActionsMixin):
         self.memory:          dict = {}
         self.last_xpath:      "str | None" = None
         self.learned_elements: dict = {}        # semantic cache: cache_key → {name, tag}
+        self._controls_cache_enabled = bool(getattr(prompts, "CONTROLS_CACHE_ENABLED", True))
+        self._controls_cache_root = Path(str(getattr(prompts, "CONTROLS_CACHE_DIR", str(Path(__file__).resolve().parents[1] / "cache"))))
+        self._controls_cache_site: str | None = None
+        self._controls_cache_path: Path | None = None
+        self._controls_cache_data: dict[str, dict] = {}
         # Resolve model-specific settings once at construction time
         self._threshold       = prompts.get_threshold(self.model, ai_threshold)
         self._executor_prompt = prompts.get_executor_prompt(self.model)
+
+    # ── Persistent controls cache ─────────────────────────────────────
+
+    def _control_cache_key(self, mode: str, search_texts: list[str], target_field: str | None) -> str:
+        payload = {
+            "mode": str(mode or "").lower(),
+            "search_texts": [str(t).lower().strip() for t in (search_texts or []) if str(t).strip()],
+            "target_field": str(target_field or "").lower().strip() or None,
+        }
+        return json.dumps(payload, ensure_ascii=False, sort_keys=True)
+
+    def _page_site_key(self, page) -> str | None:
+        try:
+            parsed = urlparse(str(getattr(page, "url", "") or ""))
+        except Exception:
+            return None
+        host = (parsed.netloc or "").strip().lower()
+        if not host:
+            return None
+        safe = re.sub(r"[^a-z0-9.-]+", "_", host)
+        safe = safe.strip("._")
+        return safe or None
+
+    def _ensure_site_controls_cache_loaded(self, page) -> None:
+        if not self._controls_cache_enabled:
+            return
+        site_key = self._page_site_key(page)
+        if not site_key:
+            return
+        if site_key == self._controls_cache_site and self._controls_cache_path is not None:
+            return
+
+        cache_path = self._controls_cache_root / site_key / "controls.json"
+        cache_data: dict[str, dict] = {}
+        if cache_path.exists():
+            try:
+                raw = json.loads(cache_path.read_text(encoding="utf-8"))
+                controls = raw.get("controls", {}) if isinstance(raw, dict) else {}
+                if isinstance(controls, dict):
+                    cache_data = {str(k): v for k, v in controls.items() if isinstance(v, dict)}
+            except Exception:
+                cache_data = {}
+
+        self._controls_cache_site = site_key
+        self._controls_cache_path = cache_path
+        self._controls_cache_data = cache_data
+
+    def _flush_site_controls_cache(self) -> None:
+        if not self._controls_cache_enabled:
+            return
+        if not self._controls_cache_site or self._controls_cache_path is None:
+            return
+        payload = {
+            "version": 1,
+            "site": self._controls_cache_site,
+            "controls": self._controls_cache_data,
+        }
+        self._controls_cache_path.parent.mkdir(parents=True, exist_ok=True)
+        self._controls_cache_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+    def _persist_control_cache_entry(
+        self,
+        *,
+        page,
+        mode: str,
+        search_texts: list[str],
+        target_field: str | None,
+        element: dict,
+    ) -> None:
+        if not self._controls_cache_enabled:
+            return
+        self._ensure_site_controls_cache_loaded(page)
+        if not self._controls_cache_site:
+            return
+
+        key = self._control_cache_key(mode, search_texts, target_field)
+        self._controls_cache_data[key] = {
+            "name": str(element.get("name", "")),
+            "tag_name": str(element.get("tag_name", "")),
+            "xpath": str(element.get("xpath", "")),
+            "html_id": str(element.get("html_id", "")),
+            "data_qa": str(element.get("data_qa", "")),
+            "aria_label": str(element.get("aria_label", "")),
+            "placeholder": str(element.get("placeholder", "")),
+        }
+        self._flush_site_controls_cache()
+
+    def _match_cached_control(self, entry: dict, candidates: list[dict]) -> dict | None:
+        if not entry or not candidates:
+            return None
+
+        def _norm(value: object) -> str:
+            return str(value or "").strip().lower()
+
+        for field in ("html_id", "data_qa", "xpath"):
+            expected = _norm(entry.get(field, ""))
+            if not expected:
+                continue
+            for el in candidates:
+                if _norm(el.get(field, "")) == expected:
+                    return el
+
+        expected_name = _norm(entry.get("name", ""))
+        expected_tag = _norm(entry.get("tag_name", ""))
+        if expected_name and expected_tag:
+            for el in candidates:
+                if _norm(el.get("name", "")) == expected_name and _norm(el.get("tag_name", "")) == expected_tag:
+                    return el
+
+        expected_aria = _norm(entry.get("aria_label", ""))
+        if expected_aria:
+            for el in candidates:
+                if _norm(el.get("aria_label", "")) == expected_aria:
+                    return el
+
+        return None
+
+    def _resolve_from_control_cache(
+        self,
+        *,
+        page,
+        mode: str,
+        search_texts: list[str],
+        target_field: str | None,
+        candidates: list[dict],
+    ) -> dict | None:
+        if not self._controls_cache_enabled:
+            return None
+        self._ensure_site_controls_cache_loaded(page)
+        if not self._controls_cache_site:
+            return None
+
+        key = self._control_cache_key(mode, search_texts, target_field)
+        entry = self._controls_cache_data.get(key)
+        if not isinstance(entry, dict):
+            return None
+
+        matched = self._match_cached_control(entry, candidates)
+        if matched is None:
+            return None
+
+        print(f"    💾 CONTROL CACHE: Reusing cached control for site '{self._controls_cache_site}'")
+        return matched
 
     # ── LLM helpers ───────────────────────────
 
@@ -268,6 +421,16 @@ class ManulEngine(_ActionsMixin):
 
             if mode == "drag":
                 break
+
+            cached_control = self._resolve_from_control_cache(
+                page=page,
+                mode=mode,
+                search_texts=search_texts,
+                target_field=target_field,
+                candidates=els,
+            )
+            if cached_control is not None:
+                return cached_control
 
             # Quick exact-match pass
             exact = []

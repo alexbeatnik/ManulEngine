@@ -148,6 +148,10 @@ async def main() -> None:
         import io
         import re as _re
 
+        # Synthetic suites should be deterministic and side-effect free by default.
+        # Disable persistent controls cache for the whole synthetic test run.
+        os.environ["MANUL_CONTROLS_CACHE_ENABLED"] = "False"
+
         # Ensure UTF-8 output for emoji-heavy test suites on Windows
         if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
             sys.stdout = io.TextIOWrapper(

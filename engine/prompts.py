@@ -38,6 +38,13 @@ HEADLESS_MODE = os.getenv("MANUL_HEADLESS", "False").lower() in ("true", "1", "y
 TIMEOUT       = int(os.getenv("MANUL_TIMEOUT",     "5000"))
 NAV_TIMEOUT   = int(os.getenv("MANUL_NAV_TIMEOUT", "30000"))
 
+# ── Persistent controls cache ────────────────────────────────────────────────
+CONTROLS_CACHE_ENABLED = os.getenv("MANUL_CONTROLS_CACHE_ENABLED", "True").lower() in ("true", "1", "yes", "t")
+CONTROLS_CACHE_DIR = os.getenv(
+    "MANUL_CONTROLS_CACHE_DIR",
+    str(Path(__file__).resolve().parents[1] / "cache")
+)
+
 # ── AI control switches ──────────────────────────────────────────────────────
 # When enabled, ALL element resolution decisions go through the LLM picker.
 AI_ALWAYS = os.getenv("MANUL_AI_ALWAYS", "False").lower() in ("true", "1", "yes", "t")
