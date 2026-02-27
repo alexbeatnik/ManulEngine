@@ -32,7 +32,7 @@ async def run_suite() -> bool:
     saved_dir = getattr(prompts, "CONTROLS_CACHE_DIR", "")
 
     passed = 0
-    total = 4
+    total = 5
     failures: list[str] = []
 
     project_root = Path(__file__).resolve().parents[2]
@@ -56,6 +56,13 @@ async def run_suite() -> bool:
             search_texts = ["Save Profile"]
             target_field = None
             cache_key = manul._control_cache_key(mode, search_texts, target_field)
+
+            class _StubPage:
+                def __init__(self, url: str):
+                    self.url = url
+
+            page_dyn_a = _StubPage("https://example.com/user/dsdfddg/1/medication-list")
+            page_dyn_b = _StubPage("https://example.com/user/zzxxyyq/2/medication-list")
 
             element = {
                 "id": 1,
@@ -127,6 +134,16 @@ async def run_suite() -> bool:
                 passed += 1
             else:
                 msg = f"FAILED — cache hit mismatch ({has_key=}, resolved={resolved_hit.get('html_id') if resolved_hit else None})"
+                print(f"   ❌ {msg}")
+                failures.append(msg)
+
+            file_a = manul._page_url_file_name(page_dyn_a.url)
+            file_b = manul._page_url_file_name(page_dyn_b.url)
+            if file_a == file_b:
+                print("   ✅ Dynamic route URLs share the same cache file template")
+                passed += 1
+            else:
+                msg = f"FAILED — dynamic URL templates diverged ({file_a} != {file_b})"
                 print(f"   ❌ {msg}")
                 failures.append(msg)
 
