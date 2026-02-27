@@ -91,7 +91,8 @@ class ManulEngine(_ActionsMixin):
         else:
             slug = re.sub(r"[^a-z0-9._-]+", "_", raw_path.strip("/").lower())
             slug = slug.strip("._-") or "root"
-        slug = slug[:80]
+        path_digest = hashlib.sha1((parsed.path or "/").encode("utf-8")).hexdigest()[:10]
+        slug = f"{slug[:64]}__p_{path_digest}"
 
         # Page-object style layout:
         #   cache/<site>/<page_slug>/controls.json
@@ -155,6 +156,8 @@ class ManulEngine(_ActionsMixin):
         try:
             tmp_path.write_text(serialized, encoding="utf-8")
             tmp_path.replace(self._controls_cache_path)
+        except (OSError, ValueError, TypeError) as err:
+            print(f"    ⚠️  CONTROL CACHE: failed to flush cache file: {err}")
         finally:
             if tmp_path.exists():
                 tmp_path.unlink()
