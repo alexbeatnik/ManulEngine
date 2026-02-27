@@ -92,9 +92,17 @@ class ManulEngine(_ActionsMixin):
             slug = re.sub(r"[^a-z0-9._-]+", "_", raw_path.strip("/").lower())
             slug = slug.strip("._-") or "root"
         slug = slug[:80]
-        unique_src = f"{parsed.path}|{parsed.query}|{parsed.fragment}"
-        digest = hashlib.sha1(unique_src.encode("utf-8")).hexdigest()[:12]
-        return f"{slug}_{digest}.json"
+
+        # Page-object style layout:
+        #   cache/<site>/<page_slug>/controls.json
+        # For query/fragment variants of the same path, include a stable suffix.
+        suffix = ""
+        if parsed.query or parsed.fragment:
+            unique_src = f"{parsed.query}|{parsed.fragment}"
+            digest = hashlib.sha1(unique_src.encode("utf-8")).hexdigest()[:10]
+            suffix = f"__q_{digest}"
+
+        return f"{slug}{suffix}/controls.json"
 
     def _ensure_url_controls_cache_loaded(self, page) -> None:
         if not self._controls_cache_enabled:

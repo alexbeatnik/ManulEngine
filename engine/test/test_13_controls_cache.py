@@ -84,10 +84,10 @@ async def run_suite() -> bool:
             )
 
             site_dir = temp_cache_root / "synthetic.local"
-            url_files = list(site_dir.glob("*.json"))
-            cache_file = url_files[0] if url_files else None
+            cache_candidates = list(site_dir.glob("**/controls.json"))
+            cache_file = cache_candidates[0] if cache_candidates else None
             if cache_file is not None and cache_file.exists():
-                print("   ✅ Per-URL cache file created in site folder")
+                print("   ✅ Page-object cache file created: <site>/<page>/controls.json")
                 passed += 1
             else:
                 msg = f"FAILED — URL cache file was not created in {site_dir}"
@@ -140,7 +140,7 @@ async def run_suite() -> bool:
             file_a = manul._page_url_file_name(page_dyn_a.url)
             file_b = manul._page_url_file_name(page_dyn_b.url)
             if file_a != file_b:
-                print("   ✅ Dynamic route URLs use different per-page cache files")
+                print("   ✅ Dynamic route URLs use different page folders")
                 passed += 1
             else:
                 msg = f"FAILED — expected different URL pages to map to different cache files ({file_a} == {file_b})"

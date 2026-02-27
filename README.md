@@ -163,8 +163,10 @@ Layout example:
 ```text
 cache/
     example.com/
-        root_8a4e12c3f9ab.json
-        text-box_31be88d7a1ce.json
+        root/
+            controls.json
+        text-box/
+            controls.json
 ```
 
 If a cached control for a URL is resolved again with updated attributes, the entry is overwritten.
