@@ -2,9 +2,7 @@
 @blueprint: full_ui_element_suite
 
 # 🐾 DEMOQA GAUNTLET: The Full Elements Challenge
-# Масштабна перевірка всіх базових компонентів веб-інтерфейсу.
 
-# ── 1. Forms: Текстові поля та сабміт ────────────────────────────────
 1. NAVIGATE to https://demoqa.com/text-box
 2. Fill 'Full Name' field with 'Ghost Manul'
 3. Fill 'Email' field with 'ghost@manul.ai'

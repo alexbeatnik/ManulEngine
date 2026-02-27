@@ -13,7 +13,6 @@
 5. VERIFY that 'Radio3' is checked.
 
 # ── Autocomplete / suggestion field ───────────────────────────────
-# Ми вводимо частину назви, чекаємо список і клікаємо по результату
 6. Fill 'Suggession Class' field with 'Ukra'
 7. Click 'Ukraine' in the suggestion list
 8. VERIFY that 'Ukraine' is present.
@@ -58,7 +57,7 @@
 35. SCROLL DOWN
 36. EXTRACT the Amount of 'Jack' into {jack_amount}
 37. EXTRACT the Amount of 'Joe' into {joe_amount}
-38. VERIFY that ' Joe ' is present.
+38. VERIFY that 'Joe' is present.
 
 # ── Mouse hover ────────────────────────────────────────────────────
 39. HOVER over the 'Mouse Hover' button
