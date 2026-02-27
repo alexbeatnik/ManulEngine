@@ -1,0 +1,50 @@
+@context: DemoQA Gauntlet - Comprehensive UI Elements Test. Covers forms, checkbox trees, radio buttons, dynamic web tables, multi-click buttons, select menus, and date pickers.
+@blueprint: full_ui_element_suite
+
+# 🐾 DEMOQA GAUNTLET: The Full Elements Challenge
+# Масштабна перевірка всіх базових компонентів веб-інтерфейсу.
+
+# ── 1. Forms: Текстові поля та сабміт ────────────────────────────────
+1. NAVIGATE to https://demoqa.com/text-box
+2. Fill 'Full Name' field with 'Ghost Manul'
+3. Fill 'Email' field with 'ghost@manul.ai'
+4. Fill 'Current Address' field with '42 Shadow Lane'
+5. Fill 'Permanent Address' field with '7 Phantom Street'
+6. Click the 'Submit' button
+7. VERIFY that 'Ghost Manul' and 'ghost@manul.ai' are present.
+
+8. NAVIGATE to https://demoqa.com/checkbox
+9. Click the expand arrow button
+10. Click the checkbox for 'Home'
+11. WAIT 2
+12. VERIFY that 'You have selected' is present.
+
+13. NAVIGATE to https://demoqa.com/radio-button
+14. Click the radio button for 'Impressive'
+15. VERIFY that 'Impressive' is present.
+
+16. NAVIGATE to https://demoqa.com/webtables
+17. EXTRACT the Salary of 'Alden' into {alden_salary}
+18. VERIFY that '2000' is present.
+
+19. NAVIGATE to https://demoqa.com/buttons
+20. DOUBLE CLICK the 'Double Click Me' button
+21. VERIFY that 'You have done a double click' is present.
+22. Click the 'Click Me' button
+23. VERIFY that 'You have done a dynamic click' is present.
+
+24. NAVIGATE to https://demoqa.com/select-menu
+25. Select 'Purple' from the 'Select Value' dropdown
+26. VERIFY that 'Purple' is present.
+
+27. NAVIGATE to https://demoqa.com/date-picker
+28. Fill 'Date Of Birth' field with '01/15/1990'
+29. VERIFY that '01/15/1990' is present.
+
+30. NAVIGATE to https://demoqa.com/slider
+31. VERIFY that 'Slider' is present.
+
+32. NAVIGATE to https://demoqa.com/links
+33. Click on the 'Home' link
+
+34. DONE.

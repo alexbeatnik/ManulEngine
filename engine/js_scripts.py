@@ -113,7 +113,6 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
                     ? document.getElementById(el.htmlFor)
                     : el.querySelector('input');
                 if (linked) {
-                    // If linked input is a hidden file input, KEEP the label (it acts as the click target)
                     if (linked.type === 'file') {
                         // Keep this label — don't skip it
                     } else {
@@ -170,6 +169,14 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         if (['INPUT','SELECT','TEXTAREA'].includes(el.tagName)) {
             const lbl = document.querySelector(`label[for="${el.id}"]`);
             if (lbl) return lbl.innerText.trim();
+            
+            // NEW: Fallback for bad HTML where label is near input but without 'for' attr
+            const wrapper = el.closest('.form-group, .row, div[class*="wrapper"]');
+            if (wrapper) {
+                const wrapLbl = wrapper.querySelector('label');
+                if (wrapLbl) return wrapLbl.innerText.trim();
+            }
+
             let curr = el;
             while (curr && curr.tagName !== 'BODY') {
                 let prev = curr.previousElementSibling;

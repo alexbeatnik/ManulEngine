@@ -30,7 +30,6 @@ class _ActionsMixin:
         target = (extract_quoted(step) or [""])[0].replace("'", "")
         print("    ⚙️  DOM HEURISTICS: Extracting data via JS…")
 
-        # Build secondary hint from step text (words before 'into' minus noise)
         step_lower = step.lower()
         hint = ""
         m_hint = re.search(r'extract\s+(.+?)\s+into\b', step_lower)
@@ -41,12 +40,10 @@ class _ActionsMixin:
                 raw = re.sub(rf'\b{w}\b', '', raw).strip()
             hint = raw.strip()
         
-        # Detect currency symbol hints for price extraction
         currency_hint = ""
         curr_m = re.search(r'([$€£₴¥₹])', step)
         if curr_m:
             currency_hint = curr_m.group(1)
-        # Also detect currency words
         for cw, cs in [("uah", "UAH"), ("pln", "PLN"), ("eur", "€"), ("gbp", "£"), ("usd", "$")]:
             if cw in step_lower.split():
                 currency_hint = cs
@@ -75,10 +72,8 @@ class _ActionsMixin:
 
             const hasAlpha = (s) => /[a-zA-Z0-9]/.test(s);
             
-            // Strip "Label: Value" pattern → return just "Value"
             const stripLabel = (text) => {
                 if (!text) return text;
-                // Pattern: "Label: Value" or "Label : Value"
                 const m = text.match(/^([A-Za-z][A-Za-z ]+?)\\s*:\\s+(.+)$/);
                 if (m && m[2].trim().length > 0) return m[2].trim();
                 return text;
@@ -176,7 +171,6 @@ class _ActionsMixin:
                 return kids[kids.length - 1].innerText.trim();
             };
 
-            // === 0. Currency-specific price extraction ===
             if (currencyHint) {
                 const allPriceEls = Array.from(document.querySelectorAll(ALL_TAGS));
                 const priceMatches = [];
@@ -184,7 +178,6 @@ class _ActionsMixin:
                     const txt = (el.innerText || '').trim();
                     if (!txt || txt.length > 100) continue;
                     if (txt.includes(currencyHint)) {
-                        // Check it's a leaf-ish element
                         const childEls = el.querySelectorAll(VALUE_TAGS);
                         const isLeaf = childEls.length === 0 ||
                             Array.from(childEls).every(c => !(c.innerText || '').trim().includes(currencyHint) || c.innerText.trim() === txt);
@@ -197,7 +190,6 @@ class _ActionsMixin:
                     return priceMatches[0].txt;
                 }
                 if (priceMatches.length > 1) {
-                    // If hint words can disambiguate, use them
                     if (hintWords.length > 0) {
                         for (const pm of priceMatches) {
                             const parent = pm.el.parentElement;
@@ -207,11 +199,9 @@ class _ActionsMixin:
                             }
                         }
                     }
-                    // Return shortest (most specific)
                     priceMatches.sort((a, b) => a.len - b.len);
                     return priceMatches[0].txt;
                 }
-                // Handle split currency: <span>€</span><span>99</span>
                 const currSymEls = Array.from(document.querySelectorAll('span, div, i, b, strong'))
                     .filter(el => (el.innerText || '').trim() === currencyHint);
                 for (const cEl of currSymEls) {
@@ -228,7 +218,6 @@ class _ActionsMixin:
                 }
             }
 
-            // === 1. Table rows — when t is set ===
             if (t) {
                 const rows = Array.from(document.querySelectorAll('tr, [role="row"]'));
                 const row = rows.find(r => r.innerText.toLowerCase().includes(t));
@@ -267,7 +256,6 @@ class _ActionsMixin:
                 }
             }
 
-            // === 1b. Table rows via hint words (no quoted target) ===
             if (!t && hint) {
                 const rows = Array.from(document.querySelectorAll('tr'));
                 for (const row of rows) {
@@ -297,7 +285,6 @@ class _ActionsMixin:
                 }
             }
 
-            // === 1c. Role-row cells (before generic search) ===
             if (hint) {
                 const rows = Array.from(document.querySelectorAll('[role="row"]'));
                 for (const row of rows) {
@@ -310,12 +297,10 @@ class _ActionsMixin:
                 }
             }
 
-            // === 2. Generic DOM search ===
             const allEls = Array.from(document.querySelectorAll(ALL_TAGS));
             const inputs = Array.from(document.querySelectorAll(
                 'input, textarea, select'));
 
-            // Strategy A: target text present
             if (t) {
                 const matches = allEls.filter(el =>
                     (el.innerText || '').toLowerCase().includes(t));
@@ -358,9 +343,7 @@ class _ActionsMixin:
                 if (inputMatch) return inputMatch.value.trim();
             }
 
-            // Strategy B: no quoted target → use hint words
             if (hint) {
-                // B0: Check input values first (for password/hidden inputs with values)
                 for (const el of inputs) {
                     const labelEl = el.labels && el.labels[0];
                     const lbl = (labelEl ? labelEl.innerText : '').toLowerCase();
@@ -373,7 +356,6 @@ class _ActionsMixin:
                     }
                 }
 
-                // B0b: Check data-testid, data-qa, aria matches
                 const idMatches = [];
                 for (const el of allEls) {
                     const id = (el.id || '').toLowerCase();
@@ -390,7 +372,6 @@ class _ActionsMixin:
                     return stripLabel(idMatches[0].txt);
                 }
                 
-                // B1: aria-live elements (dynamic content like calendar months)
                 const liveEls = Array.from(document.querySelectorAll('[aria-live]'));
                 for (const el of liveEls) {
                     const txt = (el.innerText || '').trim();
@@ -511,13 +492,11 @@ class _ActionsMixin:
 
         if val and var_m:
             val = val.strip()
-            # Post-process: strip "Label: Value" pattern if hint suggests it
             if hint and ':' in val:
                 m_lbl = re.match(r'^([A-Za-z][A-Za-z0-9 ]+?)\s*:\s+(.+)$', val)
                 if m_lbl:
                     label_part = m_lbl.group(1).lower()
                     value_part = m_lbl.group(2).strip()
-                    # Check if the hint words overlap with the label part
                     hint_ws = set(re.findall(r'[a-z]{3,}', hint.lower()))
                     label_ws = set(re.findall(r'[a-z]{3,}', label_part))
                     if hint_ws & label_ws:
@@ -541,7 +520,24 @@ class _ActionsMixin:
         if is_checked_verify: msg += " [CHECKED]"
         print(msg)
 
-        for retry in range(12):
+        DEEP_TEXT_JS = """() => {
+            let text = document.body.innerText || "";
+            function traverse(root) {
+                root.querySelectorAll('*').forEach(el => {
+                    if (el.shadowRoot) {
+                        text += " " + (el.shadowRoot.innerText || "");
+                        traverse(el.shadowRoot);
+                    }
+                    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                        text += " " + (el.value || "");
+                    }
+                });
+            }
+            traverse(document);
+            return text.toLowerCase();
+        }"""
+
+        for retry in range(15):
             if is_checked_verify:
                 raw_els = await self._snapshot(page, "clickable", [t.lower() for t in expected])
                 scored  = self._score_elements(raw_els, step, "clickable", expected, None, False)
@@ -553,11 +549,14 @@ class _ActionsMixin:
                     except Exception: checked = False
                     if is_negative:
                         ok = not checked
-                        print(f"    {'✅' if ok else '❌'} Checkbox not-checked={ok}")
-                        return ok
-                    print(f"    {'✅' if checked else '❌'} Checkbox checked={checked}")
-                    return checked
-                if retry < 11:
+                        if ok:
+                            print(f"    {'✅' if ok else '❌'} Checkbox not-checked={ok}")
+                            return ok
+                    else:
+                        if checked:
+                            print(f"    {'✅' if checked else '❌'} Checkbox checked={checked}")
+                            return checked
+                if retry < 14:
                     await asyncio.sleep(1)
                     continue
                 return False
@@ -569,7 +568,6 @@ class _ActionsMixin:
                     const wantDisabled = args[1] === 'disabled';
                     const els = Array.from(document.querySelectorAll('button, input, select, textarea, a, [role="button"], [role="menuitem"], [role="tab"], label'));
                     
-                    // First pass: exact text match (highest priority)
                     for (const el of els) {
                         const txt = (el.innerText || el.value || '').toLowerCase().trim();
                         const aria = (el.getAttribute('aria-label') || '').toLowerCase();
@@ -579,7 +577,6 @@ class _ActionsMixin:
                             return wantDisabled ? isDisabled : !isDisabled;
                         }
                     }
-                    // Second pass: substring match (fallback)
                     for (const el of els) {
                         const txt = (el.innerText || el.value || '').toLowerCase().trim();
                         const aria = (el.getAttribute('aria-label') || '').toLowerCase();
@@ -593,24 +590,26 @@ class _ActionsMixin:
                 }""", [search_text, state_check])
                 
                 if disabled_result is not None:
-                    print(f"    {'✅' if disabled_result else '❌'} Element {state_check}={disabled_result}")
-                    return disabled_result
-                if retry < 11:
+                    if disabled_result: 
+                        print(f"    {'✅' if disabled_result else '❌'} Element {state_check}={disabled_result}")
+                        return disabled_result
+                if retry < 14:
                     await asyncio.sleep(1)
                     continue
                 return False
 
             text = await page.evaluate(VISIBLE_TEXT_JS)
             found = all(t.lower() in text for t in expected) if expected else bool(text)
+            
             if not found and not is_negative:
-                # Fallback: also check textContent (includes hidden text)
-                text2 = await page.evaluate("() => (document.body.textContent || '').toLowerCase()")
+                text2 = await page.evaluate(DEEP_TEXT_JS)
                 found = all(t.lower() in text2 for t in expected) if expected else bool(text2)
+                
             if is_negative:
                 if not found:
                     print(f"    ✅ Verified ABSENT — OK")
                     return True
-                if retry < 11:
+                if retry < 14:
                     await asyncio.sleep(1)
                     continue
                 print(f"    ❌ Text still present after retries")
@@ -619,8 +618,8 @@ class _ActionsMixin:
                 if found:
                     print(f"    ✅ Verified — OK")
                     return True
-                if retry < 11:
-                    await asyncio.sleep(1)
+                if retry < 14:
+                    await asyncio.sleep(1.5)
                     continue
                 print(f"    ❌ Not found after retries: {expected}")
                 return False
@@ -766,7 +765,26 @@ class _ActionsMixin:
                         opts = [expected[0]] if expected else [list(set(re.findall(r'\b[a-z0-9]{3,}\b', step_l)))[0]]
                         try: await loc.select_option(label=opts, timeout=3000)
                         except Exception: await loc.select_option(value=[o.lower() for o in opts], timeout=3000)
-                    else: await loc.click(force=True, timeout=3000)
+                    else: 
+                        print(f"    🖱️  Clicked (Custom Select) '{self._fmt_el_name(name)}'")
+                        try:
+                            await loc.click(force=True, timeout=3000)
+                        except Exception:
+                            await page.evaluate(f"window.manulClick({el_id})")
+                        
+                        if expected:
+                            await asyncio.sleep(0.5) 
+                            option_text = expected[0]
+                            print(f"    🖱️  Selecting option '{option_text}'")
+                            try:
+                                opt_loc = page.locator(f"[role='option']:has-text('{option_text}'), [role='menuitem']:has-text('{option_text}')").first
+                                await opt_loc.click(timeout=3000)
+                            except Exception:
+                                try:
+                                    opt_loc = page.locator(f"text='{option_text}'").last
+                                    await opt_loc.click(timeout=3000)
+                                except Exception: pass
+                                
                     self.learned_elements[cache_key] = {"name": name, "tag": tag}
                     await asyncio.sleep(ACTION_WAIT)
                     return True
