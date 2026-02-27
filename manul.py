@@ -149,8 +149,6 @@ async def main() -> None:
         import io
         import re as _re
 
-
-
         # Ensure UTF-8 output for emoji-heavy test suites on Windows
         if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
             sys.stdout = io.TextIOWrapper(
