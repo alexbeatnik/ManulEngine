@@ -318,6 +318,9 @@ class ManulEngine(_ActionsMixin):
             print(f"    🧠 AI AGENT: Always-AI enabled, analysing {len(top)} candidates…")
             idx = await self._llm_select_element(step, mode, top, strategic_context)
             if idx is None:
+                if failed_ids is not None:
+                    for c in top:
+                        failed_ids.add(c["id"])
                 return None
             ai_choice = top[idx]
 
