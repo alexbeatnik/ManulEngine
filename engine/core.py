@@ -17,7 +17,6 @@ drag-and-drop, click/type/select/hover via _execute_step).
 import asyncio
 import datetime
 import json
-import os
 import re
 import time
 from playwright.async_api import async_playwright
@@ -28,7 +27,7 @@ except Exception:  # pragma: no cover
     ollama = None
 
 from . import prompts
-from .helpers import substitute_memory
+from .helpers import substitute_memory, compact_log_field
 from .js_scripts import SNAPSHOT_JS
 from .scoring import score_elements
 from .actions import _ActionsMixin
@@ -82,14 +81,7 @@ class ManulEngine(_ActionsMixin):
             return True
 
         missing = search_texts[0] if search_texts else target_field
-        raw_name = str(ai_choice.get("name", ""))
-        compact_name = re.sub(r"\s+", " ", raw_name).strip()
-        try:
-            name_max_len = int(os.getenv("MANUL_LOG_NAME_MAXLEN", "0"))
-        except ValueError:
-            name_max_len = 0
-        if name_max_len and len(compact_name) > name_max_len:
-            compact_name = compact_name[: max(0, name_max_len - 1)] + "…"
+        compact_name = compact_log_field(ai_choice.get("name", ""), "MANUL_LOG_NAME_MAXLEN")
 
         print(
             f"    👻 ANTI-PHANTOM GUARD: AI chose '{compact_name}', "
@@ -196,24 +188,8 @@ class ManulEngine(_ActionsMixin):
                     f"< best={candidates[best_idx].get('score', 0)})"
                 )
                 idx = best_idx
-        raw_name = str(candidates[idx].get("name", ""))
-        compact_name = re.sub(r"\s+", " ", raw_name).strip()
-        raw_thought = str(thought)
-        compact_thought = re.sub(r"\s+", " ", raw_thought).strip()
-
-        try:
-            name_max_len = int(os.getenv("MANUL_LOG_NAME_MAXLEN", "0"))
-        except ValueError:
-            name_max_len = 0
-        if name_max_len and len(compact_name) > name_max_len:
-            compact_name = compact_name[: max(0, name_max_len - 1)] + "…"
-
-        try:
-            thought_max_len = int(os.getenv("MANUL_LOG_THOUGHT_MAXLEN", "0"))
-        except ValueError:
-            thought_max_len = 0
-        if thought_max_len and len(compact_thought) > thought_max_len:
-            compact_thought = compact_thought[: max(0, thought_max_len - 1)] + "…"
+        compact_name = compact_log_field(candidates[idx].get("name", ""), "MANUL_LOG_NAME_MAXLEN")
+        compact_thought = compact_log_field(thought, "MANUL_LOG_THOUGHT_MAXLEN")
 
         print(f"    🎯 AI DECISION: '{compact_name}' — {compact_thought}")
         return idx

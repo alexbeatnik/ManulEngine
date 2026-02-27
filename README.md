@@ -254,6 +254,7 @@ if __name__ == "__main__":
 The engine is battle-tested with **1177+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
 
 * **Synthetic DOM packs:** 11 scenario suites under `engine/test/`.
+* **AI modes regression suite:** `engine/test/test_12_ai_modes.py` (Always-AI, strict override, AI rejection).
 * **Integration hunts:** Real-site E2E flows under `tests/hunt_*.py` (requires Playwright). Includes `hunt_cyber.py` — a 100-step terminal and dashboard simulation.
 
 Run the synthetic suite:

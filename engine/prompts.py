@@ -138,28 +138,28 @@ CRITICAL RULES (Apply strictly in this order):
     - If scores tie, choose the first one in the list.
     - Note: In strict test mode a separate policy may enforce max-score determinism.
 4. MATCH THE ACTION TO THE ELEMENT TYPE:
-     - "Fill/Type" -> MUST prefer `tag=input`, `tag=textarea`, or `contenteditable=true`.
-         If `tag=input`, prefer the right `input_type` (password/email/search/number/etc.).
-     - "Check/Uncheck" -> MUST prefer `input_type=checkbox` or `role=checkbox`. NEVER pick a generic button.
-     - "Select from dropdown" -> Prefer `is_select=true` / `tag=select` / `role=combobox`.
-         If there is no native select, pick the most dropdown-like candidate (class/id contains drop/select/combo).
-   - "Click link" -> MUST prefer `tag=a` or `role=link`.
-    - "Click button" -> MUST prefer `tag=button`, `role=button`, or `input_type=submit`.
-4. DEV CONVENTIONS (CRITICAL): Read `html_id` and `class_name` to infer the real element type if `tag` is generic (like div/span):
+        - "Fill/Type" -> MUST prefer `tag=input`, `tag=textarea`, or `contenteditable=true`.
+            If `tag=input`, prefer the right `input_type` (password/email/search/number/etc.).
+        - "Check/Uncheck" -> MUST prefer `input_type=checkbox` or `role=checkbox`. NEVER pick a generic button.
+        - "Select from dropdown" -> Prefer `is_select=true` / `tag=select` / `role=combobox`.
+            If there is no native select, pick the most dropdown-like candidate (class/id contains drop/select/combo).
+        - "Click link" -> MUST prefer `tag=a` or `role=link`.
+        - "Click button" -> MUST prefer `tag=button`, `role=button`, or `input_type=submit`.
+5. DEV CONVENTIONS (CRITICAL): Read `html_id` and `class_name` to infer the real element type if `tag` is generic (like div/span):
    - `btn` / `button` -> It acts as a button.
    - `chk` / `checkbox` -> It acts as a checkbox.
    - `rad` / `radio` -> It acts as a radio button.
    - `sel` / `drop` / `cmb` -> It acts as a select/dropdown.
    - `inp` / `txt` / `field` -> It acts as an input field.
-5. CONTEXT MATTERS: If the step says "in Shipping", pick the element whose `name` contains that context (e.g., "Shipping -> First Name").
-6. DATA-QA / TEST-ID: If `data_qa` closely matches the target text, it is almost certainly the correct choice.
-7. PASSWORDS: If the step mentions "password" or "secret", heavily prefer `input_type=password`.
-8. ICONS AND FORMATTING: For media or text editors (e.g., "Fullscreen", "Theater mode", "Underline"), if there is a button with an empty name or a weird symbol, it is highly likely the correct tool. DO NOT REJECT IT.
-9. DISABLED: Avoid `disabled=true` or `aria_disabled="true"` unless the step is about verifying disabled state.
-10. SHADOW DOM: If you see `is_shadow=true` or the name contains `[SHADOW_DOM]` and it matches the target, prefer it.
-11. BEWARE TRAPS: DO NOT pick elements with "honeypot", "spam", or "hidden" in their names/IDs unless explicitly asked.
-12. TIE-BREAKER: If multiple elements look equally correct, pick the one with the lowest `id`.
-13. REJECTION (LAST RESORT): Return `null` ONLY if the target is completely missing and there is no plausible element of the correct type.
+6. CONTEXT MATTERS: If the step says "in Shipping", pick the element whose `name` contains that context (e.g., "Shipping -> First Name").
+7. DATA-QA / TEST-ID: If `data_qa` closely matches the target text, it is almost certainly the correct choice.
+8. PASSWORDS: If the step mentions "password" or "secret", heavily prefer `input_type=password`.
+9. ICONS AND FORMATTING: For media or text editors (e.g., "Fullscreen", "Theater mode", "Underline"), if there is a button with an empty name or a weird symbol, it is highly likely the correct tool. DO NOT REJECT IT.
+10. DISABLED: Avoid `disabled=true` or `aria_disabled="true"` unless the step is about verifying disabled state.
+11. SHADOW DOM: If you see `is_shadow=true` or the name contains `[SHADOW_DOM]` and it matches the target, prefer it.
+12. BEWARE TRAPS: DO NOT pick elements with "honeypot", "spam", or "hidden" in their names/IDs unless explicitly asked.
+13. TIE-BREAKER: If multiple elements look equally correct, pick the one with the lowest `id`.
+14. REJECTION (LAST RESORT): Return `null` ONLY if the target is completely missing and there is no plausible element of the correct type.
     WARNING: If the step asks for a formatting tool (like 'Underline') or a player control (like 'Fullscreen') and you see an unlabeled/icon button, ASSUME IT IS THE TARGET AND PICK IT!
 """
 

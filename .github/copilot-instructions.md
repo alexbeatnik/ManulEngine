@@ -33,6 +33,7 @@ engine/
     ...
     test_10_mess.py         synthetic DOM scenario pack
     test_11_cyber.py        synthetic DOM scenario pack
+    test_12_ai_modes.py     synthetic DOM unit: Always-AI/strict/rejection
 tests/
   hunt_demoqa.py            integration: forms, checkboxes, radios, tables
   hunt_expandtesting.py     integration: login, inputs, dynamic tables
@@ -159,9 +160,12 @@ Tip: Set `MANUL_AI_THRESHOLD=0` to force heuristics-only resolution. This ensure
 | --- | --- | --- |
 | `MANUL_MODEL` | `qwen2.5:0.5b` | Ollama model name |
 | `MANUL_HEADLESS` | `False` | Run browser headless |
+| `MANUL_DOTENV_OVERRIDE` | `False` | If `True`, repo `.env` overrides process env vars (useful locally; CI/prod usually wants env to win) |
 | `MANUL_AI_THRESHOLD` | auto | Score threshold before LLM fallback |
 | `MANUL_AI_ALWAYS` | `False` | If `True`, always ask the LLM picker (bypasses heuristic short-circuits) |
 | `MANUL_AI_POLICY` | `prior` | How to treat heuristic score in LLM picker: `prior` (hint) or `strict` (force max-score) |
+| `MANUL_LOG_NAME_MAXLEN` | `0` | If > 0, truncates element names in logs (whitespace is compacted regardless) |
+| `MANUL_LOG_THOUGHT_MAXLEN` | `0` | If > 0, truncates LLM "thought" strings in logs |
 | `MANUL_TIMEOUT` | `5000` | Default action timeout (ms) |
 | `MANUL_NAV_TIMEOUT` | `30000` | Navigation timeout (ms) |
 
@@ -175,6 +179,10 @@ MANUL_AI_ALWAYS=False
 MANUL_AI_POLICY=prior
 ```
 
+Dotenv precedence note:
+- Default behavior is `MANUL_DOTENV_OVERRIDE=False` (process env wins).
+- For local prompt-tuning where you want repo `.env` to win over stale shell env vars, set `MANUL_DOTENV_OVERRIDE=True`.
+
 ## Common pitfalls & Advanced Learnings
 
 * **Native Select vs Custom Dropdowns:** Playwright's `select_option()` crashes on non-`<select>` tags. If `mode == "select"` but the element is a `div`/`span`, gracefully fallback to a standard `click()`.
@@ -187,7 +195,7 @@ MANUL_AI_POLICY=prior
 
 ## Resolution fallback chain
 
-The engine does not use a single fixed “chain constant”; it sums many heuristic signals in [engine/scoring.py](engine/scoring.py). The *highest-signal* boosts (and the cutoffs used in [engine/core.py](engine/core.py)) are:
+The engine does not use a single fixed “chain constant”; it sums many heuristic signals in [engine/scoring.py](../engine/scoring.py). The *highest-signal* boosts (and the cutoffs used in [engine/core.py](../engine/core.py)) are:
 
 1. Semantic cache reuse: +20_000 (and `core.py` short-circuits at score ≥ 20_000)
 2. Blind/context reuse (same xpath as last step): +10_000 (and `core.py` short-circuits at score ≥ 10_000)

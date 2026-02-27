@@ -1,21 +1,13 @@
 ﻿# engine/actions.py
 import asyncio
-import os
 import re
-from .helpers import extract_quoted, SCROLL_WAIT, ACTION_WAIT, NAV_WAIT
+from .helpers import extract_quoted, compact_log_field, SCROLL_WAIT, ACTION_WAIT, NAV_WAIT
 from .js_scripts import VISIBLE_TEXT_JS
 from . import prompts
 
 class _ActionsMixin:
     def _fmt_el_name(self, name: object) -> str:
-        compact = re.sub(r"\s+", " ", str(name or "")).strip()
-        try:
-            name_max_len = int(os.getenv("MANUL_LOG_NAME_MAXLEN", "0"))
-        except ValueError:
-            name_max_len = 0
-        if name_max_len and len(compact) > name_max_len:
-            compact = compact[: max(0, name_max_len - 1)] + "…"
-        return compact
+        return compact_log_field(name, "MANUL_LOG_NAME_MAXLEN")
 
     async def _handle_navigate(self, page, step: str) -> bool:
         url = re.search(r'(https?://[^\s\'"<>]+)', step)
