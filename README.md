@@ -25,7 +25,7 @@ browser-manul/
 │   ├── __init__.py       Public API — exports ManulEngine
 │   ├── prompts.py        Configuration, thresholds, LLM prompts
 │   ├── helpers.py        Pure utility functions and timing constants
-│   ├── js_scripts.py     JavaScript injected into the browser (DOM snapshot & deep text)
+│   ├── js_scripts.py     JavaScript injected into the browser (DOM snapshot, JS fallbacks, deep text)
 │   ├── scoring.py        Heuristic element-scoring algorithm (20+ rules)
 │   ├── core.py           ManulEngine class (LLM, resolution, mission runner)
 │   ├── actions.py        Action execution mixin (click, type, select, hover, drag)
@@ -55,7 +55,7 @@ browser-manul/
 
 ### 🛡️ Unbreakable JS Fallbacks
 
-Modern websites love to hide elements behind invisible overlays, custom dropdowns, and zero-pixel traps. If native Playwright actions (`click()`, `type()`) fail due to element occlusion, Manul falls back to direct DOM event dispatches (`window.manulClick`, `window.manulType`) to keep execution moving.
+Modern websites love to hide elements behind invisible overlays, custom dropdowns, and zero-pixel traps. Manul primarily uses Playwright interactions with `force=True` plus retries/self-healing; for Shadow DOM elements it falls back to direct JS helpers (`window.manulClick`, `window.manulType`) to keep execution moving.
 
 ### 🌑 Shadow DOM Awareness
 

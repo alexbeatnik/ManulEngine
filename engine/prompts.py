@@ -168,5 +168,6 @@ def get_executor_prompt(model_name: str) -> str:
     elif size < 7:  return EXECUTOR_PROMPT_SMALL
     else:           return EXECUTOR_PROMPT_LARGE
 
+
 # Legacy alias
 EXECUTOR_SYSTEM_PROMPT = EXECUTOR_PROMPT_SMALL
