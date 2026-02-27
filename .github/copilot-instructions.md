@@ -142,7 +142,7 @@ python manul.py test
 
 # Integration tests (needs Playwright browsers; Ollama optional)
 python manul.py               # run all hunt_*.py scripts
-python manul.py hunt_demoqa.py # single hunt
+python manul.py hunt_wikipedia.py # single hunt
 python manul.py --headless     # headless mode
 
 

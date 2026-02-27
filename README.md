@@ -162,7 +162,7 @@ Layout example:
 
 ```text
 cache/
-    demoqa.com/
+    example.com/
         root_8a4e12c3f9ab.json
         text-box_31be88d7a1ce.json
 ```
@@ -214,7 +214,7 @@ MANUL_NAV_TIMEOUT=30000
 python manul.py
 
 # Run a specific hunt
-python manul.py hunt_demoqa.py
+python manul.py hunt_wikipedia.py
 
 # Run in headless mode
 python manul.py --headless
@@ -240,7 +240,7 @@ async def main(headless: bool = False) -> bool:
     manul = ManulEngine(headless=headless)
 
     mission = (
-        "1. NAVIGATE to https://demoqa.com/text-box\n"
+        "1. NAVIGATE to https://example.com\n"
         "2. Fill 'Full Name' field with 'Ghost Manul'\n"
         "3. Click the 'Submit' button\n"
         "4. VERIFY that 'Ghost Manul' is present.\n"
