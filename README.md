@@ -148,7 +148,7 @@ MANUL_LOG_NAME_MAXLEN=160
 MANUL_LOG_THOUGHT_MAXLEN=220
 ```
 
-Persistent per-site controls cache:
+Persistent controls cache (per-site folder + per-URL file):
 
 ```env
 # Enable/disable disk cache for resolved controls
@@ -157,6 +157,17 @@ MANUL_CONTROLS_CACHE_ENABLED=True
 # Optional custom directory (default: repo-root cache/)
 # MANUL_CONTROLS_CACHE_DIR=cache
 ```
+
+Layout example:
+
+```text
+cache/
+    demoqa.com/
+        root_8a4e12c3f9ab.json
+        text-box_31be88d7a1ce.json
+```
+
+If a cached control for a URL is resolved again with updated attributes, the entry is overwritten.
 
 Synthetic `engine/test` runs via `python manul.py test` disable this cache by default
 for deterministic, side-effect-free results.

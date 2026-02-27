@@ -32,7 +32,7 @@ async def run_suite() -> bool:
     saved_dir = getattr(prompts, "CONTROLS_CACHE_DIR", "")
 
     passed = 0
-    total = 3
+    total = 4
     failures: list[str] = []
 
     project_root = Path(__file__).resolve().parents[2]
@@ -76,16 +76,18 @@ async def run_suite() -> bool:
                 element=element,
             )
 
-            cache_file = temp_cache_root / "synthetic.local" / "controls.json"
-            if cache_file.exists():
-                print("   ✅ Cache file created in temporary run folder")
+            site_dir = temp_cache_root / "synthetic.local"
+            url_files = list(site_dir.glob("*.json"))
+            cache_file = url_files[0] if url_files else None
+            if cache_file is not None and cache_file.exists():
+                print("   ✅ Per-URL cache file created in site folder")
                 passed += 1
             else:
-                msg = f"FAILED — cache file was not created at {cache_file}"
+                msg = f"FAILED — URL cache file was not created in {site_dir}"
                 print(f"   ❌ {msg}")
                 failures.append(msg)
 
-            raw = json.loads(cache_file.read_text(encoding="utf-8")) if cache_file.exists() else {}
+            raw = json.loads(cache_file.read_text(encoding="utf-8")) if cache_file is not None and cache_file.exists() else {}
             controls = raw.get("controls", {}) if isinstance(raw, dict) else {}
             has_key = cache_key in controls
 
@@ -128,6 +130,34 @@ async def run_suite() -> bool:
                 print(f"   ❌ {msg}")
                 failures.append(msg)
 
+            updated_element = {
+                "id": 2,
+                "name": "Save Profile",
+                "tag_name": "button",
+                "xpath": "//*[@id='save-btn-v2']",
+                "html_id": "save-btn-v2",
+                "data_qa": "save-profile-v2",
+                "aria_label": "Save Profile",
+                "placeholder": "",
+            }
+            manul._persist_control_cache_entry(
+                page=page,
+                mode=mode,
+                search_texts=search_texts,
+                target_field=target_field,
+                element=updated_element,
+            )
+            raw_after = json.loads(cache_file.read_text(encoding="utf-8")) if cache_file is not None and cache_file.exists() else {}
+            controls_after = raw_after.get("controls", {}) if isinstance(raw_after, dict) else {}
+            overwritten = isinstance(controls_after.get(cache_key), dict) and controls_after.get(cache_key, {}).get("html_id") == "save-btn-v2"
+            if overwritten:
+                print("   ✅ Cache entry is overwritten when resolved control changes")
+                passed += 1
+            else:
+                msg = "FAILED — expected updated control to overwrite the previous cached value"
+                print(f"   ❌ {msg}")
+                failures.append(msg)
+
             candidates_miss = [
                 {
                     "id": 21,
@@ -150,7 +180,7 @@ async def run_suite() -> bool:
             )
 
             if resolved_miss is None:
-                print("   ✅ Cache miss falls back to normal resolution path")
+                print("   ✅ Cache miss (after overwrite) falls back to normal resolution path")
                 passed += 1
             else:
                 msg = f"FAILED — expected cache miss to return None, got {resolved_miss.get('html_id')}"

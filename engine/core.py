@@ -16,6 +16,7 @@ drag-and-drop, click/type/select/hover via _execute_step).
 
 import asyncio
 import datetime
+import hashlib
 import json
 import re
 import time
@@ -51,6 +52,7 @@ class ManulEngine(_ActionsMixin):
         self._controls_cache_enabled = bool(getattr(prompts, "CONTROLS_CACHE_ENABLED", True))
         self._controls_cache_root = Path(str(getattr(prompts, "CONTROLS_CACHE_DIR", str(Path(__file__).resolve().parents[1] / "cache"))))
         self._controls_cache_site: str | None = None
+        self._controls_cache_url: str | None = None
         self._controls_cache_path: Path | None = None
         self._controls_cache_data: dict[str, dict] = {}
         # Resolve model-specific settings once at construction time
@@ -79,16 +81,36 @@ class ManulEngine(_ActionsMixin):
         safe = safe.strip("._")
         return safe or None
 
-    def _ensure_site_controls_cache_loaded(self, page) -> None:
+    def _page_url_file_name(self, page_url: str) -> str:
+        parsed = urlparse(page_url)
+        raw_path = (parsed.path or "/").strip()
+        if raw_path in ("", "/"):
+            slug = "root"
+        else:
+            slug = re.sub(r"[^a-z0-9._-]+", "_", raw_path.strip("/").lower())
+            slug = slug.strip("._-") or "root"
+        slug = slug[:80]
+        unique_src = f"{parsed.path}|{parsed.query}|{parsed.fragment}"
+        digest = hashlib.sha1(unique_src.encode("utf-8")).hexdigest()[:12]
+        return f"{slug}_{digest}.json"
+
+    def _ensure_url_controls_cache_loaded(self, page) -> None:
         if not self._controls_cache_enabled:
             return
         site_key = self._page_site_key(page)
+        page_url = str(getattr(page, "url", "") or "").strip()
         if not site_key:
             return
-        if site_key == self._controls_cache_site and self._controls_cache_path is not None:
+        if not page_url:
+            return
+        if (
+            site_key == self._controls_cache_site
+            and page_url == self._controls_cache_url
+            and self._controls_cache_path is not None
+        ):
             return
 
-        cache_path = self._controls_cache_root / site_key / "controls.json"
+        cache_path = self._controls_cache_root / site_key / self._page_url_file_name(page_url)
         cache_data: dict[str, dict] = {}
         if cache_path.exists():
             try:
@@ -100,17 +122,19 @@ class ManulEngine(_ActionsMixin):
                 cache_data = {}
 
         self._controls_cache_site = site_key
+        self._controls_cache_url = page_url
         self._controls_cache_path = cache_path
         self._controls_cache_data = cache_data
 
-    def _flush_site_controls_cache(self) -> None:
+    def _flush_url_controls_cache(self) -> None:
         if not self._controls_cache_enabled:
             return
-        if not self._controls_cache_site or self._controls_cache_path is None:
+        if not self._controls_cache_site or not self._controls_cache_url or self._controls_cache_path is None:
             return
         payload = {
             "version": 1,
             "site": self._controls_cache_site,
+            "url": self._controls_cache_url,
             "controls": self._controls_cache_data,
         }
         self._controls_cache_path.parent.mkdir(parents=True, exist_ok=True)
@@ -130,7 +154,7 @@ class ManulEngine(_ActionsMixin):
     ) -> None:
         if not self._controls_cache_enabled:
             return
-        self._ensure_site_controls_cache_loaded(page)
+        self._ensure_url_controls_cache_loaded(page)
         if not self._controls_cache_site:
             return
 
@@ -144,7 +168,7 @@ class ManulEngine(_ActionsMixin):
             "aria_label": str(element.get("aria_label", "")),
             "placeholder": str(element.get("placeholder", "")),
         }
-        self._flush_site_controls_cache()
+        self._flush_url_controls_cache()
 
     def _match_cached_control(self, entry: dict, candidates: list[dict]) -> dict | None:
         if not entry or not candidates:
@@ -187,7 +211,7 @@ class ManulEngine(_ActionsMixin):
     ) -> dict | None:
         if not self._controls_cache_enabled:
             return None
-        self._ensure_site_controls_cache_loaded(page)
+        self._ensure_url_controls_cache_loaded(page)
         if not self._controls_cache_site:
             return None
 
