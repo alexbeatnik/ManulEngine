@@ -147,11 +147,17 @@ class ManulEngine(_ActionsMixin):
             "url": self._controls_cache_url,
             "controls": self._controls_cache_data,
         }
+        serialized = json.dumps(payload, ensure_ascii=False, indent=2)
         self._controls_cache_path.parent.mkdir(parents=True, exist_ok=True)
-        self._controls_cache_path.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2),
-            encoding="utf-8",
+        tmp_path = self._controls_cache_path.with_name(
+            f"{self._controls_cache_path.name}.tmp-{time.time_ns()}"
         )
+        try:
+            tmp_path.write_text(serialized, encoding="utf-8")
+            tmp_path.replace(self._controls_cache_path)
+        finally:
+            if tmp_path.exists():
+                tmp_path.unlink()
 
     def _persist_control_cache_entry(
         self,
