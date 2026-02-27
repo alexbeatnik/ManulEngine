@@ -74,10 +74,12 @@ class ManulEngine(_ActionsMixin):
             parsed = urlparse(str(getattr(page, "url", "") or ""))
         except Exception:
             return None
-        host = (parsed.netloc or "").strip().lower()
-        if not host:
+        hostname = (parsed.hostname or "").strip().lower()
+        if not hostname:
             return None
-        safe = re.sub(r"[^a-z0-9.-]+", "_", host)
+        port_suffix = f":{parsed.port}" if parsed.port else ""
+        host_port = f"{hostname}{port_suffix}"
+        safe = re.sub(r"[^a-z0-9.-]+", "_", host_port)
         safe = safe.strip("._")
         return safe or None
 
@@ -159,7 +161,7 @@ class ManulEngine(_ActionsMixin):
             return
 
         key = self._control_cache_key(mode, search_texts, target_field)
-        self._controls_cache_data[key] = {
+        new_entry = {
             "name": str(element.get("name", "")),
             "tag_name": str(element.get("tag_name", "")),
             "xpath": str(element.get("xpath", "")),
@@ -168,6 +170,11 @@ class ManulEngine(_ActionsMixin):
             "aria_label": str(element.get("aria_label", "")),
             "placeholder": str(element.get("placeholder", "")),
         }
+        old_entry = self._controls_cache_data.get(key)
+        if old_entry == new_entry:
+            return
+
+        self._controls_cache_data[key] = new_entry
         self._flush_url_controls_cache()
 
     def _match_cached_control(self, entry: dict, candidates: list[dict]) -> dict | None:

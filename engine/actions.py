@@ -33,8 +33,8 @@ class _ActionsMixin:
                     target_field=target_field,
                     element=element,
                 )
-            except Exception:
-                pass
+            except (OSError, ValueError, TypeError) as exc:
+                print(f"    ⚠️  CONTROL CACHE: persist skipped ({type(exc).__name__})")
 
     async def _handle_navigate(self, page, step: str) -> bool:
         url = re.search(r'(https?://[^\s\'"<>]+)', step)

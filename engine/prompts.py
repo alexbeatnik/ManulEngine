@@ -16,6 +16,8 @@ import os
 from pathlib import Path
 import re as _re
 
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+
 try:
     from dotenv import load_dotenv
     # Load from a stable path (repo root) so this works even if CWD differs.
@@ -24,8 +26,7 @@ try:
     # - By default, process environment variables win (override=False).
     # - For local prompt tuning you may prefer the repo's .env to override the
     #   shell environment; set MANUL_DOTENV_OVERRIDE=true to enable that.
-    _repo_root = Path(__file__).resolve().parents[1]
-    _dotenv_path = _repo_root / ".env"
+    _dotenv_path = _REPO_ROOT / ".env"
     if _dotenv_path.exists():
         _override = os.getenv("MANUL_DOTENV_OVERRIDE", "False").lower() in ("true", "1", "yes", "t")
         load_dotenv(dotenv_path=_dotenv_path, override=_override)
@@ -40,10 +41,14 @@ NAV_TIMEOUT   = int(os.getenv("MANUL_NAV_TIMEOUT", "30000"))
 
 # ── Persistent controls cache ────────────────────────────────────────────────
 CONTROLS_CACHE_ENABLED = os.getenv("MANUL_CONTROLS_CACHE_ENABLED", "True").lower() in ("true", "1", "yes", "t")
-CONTROLS_CACHE_DIR = os.getenv(
+_cache_dir_raw = os.getenv(
     "MANUL_CONTROLS_CACHE_DIR",
-    str(Path(__file__).resolve().parents[1] / "cache")
+    str(_REPO_ROOT / "cache")
 )
+_cache_dir_path = Path(_cache_dir_raw)
+if not _cache_dir_path.is_absolute():
+    _cache_dir_path = _REPO_ROOT / _cache_dir_path
+CONTROLS_CACHE_DIR = str(_cache_dir_path)
 
 # ── AI control switches ──────────────────────────────────────────────────────
 # When enabled, ALL element resolution decisions go through the LLM picker.
