@@ -68,7 +68,7 @@ async def main():
         "36. SCROLL DOWN\n"
         "37. Click the \"Scrolling DropDown\" input field\n"
         "38. SCROLL DOWN inside the list\n"
-        "39. Select \"Item 100\"\n"
+        "39. Click \"Item 100\"\n"
         "40. VERIFY that 'Item 100' is present.\n"
 
         # ── Shadow DOM ──────────────────────────────────────────────────────

@@ -694,7 +694,6 @@ class _ActionsMixin:
                 if is_optional: return True
                 raise
 
-            # ── ДОДАНО: ЛОГІКА СКРОЛУ ПРИ ВІДМОВІ АГЕНТА ──
             if el is None:
                 if is_optional: return True
                 if attempt < 2:
@@ -761,7 +760,7 @@ class _ActionsMixin:
 
                 elif mode == "select":
                     if is_sel:
-                        opts = expected or [list(set(re.findall(r'\b[a-z0-9]{3,}\b', step_l)))[0]]
+                        opts = [expected[0]] if expected else [list(set(re.findall(r'\b[a-z0-9]{3,}\b', step_l)))[0]]
                         try: await loc.select_option(label=opts, timeout=3000)
                         except Exception: await loc.select_option(value=[o.lower() for o in opts], timeout=3000)
                     else: await loc.click(force=True, timeout=3000)

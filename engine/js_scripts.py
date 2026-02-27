@@ -75,6 +75,7 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         "[role='tab']","[role='option']","[role='menuitem']","[role='switch']",
         "[role='slider']","[role='application']","[role='link']",
         "[class*='btn']","[class*='button']","[class*='swatch']","[class*='card']","[class*='tab']",
+        "[class*='option']",
         "[data-qa]","[data-testid]",
         "[aria-label]","[title]",
         "div[id]","span[id]",

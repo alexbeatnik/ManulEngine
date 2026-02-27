@@ -122,6 +122,10 @@ def score_elements(
                 overlap = t_words & n_words
                 if overlap:
                     score += len(overlap) * 150
+                # All search-term words found in html_id → camelCase id match
+                # e.g. "permanent address" → "permanent" + "address" both in "permanentaddress"
+                if t_words and all(w in html_id for w in t_words):
+                    score += 2_000
 
             if tl in html_id:     
                 score += 600
@@ -142,6 +146,10 @@ def score_elements(
         score += sum(8  for w in target_words if len(w) > 3 and w in icons)
         score += sum(15 for w in target_words if len(w) > 3 and w in html_id)
         score += sum(12 for w in target_words if len(w) > 3 and w in aria)
+
+        # Prefer actual shadow DOM elements when step explicitly mentions "shadow"
+        if "shadow" in step_l and el.get("is_shadow"):
+            score += 5_000
 
         is_native_button = tag == "button" or (tag == "input" and itype in ("submit", "button", "image", "reset"))
         is_real_button = is_native_button or role == "button"

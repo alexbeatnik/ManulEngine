@@ -164,7 +164,7 @@ MEDIA_DOM = """
 """
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Tests 1-100
+# Tests 1-97
 # ─────────────────────────────────────────────────────────────────────────────
 TESTS = [
     # Main Player Controls (1-10)
@@ -215,7 +215,7 @@ TESTS = [
     {"n": "39", "step": "Click 'Reply'", "m": "clickable", "st": ["Reply"], "tf": None, "exp": "m39"},
     {"n": "40", "step": "Click 'View 5 replies'", "m": "clickable", "st": ["View 5 replies"], "tf": None, "exp": "m40"},
 
-    # Sidebar & Up Next (41-50)
+    # Sidebar & Up Next (41-49)
     {"n": "41", "step": "Click 'Autoplay' toggle", "m": "clickable", "st": ["Autoplay"], "tf": None, "exp": "m41"},
     {"n": "42", "step": "Click 'Funny Dogs Compilation'", "m": "clickable", "st": ["Funny Dogs Compilation"], "tf": None, "exp": "m42"},
     {"n": "43", "step": "Click 'Add to queue' (first)", "m": "clickable", "st": ["Add to queue"], "tf": None, "exp": "m43"},
@@ -226,7 +226,7 @@ TESTS = [
     {"n": "48", "step": "Click 'Save playlist'", "m": "clickable", "st": ["Save playlist"], "tf": None, "exp": "m49"},
     {"n": "49", "step": "Click 'Hide playlist'", "m": "clickable", "st": ["Hide playlist"], "tf": None, "exp": "m50"},
 
-    # Streaming Homepage (51-60)
+    # Streaming Homepage (51-59)
     {"n": "51", "step": "VERIFY 'Stranger Manuls' is present", "ver": True, "res": True},
     {"n": "52", "step": "Click 'Play'", "m": "clickable", "st": ["Play"], "tf": None, "exp": "m52"},
     {"n": "53", "step": "Click 'More Info'", "m": "clickable", "st": ["More Info"], "tf": None, "exp": "m53"},
@@ -249,7 +249,7 @@ TESTS = [
     {"n": "69", "step": "Click 'Rate this title'", "m": "clickable", "st": ["Rate this title"], "tf": None, "exp": "m69"},
     {"n": "70", "step": "Click 'Remove from My List'", "m": "clickable", "st": ["Remove from My List"], "tf": None, "exp": "m70"},
 
-    # Audio Player (71-80)
+    # Audio Player (71-79)
     {"n": "71", "step": "Click 'Save to Your Library'", "m": "clickable", "st": ["Save to Your Library"], "tf": None, "exp": "m72"},
     {"n": "72", "step": "Click 'Enable shuffle'", "m": "clickable", "st": ["Enable shuffle"], "tf": None, "exp": "m73"},
     {"n": "73", "step": "Click 'Previous track'", "m": "clickable", "st": ["Previous track"], "tf": None, "exp": "m74"},

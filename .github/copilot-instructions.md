@@ -1,68 +1,130 @@
+
+---
 # Copilot Instructions — ManulEngine
 
 ## What is this project?
 
-ManulEngine is a neuro-symbolic browser automation framework.
+ManulEngine is a highly resilient, neuro-symbolic browser automation framework.
 It drives Chromium via Playwright, scores DOM elements with 20+ heuristic rules,
 and falls back to a local LLM (Ollama) when the heuristics are ambiguous.
-Everything runs locally — no cloud APIs.
+It is designed to flawlessly bypass modern web traps (Shadow DOM, invisible overlays, zero-pixel honeypots, custom dropdowns) entirely locally — no cloud APIs.
 
 **Stack:** Python 3.11 · Playwright async · Ollama (qwen2.5:0.5b) · python-dotenv
 
 ## Repository layout
 
-```
+```text
 manul.py                   CLI entry point
 engine/
-  __init__.py              public API  — re-exports ManulEngine
-  core.py                  ManulEngine class (LLM, resolution, run_mission)
+  __init__.py              public API — re-exports ManulEngine
+  core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
   actions.py               _ActionsMixin (navigate, scroll, extract, verify, drag, _execute_step)
-  prompts.py               .env config, thresholds, LLM prompt templates
-  scoring.py               score_elements() — pure function, 20+ heuristic rules
-  js_scripts.py            SNAPSHOT_JS (DOM collector), VISIBLE_TEXT_JS
+  prompts.py               .env config, thresholds, LLM prompt templates (handles null-rejection)
+  scoring.py               score_elements() — pure function, 20+ heuristic rules, Mode Synergy
+  js_scripts.py            SNAPSHOT_JS (DOM collector & forced text collection), VISIBLE_TEXT_JS
   helpers.py               substitute_memory(), extract_quoted(), timing constants
   test/
     test_engine.py          synthetic DOM micro-suite (no Playwright)
     test_01_ecommerce.py    synthetic DOM scenario pack
-    test_02_social.py       synthetic DOM scenario pack
     ...
     test_10_mess.py         synthetic DOM scenario pack
 tests/
   hunt_demoqa.py            integration: forms, checkboxes, radios, tables
-  hunt_expandtesting.py     integration: login, inputs, dropdown
-  hunt_mega.py              integration: all element types, drag-drop, shadow DOM
+  hunt_expandtesting.py     integration: login, inputs, dynamic tables
+  hunt_mega.py              integration: all element types, drag-drop, shadow DOM, custom dropdowns
   hunt_rahul.py             integration: radios, autocomplete, hover
-  hunt_wikipedia.py         integration: search, navigate, extract, verify
+  hunt_wikipedia.py         integration: search, navigate, extract, verify, shadow-dom inputs
+  hunt_cyber.py             integration: 100-step devsecops and terminal simulation
+
 ```
 
 ## How the engine works
 
-1. **Snapshot** — JS injects into the page and collects all interactive elements with metadata (tag, text, ARIA, data-qa, xpath, type, disabled, checked, options).
+1. **Snapshot** — JS injects into the page and collects all interactive elements. Includes **Text-Based Forced Collection** to pull raw `div`/`span` elements if their text exactly matches the target (fixes custom un-semantic dropdowns).
 2. **Exact-match pass** — quick filter by `name`, `aria-label`, `data-qa` substring.
-3. **Heuristic scoring** — `score_elements()` ranks candidates. Key weights: semantic cache 20k, context memory 10k, data-qa 8k, ARIA 3.5k, text 3k, type bonuses, disabled -20k.
+3. **Heuristic scoring** — `score_elements()` ranks candidates. Perfect text match gives +50k. **Mode Synergy** gives another +50k if the exact text matches *and* the tag aligns with the requested action (e.g., `<button>` for clicking vs `<div>`).
 4. **LLM fallback** — if best score < threshold, ask the LLM to pick the element.
-5. **Anti-phantom guard** — reject LLM picks that don't match search terms (input/select modes).
-6. **Action** — type / click / select / hover / drag on the resolved locator.
-7. **Self-healing** — on failure, blacklist the element, clear context, re-resolve (up to 3 retries).
+5. **AI Rejection & Anti-phantom guard** — LLM can return `{"id": null}` if no plausible target is found. Engine handles `null` by blacklisting the current candidates and triggering self-healing.
+6. **Action** — type / click / select / hover / drag. Native Playwright actions are wrapped in `try/except` with a robust **JS Fallback** (`window.manulClick`, `window.manulType`) to bypass overlapping/obscured elements.
+7. **Self-healing** — on failure or AI rejection, scroll down, backlist bad IDs, and re-scan the DOM (up to 3 retries) before failing the step.
 
 ## Interaction modes
 
 Detected from step keywords:
-- `input` — "type", "fill", "enter"
-- `clickable` — "click", "double", "check", "uncheck"
-- `select` — "select", "choose"
-- `hover` — "hover"
-- `drag` — "drag" + "drop"
-- `locate` — fallback (highlight only)
+
+* `input` — "type", "fill", "enter"
+* `clickable` — "click", "double", "check", "uncheck"
+* `select` — "select", "choose"
+* `hover` — "hover"
+* `drag` — "drag" + "drop"
+* `locate` — fallback (highlight only)
+
+## Step format
+
+Steps are numbered strings parsed by `run_mission()`. They must be atomic browser instructions.
+
+```text
+"1. NAVIGATE to https://example.com"
+"2. Fill 'Username' field with 'admin'"
+"3. Click the 'Login' button"
+"4. Select 'English' from the 'Language' dropdown"
+"5. VERIFY that 'Welcome' is present."
+"6. EXTRACT the 'Product Price' into {price}"
+"7. SCROLL DOWN"
+"8. DONE."
+
+```
+
+**System Keywords** parsed directly by `run_mission()` (these skip heuristics):
+
+* `Maps to [url]`
+* `WAIT [seconds]`
+* `SCROLL DOWN` or `SCROLL DOWN inside the list`
+* `EXTRACT [target] into {variable_name}`
+* `VERIFY that [target] is present` / `is NOT present` / `is DISABLED` / `is checked`
+* `DONE.`
+
+Everything else goes through `_execute_step` (mode detection → resolve → action).
+Optional steps contain "if exists" / "optional" **outside** the quoted target (e.g. `"Click 'Close Ad' if exists"`).
+
+## Writing integration tests (hunt files)
+
+```python
+import sys, os, asyncio
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from playwright.async_api import async_playwright
+from engine import ManulEngine
+
+async def main():
+    manul = ManulEngine()
+    
+    mission = """
+        1. NAVIGATE to https://example.com
+        2. Click the 'Submit' button
+        3. VERIFY that 'Success' is present.
+        4. DONE.
+    """
+    
+    print("🐾 Running MY NEW HUNT")
+    success = await manul.run_mission(mission, strategic_context="My example site")
+    return success
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
+```
+
+* File must be named `tests/hunt_*.py` with an `async def main()` returning `bool`.
+* If `main()` accepts `headless` parameter, the CLI injects it automatically.
+* Otherwise, the CLI monkey-patches `ManulEngine` to honour the `--headless` flag.
 
 ## Code patterns to follow
 
-- Import: `from engine import ManulEngine` (never `framework`)
-- `scoring.py` is **stateless** — pure function, receives `learned_elements` and `last_xpath` as kwargs
-- `actions.py` is a **mixin** (`_ActionsMixin`) inherited by `ManulEngine` in `core.py`
-- `prompts.py` owns all `.env` settings and prompt strings
-- Steps are numbered strings like `"1. CLICK 'Submit'"` — the engine parses them
-- Optional steps contain "if exists" / "optional" **outside** the quoted target
+* Import: `from engine import ManulEngine` (never `framework`).
+* `scoring.py` is **stateless** — pure function, receives `learned_elements` and `last_xpath` as kwargs.
+* **Safety first in `scoring.py`:** Always cast fetched attributes using `str(el.get("...", ""))`. JavaScript can pass objects (like `SVGAnimatedString` for SVG icons) instead of strings, which will crash Python's `.lower()`.
+* `actions.py` is a **mixin** (`_ActionsMixin`) inherited by `ManulEngine` in `core.py`.
+* `prompts.py` owns all `.env` settings and prompt strings.
 
 ## Running tests
 
@@ -75,23 +137,19 @@ source env/bin/activate       # Linux/Mac
 python manul.py test
 
 # Integration tests (needs Playwright browsers + running Ollama)
-python manul.py               # all hunts
+python manul.py               # run all hunt_*.py scripts
 python manul.py hunt_demoqa.py # single hunt
 python manul.py --headless     # headless mode
+
 ```
 
 **Rule:** after any engine change, `python manul.py test` must exit with code **0**.
-
-Tip (deterministic runs): set `MANUL_AI_THRESHOLD=0` to force heuristics-only resolution and avoid any LLM fallback during tests.
-
-Note: `MANUL_AI_THRESHOLD` gates the **element picker** LLM fallback. If the user passes a **free-text** task (not a numbered step list), `run_mission()` will still call the LLM planner to generate steps.
-
-Offline mode: the engine can run without Ollama for numbered missions if `MANUL_AI_THRESHOLD=0` (no element-picker calls). Free-text planning still requires Ollama.
+Tip: Set `MANUL_AI_THRESHOLD=0` to force heuristics-only resolution. This ensures deterministic unit tests without making expensive/variable LLM calls.
 
 ## Configuration (.env)
 
 | Variable | Default | Description |
-|----------|---------|-------------|
+| --- | --- | --- |
 | `MANUL_MODEL` | `qwen2.5:0.5b` | Ollama model name |
 | `MANUL_HEADLESS` | `False` | Run browser headless |
 | `MANUL_AI_THRESHOLD` | auto | Score threshold before LLM fallback |
@@ -100,93 +158,36 @@ Offline mode: the engine can run without Ollama for numbered missions if `MANUL_
 
 Threshold auto-calculation by model size: `<1b → 500`, `1-4b → 750`, `5-9b → 1000`, `10-19b → 1500`, `20b+ → 2000`.
 
-Important: the threshold is a *gate* for calling the LLM.
-- Lower threshold → fewer LLM calls (heuristics win more often)
-- Higher threshold → more LLM calls ("paranoid" disambiguation)
+## Common pitfalls & Advanced Learnings
 
-## Common pitfalls
+* **Native Select vs Custom Dropdowns:** Playwright's `select_option()` crashes on non-`<select>` tags. If `mode == "select"` but the element is a `div`/`span`, gracefully fallback to a standard `click()`.
+* **Overlapped Elements (JS Fallbacks):** Modern UIs use invisible overlays. If `await loc.click(force=True)` fails or times out, always `except Exception:` and fallback to `await page.evaluate(f"window.manulClick({el_id})")`. Same for `Enter` keypresses.
+* **Deep Text Verification:** Standard `document.body.innerText` does not see text inside Shadow DOMs or Input values. `_handle_verify` must use a recursive JS function (`DEEP_TEXT_JS`) to read `shadowRoot.innerText` and `input.value` before concluding a text is missing.
+* **Form Auto-clearing:** Before typing into an input using `loc.type()`, always `await loc.fill("")` to prevent appending text to pre-filled placeholders (especially critical on Wikipedia and search bars).
+* **Checkbox/Radio strictness:** Heuristics must ruthlessly penalize (-50_000) non-checkbox elements when the user specifically asks to "Check" or "Select the radio", to prevent clicking a nearby `<td>` that happens to share the target text.
+* **SVG quirks:** `el.className` might not be a string. In `SNAPSHOT_JS`, safely extract it: `typeof el.className === 'string' ? el.className : el.getAttribute('class')`.
+* **AI Rejection loop:** If LLM returns `{"id": null}`, add the current top candidates to a `failed_ids` set, scroll the page, and retry `_snapshot` to discover hidden elements.
 
-- Never add `await` before `page.locator()`  — locators are sync, only actions are awaited.
-- `SNAPSHOT_JS` traverses **shadow DOM** — don't duplicate that logic in Python.
-- `score_elements()` must remain a standalone function (no `self`) for testability.
-- The anti-phantom guard only applies to `input` and `select` modes — don't extend to `clickable`.
-- Check/uncheck detection uses `"check" in lower` but `"uncheck" in lower` takes priority — order matters.
-- Optional step guard requires the search term to match text/value/aria **exactly** (case-insensitive).
-- `_do_drag` receives `source_id` — finds the source element by `source_id` with `raw_els[0]` as last-resort fallback.
-- `_handle_verify` must respect `is_negative` for `checked` state — return `not checked` when step says "is not checked".
-- CLI `--headless` monkey-patch must target **both** `engine.core.ManulEngine` **and** `engine.ManulEngine` (the package re-export), because hunts import from the package level.
+## Resolution fallback chain
+
+1. Semantic cache (**200k**)
+2. Exact Data-QA match (**60k**)
+3. Perfect Text match (**50k**) + Mode Synergy (**50k** if element tag perfectly matches action)
+4. Context memory (**25k / 5k**)
+5. Partial matches, attributes, icons
+6. LLM fallback
 
 ## Element data shape
 
 Each element dict returned by `SNAPSHOT_JS` contains:
+`id, name, xpath, is_select, is_shadow, is_contenteditable, class_name, tag_name, input_type, data_qa, html_id, icon_classes, aria_label, placeholder, role, disabled, aria_disabled`.
 
-```
-id, name, xpath, is_select, is_shadow, class_name,
-tag_name, input_type, data_qa, html_id, icon_classes,
-aria_label, role, disabled, aria_disabled
-```
-
-Depending on the element type, the snapshot may also include fields like `placeholder`, `value`, `checked`, and `is_contenteditable`.
-
-- `name` includes section context: `"Section -> Element Name input text"`.
-  The scoring strips `" input <type>"` suffix and splits on `" -> "` to get the core name.
-- For `<select>` elements, `name` becomes `"dropdown [Option A | Option B | ...]"` (options are embedded into the name string, not a separate field).
-- `is_shadow` = True means the element lives inside a shadow root — use `window.manulClick(id)` / `window.manulType(id, text)` instead of Playwright locators.
-
-## Resolution fallback chain
-
-```
-Semantic cache (20k) → Context memory (10k) → data-qa (8k) → ARIA (3.5k)
-  → Text match (3k) → Type bonuses → Word overlap → LLM fallback
-```
-
-Threshold gate: if `best_score >= threshold` → skip LLM entirely.
-Above 20k → instant cache reuse. Above 10k → context reuse.
-
-## Step format
-
-Steps are numbered strings parsed by `run_mission()`:
-
-```
-"1. NAVIGATE to https://example.com"
-"2. Fill 'Username' field with 'admin'"
-"3. Click the 'Login' button"
-"4. VERIFY that 'Welcome' is present."
-"5. EXTRACT 'Product' into {product_name}"
-"6. DONE."
-```
-
-Special keywords parsed by `run_mission()` directly (before `_execute_step`):
-`NAVIGATE`, `WAIT`, `SCROLL`, `EXTRACT`, `VERIFY`, `DONE`.
-
-Everything else goes through `_execute_step` (mode detection → resolve → action).
+* `name` includes section context: `"Section -> Element Name input text"`.
+* For `<select>` elements, `name` embeds options: `"dropdown [Option A | Option B]"`.
 
 ## Memory & variables
 
-- `self.memory` — dict of `{var_name: value}` populated by EXTRACT steps.
-- `substitute_memory()` replaces `{var}` placeholders in subsequent steps.
-- `self.learned_elements` — semantic cache: `(mode, search_texts, target_field) → {name, tag}`.
-- `self.last_xpath` — context memory for blind steps (no quoted target).
-
-## Writing integration tests (hunt files)
-
-```python
-import asyncio
-from engine import ManulEngine
-
-async def main():
-    manul = ManulEngine()
-    return await manul.run_mission("""
-        1. NAVIGATE to https://example.com
-        2. Click the 'Submit' button
-        3. VERIFY that 'Success' is present.
-        4. DONE.
-    """)
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-- File must be named `tests/hunt_*.py` with an `async def main()` returning bool.
-- If `main()` accepts `headless` parameter, the CLI injects it automatically.
-- Otherwise the CLI monkey-patches `ManulEngine` to honour `--headless`.
+* `self.memory` — dict of `{var_name: value}` populated by EXTRACT steps.
+* `substitute_memory()` replaces `{var}` placeholders.
+* `self.learned_elements` — semantic cache: `(mode, search_texts, target_field) → {name, tag}`.
+* `self.last_xpath` — used for Contextual Reuse (if next step says "in that field").
