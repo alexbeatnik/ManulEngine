@@ -98,7 +98,6 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             const st = window.getComputedStyle(el);
             const isHidden = st.display === 'none' || st.visibility === 'hidden' || st.opacity === '0';
             
-            // Якщо елемент прихований, АЛЕ це не кастомний чекбокс/файл-інпут під лейблом - ігноруємо
             if (isHidden) {
                 if (el.tagName !== 'INPUT' || (el.type !== 'file' && el.type !== 'checkbox' && el.type !== 'radio')) {
                     return; 
