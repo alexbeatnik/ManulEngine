@@ -159,8 +159,11 @@ class ManulEngine(_ActionsMixin):
         except (OSError, ValueError, TypeError) as err:
             print(f"    ⚠️  CONTROL CACHE: failed to flush cache file: {err}")
         finally:
-            if tmp_path.exists():
-                tmp_path.unlink()
+            try:
+                if tmp_path.exists():
+                    tmp_path.unlink()
+            except OSError as cleanup_err:
+                print(f"    ⚠️  CONTROL CACHE: failed to remove temp file: {cleanup_err}")
 
     def _persist_control_cache_entry(
         self,
@@ -478,7 +481,11 @@ class ManulEngine(_ActionsMixin):
                 candidates=els,
             )
             if cached_control is not None:
-                return cached_control
+                is_disabled = bool(cached_control.get("disabled"))
+                aria_disabled_raw = str(cached_control.get("aria_disabled", "")).strip().lower()
+                is_aria_disabled = aria_disabled_raw == "true"
+                if not (is_disabled or is_aria_disabled):
+                    return cached_control
 
             # Quick exact-match pass
             exact = []
