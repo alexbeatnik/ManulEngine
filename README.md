@@ -20,7 +20,7 @@ Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristi
 browser-manul/
 ├── manul.py              CLI runner (test files, inline prompts, unit tests)
 ├── requirements.txt      Python dependencies
-├── .env                  Runtime configuration (model, threshold, headless)
+├── .env                  Runtime configuration (model, threshold, headless) — currently committed
 ├── engine/               Core automation engine package
 │   ├── __init__.py       Public API — exports ManulEngine
 │   ├── prompts.py        Configuration, thresholds, LLM prompts
@@ -30,11 +30,12 @@ browser-manul/
 │   ├── core.py           ManulEngine class (LLM, resolution, mission runner)
 │   ├── actions.py        Action execution mixin (click, type, select, hover, drag)
 │   └── test/
-│       ├── test_engine.py       Engine micro-suite (synthetic DOM, no browser)
+│       ├── test_engine.py       Engine micro-suite (synthetic DOM via local HTML; uses Playwright)
 │       ├── test_01_ecommerce.py Scenario pack: ecommerce (synthetic DOM)
 │       ├── test_02_social.py    Scenario pack: social (synthetic DOM)
 │       ├── ...                  More packs (see engine/test/)
-│       └── test_10_mess.py      Scenario pack: misc edge-cases (synthetic DOM)
+│       ├── test_10_mess.py      Scenario pack: misc edge-cases (synthetic DOM)
+│       └── test_11_cyber.py     Scenario pack: cyber/terminal (synthetic DOM)
 └── tests/                Integration hunt tests (real websites)
     ├── hunt_demoqa.py
     ├── hunt_expandtesting.py
@@ -150,7 +151,7 @@ python manul.py --headless
 # Run inline mission
 python manul.py "1. NAVIGATE to https://example.com  2. Click the 'More' link  3. DONE."
 
-# Run synthetic engine tests (no Playwright)
+# Run synthetic DOM laboratory tests (local HTML via Playwright; no real websites)
 python manul.py test
 
 ```
@@ -165,9 +166,9 @@ Create a test file: `tests/hunt_mission.py`
 import asyncio
 from engine import ManulEngine
 
-async def main():
-    # Settings are automatically loaded from .env
-    manul = ManulEngine()
+async def main(headless: bool = False) -> bool:
+    # Settings are automatically loaded from .env (and can be overridden here)
+    manul = ManulEngine(headless=headless)
 
     mission = (
         "1. NAVIGATE to https://demoqa.com/text-box\n"
@@ -177,7 +178,7 @@ async def main():
         "5. DONE."
     )
 
-    await manul.run_mission(mission)
+    return await manul.run_mission(mission)
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -190,7 +191,7 @@ if __name__ == "__main__":
 
 | Category | Command Syntax |
 | --- | --- |
-| **Navigation** | `Maps to [URL]` |
+| **Navigation** | `NAVIGATE to [URL]` |
 | **Input** | `Fill [Field] with [Text]`, `Type [Text] into [Field]` |
 | **Click** | `Click [Element]`, `DOUBLE CLICK [Element]` |
 | **Selection** | `Select [Option] from [Dropdown]`, `Check [Checkbox]`, `Uncheck [Checkbox]` |
@@ -198,9 +199,9 @@ if __name__ == "__main__":
 | **Data Extraction** | `EXTRACT [Target] into {variable_name}` |
 | **Verification** | `VERIFY that [Text] is present/absent`, `VERIFY that [Element] is checked/disabled` |
 | **Flow Control** | `WAIT [seconds]`, `SCROLL DOWN` |
-| **Finish** | `DONE` |
+| **Finish** | `DONE.` |
 
-*Note: You can append `if exists` or `optional` to the end of any step to make it non-blocking.*
+*Note: You can append `if exists` or `optional` to the end of any step (outside quoted text) to make it non-blocking, e.g. `Click 'Close Ad' if exists`.*
 
 ---
 
@@ -208,7 +209,7 @@ if __name__ == "__main__":
 
 The engine is battle-tested against **1177+** of the web's most annoying UI patterns. It guarantees robust execution across a synthetic DOM laboratory and real-site integration hunts.
 
-* **Synthetic DOM packs:** 10 scenario suites under `engine/test/` (E-Commerce, Social, SaaS, Travel, Fintech, Media, Gov/Health, CRM, EdTech, and "The Unholy Mess").
+* **Synthetic DOM packs:** 11 scenario suites under `engine/test/` (E-Commerce, Social, SaaS, Travel, Fintech, Media, Gov/Health, CRM, EdTech, "The Unholy Mess", and Cyber).
 * **Integration hunts:** Real-site E2E flows under `tests/hunt_*.py` (requires Playwright). Includes `hunt_cyber.py` — an epic 100-step terminal and dashboard simulation.
 
 Run the synthetic suite:

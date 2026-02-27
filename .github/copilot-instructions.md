@@ -20,11 +20,11 @@ engine/
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
   actions.py               _ActionsMixin (navigate, scroll, extract, verify, drag, _execute_step)
   prompts.py               .env config, thresholds, LLM prompt templates (handles null-rejection)
-  scoring.py               score_elements() — pure function, 20+ heuristic rules, Mode Synergy
+  scoring.py               score_elements() — pure function, 20+ heuristic rules (text/attrs/type/context)
   js_scripts.py            SNAPSHOT_JS (DOM collector & forced text collection), VISIBLE_TEXT_JS
   helpers.py               substitute_memory(), extract_quoted(), timing constants
   test/
-    test_engine.py          synthetic DOM micro-suite (no Playwright)
+    test_engine.py          synthetic DOM micro-suite (local HTML via Playwright)
     test_01_ecommerce.py    synthetic DOM scenario pack
     ...
     test_10_mess.py         synthetic DOM scenario pack
@@ -42,7 +42,7 @@ tests/
 
 1. **Snapshot** — JS injects into the page and collects all interactive elements. Includes **Text-Based Forced Collection** to pull raw `div`/`span` elements if their text exactly matches the target (fixes custom un-semantic dropdowns).
 2. **Exact-match pass** — quick filter by `name`, `aria-label`, `data-qa` substring.
-3. **Heuristic scoring** — `score_elements()` ranks candidates. Perfect text match gives +50k. **Mode Synergy** gives another +50k if the exact text matches *and* the tag aligns with the requested action (e.g., `<button>` for clicking vs `<div>`).
+3. **Heuristic scoring** — `score_elements()` ranks candidates using many small-to-medium signals (exact text/aria/placeholder matches, `data_qa`/`html_id`, developer naming conventions, element-type alignment, context words, etc.). The biggest single boosts in the current implementation are semantic cache reuse (+20_000) and blind context reuse (+10_000).
 4. **LLM fallback** — if best score < threshold, ask the LLM to pick the element.
 5. **AI Rejection & Anti-phantom guard** — LLM can return `{"id": null}` if no plausible target is found. Engine handles `null` by blacklisting the current candidates and triggering self-healing.
 6. **Action** — type / click / select / hover / drag. Native Playwright actions are wrapped in `try/except` with a robust **JS Fallback** (`window.manulClick`, `window.manulType`) to bypass overlapping/obscured elements.
@@ -77,7 +77,7 @@ Steps are numbered strings parsed by `run_mission()`. They must be atomic browse
 
 **System Keywords** parsed directly by `run_mission()` (these skip heuristics):
 
-* `Maps to [url]`
+* `NAVIGATE to [url]`
 * `WAIT [seconds]`
 * `SCROLL DOWN` or `SCROLL DOWN inside the list`
 * `EXTRACT [target] into {variable_name}`
@@ -133,7 +133,7 @@ if __name__ == "__main__":
 env\Scripts\activate          # Windows
 source env/bin/activate       # Linux/Mac
 
-# Synthetic unit tests (no Playwright / no real browser)
+# Synthetic DOM laboratory tests (local HTML via Playwright; no real websites)
 python manul.py test
 
 # Integration tests (needs Playwright browsers + running Ollama)
@@ -170,12 +170,15 @@ Threshold auto-calculation by model size: `<1b → 500`, `1-4b → 750`, `5-9b �
 
 ## Resolution fallback chain
 
-1. Semantic cache (**200k**)
-2. Exact Data-QA match (**60k**)
-3. Perfect Text match (**50k**) + Mode Synergy (**50k** if element tag perfectly matches action)
-4. Context memory (**25k / 5k**)
-5. Partial matches, attributes, icons
-6. LLM fallback
+The engine does not use a single fixed “chain constant”; it sums many heuristic signals in [engine/scoring.py](engine/scoring.py). The *highest-signal* boosts (and the cutoffs used in [engine/core.py](engine/core.py)) are:
+
+1. Semantic cache reuse: +20_000 (and `core.py` short-circuits at score ≥ 20_000)
+2. Blind/context reuse (same xpath as last step): +10_000 (and `core.py` short-circuits at score ≥ 10_000)
+3. Exact `data_qa` match: +10_000 (substring: +3_000)
+4. Exact `html_id` match to target/search text: +10_000 (exact to `target_field` can be +15_000)
+5. Exact text/aria/placeholder/name match: typically +5_000 (partial matches are smaller)
+6. Element-type alignment & dev naming conventions: usually +300 … +15_000 depending on mode (e.g., checkbox/radio strictness)
+7. LLM fallback: used only when best score < `MANUL_AI_THRESHOLD` (unless AI is disabled via threshold ≤ 0)
 
 ## Element data shape
 
