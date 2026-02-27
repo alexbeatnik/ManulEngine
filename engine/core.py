@@ -87,11 +87,19 @@ class ManulEngine(_ActionsMixin):
                 "id":           el["id"],
                 "name":         el["name"],
                 "tag":          el.get("tag_name", ""),
+                "input_type":   el.get("input_type", ""),
                 "role":         el.get("role", ""),
                 "data_qa":      el.get("data_qa", ""),
                 "html_id":      el.get("html_id", ""),
                 "class_name":   el.get("class_name", ""),
                 "icon_classes": el.get("icon_classes", ""),
+                "aria_label":   el.get("aria_label", ""),
+                "placeholder":  el.get("placeholder", ""),
+                "disabled":     el.get("disabled", False),
+                "aria_disabled": el.get("aria_disabled", ""),
+                "is_select":    el.get("is_select", False),
+                "is_shadow":    el.get("is_shadow", False),
+                "contenteditable": el.get("is_contenteditable", False),
             }
             for el in candidates
         ]
