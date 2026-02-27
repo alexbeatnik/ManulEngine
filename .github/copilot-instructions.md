@@ -20,13 +20,14 @@ engine/
   actions.py               _ActionsMixin (navigate, scroll, extract, verify, drag, _execute_step)
   prompts.py               .env config, thresholds, LLM prompt templates (handles null-rejection)
   scoring.py               score_elements() — pure function, 20+ heuristic rules (text/attrs/type/context)
-  js_scripts.py            SNAPSHOT_JS (DOM collector & forced text collection), VISIBLE_TEXT_JS
+  js_scripts.py            SNAPSHOT_JS (DOM collector + JS fallbacks), VISIBLE_TEXT_JS
   helpers.py               substitute_memory(), extract_quoted(), timing constants
   test/
     test_engine.py          synthetic DOM micro-suite (local HTML via Playwright)
     test_01_ecommerce.py    synthetic DOM scenario pack
     ...
     test_10_mess.py         synthetic DOM scenario pack
+    test_11_cyber.py        synthetic DOM scenario pack
 tests/
   hunt_demoqa.py            integration: forms, checkboxes, radios, tables
   hunt_expandtesting.py     integration: login, inputs, dynamic tables
@@ -45,7 +46,7 @@ tests/
 4. **LLM fallback** — if best score < threshold, ask the LLM to pick the element.
 5. **AI Rejection & Anti-phantom guard** — LLM can return `{"id": null}` if no plausible target is found. Engine handles `null` by blacklisting the current candidates and triggering self-healing.
 6. **Action** — type / click / select / hover / drag. Native Playwright actions are wrapped in `try/except` with a robust **JS Fallback** (`window.manulClick`, `window.manulType`) to bypass overlapping/obscured elements.
-7. **Self-healing** — on failure or AI rejection, scroll down, backlist bad IDs, and re-scan the DOM (up to 3 retries) before failing the step.
+7. **Self-healing** — on failure or AI rejection, scroll down, blacklist bad IDs, and retry (up to 3 retries). Each element-resolution attempt may also scroll-and-retry internally.
 
 ## Interaction modes
 
@@ -89,14 +90,12 @@ Optional steps contain "if exists" / "optional" **outside** the quoted target (e
 ## Writing integration tests (hunt files)
 
 ```python
-import sys, os, asyncio
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-from playwright.async_api import async_playwright
+import asyncio
 from engine import ManulEngine
 
-async def main():
-    manul = ManulEngine()
-    
+async def main(headless: bool = False) -> bool:
+    manul = ManulEngine(headless=headless)
+
     mission = """
         1. NAVIGATE to https://example.com
         2. Click the 'Submit' button
@@ -104,9 +103,7 @@ async def main():
         4. DONE.
     """
     
-    print("🐾 Running MY NEW HUNT")
-    success = await manul.run_mission(mission, strategic_context="My example site")
-    return success
+    return await manul.run_mission(mission, strategic_context="My example site")
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -135,10 +132,15 @@ source env/bin/activate       # Linux/Mac
 # Synthetic DOM laboratory tests (local HTML via Playwright; no real websites)
 python manul.py test
 
-# Integration tests (needs Playwright browsers + running Ollama)
+# Integration tests (needs Playwright browsers; Ollama optional)
 python manul.py               # run all hunt_*.py scripts
 python manul.py hunt_demoqa.py # single hunt
 python manul.py --headless     # headless mode
+
+
+Ollama is optional, but required for:
+- free-text tasks (AI planner)
+- AI element-picker fallback when heuristics confidence is below `MANUL_AI_THRESHOLD`
 
 
 ```
