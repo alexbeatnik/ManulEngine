@@ -8,6 +8,11 @@ It drives Chromium via Playwright, scores DOM elements with 20+ heuristic rules,
 and falls back to a local LLM (Ollama) when the heuristics are ambiguous.
 It is designed to bypass modern web traps (Shadow DOM, invisible overlays, zero-pixel honeypots, custom dropdowns) entirely locally — no cloud APIs.
 
+Current operating mode in this repo is typically **mixed**:
+- Heuristics rank candidates first.
+- LLM is called only when heuristics are not confident (best score < `MANUL_AI_THRESHOLD`).
+- When LLM is used, heuristic `score` is treated as a *prior* (hint), not a hard constraint (`MANUL_AI_POLICY=prior`).
+
 **Stack:** Python 3.11 · Playwright async · Ollama (qwen2.5:0.5b) · python-dotenv
 
 ## Repository layout
@@ -155,10 +160,20 @@ Tip: Set `MANUL_AI_THRESHOLD=0` to force heuristics-only resolution. This ensure
 | `MANUL_MODEL` | `qwen2.5:0.5b` | Ollama model name |
 | `MANUL_HEADLESS` | `False` | Run browser headless |
 | `MANUL_AI_THRESHOLD` | auto | Score threshold before LLM fallback |
+| `MANUL_AI_ALWAYS` | `False` | If `True`, always ask the LLM picker (bypasses heuristic short-circuits) |
+| `MANUL_AI_POLICY` | `prior` | How to treat heuristic score in LLM picker: `prior` (hint) or `strict` (force max-score) |
 | `MANUL_TIMEOUT` | `5000` | Default action timeout (ms) |
 | `MANUL_NAV_TIMEOUT` | `30000` | Navigation timeout (ms) |
 
 Threshold auto-calculation by model size: `<1b → 500`, `1-4b → 750`, `5-9b → 1000`, `10-19b → 1500`, `20b+ → 2000`.
+
+Suggested `.env` for mixed mode (the current default expectation):
+
+```env
+MANUL_AI_THRESHOLD=500
+MANUL_AI_ALWAYS=False
+MANUL_AI_POLICY=prior
+```
 
 ## Common pitfalls & Advanced Learnings
 

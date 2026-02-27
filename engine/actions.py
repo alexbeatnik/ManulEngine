@@ -650,7 +650,7 @@ class _ActionsMixin:
                 await page.mouse.move(db["x"] + db["width"]/2, db["y"] + db["height"]/2, steps=20)
                 await page.mouse.up()
 
-        print(f"    🖱️  Dragged → '{dest['name'][:30]}'")
+        print(f"    🖱️  Dragged → '{dest['name']}'")
         await asyncio.sleep(ACTION_WAIT)
         return True
 
@@ -725,7 +725,7 @@ class _ActionsMixin:
                     else:
                         await self._highlight(page, el_id, by_js_id=True)
                 except Exception: pass
-                print(f"    🔍 Located '{name[:40]}'")
+                print(f"    🔍 Located '{name}'")
                 return True
 
             if mode == "drag": return await self._do_drag(page, step, expected, el_id)
@@ -741,7 +741,7 @@ class _ActionsMixin:
 
             try:
                 if mode == "input":
-                    print(f"    ⌨️  Typed '{txt_to_type}' → '{name[:30]}'")
+                    print(f"    ⌨️  Typed '{txt_to_type}' → '{name}'")
                     if is_shad: await page.evaluate(f"window.manulType({el_id}, '{txt_to_type}')")
                     else:
                         is_readonly = await loc.evaluate("el => el.readOnly || el.hasAttribute('readonly')")
@@ -769,7 +769,7 @@ class _ActionsMixin:
                     return True
 
                 elif mode == "hover":
-                    print(f"    🚁  Hovered '{name[:30]}'")
+                    print(f"    🚁  Hovered '{name}'")
                     if is_shad: await page.evaluate(f"window.manulElements[{el_id}].dispatchEvent(new MouseEvent('mouseover',{{bubbles:true,cancelable:true,view:window}}))")
                     else: await loc.hover(force=True, timeout=3000)
                     self.learned_elements[cache_key] = {"name": name, "tag": tag}
@@ -777,7 +777,7 @@ class _ActionsMixin:
                     return True
 
                 else:
-                    print(f"    🖱️  Clicked '{name[:30]}'")
+                    print(f"    🖱️  Clicked '{name}'")
                     if is_shad:
                         fn = "manulDoubleClick" if "double" in step_l else "manulClick"
                         await page.evaluate(f"window.{fn}({el_id})")

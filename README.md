@@ -20,7 +20,8 @@ Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristi
 browser-manul/
 ├── manul.py              CLI runner (test files, inline prompts, unit tests)
 ├── requirements.txt      Python dependencies
-├── .env                  Runtime configuration (model, threshold, headless) — currently committed
+├── .env                  Optional runtime configuration (model, threshold, headless)
+├── .env.example          Example configuration template
 ├── engine/               Core automation engine package
 │   ├── __init__.py       Public API — exports ManulEngine
 │   ├── prompts.py        Configuration, thresholds, LLM prompts
@@ -109,7 +110,15 @@ ollama serve
 
 ### 3️⃣ Configuration (.env)
 
-Create or edit `.env` in the repo root:
+`.env` is optional. If it doesn't exist, ManulEngine uses built-in defaults.
+
+Create `.env` by copying the template:
+
+```bash
+copy .env.example .env
+```
+
+Then edit `.env` in the repo root:
 
 ```env
 MANUL_MODEL=qwen2.5:0.5b
@@ -118,6 +127,15 @@ MANUL_HEADLESS=False
 # AI Threshold: lower = fewer AI calls, higher = more AI calls
 # MANUL_AI_THRESHOLD=0
 # MANUL_AI_THRESHOLD=500
+
+# Force the LLM element picker for ALL element resolutions
+# (bypasses heuristic short-circuits like semantic cache/context reuse)
+# MANUL_AI_ALWAYS=True
+
+# Optional: control how the LLM treats heuristic scores when selecting:
+#   prior  = score is a hint; LLM may override with a clear reason (default)
+#   strict = enforce max-score determinism (useful for synthetic/id-strict tests)
+# MANUL_AI_POLICY=prior
 
 MANUL_TIMEOUT=5000
 MANUL_NAV_TIMEOUT=30000

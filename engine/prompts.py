@@ -13,11 +13,18 @@ Exports:
 """
 
 import os
+from pathlib import Path
 import re as _re
 
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    # For local runs, prefer values from the repo's .env to avoid surprises from
+    # stale shell env vars (especially during prompt tuning).
+    # Load from a stable path (repo root) so this works even if CWD differs.
+    _repo_root = Path(__file__).resolve().parents[1]
+    _dotenv_path = _repo_root / ".env"
+    if _dotenv_path.exists():
+        load_dotenv(dotenv_path=_dotenv_path, override=True)
 except ImportError:
     pass  # dotenv optional — fall back to os.environ
 
@@ -26,6 +33,17 @@ DEFAULT_MODEL = os.getenv("MANUL_MODEL", "qwen2.5:0.5b")
 HEADLESS_MODE = os.getenv("MANUL_HEADLESS", "False").lower() in ("true", "1", "yes", "t")
 TIMEOUT       = int(os.getenv("MANUL_TIMEOUT",     "5000"))
 NAV_TIMEOUT   = int(os.getenv("MANUL_NAV_TIMEOUT", "30000"))
+
+# ── AI control switches ──────────────────────────────────────────────────────
+# When enabled, ALL element resolution decisions go through the LLM picker.
+AI_ALWAYS = os.getenv("MANUL_AI_ALWAYS", "False").lower() in ("true", "1", "yes", "t")
+
+# Policy for how the LLM should treat heuristic scores when selecting.
+# - prior  (default): score is a hint/prior; model may override with a clear reason.
+# - strict          : enforce best score deterministically (useful for synthetic/id-strict tests).
+AI_POLICY = os.getenv("MANUL_AI_POLICY", "prior").strip().lower()
+if AI_POLICY not in ("prior", "strict"):
+    AI_POLICY = "prior"
 
 # ── Confidence threshold ───────────────────────────────────────────────────────
 
@@ -89,6 +107,7 @@ OUTPUT FORMAT:
 _RULES_CORE = """\
 Each element candidate has:
   id           – integer (RETURN THIS EXACT ID)
+    score        – integer heuristic rank (HIGHER IS BETTER; treat as a PRIOR)
   name         – visible text / aria-label / "Context -> element text"
   tag          – HTML tag (input, button, a, select, textarea, div, etc.)
     input_type   – for <input>, the type (text/password/email/checkbox/radio/submit/...)
@@ -108,7 +127,13 @@ Each element candidate has:
 CRITICAL RULES (Apply strictly in this order):
 1. JSON ONLY: Return ONLY valid JSON. No markdown, no extra text. Format: {"id": 123, "thought": "reasoning"}
 2. EXACT MATCH WINS: An exact match in `name`, `data_qa`, or `aria_label` ALWAYS beats a partial match.
-3. MATCH THE ACTION TO THE ELEMENT TYPE:
+3. USE SCORE AS A PRIOR (NOT A SHACKLE):
+    - Prefer higher `score` when candidates are otherwise comparable.
+    - You MAY choose a lower-score candidate only if you can state a clear disqualifying reason for the higher-score one
+      (wrong element type for the requested mode, disabled/aria-disabled, wrong checkbox/radio alignment, etc.).
+    - If scores tie, choose the first one in the list.
+    - Note: In strict test mode a separate policy may enforce max-score determinism.
+4. MATCH THE ACTION TO THE ELEMENT TYPE:
      - "Fill/Type" -> MUST prefer `tag=input`, `tag=textarea`, or `contenteditable=true`.
          If `tag=input`, prefer the right `input_type` (password/email/search/number/etc.).
      - "Check/Uncheck" -> MUST prefer `input_type=checkbox` or `role=checkbox`. NEVER pick a generic button.

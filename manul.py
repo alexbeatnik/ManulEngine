@@ -126,6 +126,16 @@ def _collect(target: str | None) -> list[str]:
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 async def main() -> None:
+    # Ensure UTF-8 output for emoji-heavy logs on Windows.
+    # This avoids UnicodeEncodeError under legacy codepages.
+    try:
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
     args     = sys.argv[1:]
     headless = "--headless" in args
     args     = [a for a in args if a != "--headless"]
@@ -138,6 +148,8 @@ async def main() -> None:
         import importlib
         import io
         import re as _re
+
+
 
         # Ensure UTF-8 output for emoji-heavy test suites on Windows
         if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
