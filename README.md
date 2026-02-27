@@ -3,10 +3,6 @@
 
 # 😼 ManulEngine v0.02 — The Mastermind
 
----
-
-# 😼 ManulEngine v0.02 — The Mastermind
-
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 
