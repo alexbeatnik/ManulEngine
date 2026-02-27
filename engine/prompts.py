@@ -110,23 +110,23 @@ OUTPUT FORMAT:
 
 _RULES_CORE = """\
 Each element candidate has:
-  id           – integer (RETURN THIS EXACT ID)
-    score        – integer heuristic rank (HIGHER IS BETTER; treat as a PRIOR)
-  name         – visible text / aria-label / "Context -> element text"
-  tag          – HTML tag (input, button, a, select, textarea, div, etc.)
-    input_type   – for <input>, the type (text/password/email/checkbox/radio/submit/...)
-  role         – ARIA role (button, checkbox, textbox, combobox, etc.)
-  data_qa      – Test IDs (extremely strong signal)
-  html_id      – HTML id attribute
-  class_name   – HTML classes (important for inferring intent)
-  icon_classes – CSS classes for icons (e.g., "fa search")
-    aria_label   – aria-label/title (often the real label for icon buttons)
-    placeholder  – placeholder/data-placeholder/aria-placeholder
-    disabled     – boolean
-    aria_disabled – string ("true"/"false"/"")
-    is_select    – boolean (native <select>)
+    id              – integer (RETURN THIS EXACT ID)
+    score           – integer heuristic rank (HIGHER IS BETTER; treat as a PRIOR)
+    name            – visible text / aria-label / "Context -> element text"
+    tag             – HTML tag (input, button, a, select, textarea, div, etc.)
+    input_type      – for <input>, the type (text/password/email/checkbox/radio/submit/...)
+    role            – ARIA role (button, checkbox, textbox, combobox, etc.)
+    data_qa         – Test IDs (extremely strong signal)
+    html_id         – HTML id attribute
+    class_name      – HTML classes (important for inferring intent)
+    icon_classes    – CSS classes for icons (e.g., "fa search")
+    aria_label      – aria-label/title (often the real label for icon buttons)
+    placeholder     – placeholder/data-placeholder/aria-placeholder
+    disabled        – boolean
+    aria_disabled   – string ("true"/"false"/"")
+    is_select       – boolean (native <select>)
     contenteditable – boolean
-    is_shadow    – boolean
+    is_shadow       – boolean
 
 CRITICAL RULES (Apply strictly in this order):
 1. JSON ONLY: Return ONLY valid JSON. No markdown, no extra text. Format: {"id": 123, "thought": "reasoning"}

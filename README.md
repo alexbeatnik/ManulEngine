@@ -140,6 +140,14 @@ MANUL_AI_ALWAYS=False
 MANUL_AI_POLICY=prior
 ```
 
+Optional log compacting (helps when element `name` contains long context or `<select>` option lists):
+
+```env
+# 0 = no truncation (default)
+MANUL_LOG_NAME_MAXLEN=160
+MANUL_LOG_THOUGHT_MAXLEN=220
+```
+
 Create `.env` by copying the template:
 
 ```bash
@@ -164,6 +172,10 @@ MANUL_HEADLESS=False
 #   prior  = score is a hint; LLM may override with a clear reason (default)
 #   strict = enforce max-score determinism (useful for synthetic/id-strict tests)
 # MANUL_AI_POLICY=prior
+
+# Optional: keep logs compact (collapse whitespace; truncate long names/thoughts)
+# MANUL_LOG_NAME_MAXLEN=160
+# MANUL_LOG_THOUGHT_MAXLEN=220
 
 MANUL_TIMEOUT=5000
 MANUL_NAV_TIMEOUT=30000

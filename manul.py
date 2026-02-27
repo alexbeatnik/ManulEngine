@@ -123,7 +123,6 @@ def _collect(target: str | None) -> list[str]:
     print(f"❌ File not found: {target}")
     sys.exit(1)
 
-
 # ── Entry point ───────────────────────────────────────────────────────────────
 async def main() -> None:
     # Ensure UTF-8 output for emoji-heavy logs on Windows.

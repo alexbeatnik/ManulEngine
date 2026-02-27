@@ -53,6 +53,50 @@ class ManulEngine(_ActionsMixin):
 
     # ── LLM helpers ───────────────────────────
 
+    def _passes_anti_phantom_guard(
+        self,
+        *,
+        mode: str,
+        is_blind: bool,
+        search_texts: list[str],
+        target_field: str | None,
+        ai_choice: dict,
+    ) -> bool:
+        if mode not in ("input", "select") or is_blind:
+            return True
+
+        search_terms = [t.lower() for t in search_texts]
+        if target_field:
+            search_terms.append(target_field.lower())
+
+        guard_words = set(re.findall(r"\b[a-z0-9]{2,}\b", " ".join(search_terms)))
+        element_text = (
+            f"{ai_choice.get('name', '')} "
+            f"{ai_choice.get('html_id', '')} "
+            f"{ai_choice.get('data_qa', '')} "
+            f"{ai_choice.get('aria_label', '')} "
+            f"{ai_choice.get('placeholder', '')}"
+        ).lower()
+
+        if not guard_words or any(w in element_text for w in guard_words):
+            return True
+
+        missing = search_texts[0] if search_texts else target_field
+        raw_name = str(ai_choice.get("name", ""))
+        compact_name = re.sub(r"\s+", " ", raw_name).strip()
+        try:
+            name_max_len = int(os.getenv("MANUL_LOG_NAME_MAXLEN", "0"))
+        except ValueError:
+            name_max_len = 0
+        if name_max_len and len(compact_name) > name_max_len:
+            compact_name = compact_name[: max(0, name_max_len - 1)] + "…"
+
+        print(
+            f"    👻 ANTI-PHANTOM GUARD: AI chose '{compact_name}', "
+            f"but target '{missing}' is missing. Rejecting."
+        )
+        return False
+
     async def _llm_json(self, system: str, user: str) -> dict | None:
         """Send a system+user prompt to the local LLM and parse JSON response."""
         if ollama is None:
@@ -301,24 +345,14 @@ class ManulEngine(_ActionsMixin):
                 return None
             ai_choice = top[idx]
 
-            # Anti-phantom guard — only for input/select modes
-            if mode in ("input", "select") and not is_blind:
-                search_terms = [t.lower() for t in search_texts]
-                if target_field:
-                    search_terms.append(target_field.lower())
-                guard_words = set(re.findall(r'\b[a-z0-9]{2,}\b', " ".join(search_terms)))
-                element_text = (
-                    f"{ai_choice['name']} "
-                    f"{ai_choice.get('html_id', '')} "
-                    f"{ai_choice.get('data_qa', '')} "
-                    f"{ai_choice.get('aria_label', '')} "
-                    f"{ai_choice.get('placeholder', '')}"
-                ).lower()
-                if guard_words and not any(w in element_text for w in guard_words):
-                    missing = search_texts[0] if search_texts else target_field
-                    print(f"    👻 ANTI-PHANTOM GUARD: AI chose '{ai_choice['name']}', "
-                          f"but target '{missing}' is missing. Rejecting.")
-                    return None
+            if not self._passes_anti_phantom_guard(
+                mode=mode,
+                is_blind=is_blind,
+                search_texts=search_texts,
+                target_field=target_field,
+                ai_choice=ai_choice,
+            ):
+                return None
 
             return ai_choice
 
@@ -356,24 +390,14 @@ class ManulEngine(_ActionsMixin):
 
         ai_choice = top[idx]
 
-        # Anti-phantom guard — only for input/select modes
-        if mode in ("input", "select") and not is_blind:
-            search_terms = [t.lower() for t in search_texts]
-            if target_field:
-                search_terms.append(target_field.lower())
-            guard_words  = set(re.findall(r'\b[a-z0-9]{2,}\b', " ".join(search_terms)))
-            element_text = (
-                f"{ai_choice['name']} "
-                f"{ai_choice.get('html_id', '')} "
-                f"{ai_choice.get('data_qa', '')} "
-                f"{ai_choice.get('aria_label', '')} "
-                f"{ai_choice.get('placeholder', '')}"
-            ).lower()
-            if guard_words and not any(w in element_text for w in guard_words):
-                missing = search_texts[0] if search_texts else target_field
-                print(f"    👻 ANTI-PHANTOM GUARD: AI chose '{ai_choice['name']}', "
-                      f"but target '{missing}' is missing. Rejecting.")
-                return None
+        if not self._passes_anti_phantom_guard(
+            mode=mode,
+            is_blind=is_blind,
+            search_texts=search_texts,
+            target_field=target_field,
+            ai_choice=ai_choice,
+        ):
+            return None
 
         return ai_choice
 
