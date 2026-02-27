@@ -168,9 +168,9 @@ cache/
 ```
 
 If a cached control for a URL is resolved again with updated attributes, the entry is overwritten.
-Dynamic routes are canonicalized to a shared template, so pages like
+Each distinct page URL gets its own cache file, so dynamic routes like
 `/user/dsdfddg/1/medication-list` and `/user/zzxxyyq/2/medication-list`
-reuse the same per-URL cache file.
+are stored separately.
 
 Synthetic `engine/test` runs via `python manul.py test` disable this cache by default
 for deterministic, side-effect-free results.

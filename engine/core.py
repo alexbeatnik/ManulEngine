@@ -21,7 +21,7 @@ import json
 import re
 import time
 from pathlib import Path
-from urllib.parse import parse_qsl, urlparse
+from urllib.parse import urlparse
 from playwright.async_api import async_playwright
 
 try:
@@ -84,72 +84,17 @@ class ManulEngine(_ActionsMixin):
         return safe or None
 
     def _page_url_file_name(self, page_url: str) -> str:
-        canonical = self._canonicalize_url_for_cache(page_url)
-        parsed = urlparse(canonical)
-        canonical_path = (parsed.path or "/").strip()
-        if canonical_path in ("", "/"):
+        parsed = urlparse(str(page_url or ""))
+        raw_path = (parsed.path or "/").strip()
+        if raw_path in ("", "/"):
             slug = "root"
         else:
-            slug = re.sub(r"[^a-z0-9._-]+", "_", canonical_path.strip("/").lower())
+            slug = re.sub(r"[^a-z0-9._-]+", "_", raw_path.strip("/").lower())
             slug = slug.strip("._-") or "root"
         slug = slug[:80]
         unique_src = f"{parsed.path}|{parsed.query}|{parsed.fragment}"
         digest = hashlib.sha1(unique_src.encode("utf-8")).hexdigest()[:12]
         return f"{slug}_{digest}.json"
-
-    def _normalize_cache_segment(self, segment: str, prev_segment: str | None = None) -> str:
-        s = str(segment or "").strip().lower()
-        if not s:
-            return s
-
-        if re.fullmatch(r"\d+", s):
-            return "{num}"
-
-        if re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}", s):
-            return "{uuid}"
-
-        if re.fullmatch(r"[0-9a-f]{16,}", s):
-            return "{hexid}"
-
-        if prev_segment in {
-            "user", "users", "patient", "patients", "member", "members",
-            "profile", "profiles", "account", "accounts", "client", "clients",
-        }:
-            return "{id}"
-
-        if re.fullmatch(r"[a-z0-9_-]{12,}", s):
-            return "{token}"
-
-        return s
-
-    def _canonicalize_url_for_cache(self, page_url: str) -> str:
-        parsed = urlparse(str(page_url or ""))
-
-        raw_parts = [p for p in (parsed.path or "").split("/") if p]
-        norm_parts: list[str] = []
-        prev: str | None = None
-        for part in raw_parts:
-            norm = self._normalize_cache_segment(part, prev)
-            norm_parts.append(norm)
-            prev = norm
-        norm_path = "/" + "/".join(norm_parts) if norm_parts else "/"
-
-        query_pairs = parse_qsl(parsed.query or "", keep_blank_values=True)
-        norm_q = []
-        for k, v in query_pairs:
-            nk = self._normalize_cache_segment(k)
-            nv = self._normalize_cache_segment(v, nk)
-            norm_q.append((nk, nv))
-        norm_q.sort(key=lambda x: x[0])
-        norm_query = "&".join(f"{k}={v}" for k, v in norm_q)
-
-        norm_fragment = self._normalize_cache_segment(parsed.fragment or "")
-
-        return (
-            f"{parsed.scheme}://{parsed.netloc}{norm_path}"
-            f"{('?' + norm_query) if norm_query else ''}"
-            f"{('#' + norm_fragment) if norm_fragment else ''}"
-        )
 
     def _ensure_url_controls_cache_loaded(self, page) -> None:
         if not self._controls_cache_enabled:

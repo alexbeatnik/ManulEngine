@@ -139,11 +139,11 @@ async def run_suite() -> bool:
 
             file_a = manul._page_url_file_name(page_dyn_a.url)
             file_b = manul._page_url_file_name(page_dyn_b.url)
-            if file_a == file_b:
-                print("   ✅ Dynamic route URLs share the same cache file template")
+            if file_a != file_b:
+                print("   ✅ Dynamic route URLs use different per-page cache files")
                 passed += 1
             else:
-                msg = f"FAILED — dynamic URL templates diverged ({file_a} != {file_b})"
+                msg = f"FAILED — expected different URL pages to map to different cache files ({file_a} == {file_b})"
                 print(f"   ❌ {msg}")
                 failures.append(msg)
 

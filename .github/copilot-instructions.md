@@ -54,7 +54,7 @@ tests/
 5. **AI Rejection & Anti-phantom guard** — LLM can return `{"id": null}` if no plausible target is found. Engine handles `null` by blacklisting the current candidates and triggering self-healing.
 6. **Action** — type / click / select / hover / drag. Non-shadow interactions primarily use Playwright with `force=True` plus retries; Shadow DOM interactions use a **JS fallback** (`window.manulClick`, `window.manulType`) to bypass elements that Playwright cannot target.
 7. **Self-healing** — on failure or AI rejection, scroll down, blacklist bad IDs, and retry (up to 3 retries). Each element-resolution attempt may also scroll-and-retry internally.
-8. **Persistent controls cache** — successful control resolutions are stored in a per-site folder with separate files per URL and reused on later runs. Cached controls are reused only if a matching live candidate still exists in the current snapshot; changed controls overwrite previous entries for that URL. Dynamic routes are canonicalized to a shared template (e.g., `/user/<dynamic>/<num>/medication-list`) so similar pages reuse the same cache file.
+8. **Persistent controls cache** — successful control resolutions are stored in a per-site folder with separate files per URL and reused on later runs. Cached controls are reused only if a matching live candidate still exists in the current snapshot; changed controls overwrite previous entries for that URL. Distinct page URLs (including dynamic routes) are stored in separate cache files.
 
 ## Interaction modes
 
