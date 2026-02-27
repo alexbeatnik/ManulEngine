@@ -4,24 +4,18 @@
 # 😼 ManulEngine v0.02 — The Mastermind
 
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
-ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 
 Forget brittle CSS/XPath locators that break on every UI update—write tests in plain English.
 Stop paying for expensive cloud APIs and waiting seconds for every click—leverage local micro-LLMs via Ollama.
-Forget brittle CSS/XPath locators that break on every UI update—write tests in plain English.
-Stop paying for expensive cloud APIs and waiting seconds for every click—leverage local micro-LLMs via Ollama.
 
-Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristics, and the reasoning of local neural networks. It is fast, private, and highly resilient to UI changes.
 Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristics, and the reasoning of local neural networks. It is fast, private, and highly resilient to UI changes.
 
 > The Manul goes hunting and never returns without its prey.
 
 ---
----
 
 ## 📁 Project Structure
 
-```text
 ```text
 browser-manul/
 ├── manul.py              CLI runner (test files, inline prompts, unit tests)
@@ -32,9 +26,7 @@ browser-manul/
 │   ├── prompts.py        Configuration, thresholds, LLM prompts
 │   ├── helpers.py        Pure utility functions and timing constants
 │   ├── js_scripts.py     JavaScript injected into the browser (DOM snapshot & deep text)
-│   ├── scoring.py        Heuristic element-scoring algorithm (Mode Synergy, 20+ rules)
-│   ├── js_scripts.py     JavaScript injected into the browser (DOM snapshot & deep text)
-│   ├── scoring.py        Heuristic element-scoring algorithm (Mode Synergy, 20+ rules)
+│   ├── scoring.py        Heuristic element-scoring algorithm (20+ rules)
 │   ├── core.py           ManulEngine class (LLM, resolution, mission runner)
 │   ├── actions.py        Action execution mixin (click, type, select, hover, drag)
 │   └── test/
@@ -51,88 +43,42 @@ browser-manul/
     ├── hunt_rahul.py
     ├── hunt_wikipedia.py
     └── hunt_cyber.py            100-step DevSecOps & Terminal simulation
-
-    ├── hunt_wikipedia.py
-    └── hunt_cyber.py            100-step DevSecOps & Terminal simulation
-
 ```
 
----
 ---
 
 ## ✨ Key Features
 
-### ⚡ Heuristics-First Architecture & Mode Synergy
-### ⚡ Heuristics-First Architecture & Mode Synergy
+### ⚡ Heuristics-First Architecture
 
 95% of the heavy lifting (element finding, assertions, DOM parsing) is handled by ultra-fast JavaScript and Python heuristics. The AI steps in only when genuine ambiguity arises.
-**Mode Synergy:** The engine intelligently correlates exact text matches with HTML semantics (e.g., prioritizing a `<button>` over a `<div>` if both say "Submit").
 
 ### 🛡️ Unbreakable JS Fallbacks
 
-Modern websites love to hide elements behind invisible overlays, custom dropdowns, and zero-pixel traps. If native Playwright actions (`click()`, `type()`) fail due to element occlusion, Manul seamlessly falls back to direct DOM Event dispatches (`window.manulClick`, `KeyboardEvent`) to guarantee execution.
+Modern websites love to hide elements behind invisible overlays, custom dropdowns, and zero-pixel traps. If native Playwright actions (`click()`, `type()`) fail due to element occlusion, Manul falls back to direct DOM event dispatches (`window.manulClick`, `window.manulType`) to keep execution moving.
 
-### 🌑 Deep Shadow DOM Penetration
+### 🌑 Shadow DOM Awareness
 
-Manul sees no barriers. The engine automatically pierces Shadow Roots, interacting with elements hidden deep in the shadow tree, and utilizes recursive deep-text extraction to verify state that standard DOM parsers miss.
-
-### 👻 Smart Anti-Phantom Guard & AI Rejection
-
-Strict protection against LLM hallucinations.
-If the model is unsure or tries to interact with a bad target:
-
-1. The LLM can explicitly return `null`.
-2. The Guard blocks the action and blacklists the bad element.
-3. Triggers a self-healing cycle (scrolling, re-scanning the DOM) to uncover hidden elements.
-95% of the heavy lifting (element finding, assertions, DOM parsing) is handled by ultra-fast JavaScript and Python heuristics. The AI steps in only when genuine ambiguity arises.
-**Mode Synergy:** The engine intelligently correlates exact text matches with HTML semantics (e.g., prioritizing a `<button>` over a `<div>` if both say "Submit").
-
-### 🛡️ Unbreakable JS Fallbacks
-
-Modern websites love to hide elements behind invisible overlays, custom dropdowns, and zero-pixel traps. If native Playwright actions (`click()`, `type()`) fail due to element occlusion, Manul seamlessly falls back to direct DOM Event dispatches (`window.manulClick`, `KeyboardEvent`) to guarantee execution.
-
-### 🌑 Deep Shadow DOM Penetration
-
-Manul sees no barriers. The engine automatically pierces Shadow Roots, interacting with elements hidden deep in the shadow tree, and utilizes recursive deep-text extraction to verify state that standard DOM parsers miss.
+The DOM snapshotter recursively inspects shadow roots and can interact with elements in the shadow tree.
 
 ### 👻 Smart Anti-Phantom Guard & AI Rejection
 
-Strict protection against LLM hallucinations.
-If the model is unsure or tries to interact with a bad target:
-
-1. The LLM can explicitly return `null`.
-2. The Guard blocks the action and blacklists the bad element.
-3. Triggers a self-healing cycle (scrolling, re-scanning the DOM) to uncover hidden elements.
+Strict protection against LLM hallucinations. If the model is unsure it can return `{"id": null}`; the engine treats that as a rejection and retries with self-healing.
 
 ### 🎛️ Adjustable AI Threshold (Paranoia Level)
 
 Control how quickly Manul falls back to the local LLM via `.env`:
-Control how quickly Manul falls back to the local LLM via `.env`:
 
-* **Low (200–500):** Blazing speed. Manul trusts its heuristic algorithms for most tasks.
+* **Low (200–500):** Blazing speed. Manul trusts heuristics.
 * **Default (auto):** Derived from model size (e.g., `qwen2.5:0.5b` uses 500).
-* **High (2,000+):** More AI involvement on ambiguous steps ("paranoid" mode).
+* **High (2,000+):** More AI involvement on ambiguous steps.
 
 ### 📴 Offline / Heuristics-Only Mode
 
 If you don't want (or can't run) Ollama:
 
-* Set `MANUL_AI_THRESHOLD=0` — disables the **element picker** LLM fallback entirely.
-* Provide a **numbered mission** — the engine will rely 100% on its deterministic heuristics.
-
----
-
-## 🛠️ Installation
-* **Low (200–500):** Blazing speed. Manul trusts its heuristic algorithms for most tasks.
-* **Default (auto):** Derived from model size (e.g., `qwen2.5:0.5b` uses 500).
-* **High (2,000+):** More AI involvement on ambiguous steps ("paranoid" mode).
-
-### 📴 Offline / Heuristics-Only Mode
-
-If you don't want (or can't run) Ollama:
-
-* Set `MANUL_AI_THRESHOLD=0` — disables the **element picker** LLM fallback entirely.
-* Provide a **numbered mission** — the engine will rely 100% on its deterministic heuristics.
+* Set `MANUL_AI_THRESHOLD=0` — disables the element-picker LLM fallback.
+* Provide a numbered mission — the engine will rely on deterministic heuristics.
 
 ---
 
@@ -141,25 +87,17 @@ If you don't want (or can't run) Ollama:
 ManulEngine runs fully locally on your machine.
 
 ### 1️⃣ Clone the Repository
-### 1️⃣ Clone the Repository
 
-```bash
 ```bash
 git clone https://github.com/alexbeatnik/browser-manul.git
 cd browser-manul
-
-
 ```
 
 ### 2️⃣ Setup Environment
-### 2️⃣ Setup Environment
 
-```bash
-pip install -r requirements.txt
 ```bash
 pip install -r requirements.txt
 python -m playwright install chromium
-
 ```
 
 If you want AI fallback, install + run Ollama locally:
@@ -167,26 +105,12 @@ If you want AI fallback, install + run Ollama locally:
 ```bash
 ollama pull qwen2.5:0.5b
 ollama serve
-
 ```
 
 ### 3️⃣ Configuration (.env)
 
-```
+Create or edit `.env` in the repo root:
 
-If you want AI fallback, install + run Ollama locally:
-
-```bash
-ollama pull qwen2.5:0.5b
-ollama serve
-
-```
-
-### 3️⃣ Configuration (.env)
-
-Create a `.env` file in the root directory:
-
-```env
 ```env
 MANUL_MODEL=qwen2.5:0.5b
 MANUL_HEADLESS=False
@@ -194,29 +118,20 @@ MANUL_HEADLESS=False
 # AI Threshold: lower = fewer AI calls, higher = more AI calls
 # MANUL_AI_THRESHOLD=0
 # MANUL_AI_THRESHOLD=500
-# AI Threshold: lower = fewer AI calls, higher = more AI calls
-# MANUL_AI_THRESHOLD=0
-# MANUL_AI_THRESHOLD=500
 
 MANUL_TIMEOUT=5000
 MANUL_NAV_TIMEOUT=30000
-
-MANUL_NAV_TIMEOUT=30000
-
 ```
 
 ---
----
 
 ## 🖥️ CLI Usage
-## 🖥️ CLI Usage
 
-```bash
 ```bash
 # Run all integration tests (tests/hunt_*.py)
 python manul.py
 
-# Run a specific test
+# Run a specific hunt
 python manul.py hunt_demoqa.py
 
 # Run in headless mode
@@ -227,26 +142,19 @@ python manul.py "1. NAVIGATE to https://example.com  2. Click the 'More' link  3
 
 # Run synthetic DOM laboratory tests (local HTML via Playwright; no real websites)
 python manul.py test
-
-
 ```
 
 ---
----
 
-## 🚀 Quick Start
 ## 🚀 Quick Start
 
 Create a test file: `tests/hunt_mission.py`
-Create a test file: `tests/hunt_mission.py`
 
-```python
 ```python
 import asyncio
 from engine import ManulEngine
 
 async def main(headless: bool = False) -> bool:
-    # Settings are automatically loaded from .env (and can be overridden here)
     manul = ManulEngine(headless=headless)
 
     mission = (
@@ -261,14 +169,10 @@ async def main(headless: bool = False) -> bool:
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-
 ```
 
 ---
----
 
-## 📜 Available Commands
 ## 📜 Available Commands
 
 | Category | Command Syntax |
@@ -289,34 +193,24 @@ if __name__ == "__main__":
 
 ## 🐾 Chaos Chamber Verified (1100+ Tests)
 
-The engine is battle-tested against **1177+** of the web's most annoying UI patterns. It guarantees robust execution across a synthetic DOM laboratory and real-site integration hunts.
+The engine is battle-tested against **1177+** of the web's most annoying UI patterns across a synthetic DOM laboratory and real-site integration hunts.
 
-* **Synthetic DOM packs:** 11 scenario suites under `engine/test/` (E-Commerce, Social, SaaS, Travel, Fintech, Media, Gov/Health, CRM, EdTech, "The Unholy Mess", and Cyber).
-* **Integration hunts:** Real-site E2E flows under `tests/hunt_*.py` (requires Playwright). Includes `hunt_cyber.py` — an epic 100-step terminal and dashboard simulation.
+* **Synthetic DOM packs:** 11 scenario suites under `engine/test/`.
+* **Integration hunts:** Real-site E2E flows under `tests/hunt_*.py` (requires Playwright). Includes `hunt_cyber.py` — a 100-step terminal and dashboard simulation.
 
 Run the synthetic suite:
-Run the synthetic suite:
 
-```bash
 ```bash
 python manul.py test
 
 # PowerShell (heuristics-only, deterministic)
 $env:MANUL_AI_THRESHOLD=0; python manul.py test
-
-
-# PowerShell (heuristics-only, deterministic)
-$env:MANUL_AI_THRESHOLD=0; python manul.py test
-
 ```
 
----
 ---
 
 **Version:** 0.02
 
-
 **Codename:** The Mastermind
-
 
 **Status:** Hunting...
