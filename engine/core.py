@@ -17,8 +17,12 @@ drag-and-drop, click/type/select/hover via _execute_step).
 import asyncio
 import json
 import re
-import ollama
 from playwright.async_api import async_playwright
+
+try:
+    import ollama  # type: ignore
+except Exception:  # pragma: no cover
+    ollama = None
 
 from . import prompts
 from .helpers import substitute_memory
@@ -48,6 +52,9 @@ class ManulEngine(_ActionsMixin):
 
     async def _llm_json(self, system: str, user: str) -> dict | None:
         """Send a system+user prompt to the local LLM and parse JSON response."""
+        if ollama is None:
+            print("    ⚠️  LLM unavailable: Python package 'ollama' is not installed.")
+            return None
         try:
             resp = await asyncio.to_thread(
                 ollama.chat,
@@ -73,7 +80,7 @@ class ManulEngine(_ActionsMixin):
 
     async def _llm_select_element(
         self, step: str, mode: str, candidates: list[dict], strategic_context: str
-    ) -> int:
+    ) -> "int | None":
         """Ask the LLM to pick the best element from scored candidates."""
         payload = [
             {
@@ -83,6 +90,7 @@ class ManulEngine(_ActionsMixin):
                 "role":         el.get("role", ""),
                 "data_qa":      el.get("data_qa", ""),
                 "html_id":      el.get("html_id", ""),
+                "class_name":   el.get("class_name", ""),
                 "icon_classes": el.get("icon_classes", ""),
             }
             for el in candidates
@@ -92,15 +100,26 @@ class ManulEngine(_ActionsMixin):
             f"MODE: {mode.upper()}\n"
             f"ELEMENTS:\n{json.dumps(payload, ensure_ascii=False)}"
         )
-        system = self._executor_prompt.format(strategic_context=strategic_context)
+        system = self._executor_prompt.replace("{strategic_context}", strategic_context)
         obj = await self._llm_json(system, prompt)
         if not obj or not isinstance(obj, dict):
             return 0
 
         raw_id = obj.get("id", None)
-        chosen_id: int | None = None
+        if raw_id is None: # fallback for generic keys
+            for key in ["id", '"id"', "ID"]:
+                if key in obj:
+                    raw_id = obj[key]
+                    break
+
+        # ── ОБРОБКА ВІДМОВИ ШІ (REJECTION) ──
+        if raw_id is None or str(raw_id).lower() == "null":
+            thought = obj.get("thought", "No matching element found.")
+            print(f"    🚫 AI REJECTED CANDIDATES: '{thought}'")
+            return None
+
         try:
-            chosen_id = int(raw_id)
+            chosen_id = int(raw_id) if raw_id is not None else None
         except (TypeError, ValueError):
             chosen_id = None
 
@@ -241,12 +260,25 @@ class ManulEngine(_ActionsMixin):
             print(f"    ⚙️  DOM HEURISTICS: {label} match (score {best_score})")
             return top[0]
 
+        # Explicit AI disable switch: threshold <= 0 means "never call the LLM".
+        # (Useful for deterministic runs and environments without Ollama.)
+        if self._threshold <= 0:
+            print(f"    ⚙️  DOM HEURISTICS: AI disabled (threshold {self._threshold}); using best candidate (score {best_score})")
+            return top[0]
+
         # Genuinely ambiguous → ask the LLM
         print(f"    🧠 AI AGENT: Ambiguity detected, analysing {len(top)} candidates…")
         try:
             idx = await self._llm_select_element(step, mode, top, strategic_context)
         except Exception:
             idx = 0
+            
+        if idx is None:
+            if failed_ids is not None:
+                for c in top:
+                    failed_ids.add(c["id"])
+            return None
+
         ai_choice = top[idx]
 
         # Anti-phantom guard — only for input/select modes
@@ -254,11 +286,13 @@ class ManulEngine(_ActionsMixin):
             search_terms = [t.lower() for t in search_texts]
             if target_field:
                 search_terms.append(target_field.lower())
-            guard_words  = set(re.findall(r'\b[a-z0-9]{3,}\b', " ".join(search_terms)))
+            guard_words  = set(re.findall(r'\b[a-z0-9]{2,}\b', " ".join(search_terms)))
             element_text = (
                 f"{ai_choice['name']} "
                 f"{ai_choice.get('html_id', '')} "
-                f"{ai_choice.get('data_qa', '')}"
+                f"{ai_choice.get('data_qa', '')} "
+                f"{ai_choice.get('aria_label', '')} "
+                f"{ai_choice.get('placeholder', '')}"
             ).lower()
             if guard_words and not any(w in element_text for w in guard_words):
                 missing = search_texts[0] if search_texts else target_field
@@ -292,6 +326,9 @@ class ManulEngine(_ActionsMixin):
             else:
                 plan = await self._llm_plan(task)
 
+            if not plan and not re.match(r'^\s*\d+\.', task):
+                print("    ❌ No plan produced. If you're running without Ollama, provide a numbered step list.")
+
             if not plan:
                 await browser.close()
                 return False
@@ -300,7 +337,7 @@ class ManulEngine(_ActionsMixin):
             try:
                 for i, raw_step in enumerate(plan, 1):
                     step = substitute_memory(raw_step, self.memory)
-                    print(f"\n[🚀 STEP {i}] {step}")
+                    print(f"\n[🐾 STEP {i}] {step}")
                     s_up = step.upper()
 
                     if re.search(r'\bNAVIGATE\b', s_up):

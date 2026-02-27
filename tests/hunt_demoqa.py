@@ -55,7 +55,7 @@ async def main():
         "30. NAVIGATE to https://demoqa.com/slider\n"
         "31. VERIFY that 'Slider' is present.\n"
 
-        # ── 9. Links (Перенесено сюди) ────────────────────────────────────────
+        # ── 9. Links ────────────────────────────────────────
         "32. NAVIGATE to https://demoqa.com/links\n"
         "33. Click on the 'Home' link\n"
 
@@ -70,7 +70,7 @@ async def main():
         print("\n🏆 PERFECT HUNT! Manul mastered all DemoQA elements! 🏆")
         print(f"📊 Collected Data: {manul.memory}")
     else:
-        print("\n💀 Mission Failed.")
+        print("\n🙀 Mission Failed.")
         print(f"📊 Partial Data: {manul.memory}")
 
     return success

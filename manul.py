@@ -98,7 +98,7 @@ async def _run_prompt(prompt: str, headless: bool) -> None:
 
     manul  = ManulEngine(headless=headless)
     result = await manul.run_mission(prompt)
-    status = "✅ ACCOMPLISHED" if result else "💀 FAILED"
+    status = "✅ ACCOMPLISHED" if result else "🙀 FAILED"
     print(f"\n{status}")
 
 
@@ -135,9 +135,83 @@ async def main() -> None:
 
     # ── Engine unit tests ─────────────────────────────────────────────────
     if target == "test":
-        from engine.test.test_engine import run_laboratory
-        success = await run_laboratory()
-        sys.exit(0 if success else 1)
+        import importlib
+        import io
+        import re as _re
+
+        # Ensure UTF-8 output for emoji-heavy test suites on Windows
+        if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+            sys.stdout = io.TextIOWrapper(
+                sys.stdout.detach(), encoding="utf-8", errors="replace", line_buffering=True
+            )
+
+        # Tee test output to last_test_run.log + capture SCORE lines
+        log_path = os.path.join(ROOT, "last_test_run.log")
+        _real_stdout = sys.stdout
+        _log_file    = open(log_path, "w", encoding="utf-8")
+        _score_lines: list[str] = []
+
+        class _TestTee:
+            def write(self, msg):
+                _real_stdout.write(msg)
+                _log_file.write(msg)
+                # Capture score lines for grand summary
+                for line in msg.splitlines():
+                    if "SCORE:" in line:
+                        _score_lines.append(line.strip())
+            def flush(self):
+                _real_stdout.flush()
+                _log_file.flush()
+            def isatty(self):
+                return False
+
+        sys.stdout = _TestTee()
+
+        test_dir = os.path.join(ROOT, "engine", "test")
+        test_files = sorted(
+            f[:-3] for f in os.listdir(test_dir)
+            if f.startswith("test_") and f.endswith(".py")
+        )
+        all_ok = True
+        suite_results: list[tuple[str, int, int]] = []   # (name, passed, total)
+
+        for mod_name in test_files:
+            full = f"engine.test.{mod_name}"
+            mod  = importlib.import_module(full)
+            runner = getattr(mod, "run_laboratory", None) or getattr(mod, "run_suite", None)
+            if runner is None:
+                continue
+            before = len(_score_lines)
+            ok = await runner()
+            if not ok:
+                all_ok = False
+            # Extract score from captured lines
+            for sl in _score_lines[before:]:
+                m = _re.search(r"(\d+)/(\d+)", sl)
+                if m:
+                    suite_results.append((mod_name, int(m.group(1)), int(m.group(2))))
+
+        # ── Grand Summary ─────────────────────────────────────────────────
+        total_passed = sum(p for _, p, _ in suite_results)
+        total_tests  = sum(t for _, _, t in suite_results)
+
+        print(f"\n\n{'=' * 70}")
+        print("🐾 GRAND SUMMARY")
+        print(f"{'=' * 70}")
+        for name, p, t in suite_results:
+            icon = "✅" if p == t else "❌"
+            label = name.replace("test_", "").replace("_", " ").upper()
+            print(f"   {icon} {label:<30} {p:>4}/{t}")
+        print(f"{'─' * 70}")
+        print(f"   {'TOTAL':<30} {total_passed:>4}/{total_tests}")
+        if total_passed == total_tests:
+            print("\n🏆 ALL TESTS PASSED — THE MANUL IS UNBREAKABLE!")
+        print(f"{'=' * 70}")
+
+        sys.stdout = _real_stdout
+        _log_file.close()
+        print(f"\n📄 Full test log saved to: {log_path}")
+        sys.exit(0 if all_ok else 1)
 
     is_prompt = (
         target is not None
@@ -156,7 +230,7 @@ async def main() -> None:
             return
 
         files = _collect(target)
-        print(f"🐱 Manul CLI: Found {len(files)} target(s) in hunting grounds.")
+        print(f"😼 Manul CLI: Found {len(files)} target(s) in hunting grounds.")
 
         results: list[tuple[str, str, float]] = []
         total_start = time.perf_counter()

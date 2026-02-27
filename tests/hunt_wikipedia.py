@@ -66,7 +66,7 @@ async def main():
         for k, v in manul.memory.items():
             print(f"  • {k.upper()}: {v}")
     else:
-        print("\n💀 Mission Failed. Wikipedia was too vast.")
+        print("\n🙀 Mission Failed. Wikipedia was too vast.")
         
     return success
 

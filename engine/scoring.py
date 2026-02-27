@@ -1,11 +1,10 @@
 # engine/scoring.py
 """
-Element scoring heuristics for ManulEngine.
-The score_elements() function ranks DOM elements by relevance to a step.
+Heuristic scoring logic for ManulEngine.
+Determines which element is the most likely target for a given step.
 """
 
 import re
-
 
 def score_elements(
     els: list[dict],
@@ -14,207 +13,251 @@ def score_elements(
     search_texts: list[str],
     target_field: str | None,
     is_blind: bool,
-    *,
-    learned_elements: dict | None = None,
-    last_xpath: str | None = None,
+    learned_elements: dict,
+    last_xpath: "str | None"
 ) -> list[dict]:
-    """
-    Score and sort elements by relevance to the given step.
-
-    Parameters
-    ----------
-    learned_elements : semantic cache  {cache_key → {name, tag}}
-    last_xpath       : xpath of previously resolved element (context memory)
-    """
-    step_l       = step.lower()
+    
+    step_l = step.lower()
     target_words = set(re.findall(r'\b[a-z0-9]{3,}\b', step_l))
-
     wants_button = bool(re.search(r'\bbutton\b', step_l))
-    wants_link   = bool(re.search(r'\blink\b',   step_l))
-    wants_input  = bool(re.search(
-        r'\bfield\b|\binput\b|\btextarea\b|\btype\b|\bfill\b', step_l
-    ))
-
-    cache_key = (mode, tuple(t.lower() for t in search_texts), target_field)
-    learned   = (learned_elements or {}).get(cache_key)
+    wants_link   = bool(re.search(r'\blink\b', step_l))
+    wants_image  = bool(re.search(r'\bimage\b|\bimg\b|\bpicture\b|\bphoto\b', step_l))
+    wants_input  = bool(re.search(r'\bfield\b|\binput\b|\btextarea\b|\btype\b|\bfill\b', step_l))
+    wants_checkbox = "checkbox" in step_l
+    wants_select   = "select" in step_l or "dropdown" in step_l
+    
+    # Extract context words OUTSIDE the quoted parts of the step
+    # e.g. "Click 'Confirm' in transfer" → context_words = {"transfer"}
+    step_no_quotes = re.sub(r"'[^']*'|\"[^\"]*\"", "", step_l)
+    context_words = set(re.findall(r'\b[a-z]{4,}\b', step_no_quotes)) - {
+        "click", "fill", "type", "enter", "select", "choose", "check", "uncheck",
+        "hover", "button", "field", "input", "link", "checkbox", "radio",
+        "from", "with", "into", "the", "that", "this", "step", "double",
+        "image", "dropdown", "textarea", "optional", "exists",
+    }
+    
+    cache_key = (mode, tuple([t.lower() for t in search_texts]), target_field)
+    learned = learned_elements.get(cache_key)
 
     for el in els:
-        name    = el["name"].lower()
-        tag     = el.get("tag_name",    "")
-        itype   = el.get("input_type",  "")
-        data_qa = el.get("data_qa",     "").lower()
-        html_id = el.get("html_id",     "").lower()
-        icons   = el.get("icon_classes","").lower()   # "fa arrow circle right"
-        aria    = el.get("aria_label",  "").lower()
-        role    = el.get("role",        "").lower()
-        score   = 0
+        name       = el["name"].lower() if isinstance(el["name"], str) else ""
+        tag        = el.get("tag_name", "")
+        itype      = el.get("input_type", "")
+        data_qa    = el.get("data_qa", "").lower() if isinstance(el.get("data_qa", ""), str) else ""
+        html_id    = el.get("html_id", "").lower() if isinstance(el.get("html_id", ""), str) else ""
+        class_name = el.get("class_name", "")
+        class_name = class_name.lower() if isinstance(class_name, str) else ""
+        icons      = el.get("icon_classes", "").lower() if isinstance(el.get("icon_classes", ""), str) else ""
+        aria       = el.get("aria_label", "").lower() if isinstance(el.get("aria_label", ""), str) else ""
+        role       = el.get("role", "").lower() if isinstance(el.get("role", ""), str) else ""
+        ph         = el.get("placeholder", "").lower() if isinstance(el.get("placeholder", ""), str) else ""
+        
+        # Об'єднуємо всі технічні атрибути для пошуку патернів розробників
+        dev_names = f"{html_id} {class_name} {data_qa}"
+        
+        score = 0
 
-        # ── Semantic cache (strongest signal) ──────────────────────────
+        # Severely penalize natively disabled elements (unless verifying)
+        if el.get("disabled") or el.get("aria_disabled") == "true":
+            score -= 50_000
+
         if learned and el["name"] == learned["name"] and tag == learned["tag"]:
             score += 20_000
 
-        # ── Context memory (blind continuation) ────────────────────────
         if is_blind and last_xpath and el["xpath"] == last_xpath:
             score += 10_000
 
-        # ── Explicit field / target name ───────────────────────────────
-        if target_field and target_field in name:
+        if target_field and (target_field in name or target_field == ph):
             score += 2_000
 
-        # ── Search text precision scoring ──────────────────────────────
-        # Strip context prefix ("Section -> core name") for tighter matching.
-        # Strip the " input <type>" suffix that _SNAPSHOT_JS appends to plain inputs.
-        # It helps disambiguation elsewhere but hurts text-matching here.
-        _itype_suffix = f" input {itype}" if itype else " input "
-        name_clean = (
-            name[: -len(_itype_suffix)].strip()
-            if tag == "input" and itype and name.endswith(_itype_suffix)
-            else name
-        )
-        name_core = name_clean.split(" -> ")[-1].strip() if " -> " in name_clean else name_clean
-        context_prefix_raw = name_clean.split(" -> ")[0].strip().lower() if " -> " in name_clean else ""
+        # html_id exact match with target_field or search texts → strong boost
+        if target_field and html_id and html_id == target_field.replace(" ", "_"):
+            score += 15_000
+        for t in search_texts:
+            tl = t.lower().strip()
+            if tl and html_id and (html_id == tl or html_id == tl.replace(" ", "_") or html_id == tl.replace(" ", "-")):
+                score += 10_000
+
+        name_core = name.split(" -> ")[-1].strip() if " -> " in name else name
+        context_prefix = name.split(" -> ")[0].strip().lower() if " -> " in name else ""
+        
+        # Strip " input <type>" suffix from name_core for cleaner matching
+        name_core_clean = re.sub(r'\s+input\s+\w*$', '', name_core).strip()
 
         for t in search_texts:
             tl = t.lower().strip()
             if not tl:
                 continue
 
-            context_prefix = context_prefix_raw
-            if name_core == tl or name_clean == tl or context_prefix == tl:
+            if tl == aria or tl == ph:
+                score += 5_000
+            elif len(tl) > 2 and (
+                aria.startswith(tl + " (") or aria.startswith(tl + " [")
+            ):
+                # Partial aria match for "Keyword (shortcut)" patterns:
+                # "fullscreen" matches "Fullscreen (f)"
+                # "underline"  matches "Underline (Ctrl+U)"
                 score += 3_000
+
+            t_dashed = tl.replace(" ", "-").replace("_", "-")
+            
+            if t_dashed == data_qa or tl == data_qa:
+                score += 10_000
+            elif t_dashed in data_qa:
+                score += 3_000
+
+            if tl == name_core or tl == name or tl == name_core_clean or tl == context_prefix:
+                score += 5_000
             elif name_core.startswith(tl) or name_core.endswith(tl) or context_prefix.startswith(tl):
                 score += 2_000
-            elif tl in name_core:
-                extra = max(0, len(name_core.split()) - len(tl.split()))
-                score += max(200, 1_000 - extra * 150)
+            elif tl in name_core or tl in context_prefix:
+                extra_words = max(0, len(name_core.split()) - len(tl.split()))
+                score += max(200, 1_000 - extra_words * 150)
             elif tl in name:
-                extra = max(0, len(name.split()) - len(tl.split()))
-                score += max(100, 800 - extra * 100)
+                extra_words = max(0, len(name.split()) - len(tl.split()))
+                score += max(100, 800 - extra_words * 100)
             else:
-                # ── FIX 5: word-level partial / typo tolerance ─────────
-                # Handles field names with typos ("Suggession" ≈ "suggestion")
-                # or where label words partially overlap element words.
                 t_words = set(re.findall(r'[a-z0-9]{3,}', tl))
                 n_words = set(re.findall(r'[a-z0-9]{3,}', name))
                 overlap = t_words & n_words
                 if overlap:
                     score += len(overlap) * 150
-                else:
-                    # Substring of any word — e.g. "suggest" in "suggession"
-                    partial = sum(
-                        1 for tw in t_words
-                        for nw in n_words
-                        if len(tw) >= 4 and (tw in nw or nw in tw)
-                    )
-                    if partial:
-                        score += partial * 80
+                # All search-term words found in html_id → camelCase id match
+                # e.g. "permanent address" → "permanent" + "address" both in "permanentaddress"
+                if t_words and all(w in html_id for w in t_words):
+                    score += 2_000
 
-            if tl in aria:    score += 800
-            if tl in html_id: score += 600
+            if tl in html_id:     
+                score += 600
             if any(w in icons for w in tl.split() if len(w) > 3):
                 score += 700
 
-        # General word overlap between step and element
+        # Context words from step text (outside quotes) → match against class/id/data_qa
+        if context_words:
+            cls_normalized = re.sub(r'[-_]', ' ', class_name)
+            id_normalized = re.sub(r'[-_]', ' ', html_id)
+            dqa_normalized = re.sub(r'[-_]', ' ', data_qa)
+            dev_text = f"{cls_normalized} {id_normalized} {dqa_normalized}"
+            ctx_hits = sum(1 for w in context_words if w in dev_text)
+            if ctx_hits:
+                score += ctx_hits * 2_000
+
         score += sum(10 for w in target_words if w in name)
         score += sum(8  for w in target_words if len(w) > 3 and w in icons)
         score += sum(15 for w in target_words if len(w) > 3 and w in html_id)
         score += sum(12 for w in target_words if len(w) > 3 and w in aria)
 
-        # ── FIX 4: strong icon boost for blind clicks ──────────────────
-        # When step has no quoted search text and an icon class word matches
-        # a step word (e.g. "arrow button" + icons "fa arrow circle right"),
-        # give a large boost so icon-only buttons beat random elements.
-        if is_blind and icons:
-            icon_words    = set(icons.split())
-            matched_icons = target_words & icon_words
-            if matched_icons:
-                score += len(matched_icons) * 800   # e.g. "arrow" → +800
+        # Prefer actual shadow DOM elements when step explicitly mentions "shadow"
+        if "shadow" in step_l and el.get("is_shadow"):
+            score += 5_000
 
-        # ── data-qa / data-testid match ────────────────────────────────
-        # FIX 11: data-qa exact match must dominate plain text matches.
-        for t in search_texts:
-            t_l = t.lower().replace(" ", "-").replace("_", "-")
-            if t_l and data_qa:
-                if t_l == data_qa:        score += 8_000   # exact → supreme
-                elif t_l in data_qa:      score += 5_000   # substring
-                elif data_qa in t_l:      score += 3_000   # partial
-            # Word-level data-qa fallback: "confirm" and "order" both in "confirm-order"
-            t_words_qa = set(re.findall(r'[a-z0-9]{3,}', t.lower()))
-            dqa_words  = set(re.findall(r'[a-z0-9]{3,}', data_qa))
-            qa_overlap = t_words_qa & dqa_words
-            if qa_overlap and not (t_l and t_l in data_qa):
-                score += len(qa_overlap) * 1_500
+        is_native_button = tag == "button" or (tag == "input" and itype in ("submit", "button", "image", "reset"))
+        is_real_button = is_native_button or role == "button"
+        is_real_link   = tag == "a"
+        is_real_input  = (
+            (tag in ("input", "textarea") and itype not in ("submit", "button", "image", "reset", "radio", "checkbox")) 
+            or role in ("textbox", "searchbox", "spinbutton", "slider")
+            or el.get("is_contenteditable", False)
+        )
+        is_real_checkbox = (tag == "input" and itype == "checkbox") or role == "checkbox"
+        is_real_radio    = (tag == "input" and itype == "radio")    or role == "radio"
+        is_label_for_hidden = tag == "label" and el.get("html_id", "").endswith("_label")
 
-        # ── Element-type flags ─────────────────────────────────────────
-        is_native_button = (tag == "button"
-                            or (tag == "input"
-                                and itype in ("submit", "button", "image", "reset")))
-        is_real_button   = is_native_button or role == "button"
-        is_real_link     = tag == "a"
-        is_real_input    = ((tag in ("input", "textarea")
-                             and itype not in
-                             ("submit", "button", "image", "reset", "radio", "checkbox"))
-                            or role in ("textbox", "searchbox", "spinbutton"))
-        is_real_checkbox = ((tag == "input" and itype == "checkbox")
-                            or role == "checkbox")
-        is_real_radio    = ((tag == "input" and itype == "radio")
-                            or role == "radio")
+        # =====================================================================
+        # DOM Element Type Validation & DEVELOPER NAMING CONVENTIONS
+        # =====================================================================
 
-        # FIX 5 (ARIA): exact aria-label match → big bonus (not just +800)
-        for t in search_texts:
-            tl = t.lower().strip()
-            if tl and aria:
-                if tl == aria:            score += 3_500   # exact ARIA → beats text
-                # (substring +800 already added above in the main loop)
-
-        # FIX 15 (Disabled): skip disabled elements entirely
-        # We penalise heavily so they never surface as top pick.
-        if el.get("disabled", False) or el.get("aria_disabled", "") == "true":
-            score -= 20_000
-
-        # FIX 22 (Password): when typing into a password field, prefer type=password
-        if wants_input and itype == "password":
-            for t in search_texts:
-                if "password" in t.lower():
-                    score += 2_000
-
-        # ── Type wants/penalties ───────────────────────────────────────
         if wants_button:
-            if is_native_button: score += 500  # native wins over role=button
+            # Prefer native submit > native button > role button > div role button
+            if tag == "input" and itype == "submit": score += 800
+            elif is_native_button: score += 500
             elif is_real_button: score += 300
             if is_real_link:     score -= 300
-        if wants_link:
-            if is_real_link:     score += 500
-            if is_real_button:   score -= 300
+            
+            # Dev Convention: ID/Class contains 'btn' or 'button'
+            if re.search(r'\bbtn\b|-btn|btn-|button', dev_names):
+                score += 1500
+
+        if wants_image:
+            if tag == "img": score += 3000
+            
+        if "textarea" in step_l and tag == "textarea":
+            score += 5000
+
         if wants_input:
             if is_real_input:    score += 500
             if is_real_button:   score -= 300
+            
+            if itype:
+                if itype in step_l or (target_field and itype in target_field):
+                    score += 5000
+                    
+            # Dev Convention: ID/Class contains 'inp', 'txt', 'field'
+            if re.search(r'\binp\b|-inp|inp-|input|\btxt\b|-txt|txt-|field', dev_names):
+                score += 1500
 
-        # Select mode: strongly prefer <select> and reject checkboxes/radios
-        if mode == "select":
-            if el.get("is_select"):   score += 3_500
-            elif is_real_checkbox:     score -= 3_000
-            elif is_real_radio:        score -= 3_000
-
-        # FIX 10 (Custom Role Checkbox): real checkbox must dominate over
-        # inputs that have matching aria-label but wrong type.
-        # Bonus (3500) > ARIA exact match boost (3500) on wrong type (minus penalty).
-        if "checkbox" in step_l:
-            if is_real_checkbox:     score += 3_500
-            elif "checkbox" in name: score += 200
-            else:                    score -= 3_000  # heavy penalty: wrong type
+        if wants_checkbox:
+            if is_real_checkbox: score += 15000
+            elif itype in ("text", "password", "email", "number", "tel", "search") or tag == "textarea": score -= 10000
+            elif "checkbox" not in name: score -= 5000
+            
+            # Dev Convention: ID/Class contains 'chk' or 'checkbox'
+            if re.search(r'\bchk\b|-chk|chk-|checkbox', dev_names):
+                score += 3000
+                
         if "radio" in step_l:
-            if is_real_radio:        score += 3_500
-            elif "radio" in name:    score += 200
-            else:                    score -= 3_000
+            if is_real_radio: score += 15000
+            elif itype in ("text", "password", "email", "number", "tel", "search") or tag == "textarea": score -= 10000
+            elif "radio" in name: score += 200
+            else: score -= 5000
+            
+            # Dev Convention: ID/Class contains 'rad' or 'radio'
+            if re.search(r'\brad\b|-rad|rad-|radio', dev_names):
+                score += 3000
 
-        # Blind-mode type hints (no search text)
-        if not search_texts:
-            if "dropdown" in step_l and "combobox" in name:    score += 5_000
-            elif "shadow"  in step_l and "shadow"   in name:   score += 5_000
-            elif "input"   in step_l and is_real_input:         score += 500
-            elif "list"    in step_l \
-                    and ("dropdown" in name or "combo" in name): score += 500
+        if wants_select:
+            # Dev Convention: ID/Class contains 'sel', 'drop', 'cmb'
+            if re.search(r'\bsel\b|-sel|sel-|select|\bdrop\b|-drop|drop-|\bcmb\b|-cmb|cmb-|combo', dev_names):
+                score += 2000
+        
+        # In select mode, native <select> elements should be strongly preferred
+        if mode == "select" and el.get("is_select"):
+            score += 3_000
+            # If any search text matches a dropdown option, even stronger boost
+            for t in search_texts:
+                tl = t.lower().strip()
+                if tl and tl in name:  # name includes "dropdown [Option1 | Option2]"
+                    score += 2_000
+                    break
+        
+        # =====================================================================
+        # FILE UPLOAD: prefer <label for="hidden_input"> over hidden <input type="file">
+        # =====================================================================
+        if tag == "label":
+            linked_id = el.get("html_id", "")  # html_id stores 'for' attr too
+            if linked_id:
+                # Check if linked input is hidden file input
+                linked_el = next((e for e in els if e.get("html_id") == linked_id and e.get("input_type") == "file"), None)
+                if linked_el:
+                    score += 2_000  # Prefer label over hidden file input
+        if itype == "file":
+            # Check if there's a label pointing to us
+            has_label = any(e.get("tag_name") == "label" and e.get("html_id") == html_id for e in els)
+            if has_label:
+                score -= 3_000  # Deprioritize hidden file input when label exists
+
+        # =====================================================================
+        # BLIND STEP: icon-based search ("search button" with no search_texts)
+        # =====================================================================
+        if is_blind and not search_texts:
+            # Boost elements whose icon classes match step keywords
+            for w in target_words:
+                if len(w) > 3 and w in icons:
+                    score += 3_000
+                if len(w) > 3 and w in html_id:
+                    score += 1_500
+                if len(w) > 3 and w in aria:
+                    score += 1_500
 
         el["score"] = score
 

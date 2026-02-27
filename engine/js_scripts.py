@@ -8,11 +8,7 @@ VISIBLE_TEXT_JS = """() => {
     let t = (document.body.innerText || "") + " ";
     document.querySelectorAll('*').forEach(el => {
         const st = window.getComputedStyle(el);
-        const isHidden = st.display === 'none'
-                      || st.visibility === 'hidden'
-                      || st.opacity === '0';
-        // Always scan alert/success/notification divs — success messages may appear
-        // via JS after a form POST and their computed style can be briefly stale.
+        const isHidden = st.display === 'none' || st.visibility === 'hidden' || st.opacity === '0';
         const isAlert = el.classList && (
             el.classList.contains('alert')        ||
             el.classList.contains('success')      ||
@@ -24,6 +20,10 @@ VISIBLE_TEXT_JS = """() => {
         if (el.title)       t += el.title + " ";
         if (el.value && typeof el.value === 'string') t += el.value + " ";
         if (el.placeholder) t += el.placeholder + " ";
+        const ariaLabel = el.getAttribute && el.getAttribute('aria-label');
+        if (ariaLabel) t += ariaLabel + " ";
+        const ariaValText = el.getAttribute && el.getAttribute('aria-valuetext');
+        if (ariaValText) t += ariaValText + " ";
         if (el.shadowRoot)
             t += Array.from(el.shadowRoot.querySelectorAll('*'))
                       .map(e => e.innerText || e.value || '').join(' ');
@@ -56,36 +56,33 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         const el=window.manulElements[id];
         if(!el) return;
         el.scrollIntoView({behavior:'smooth',block:'center'});
-        el.value=text;
+        if (el.isContentEditable || el.getAttribute('contenteditable') === 'true') {
+            el.innerText = text;
+        } else {
+            el.value=text;
+        }
         el.dispatchEvent(new Event('input',{bubbles:true}));
         el.dispatchEvent(new Event('change',{bubbles:true}));
     };
 
-    const INTERACTIVE_INPUT = "input,textarea,[contenteditable='true']";
+    const INTERACTIVE_INPUT = "input,textarea,[contenteditable='true'],[role='textbox'],[role='slider'],[role='spinbutton']";
     const INTERACTIVE_CLICK = [
-        // Standard HTML interactive elements
         "button","a","input[type='radio']","input[type='checkbox']",
         "select",".dropbtn","summary",
-        ".ui-draggable",".ui-droppable",".option","input",
-        // Labels (real click target in custom checkbox/radio trees)
+        ".ui-draggable",".ui-droppable","input",
         "label",
-        // ARIA roles
         "[role='button']","[role='checkbox']","[role='radio']",
         "[role='tab']","[role='option']","[role='menuitem']","[role='switch']",
-        // React Checkbox Tree
-        "[class*='rct-node-clickable']","[class*='rct-title']",
-        // Generic custom checkbox wrappers
-        "[class*='checkbox']","[class*='check-box']",
-        // Catch-all for JS-only widgets
+        "[role='slider']","[role='application']","[role='link']",
+        "[class*='btn']","[class*='button']","[class*='swatch']","[class*='card']","[class*='tab']",
+        "[class*='option']",
+        "[data-qa]","[data-testid]",
+        "[aria-label]","[title]",
+        "div[id]","span[id]",
         "[onclick]",
     ].join(",");
 
-    // FIX 1: "locate" mode uses INTERACTIVE_CLICK so SELECT elements,
-    // draggable divs, and custom widgets are found by "Find / Locate" steps.
-    // Only pure text-input mode restricts to INTERACTIVE_INPUT.
-    const INTERACTIVE = (mode === "input")
-        ? INTERACTIVE_INPUT
-        : INTERACTIVE_CLICK;
+    const INTERACTIVE = (mode === "input") ? INTERACTIVE_INPUT : INTERACTIVE_CLICK;
 
     const seen    = new Set();
     const results = [];
@@ -96,21 +93,34 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             seen.add(el);
 
             const r  = el.getBoundingClientRect();
-            if (r.width < 2 || r.height < 2) return;
+            const elRole = (el.getAttribute('role') || '').toLowerCase();
+            
             const st = window.getComputedStyle(el);
-            if (st.visibility === 'hidden' || st.display === 'none') return;
+            const isHidden = st.display === 'none' || st.visibility === 'hidden' || st.opacity === '0';
+            
+            if (isHidden) {
+                if (el.tagName !== 'INPUT' || (el.type !== 'file' && el.type !== 'checkbox' && el.type !== 'radio')) {
+                    return; 
+                }
+            }
+            
+            if (r.width < 2 || r.height < 2) {
+                if (elRole !== 'switch' && el.tagName !== 'INPUT') return;
+            }
 
-            // Skip labels that are just wrappers around a visible input.
-            // Keep them only when their linked input is hidden (custom trees).
             if (el.tagName === 'LABEL') {
                 const linked = el.htmlFor
                     ? document.getElementById(el.htmlFor)
                     : el.querySelector('input');
                 if (linked) {
-                    const lr = linked.getBoundingClientRect();
-                    if (lr.width > 2 && lr.height > 2
-                            && window.getComputedStyle(linked).display !== 'none') {
-                        return;
+                    // If linked input is a hidden file input, KEEP the label (it acts as the click target)
+                    if (linked.type === 'file') {
+                        // Keep this label — don't skip it
+                    } else {
+                        const lr = linked.getBoundingClientRect();
+                        if (lr.width > 2 && lr.height > 2 && window.getComputedStyle(linked).display !== 'none') {
+                            return;
+                        }
                     }
                 }
             }
@@ -128,17 +138,13 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
     };
     collect(document);
 
-    results.sort((a,b) =>
-        a.el.getBoundingClientRect().top - b.el.getBoundingClientRect().top
-    );
+    results.sort((a,b) => a.el.getBoundingClientRect().top - b.el.getBoundingClientRect().top);
 
     const getXPath = el => {
         if(el.id) return `//*[@id="${el.id}"]`;
         const parts = [];
         while(el && el.nodeType === Node.ELEMENT_NODE) {
-            const idx = Array.from(el.parentNode?.children || [])
-                              .filter(s => s.tagName === el.tagName)
-                              .indexOf(el) + 1;
+            const idx = Array.from(el.parentNode?.children || []).filter(s => s.tagName === el.tagName).indexOf(el) + 1;
             parts.unshift(`${el.tagName.toLowerCase()}[${idx}]`);
             el = el.parentNode;
         }
@@ -149,9 +155,17 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         if (el.tagName === 'INPUT' && (el.type === 'checkbox' || el.type === 'radio')) {
             const tr = el.closest('tr');
             if (tr) return tr.innerText.trim().replace(/\s+/g,' ');
-            const lbl = el.closest('label')
-                     || document.querySelector(`label[for="${el.id}"]`);
+            const lbl = el.closest('label') || document.querySelector(`label[for="${el.id}"]`);
             if (lbl) return lbl.innerText.trim();
+            const nextSib = el.nextElementSibling;
+            if (nextSib && nextSib.tagName === 'LABEL') return nextSib.innerText.trim();
+            const prevSib = el.previousElementSibling;
+            if (prevSib && prevSib.tagName === 'LABEL') return prevSib.innerText.trim();
+            const par = el.parentElement;
+            if (par) {
+                const parText = par.innerText.trim().replace(/\s+/g,' ');
+                if (parText && parText.length < 80) return parText;
+            }
         }
         if (['INPUT','SELECT','TEXTAREA'].includes(el.tagName)) {
             const lbl = document.querySelector(`label[for="${el.id}"]`);
@@ -160,58 +174,39 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             while (curr && curr.tagName !== 'BODY') {
                 let prev = curr.previousElementSibling;
                 while (prev) {
-                    if (/^H[1-6]$/.test(prev.tagName)
-                            || prev.classList.contains('title'))
-                        return prev.innerText.trim();
+                    if (/^H[1-6]$/.test(prev.tagName) || prev.classList.contains('title')) return prev.innerText.trim();
                     prev = prev.previousElementSibling;
                 }
                 curr = curr.parentElement;
             }
-        }
-        // Custom checkbox/radio tree nodes (React Checkbox Tree, demoqa, etc.)
-        const role = el.getAttribute('role') || '';
-        if (role === 'checkbox' || role === 'radio' ||
-            (el.className && typeof el.className === 'string' &&
-             (el.className.includes('rct-') || el.className.includes('checkbox')))) {
-            const title =
-                el.querySelector('[class*="title"],[class*="label"]') ||
-                el.closest('[class*="node"],[class*="item"],[class*="tree-item"]')
-                  ?.querySelector('[class*="title"],[class*="label"]');
-            if (title) return title.innerText.trim();
         }
         return '';
     };
 
     return results.map(({el, inShadow}) => {
         let name, isSelect = false;
+        const iconClasses = Array.from(el.querySelectorAll('i, svg, span[class*="icon"]'))
+            .map(i => (typeof i.className === 'string' ? i.className : (i.getAttribute('class') || '')))
+            .join(' ').replace(/[-_]/g, ' ').toLowerCase();
 
-        // Collect icon-class keywords from child <i>/<svg>/<span[icon]>.
-        // "fa-arrow-circle-o-right" → "fa arrow circle right"
-        const iconClasses = Array.from(
-            el.querySelectorAll('i, svg, span[class*="icon"]')
-        ).map(i => i.className || i.getAttribute('class') || '')
-         .join(' ')
-         .replace(/[-_]/g, ' ')
-         .toLowerCase();
-
-        const htmlId    = el.id || '';
-        const ariaLabel = el.getAttribute('aria-label') || el.getAttribute('title') || '';
+        const htmlId    = el.id || el.getAttribute('for') || '';
+        let ariaLabel = el.getAttribute('aria-label') || el.getAttribute('title') || '';
+        if (!ariaLabel) {
+            const labelledBy = el.getAttribute('aria-labelledby');
+            if (labelledBy) {
+                const lblEl = document.getElementById(labelledBy);
+                if (lblEl) ariaLabel = lblEl.innerText.trim();
+            }
+        }
+        
+        const ph = (el.placeholder || el.getAttribute('data-placeholder') || el.getAttribute('aria-placeholder') || '').toLowerCase();
 
         if (el.tagName === 'SELECT') {
             isSelect = true;
-            name = 'dropdown [' +
-                Array.from(el.options).map(o => o.text.trim()).join(' | ') +
-                ']';
+            name = 'dropdown [' + Array.from(el.options).map(o => o.text.trim()).join(' | ') + ']';
         } else {
             const rawText = el.innerText ? el.innerText.trim() : '';
-            name = rawText
-                || ariaLabel
-                || el.placeholder
-                || el.getAttribute('value')
-                || htmlId
-                || el.name
-                || el.className
-                || 'item';
+            name = rawText || ariaLabel || ph || el.getAttribute('value') || htmlId || el.name || el.className || 'item';
             name = name.trim();
         }
 
@@ -221,23 +216,26 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         if (ctx)      name = `${ctx} -> ${name}`;
         if (inShadow) name += ' [SHADOW_DOM]';
 
+        const isEditable = el.isContentEditable || el.getAttribute('contenteditable') === 'true';
+
         return {
-            id:           parseInt(el.dataset.manulId),
-            name:         name.substring(0, 150).replace(/\n/g, ' '),
-            xpath:        getXPath(el),
-            is_select:    isSelect,
-            is_shadow:    inShadow,
-            class_name:   el.className || '',
-            tag_name:     el.tagName.toLowerCase(),
-            input_type:   el.type ? el.type.toLowerCase() : '',
-            data_qa:      el.getAttribute('data-qa')
-                       || el.getAttribute('data-testid') || '',
-            html_id:      htmlId,
-            icon_classes: iconClasses,
-            aria_label:   ariaLabel,
+            id:            parseInt(el.dataset.manulId),
+            name:          name.substring(0, 150).replace(/\n/g, ' '),
+            xpath:         getXPath(el),
+            is_select:     isSelect,
+            is_shadow:     inShadow,
+            is_contenteditable: isEditable,
+            class_name:    (typeof el.className === 'string' ? el.className : (el.getAttribute('class') || '')),
+            tag_name:      el.tagName.toLowerCase(),
+            input_type:    el.type ? el.type.toLowerCase() : '',
+            data_qa:       el.getAttribute('data-qa') || el.getAttribute('data-testid') || '',
+            html_id:       htmlId,
+            icon_classes:  iconClasses,
+            aria_label:    ariaLabel,
+            placeholder:   ph,
             role:          el.getAttribute('role') || '',
-            disabled:      el.disabled || false,
-            aria_disabled:  el.getAttribute('aria-disabled') || '',
+            disabled:      el.hasAttribute('disabled') || el.disabled || false,
+            aria_disabled: el.getAttribute('aria-disabled') || '',
         };
     });
 }"""

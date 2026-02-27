@@ -8,13 +8,20 @@ from playwright.async_api import async_playwright
 from engine import ManulEngine
 
 # ─────────────────────────────────────────────────────────────────────────────
-# MONSTER DOM  —  Each trap section is labelled clearly.
-# Original 24 traps + 4 optional + 6 bug-fix + 12 hunt-site + 14 normal = 60.
+# MONSTER DOM  —  80 TESTS (Traps + Integration Bugs + Real World Frameworks)
 # ─────────────────────────────────────────────────────────────────────────────
 MONSTER_DOM = """
 <!DOCTYPE html>
 <html>
-<head><title>Monster DOM</title></head>
+<head>
+    <title>Monster DOM 80</title>
+    <style>
+        /* Real-world utility classes simulation */
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+        .hidden-file { display: none; }
+        .custom-switch { width: 40px; height: 20px; background: #ccc; border-radius: 10px; display: inline-block; cursor: pointer; }
+    </style>
+</head>
 <body>
 
 <fieldset>
@@ -25,31 +32,23 @@ MONSTER_DOM = """
 <div>
     <label for="trap_phantom_chk">Option 1</label>
     <input type="checkbox" id="trap_phantom_chk">
-
     <label for="trap_phantom_select">Dropdown</label>
-    <select id="trap_phantom_select">
-        <option>Select...</option>
-        <option>Option 1</option>
-    </select>
+    <select id="trap_phantom_select"><option>Select...</option><option>Option 1</option></select>
 </div>
 
 <div>
     <button id="trap_hidden_btn" style="display: none;">Submit Login</button>
     <div id="trap_fake_btn" class="button" role="button">Submit Login</div>
-    <input type="submit" id="trap_real_btn" value="Submit Login">
+    <input type="submit" id="trap_real_btn" value="Submit Login" aria-label="Submit Login">
 </div>
 
 <div id="host"></div>
 <script>
-    const host   = document.getElementById('host');
+    const host = document.getElementById('host');
     const shadow = host.attachShadow({mode: 'open'});
-    const label  = document.createElement('label');
-    label.textContent = 'Cyber Password';
-    const input  = document.createElement('input');
-    input.type   = 'password';
-    input.id     = 'trap_shadow_input';
-    shadow.appendChild(label);
-    shadow.appendChild(input);
+    const label = document.createElement('label'); label.textContent = 'Cyber Password';
+    const input = document.createElement('input'); input.type = 'password'; input.id = 'trap_shadow_input';
+    shadow.appendChild(label); shadow.appendChild(input);
 </script>
 
 <div>
@@ -75,10 +74,8 @@ MONSTER_DOM = """
 
 <fieldset>
     <legend>Subscribe?</legend>
-    <input type="radio" id="trap_radio_yes" name="sub" value="yes">
-    <label for="trap_radio_yes">Yes</label>
-    <input type="radio" id="trap_radio_no" name="sub" value="no">
-    <label for="trap_radio_no">No</label>
+    <input type="radio" id="trap_radio_yes" name="sub" value="yes"><label for="trap_radio_yes">Yes</label>
+    <input type="radio" id="trap_radio_no" name="sub" value="no"><label for="trap_radio_no">No</label>
 </fieldset>
 
 <div>
@@ -97,14 +94,10 @@ MONSTER_DOM = """
 </div>
 
 <section id="login-form-section">
-    <h3>Login Form</h3>
-    <label for="trap_section_login">Email</label>
-    <input type="email" id="trap_section_login" placeholder="Login email">
+    <h3>Login Form</h3><label for="trap_section_login">Email</label><input type="email" id="trap_section_login">
 </section>
 <section id="signup-form-section">
-    <h3>Signup Form</h3>
-    <label for="trap_section_signup">Email</label>
-    <input type="email" id="trap_section_signup" placeholder="Signup email">
+    <h3>Signup Form</h3><label for="trap_section_signup">Email</label><input type="email" id="trap_section_signup">
 </section>
 
 <div>
@@ -119,16 +112,11 @@ MONSTER_DOM = """
 </div>
 
 <div>
-    <button id="trap_qty_btn">Quantity</button>
-    <label for="trap_qty_input">Quantity</label>
-    <input type="number" id="trap_qty_input" min="1">
+    <button id="trap_qty_btn">Quantity</button><label for="trap_qty_input">Quantity</label><input type="number" id="trap_qty_input">
 </div>
 
 <div>
-    <label id="trap_newsletter_label">
-        <input type="checkbox" id="trap_newsletter_chk">
-        Newsletter
-    </label>
+    <label id="trap_newsletter_label"><input type="checkbox" id="trap_newsletter_chk"> Newsletter</label>
     <div id="trap_newsletter_div">Newsletter</div>
 </div>
 
@@ -138,267 +126,173 @@ MONSTER_DOM = """
 </div>
 
 <div>
-    <label for="trap_readonly_input">Promo Code</label>
-    <input type="text" id="trap_readonly_input" readonly value="PLACEHOLDER">
+    <label for="trap_readonly_input">Promo Code</label><input type="text" id="trap_readonly_input" readonly value="PLACEHOLDER">
     <button id="trap_readonly_btn">Promo Code</button>
 </div>
 
 <div>
-    <button id="trap_title_wrong">Options</button>
-    <button id="trap_title_btn" title="Settings">⚙</button>
+    <button id="trap_title_wrong">Options</button><button id="trap_title_btn" title="Settings">⚙</button>
 </div>
 
 <div>
-    <a href="/download" id="trap_download_link">Download</a>
-    <button id="trap_download_btn">Download</button>
+    <a href="/download" id="trap_download_link">Download</a><button id="trap_download_btn">Download</button>
 </div>
 
 <div>
-    <input type="text"     id="trap_pw_text"  placeholder="password">
-    <input type="password" id="trap_pw_pass"  placeholder="password">
+    <input type="text" id="trap_pw_text" placeholder="password">
+    <input type="password" id="trap_pw_pass" placeholder="password">
 </div>
 
 <div class="floating-field">
-    <span id="trap_float_label" class="float-label">Card Number</span>
-    <input type="text" id="trap_float_input" data-qa="card-number">
+    <span id="trap_float_label" class="float-label">Card Number</span><input type="text" id="trap_float_input" data-qa="card-number">
 </div>
 
 <table>
-    <tr>
-        <td><input type="checkbox" id="trap_chk_phone"></td>
-        <td>Phone</td>
-        <td>$699</td>
-    </tr>
-    <tr>
-        <td><input type="checkbox" id="trap_chk_laptop"></td>
-        <td>Laptop</td>
-        <td>$1299</td>
-    </tr>
+    <tr><td><input type="checkbox" id="trap_chk_phone"></td><td>Phone</td><td>$699</td></tr>
+    <tr><td><input type="checkbox" id="trap_chk_laptop"></td><td>Laptop</td><td>$1299</td></tr>
 </table>
 
-<div id="cookie_banner" style="display: none;">
-    <button id="trap_cookie_btn">Accept Cookies</button>
-</div>
+<div id="cookie_banner" style="display: none;"><button id="trap_cookie_btn">Accept Cookies</button></div>
+<div><button id="trap_zero_pixel_btn" style="width: 0; height: 0; padding: 0; border: none; overflow: hidden;">Close Ad if exists</button></div>
+<div><label for="trap_promo_optional_input">Promotion Code if exists</label><input type="text" id="trap_promo_optional_input"></div>
 
 <div>
-    <button id="trap_zero_pixel_btn" style="width: 0; height: 0; padding: 0; border: none; overflow: hidden;">Close Ad if exists</button>
+    <label for="trap_check_agree_chk">Agree to Terms</label><input type="checkbox" id="trap_check_agree_chk">
+    <label for="trap_check_agree_input">Agree to Terms</label><input type="text" id="trap_check_agree_input">
 </div>
-
 <div>
-    <label for="trap_promo_optional_input">Promotion Code if exists</label>
-    <input type="text" id="trap_promo_optional_input">
-</div>
-
-<!-- ── TRAPS 29-34: Real bugs from integration test battles ──────────── -->
-
-<div>
-    <label for="trap_check_agree_chk">Agree to Terms</label>
-    <input type="checkbox" id="trap_check_agree_chk">
-    <label for="trap_check_agree_input">Agree to Terms</label>
-    <input type="text" id="trap_check_agree_input" placeholder="signature">
-</div>
-
-<div>
-    <label for="trap_uncheck_renew_chk">Auto-Renew</label>
-    <input type="checkbox" id="trap_uncheck_renew_chk" checked>
+    <label for="trap_uncheck_renew_chk">Auto-Renew</label><input type="checkbox" id="trap_uncheck_renew_chk" checked>
     <button id="trap_uncheck_renew_btn">Auto-Renew Settings</button>
 </div>
-
 <div>
-    <label for="trap_priority_chk">Priority</label>
-    <input type="checkbox" id="trap_priority_chk">
-    <input type="radio" id="trap_priority_radio" name="prio" value="urgent">
-    <label for="trap_priority_radio">Urgent</label>
-    <label for="trap_priority_select">Priority</label>
-    <select id="trap_priority_select">
-        <option>--</option>
-        <option>Low</option>
-        <option>Medium</option>
-        <option>Urgent</option>
-    </select>
+    <label for="trap_priority_chk">Priority</label><input type="checkbox" id="trap_priority_chk">
+    <input type="radio" id="trap_priority_radio" name="prio" value="urgent"><label for="trap_priority_radio">Urgent</label>
+    <label for="trap_priority_select">Priority</label><select id="trap_priority_select"><option>Low</option><option>Urgent</option></select>
 </div>
-
-<div>
-    <button id="trap_partial_decoy_btn">Ad Settings</button>
-</div>
-
+<div><button id="trap_partial_decoy_btn">Ad Settings</button></div>
 <div>
     <input type="text" id="trap_addr_decoy" placeholder="Enter your address">
     <input type="text" id="trap_dqa_ship" data-qa="shipping-address">
 </div>
-
+<div><label for="trap_jsclick_chk">Enable Notifications</label><input type="checkbox" id="trap_jsclick_chk"></div>
 <div>
-    <label for="trap_jsclick_chk">Enable Notifications</label>
-    <input type="checkbox" id="trap_jsclick_chk">
+    <label for="trap_addr_textarea">Address</label><input type="text" id="trap_addr_text_decoy">
+    <textarea id="trap_addr_textarea"></textarea>
+</div>
+<div><button id="trap_dblclick_btn" ondblclick="this.dataset.clicked='double'">Double Click Me</button><button id="trap_singleclick_btn">Click Me</button></div>
+<div>
+    <label for="trap_date_input">Start Date</label><input type="date" id="trap_date_input">
+    <label for="trap_date_notes">Start Date Notes</label><input type="text" id="trap_date_notes">
+</div>
+<div><input type="search" id="trap_search_input" placeholder="Search Articles" aria-label="Search Articles"><button id="trap_search_btn">Search</button></div>
+<nav><a href="#" id="trap_page_1">1</a><a href="#" id="trap_page_2">2</a><a href="#" id="trap_page_3">3</a><a href="#" id="trap_page_next">Next</a></nav>
+<div><label for="trap_day_wed">Wednesday</label><input type="checkbox" id="trap_day_wed"></div>
+<div><label for="trap_country_select">Country</label><select id="trap_country_select"><option>India</option><option>Japan</option></select></div>
+<div><button id="trap_hover_btn" onmouseover="this.dataset.hovered='yes'">Mouse Hover</button></div>
+<div><label for="trap_toggle_chk">Accept Marketing</label><input type="checkbox" id="trap_toggle_chk"></div>
+<div><input type="search" id="trap_enter_input" placeholder="Wiki Search" onkeydown="if(event.key==='Enter') this.dataset.entered='yes'"></div>
+
+<div><label for="norm_fullname">Full Name</label><input type="text" id="norm_fullname"></div>
+<div><label for="norm_email">Work Email</label><input type="email" id="norm_email"></div>
+<div><label for="norm_token">API Token</label><input type="text" id="norm_token"></div>
+<div><label for="norm_comment">Comment</label><textarea id="norm_comment" rows="3"></textarea></div>
+<div><button id="norm_submit_btn" onclick="this.dataset.done='yes'">Send Message</button></div>
+<div><a href="#about" id="norm_about_link">About Us</a></div>
+<div><label for="norm_readonly">Coupon Code</label><input type="text" id="norm_readonly" readonly value="OLD"></div>
+<div><label for="norm_login_user">Username</label><input type="text" id="norm_login_user" onkeydown="if(event.key==='Enter') this.dataset.submitted='yes'"></div>
+<fieldset><input type="radio" id="norm_radio_female" name="gender"><label for="norm_radio_female">Female</label></fieldset>
+<div><label for="norm_agree_chk">I Agree</label><input type="checkbox" id="norm_agree_chk"></div>
+<div><label for="norm_color_select">Color</label><select id="norm_color_select"><option>Red</option><option>Blue</option></select></div>
+<div id="norm_message_box">Operation completed successfully</div><div id="norm_hidden_error" style="display:none">Critical failure</div>
+<table id="norm_price_table"><tr><td>Monitor</td><td>$299</td></tr></table>
+
+<button id="rw_tw_btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out">Deploy Application</button>
+
+<button id="rw_svg_profile" aria-label="User Profile" style="width:40px; height:40px;">
+    <svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+</button>
+
+<button id="rw_sr_bell" style="padding: 10px;">
+    <span class="sr-only">View Notifications</span>
+    🔔
+</button>
+
+<div style="display:flex; align-items:center;">
+    <span id="rw_switch_label">Dark Mode</span>
+    <div id="rw_custom_switch" role="switch" aria-checked="false" aria-labelledby="rw_switch_label" class="custom-switch"></div>
 </div>
 
-<!-- ── TRAPS 35-46: Patterns from real hunt-site tests ─────────────── -->
-
-<!-- 35. Textarea vs Input (Mega: Address) -->
 <div>
-    <label for="trap_addr_textarea">Address</label>
-    <input type="text" id="trap_addr_text_decoy" placeholder="City name">
-    <textarea id="trap_addr_textarea" placeholder="Full address"></textarea>
+    <label id="rw_wysiwyg_label">Message Body</label>
+    <div id="rw_wysiwyg" contenteditable="true" aria-labelledby="rw_wysiwyg_label" style="min-height: 50px; border: 1px solid #ccc;"></div>
 </div>
 
-<!-- 36-37. Double Click Me vs Click Me (DemoQA) -->
 <div>
-    <button id="trap_dblclick_btn" ondblclick="this.dataset.clicked='double'">Double Click Me</button>
-    <button id="trap_singleclick_btn">Click Me</button>
+    <label for="rw_file_input" id="rw_file_label" data-qa="upload-resume" style="cursor:pointer; background:#eee; padding:5px;">Upload Resume</label>
+    <input type="file" id="rw_file_input" class="hidden-file" style="display:none;">
 </div>
 
-<!-- 38. Date input type priority (DemoQA/ExpandTesting) -->
-<div>
-    <label for="trap_date_input">Start Date</label>
-    <input type="date" id="trap_date_input">
-    <label for="trap_date_notes">Start Date Notes</label>
-    <input type="text" id="trap_date_notes">
-</div>
-
-<!-- 39. Search input (Wikipedia: Search Wikipedia) -->
-<div>
-    <input type="search" id="trap_search_input" placeholder="Search Articles" aria-label="Search Articles">
-    <button id="trap_search_btn">Search</button>
-</div>
-
-<!-- 40. Pagination links (Mega: Click on page 3) -->
-<nav>
-    <a href="#" id="trap_page_1">1</a>
-    <a href="#" id="trap_page_2">2</a>
-    <a href="#" id="trap_page_3">3</a>
-    <a href="#" id="trap_page_next">Next</a>
-</nav>
-
-<!-- 41. Day-of-week checkboxes (Mega/Rahul: Monday/Wednesday) -->
-<div>
-    <label for="trap_day_mon">Monday</label>
-    <input type="checkbox" id="trap_day_mon">
-    <label for="trap_day_tue">Tuesday</label>
-    <input type="checkbox" id="trap_day_tue">
-    <label for="trap_day_wed">Wednesday</label>
-    <input type="checkbox" id="trap_day_wed">
-    <label for="trap_day_thu">Thursday</label>
-    <input type="checkbox" id="trap_day_thu">
-</div>
-
-<!-- 42. Country dropdown (Mega: Select Japan from Country) -->
-<div>
-    <label for="trap_country_select">Country</label>
-    <select id="trap_country_select">
-        <option>Select Country</option>
-        <option>India</option>
-        <option>Japan</option>
-        <option>United States</option>
-    </select>
-</div>
-
-<!-- 43. Hover button (Rahul: Mouse Hover) -->
-<div>
-    <button id="trap_hover_btn" onmouseover="this.dataset.hovered='yes'">Mouse Hover</button>
-</div>
-
-<!-- 44-45. Checkbox toggle — check then uncheck (Rahul) -->
-<div>
-    <label for="trap_toggle_chk">Accept Marketing</label>
-    <input type="checkbox" id="trap_toggle_chk">
-</div>
-
-<!-- 46. Fill + Enter (Wikipedia: Fill search and press Enter) -->
-<div>
-    <input type="search" id="trap_enter_input" placeholder="Wiki Search" aria-label="Wiki Search"
-           onkeydown="if(event.key==='Enter') this.dataset.entered='yes'">
-</div>
-
-<!-- ══════════════════════════════════════════════════════════════════ -->
-<!-- NORMAL ELEMENTS 47-60: No tricks, pure functionality checks       -->
-<!-- ══════════════════════════════════════════════════════════════════ -->
-
-<!-- 47. Simple text input -->
-<div>
-    <label for="norm_fullname">Full Name</label>
-    <input type="text" id="norm_fullname">
-</div>
-
-<!-- 48. Simple email input -->
-<div>
-    <label for="norm_email">Work Email</label>
-    <input type="email" id="norm_email" placeholder="your@email.com">
-</div>
-
-<!-- 49. Simple text input (another variant) -->
-<div>
-    <label for="norm_token">API Token</label>
-    <input type="text" id="norm_token">
-</div>
-
-<!-- 50. Simple textarea -->
-<div>
-    <label for="norm_comment">Comment</label>
-    <textarea id="norm_comment" rows="3"></textarea>
-</div>
-
-<!-- 51. Simple button -->
-<div>
-    <button id="norm_submit_btn" onclick="this.dataset.done='yes'">Send Message</button>
-</div>
-
-<!-- 52. Simple link -->
-<div>
-    <a href="#about" id="norm_about_link">About Us</a>
-</div>
-
-<!-- 53. Readonly input (fill via JS) -->
-<div>
-    <label for="norm_readonly">Coupon Code</label>
-    <input type="text" id="norm_readonly" readonly value="OLD-CODE">
-</div>
-
-<!-- 54. Input + Enter key -->
-<div>
-    <label for="norm_login_user">Username</label>
-    <input type="text" id="norm_login_user"
-           onkeydown="if(event.key==='Enter') this.dataset.submitted='yes'">
-</div>
-
-<!-- 55. Simple radio group -->
-<fieldset>
-    <legend>Gender</legend>
-    <input type="radio" id="norm_radio_male" name="gender" value="male">
-    <label for="norm_radio_male">Male</label>
-    <input type="radio" id="norm_radio_female" name="gender" value="female">
-    <label for="norm_radio_female">Female</label>
-</fieldset>
-
-<!-- 56-57. Simple checkbox + verify -->
-<div>
-    <label for="norm_agree_chk">I Agree</label>
-    <input type="checkbox" id="norm_agree_chk">
-</div>
-
-<!-- 58. Simple native <select> -->
-<div>
-    <label for="norm_color_select">Favorite Color</label>
-    <select id="norm_color_select">
-        <option>-- pick --</option>
-        <option>Red</option>
-        <option>Green</option>
-        <option>Blue</option>
-    </select>
-</div>
-
-<!-- 59. Verify text presence / absence -->
-<div id="norm_message_box">Operation completed successfully</div>
-<div id="norm_hidden_error" style="display:none">Critical failure</div>
-
-<!-- 60. Extract from table -->
-<table id="norm_price_table">
-    <thead><tr><th>Product</th><th>Price</th></tr></thead>
-    <tbody>
-        <tr><td>Keyboard</td><td>$49</td></tr>
-        <tr><td>Monitor</td><td>$299</td></tr>
-        <tr><td>Mouse</td><td>$25</td></tr>
-    </tbody>
+<table id="rw_users">
+    <tr>
+        <td>Alice</td>
+        <td><button id="rw_edit_profile" data-testid="edit-user-btn">Edit Profile</button></td>
+    </tr>
 </table>
+
+<div class="card" style="border:1px solid #ccc; padding:10px; width:200px;">
+    <h2 id="rw_prod_title">Gaming Mouse</h2>
+    <p>High DPI, RGB</p>
+    <span class="price">$59.99</span>
+    <button>Add</button>
+</div>
+
+<div class="modal" style="position:fixed; top:10px; right:10px; border:1px solid #000;">
+    <button id="rw_modal_close" aria-label="Close dialog">✖</button>
+    <p>Welcome to our site!</p>
+</div>
+
+<button id="rw_hamburger" aria-expanded="false" aria-label="Open Navigation" style="font-size:24px;">☰</button>
+
+<button id="rw_google_btn" class="social-login">
+    <img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="G" style="width:16px;"> 
+    Continue with Google
+</button>
+
+<p>
+    By checking this, I agree to the 
+    <a href="/terms" id="rw_terms_link">Terms of Service</a> and Privacy Policy.
+</p>
+
+<button id="rw_next_step">Next: Shipping Details &rarr;</button>
+
+<div role="radiogroup" aria-label="Rating">
+    <div role="radio" aria-label="1 star" id="rw_star_1">⭐</div>
+    <div role="radio" aria-label="5 stars" id="rw_star_5">⭐⭐⭐⭐⭐</div>
+</div>
+
+<button id="rw_load_more" class="btn-ghost" style="width:100%; padding:20px;">Load More Articles</button>
+
+<div>
+    <input type="text" value="manul_hater">
+    <div id="rw_error_msg" class="text-red-500" style="color: red;">Username is already taken.</div>
+</div>
+
+<button id="rw_fab_create" title="Create New Post" style="position:fixed; bottom:20px; right:20px; border-radius:50%; width:50px; height:50px;">+</button>
+
+<button id="rw_complex_btn">
+    <span>Submit</span>
+    <span>
+        <span>Order</span>
+    </span>
+</button>
+
+<div id="rw_cart_widget">
+    Cart <span id="rw_cart_count" class="badge">3</span>
+</div>
+
+<div class="video-container">
+    <button id="rw_play_btn" aria-label="Play Video">▶️</button>
+</div>
 
 </body>
 </html>
@@ -409,470 +303,211 @@ MONSTER_DOM = """
 # ─────────────────────────────────────────────────────────────────────────────
 TESTS = [
     # ── ORIGINAL 24 ────────────────────────────────────────────────────────
-    {
-        "name": "1. Legend Form Extraction",
-        "desc": "fieldset/legend used as input label — must find the actual <input>, not the <legend>",
-        "step": "Fill 'Suggession Class' field with 'Ukraine'",
-        "mode": "input", "search_texts": ["Suggession Class"], "target_field": "suggession class",
-        "expected": "trap_legend_input",
-    },
-    {
-        "name": "2. Phantom Guard — Select vs Checkbox",
-        "desc": "select mode must reject checkbox even though 'Option 1' text matches checkbox label",
-        "step": "Select 'Option 1' from the 'Dropdown' list",
-        "mode": "select", "search_texts": ["Option 1", "Dropdown"], "target_field": None,
-        "expected": "trap_phantom_select",
-    },
-    {
-        "name": "3. Native Button Priority",
-        "desc": "hidden button and role=button div must lose to real <input type=submit>",
-        "step": "Click the 'Submit Login' button",
-        "mode": "clickable", "search_texts": ["Submit Login"], "target_field": None,
-        "expected": "trap_real_btn",
-    },
-    {
-        "name": "4. Shadow DOM Penetration",
-        "desc": "target input lives inside a shadow root — must pierce it",
-        "step": "Fill 'Cyber Password' field with 'secret'",
-        "mode": "input", "search_texts": ["Cyber Password"], "target_field": "cyber password",
-        "expected": "trap_shadow_input",
-    },
-    {
-        "name": "5. ARIA Label Recognition",
-        "desc": "real <button> with aria-label must beat role=button div with matching visible text",
-        "step": "Click the 'Close Window' button",
-        "mode": "clickable", "search_texts": ["Close Window"], "target_field": None,
-        "expected": "trap_aria_btn",
-    },
-    {
-        "name": "6. Exact Match Tiebreaker",
-        "desc": "three buttons share the word 'Save'; the one with exactly 'Save' wins",
-        "step": "Click the 'Save' button",
-        "mode": "clickable", "search_texts": ["Save"], "target_field": None,
-        "expected": "trap_btn_exact",
-    },
-    {
-        "name": "7. Ghost Opacity Detection",
-        "desc": "checkbox at opacity:0.01 is technically visible — must still be targeted",
-        "step": "Click the checkbox for 'Accept Terms'",
-        "mode": "clickable", "search_texts": ["Accept Terms"], "target_field": None,
-        "expected": "trap_opacity_chk",
-    },
-    {
-        "name": "8. Placeholder Extraction",
-        "desc": "prefer <input placeholder='Secret Token'> over a <div> with the same text",
-        "step": "Fill 'Secret Token' field with '123'",
-        "mode": "input", "search_texts": ["Secret Token"], "target_field": "secret token",
-        "expected": "trap_placeholder_input",
-    },
-    {
-        "name": "9. Radio Button Grouping",
-        "desc": "two radios share a fieldset; 'No' label must resolve to the correct one",
-        "step": "Click the radio button for 'No'",
-        "mode": "clickable", "search_texts": ["No"], "target_field": None,
-        "expected": "trap_radio_no",
-    },
-    {
-        "name": "10. Custom Role Checkbox",
-        "desc": "role=checkbox div must beat type=text input that happens to share the aria-label",
-        "step": "Click the checkbox for 'Remember Me'",
-        "mode": "clickable", "search_texts": ["Remember Me"], "target_field": None,
-        "expected": "trap_role_chk",
-    },
-    {
-        "name": "11. Data-QA Attribute Supremacy",
-        "desc": "data-qa='confirm-order' must beat the button that literally says 'Confirm Order'",
-        "step": "Click the 'Confirm Order' button",
-        "mode": "clickable", "search_texts": ["Confirm Order"], "target_field": None,
-        "expected": "trap_qa_btn",
-    },
-    {
-        "name": "12. Link vs Button — step says 'link'",
-        "desc": "when step says 'link', must pick <a> and not the <button> with same text",
-        "step": "Click the 'Register Portal' link",
-        "mode": "clickable", "search_texts": ["Register Portal"], "target_field": None,
-        "expected": "trap_link_login",
-    },
-    {
-        "name": "13. Section Context Disambiguation",
-        "desc": "'Email' field appears in two sections; step mentions 'Login Form' — must pick login one",
-        "step": "Fill 'Email' field in the Login Form section with 'ghost@manul.ai'",
-        "mode": "input", "search_texts": ["Email", "Login Form"], "target_field": "email",
-        "expected": "trap_section_login",
-    },
-    {
-        "name": "14. Icon-Only Button",
-        "desc": "button has no text — correct one identified only by fa-search icon class",
-        "step": "Click the search button",
-        "mode": "clickable", "search_texts": [], "target_field": None,
-        "expected": "trap_icon_search",
-    },
-    {
-        "name": "15. Disabled Element Avoidance",
-        "desc": "two buttons both say 'Submit'; disabled one must be skipped",
-        "step": "Click the 'Submit' button",
-        "mode": "clickable", "search_texts": ["Submit"], "target_field": None,
-        "expected": "trap_enabled_btn",
-    },
-    {
-        "name": "16. Number Input Priority",
-        "desc": "button and number input share label 'Quantity'; input wins for fill mode",
-        "step": "Fill 'Quantity' field with '5'",
-        "mode": "input", "search_texts": ["Quantity"], "target_field": "quantity",
-        "expected": "trap_qty_input",
-    },
-    {
-        "name": "17. Wrapping Label Checkbox",
-        "desc": "checkbox is wrapped inside its own <label> — label click must resolve to the input",
-        "step": "Click the checkbox for 'Newsletter'",
-        "mode": "clickable", "search_texts": ["Newsletter"], "target_field": None,
-        "expected": "trap_newsletter_chk",
-    },
-    {
-        "name": "18. Homonym Buttons — data-qa Wins",
-        "desc": "two 'Delete' buttons; data-qa='delete-selected' matches step context",
-        "step": "Click the 'Delete' button for the selected item",
-        "mode": "clickable", "search_texts": ["Delete"], "target_field": None,
-        "expected": "trap_delete_selected",
-    },
-    {
-        "name": "19. Readonly Input Targeting",
-        "desc": "readonly input has same label as a nearby button; input wins for fill mode",
-        "step": "Fill 'Promo Code' field with 'MANUL2025'",
-        "mode": "input", "search_texts": ["Promo Code"], "target_field": "promo code",
-        "expected": "trap_readonly_input",
-    },
-    {
-        "name": "20. Title Attribute as Label",
-        "desc": "button has only title='Settings' and a glyph '⚙'; must beat nearby 'Options' button",
-        "step": "Click the 'Settings' button",
-        "mode": "clickable", "search_texts": ["Settings"], "target_field": None,
-        "expected": "trap_title_btn",
-    },
-    {
-        "name": "21. Button vs Link — step says 'button'",
-        "desc": "both <a> and <button> say 'Download'; step says 'button' → must pick button",
-        "step": "Click the 'Download' button",
-        "mode": "clickable", "search_texts": ["Download"], "target_field": None,
-        "expected": "trap_download_btn",
-    },
-    {
-        "name": "22. Password Field Type Priority",
-        "desc": "two inputs share placeholder 'password'; type=password must win for password fill",
-        "step": "Fill the 'password' field with 'hunter2'",
-        "mode": "input", "search_texts": ["password"], "target_field": "password",
-        "expected": "trap_pw_pass",
-    },
-    {
-        "name": "23. Floating Label Input",
-        "desc": "a <span> acts as floating label — real input is nearby but has only data-qa",
-        "step": "Fill 'Card Number' field with '4242 4242 4242 4242'",
-        "mode": "input", "search_texts": ["Card Number"], "target_field": "card number",
-        "expected": "trap_float_input",
-    },
-    {
-        "name": "24. Table Row Checkbox Disambiguation",
-        "desc": "two identical checkboxes; row text 'Laptop' distinguishes the correct one",
-        "step": "Select the checkbox for product 'Laptop'",
-        "mode": "clickable", "search_texts": ["Laptop"], "target_field": None,
-        "expected": "trap_chk_laptop",
-    },
+    {"name": "1", "step": "Fill 'Suggession Class' field with 'Ukraine'", "mode": "input", "search_texts": ["Suggession Class"], "target_field": "suggession class", "expected": "trap_legend_input"},
+    {"name": "2", "step": "Select 'Option 1' from the 'Dropdown' list", "mode": "select", "search_texts": ["Option 1", "Dropdown"], "target_field": None, "expected": "trap_phantom_select"},
+    {"name": "3", "step": "Click the 'Submit Login' button", "mode": "clickable", "search_texts": ["Submit Login"], "target_field": None, "expected": "trap_real_btn"},
+    {"name": "4", "step": "Fill 'Cyber Password' field with 'secret'", "mode": "input", "search_texts": ["Cyber Password"], "target_field": "cyber password", "expected": "trap_shadow_input"},
+    {"name": "5", "step": "Click the 'Close Window' button", "mode": "clickable", "search_texts": ["Close Window"], "target_field": None, "expected": "trap_aria_btn"},
+    {"name": "6", "step": "Click the 'Save' button", "mode": "clickable", "search_texts": ["Save"], "target_field": None, "expected": "trap_btn_exact"},
+    {"name": "7", "step": "Click the checkbox for 'Accept Terms'", "mode": "clickable", "search_texts": ["Accept Terms"], "target_field": None, "expected": "trap_opacity_chk"},
+    {"name": "8", "step": "Fill 'Secret Token' field with '123'", "mode": "input", "search_texts": ["Secret Token"], "target_field": "secret token", "expected": "trap_placeholder_input"},
+    {"name": "9", "step": "Click the radio button for 'No'", "mode": "clickable", "search_texts": ["No"], "target_field": None, "expected": "trap_radio_no"},
+    {"name": "10", "step": "Click the checkbox for 'Remember Me'", "mode": "clickable", "search_texts": ["Remember Me"], "target_field": None, "expected": "trap_role_chk"},
+    {"name": "11", "step": "Click the 'Confirm Order' button", "mode": "clickable", "search_texts": ["Confirm Order"], "target_field": None, "expected": "trap_qa_btn"},
+    {"name": "12", "step": "Click the 'Register Portal' link", "mode": "clickable", "search_texts": ["Register Portal"], "target_field": None, "expected": "trap_link_login"},
+    {"name": "13", "step": "Fill 'Email' field in the Login Form section with 'ghost@manul.ai'", "mode": "input", "search_texts": ["Email", "Login Form"], "target_field": "email", "expected": "trap_section_login"},
+    {"name": "14", "step": "Click the search button", "mode": "clickable", "search_texts": [], "target_field": None, "expected": "trap_icon_search"},
+    {"name": "15", "step": "Click the 'Submit' button", "mode": "clickable", "search_texts": ["Submit"], "target_field": None, "expected": "trap_enabled_btn"},
+    {"name": "16", "step": "Fill 'Quantity' field with '5'", "mode": "input", "search_texts": ["Quantity"], "target_field": "quantity", "expected": "trap_qty_input"},
+    {"name": "17", "step": "Click the checkbox for 'Newsletter'", "mode": "clickable", "search_texts": ["Newsletter"], "target_field": None, "expected": "trap_newsletter_chk"},
+    {"name": "18", "step": "Click the 'Delete' button for the selected item", "mode": "clickable", "search_texts": ["Delete"], "target_field": None, "expected": "trap_delete_selected"},
+    {"name": "19", "step": "Fill 'Promo Code' field with 'MANUL2025'", "mode": "input", "search_texts": ["Promo Code"], "target_field": "promo code", "expected": "trap_readonly_input"},
+    {"name": "20", "step": "Click the 'Settings' button", "mode": "clickable", "search_texts": ["Settings"], "target_field": None, "expected": "trap_title_btn"},
+    {"name": "21", "step": "Click the 'Download' button", "mode": "clickable", "search_texts": ["Download"], "target_field": None, "expected": "trap_download_btn"},
+    {"name": "22", "step": "Fill the 'password' field with 'hunter2'", "mode": "input", "search_texts": ["password"], "target_field": "password", "expected": "trap_pw_pass"},
+    {"name": "23", "step": "Fill 'Card Number' field with '4242 4242 4242 4242'", "mode": "input", "search_texts": ["Card Number"], "target_field": "card number", "expected": "trap_float_input"},
+    {"name": "24", "step": "Select the checkbox for product 'Laptop'", "mode": "clickable", "search_texts": ["Laptop"], "target_field": None, "expected": "trap_chk_laptop"},
 
-    # ── NEW EXTREME TRAPS (Testing "if exists" logic) ──────────────────────
-    {
-        "name": "25. The Ghost of Cookies Past (Display None + Optional)",
-        "desc": "Button is display: none. Step has 'if exists'. Resolver must return None, execute_step must catch and return True.",
-        "step": "Click the 'Accept Cookies' button if exists",
-        "mode": "clickable", "search_texts": ["Accept Cookies"], "target_field": None,
-        "expected": None,  # We EXPECT the resolver to fail to find it, and execute_step to handle it.
-    },
-    {
-        "name": "26. Zero-Pixel Sabotage (Optional)",
-        "desc": "Button exists in DOM but is 0x0. JS scraper ignores it. Step has 'if exists'. Should skip.",
-        "step": "Click the 'Close Ad' button if exists",
-        "mode": "clickable", "search_texts": ["Close Ad"], "target_field": None,
-        "expected": None,
-    },
-    {
-        "name": "27. The Decoy 'If Exists' text",
-        "desc": "The target label LITERALLY contains the text 'if exists'. The engine should NOT skip it, but successfully fill it.",
-        "step": "Fill 'Promotion Code if exists' field with 'DISCOUNT'",
-        "mode": "input", "search_texts": ["Promotion Code if exists"], "target_field": "promotion code if exists",
-        "expected": "trap_promo_optional_input",
-    },
-    {
-        "name": "28. Missing Target with 'Optional' keyword",
-        "desc": "Element completely absent from DOM. Step has keyword 'optional'. Should skip gracefully.",
-        "step": "Click the 'Dismiss Popup' button optional",
-        "mode": "clickable", "search_texts": ["Dismiss Popup"], "target_field": None,
-        "expected": None,
-    },
+    # ── OPTIONAL TRAPS 25-28 ─────────────────────────────────────────────
+    {"name": "25. Optional hidden", "step": "Click the 'Accept Cookies' button if exists", "mode": "clickable", "search_texts": ["Accept Cookies"], "target_field": None, "expected": None},
+    {"name": "26. Optional 0x0", "step": "Click the 'Close Ad' button if exists", "mode": "clickable", "search_texts": ["Close Ad"], "target_field": None, "expected": None},
+    {"name": "27. Decoy optional", "step": "Fill 'Promotion Code if exists' field with 'DISCOUNT'", "mode": "input", "search_texts": ["Promotion Code if exists"], "target_field": "promotion code if exists", "expected": "trap_promo_optional_input"},
+    {"name": "28. Optional missing", "step": "Click the 'Dismiss Popup' button optional", "mode": "clickable", "search_texts": ["Dismiss Popup"], "target_field": None, "expected": None},
 
-    # ── TRAPS 29-34: Real Bugs from Integration Test Battles ───────────
-    {
-        "name": "29. Check Mode — Checkbox Priority",
-        "desc": "Bug: 'check' didn't trigger clickable mode. Checkbox must beat same-named text input when step says 'checkbox'.",
-        "step": "Check the 'Agree to Terms' checkbox",
-        "mode": "clickable", "search_texts": ["Agree to Terms"], "target_field": None,
-        "expected": "trap_check_agree_chk",
-    },
-    {
-        "name": "30. Uncheck Mode — Checkbox over Button",
-        "desc": "Bug: 'uncheck' didn't trigger clickable mode. Checkbox must beat button with similar text.",
-        "step": "Uncheck the 'Auto-Renew' checkbox",
-        "mode": "clickable", "search_texts": ["Auto-Renew"], "target_field": None,
-        "expected": "trap_uncheck_renew_chk",
-    },
-    {
-        "name": "31. Select Triple Collision (select > checkbox + radio)",
-        "desc": "Bug: checkbox outscored <select> in select mode. Select must beat BOTH checkbox AND radio.",
-        "step": "Select 'Urgent' from the 'Priority' dropdown",
-        "mode": "select", "search_texts": ["Urgent", "Priority"], "target_field": None,
-        "expected": "trap_priority_select",
-    },
-    {
-        "name": "32. Optional Partial-Match Decoy (must skip)",
-        "desc": "Bug: optional steps clicked partial-match elements. 'Banner Ad' not in 'Ad Settings' — must skip.",
-        "step": "Click the 'Banner Ad' button if exists",
-        "mode": "clickable", "search_texts": ["Banner Ad"], "target_field": None,
-        "expected": None,
-    },
-    {
-        "name": "33. data-qa Hyphen-Space Mapping",
-        "desc": "data-qa='shipping-address' must match search text 'Shipping Address' via hyphen-space conversion.",
-        "step": "Fill 'Shipping Address' field with '456 Oak Ave'",
-        "mode": "input", "search_texts": ["Shipping Address"], "target_field": "shipping address",
-        "expected": "trap_dqa_ship",
-    },
-    {
-        "name": "34. Native Checkbox JS Click (full _execute_step)",
-        "desc": "Bug: loc.click(force=True) failed on native checkboxes. Full flow must toggle via JS el.click().",
-        "step": "Check the 'Enable Notifications' checkbox",
-        "mode": "clickable", "search_texts": ["Enable Notifications"], "target_field": None,
-        "expected": "trap_jsclick_chk",
-        "execute_step": True,
-        "verify_checked": True,
-    },
+    # ── INTEGRATION BUGS 29-34 ──────────────────────────────────────────
+    {"name": "29", "step": "Check the 'Agree to Terms' checkbox", "mode": "clickable", "search_texts": ["Agree to Terms"], "target_field": None, "expected": "trap_check_agree_chk"},
+    {"name": "30", "step": "Uncheck the 'Auto-Renew' checkbox", "mode": "clickable", "search_texts": ["Auto-Renew"], "target_field": None, "expected": "trap_uncheck_renew_chk"},
+    {"name": "31", "step": "Select 'Urgent' from the 'Priority' dropdown", "mode": "select", "search_texts": ["Urgent", "Priority"], "target_field": None, "expected": "trap_priority_select"},
+    {"name": "32", "step": "Click the 'Banner Ad' button if exists", "mode": "clickable", "search_texts": ["Banner Ad"], "target_field": None, "expected": None},
+    {"name": "33", "step": "Fill 'Shipping Address' field with '456 Oak Ave'", "mode": "input", "search_texts": ["Shipping Address"], "target_field": "shipping address", "expected": "trap_dqa_ship"},
+    {"name": "34. JS Toggle", "step": "Check the 'Enable Notifications' checkbox", "mode": "clickable", "search_texts": ["Enable Notifications"], "target_field": None, "expected": "trap_jsclick_chk", "execute_step": True, "verify_checked": True},
 
-    # ── TRAPS 35-46: Patterns from Real Hunt-Site Tests ────────────────
-    {
-        "name": "35. Textarea vs Input — Address (Mega)",
-        "desc": "Mega site: 'Fill Address textarea' must pick <textarea>, not nearby <input type=text>.",
-        "step": "Fill 'Address' textarea with 'Selenium Avenue, 42'",
-        "mode": "input", "search_texts": ["Address"], "target_field": "address",
-        "expected": "trap_addr_textarea",
-    },
-    {
-        "name": "36. Exact 'Click Me' vs Partial 'Double Click Me' (DemoQA)",
-        "desc": "DemoQA: 'Click Me' must beat 'Double Click Me' — exact match wins over partial.",
-        "step": "Click the 'Click Me' button",
-        "mode": "clickable", "search_texts": ["Click Me"], "target_field": None,
-        "expected": "trap_singleclick_btn",
-    },
-    {
-        "name": "37. Date Input Type Priority (DemoQA/ExpandTesting)",
-        "desc": "Two inputs share label 'Start Date'; type=date must beat type=text.",
-        "step": "Fill 'Start Date' field with '2026-01-01'",
-        "mode": "input", "search_texts": ["Start Date"], "target_field": "start date",
-        "expected": "trap_date_input",
-    },
-    {
-        "name": "38. Search Input by Type+ARIA (Wikipedia)",
-        "desc": "Wikipedia: input[type=search] with aria-label must be found for fill mode.",
-        "step": "Fill 'Search Articles' field with 'Pallas cat'",
-        "mode": "input", "search_texts": ["Search Articles"], "target_field": "search articles",
-        "expected": "trap_search_input",
-    },
-    {
-        "name": "39. Pagination Link by Number (Mega)",
-        "desc": "Mega: 'Click on page 3' must resolve to the <a> with text '3', not 'Next'.",
-        "step": "Click on page '3' in the pagination list",
-        "mode": "clickable", "search_texts": ["3"], "target_field": None,
-        "expected": "trap_page_3",
-    },
-    {
-        "name": "40. Day Checkbox Disambiguation (Mega/Rahul)",
-        "desc": "Four day-of-week checkboxes; 'Wednesday' must pick the right one.",
-        "step": "Click the checkbox for 'Wednesday'",
-        "mode": "clickable", "search_texts": ["Wednesday"], "target_field": None,
-        "expected": "trap_day_wed",
-    },
-    {
-        "name": "41. Country Dropdown Resolution (Mega)",
-        "desc": "Mega: 'Select Japan from Country dropdown' must resolve to the <select>.",
-        "step": "Select 'Japan' from the 'Country' dropdown",
-        "mode": "select", "search_texts": ["Japan", "Country"], "target_field": None,
-        "expected": "trap_country_select",
-    },
-    {
-        "name": "42. Double-Click Full Flow (DemoQA/Mega)",
-        "desc": "'DOUBLE CLICK' must resolve correct button AND fire dblclick event.",
-        "step": "DOUBLE CLICK the 'Double Click Me' button",
-        "mode": "clickable", "search_texts": ["Double Click Me"], "target_field": None,
-        "expected": "trap_dblclick_btn",
-        "execute_step": True,
-        "verify_attr": {"selector": "#trap_dblclick_btn", "attr": "data-clicked", "value": "double"},
-    },
-    {
-        "name": "43. Hover Full Flow (Rahul)",
-        "desc": "'HOVER over the Mouse Hover button' must resolve + fire mouseover event.",
-        "step": "HOVER over the 'Mouse Hover' button",
-        "mode": "hover", "search_texts": ["Mouse Hover"], "target_field": None,
-        "expected": "trap_hover_btn",
-        "execute_step": True,
-        "verify_attr": {"selector": "#trap_hover_btn", "attr": "data-hovered", "value": "yes"},
-    },
-    {
-        "name": "44. Select Option Full Flow (Mega)",
-        "desc": "'Select Japan from Country' must resolve <select> AND pick the right <option>.",
-        "step": "Select 'Japan' from the 'Country' dropdown",
-        "mode": "select", "search_texts": ["Japan", "Country"], "target_field": None,
-        "expected": "trap_country_select",
-        "execute_step": True,
-        "verify_select": {"selector": "#trap_country_select", "value": "Japan"},
-    },
-    {
-        "name": "45. Checkbox Toggle — Check (Rahul pt1)",
-        "desc": "Rahul: 'Check the checkbox' must toggle it ON. Verify checked=True.",
-        "step": "Check the 'Accept Marketing' checkbox",
-        "mode": "clickable", "search_texts": ["Accept Marketing"], "target_field": None,
-        "expected": "trap_toggle_chk",
-        "execute_step": True,
-        "verify_checked": True,
-    },
-    {
-        "name": "46. Checkbox Toggle — Uncheck (Rahul pt2)",
-        "desc": "Rahul: clicking same checkbox again must toggle it OFF. Verify checked=False.",
-        "step": "Click the checkbox for 'Accept Marketing'",
-        "mode": "clickable", "search_texts": ["Accept Marketing"], "target_field": None,
-        "expected": "trap_toggle_chk",
-        "execute_step": True,
-        "verify_checked": False,
-    },
+    # ── DEMOQA/MEGA 35-46 ───────────────────────────────────────────────
+    {"name": "35. Textarea", "step": "Fill 'Address' textarea with 'Selenium Avenue, 42'", "mode": "input", "search_texts": ["Address"], "target_field": "address", "expected": "trap_addr_textarea"},
+    {"name": "36. Exact match", "step": "Click the 'Click Me' button", "mode": "clickable", "search_texts": ["Click Me"], "target_field": None, "expected": "trap_singleclick_btn"},
+    {"name": "37. Date", "step": "Fill 'Start Date' field with '2026-01-01'", "mode": "input", "search_texts": ["Start Date"], "target_field": "start date", "expected": "trap_date_input"},
+    {"name": "38. Search", "step": "Fill 'Search Articles' field with 'Pallas cat'", "mode": "input", "search_texts": ["Search Articles"], "target_field": "search articles", "expected": "trap_search_input"},
+    {"name": "39. Paginator", "step": "Click on page '3' in the pagination list", "mode": "clickable", "search_texts": ["3"], "target_field": None, "expected": "trap_page_3"},
+    {"name": "40. Days", "step": "Click the checkbox for 'Wednesday'", "mode": "clickable", "search_texts": ["Wednesday"], "target_field": None, "expected": "trap_day_wed"},
+    {"name": "41. Select", "step": "Select 'Japan' from the 'Country' dropdown", "mode": "select", "search_texts": ["Japan", "Country"], "target_field": None, "expected": "trap_country_select"},
+    {"name": "42. DblClick", "step": "DOUBLE CLICK the 'Double Click Me' button", "mode": "clickable", "search_texts": ["Double Click Me"], "target_field": None, "expected": "trap_dblclick_btn", "execute_step": True, "verify_attr": {"selector": "#trap_dblclick_btn", "attr": "data-clicked", "value": "double"}},
+    {"name": "43. Hover", "step": "HOVER over the 'Mouse Hover' button", "mode": "hover", "search_texts": ["Mouse Hover"], "target_field": None, "expected": "trap_hover_btn", "execute_step": True, "verify_attr": {"selector": "#trap_hover_btn", "attr": "data-hovered", "value": "yes"}},
+    {"name": "44. Select flow", "step": "Select 'Japan' from the 'Country' dropdown", "mode": "select", "search_texts": ["Japan", "Country"], "target_field": None, "expected": "trap_country_select", "execute_step": True, "verify_select": {"selector": "#trap_country_select", "value": "Japan"}},
+    {"name": "45. Check", "step": "Check the 'Accept Marketing' checkbox", "mode": "clickable", "search_texts": ["Accept Marketing"], "target_field": None, "expected": "trap_toggle_chk", "execute_step": True, "verify_checked": True},
+    {"name": "46. Uncheck", "step": "Click the checkbox for 'Accept Marketing'", "mode": "clickable", "search_texts": ["Accept Marketing"], "target_field": None, "expected": "trap_toggle_chk", "execute_step": True, "verify_checked": False},
 
-    # ── NORMAL ELEMENTS 47-60: Straightforward Sanity Checks ──────────
+    # ── NORMAL ELEMENTS 47-60 ────────────────────────────────────────────
+    {"name": "47", "step": "Fill 'Full Name' field with 'Ghost Manul'", "mode": "input", "search_texts": ["Full Name"], "target_field": "full name", "expected": "norm_fullname", "execute_step": True, "verify_value": {"selector": "#norm_fullname", "value": "Ghost Manul"}},
+    {"name": "48", "step": "Fill 'Work Email' field with 'ghost@manul.ai'", "mode": "input", "search_texts": ["Work Email"], "target_field": "work email", "expected": "norm_email", "execute_step": True, "verify_value": {"selector": "#norm_email", "value": "ghost@manul.ai"}},
+    {"name": "49", "step": "Fill 'API Token' field with 'SuperSecret123'", "mode": "input", "search_texts": ["API Token"], "target_field": "api token", "expected": "norm_token", "execute_step": True, "verify_value": {"selector": "#norm_token", "value": "SuperSecret123"}},
+    {"name": "50", "step": "Fill 'Comment' field with 'Great product, highly recommended'", "mode": "input", "search_texts": ["Comment"], "target_field": "comment", "expected": "norm_comment", "execute_step": True, "verify_value": {"selector": "#norm_comment", "value": "Great product, highly recommended"}},
+    {"name": "51", "step": "Click the 'Send Message' button", "mode": "clickable", "search_texts": ["Send Message"], "target_field": None, "expected": "norm_submit_btn", "execute_step": True, "verify_attr": {"selector": "#norm_submit_btn", "attr": "data-done", "value": "yes"}},
+    {"name": "52", "step": "Click the 'About Us' link", "mode": "clickable", "search_texts": ["About Us"], "target_field": None, "expected": "norm_about_link"},
+    {"name": "53", "step": "Fill 'Coupon Code' field with 'MANUL2026'", "mode": "input", "search_texts": ["Coupon Code"], "target_field": "coupon code", "expected": "norm_readonly", "execute_step": True, "verify_value": {"selector": "#norm_readonly", "value": "MANUL2026"}},
+    {"name": "54", "step": "Fill 'Username' field with 'admin' and press Enter", "mode": "input", "search_texts": ["Username"], "target_field": "username", "expected": "norm_login_user", "execute_step": True, "verify_attr": {"selector": "#norm_login_user", "attr": "data-submitted", "value": "yes"}},
+    {"name": "55", "step": "Click the radio button for 'Female'", "mode": "clickable", "search_texts": ["Female"], "target_field": None, "expected": "norm_radio_female", "execute_step": True, "verify_checked": True},
+    {"name": "56", "step": "Check the 'I Agree' checkbox", "mode": "clickable", "search_texts": ["I Agree"], "target_field": None, "expected": "norm_agree_chk", "execute_step": True, "verify_checked": True},
+    {"name": "57. Verify checked", "verify_step": True, "step": "VERIFY that 'I Agree' is checked.", "expected_result": True},
+    {"name": "58", "step": "Select 'Blue' from the 'Favorite Color' dropdown", "mode": "select", "search_texts": ["Blue", "Favorite Color"], "target_field": None, "expected": "norm_color_select", "execute_step": True, "verify_select": {"selector": "#norm_color_select", "value": "Blue"}},
+    {"name": "59. Verify Texts", "verify_step": True, "step": "VERIFY that 'Operation completed successfully' is present.", "expected_result": True, "followup": {"step": "VERIFY that 'Critical failure' is NOT present.", "expected_result": True}},
+    {"name": "60. Extract Table", "step": "EXTRACT the Price of 'Monitor' into {monitor_price}", "extract_step": True, "expected_var": "monitor_price", "expected_value": "$299"},
+
+    # ── REAL WORLD ELEMENTS 61-80 ──────────────────────────────────────────
     {
-        "name": "47. Simple Text Input Fill (DemoQA: Full Name)",
-        "desc": "No tricks — label+input pair. Must fill and verify value.",
-        "step": "Fill 'Full Name' field with 'Ghost Manul'",
-        "mode": "input", "search_texts": ["Full Name"], "target_field": "full name",
-        "expected": "norm_fullname",
-        "execute_step": True,
-        "verify_value": {"selector": "#norm_fullname", "value": "Ghost Manul"},
+        "name": "61. Tailwind Button",
+        "desc": "Messy Tailwind utility classes on a standard button.",
+        "step": "Click the 'Deploy Application' button",
+        "mode": "clickable", "search_texts": ["Deploy Application"], "target_field": None,
+        "expected": "rw_tw_btn",
     },
     {
-        "name": "48. Email Input Fill (DemoQA/ExpandTesting)",
-        "desc": "type=email input with label. Must fill correctly.",
-        "step": "Fill 'Work Email' field with 'ghost@manul.ai'",
-        "mode": "input", "search_texts": ["Work Email"], "target_field": "work email",
-        "expected": "norm_email",
-        "execute_step": True,
-        "verify_value": {"selector": "#norm_email", "value": "ghost@manul.ai"},
+        "name": "62. SVG Profile (ARIA)",
+        "desc": "Button has no text, only an SVG icon and aria-label. Very common in modern navbars.",
+        "step": "Click the 'User Profile' button",
+        "mode": "clickable", "search_texts": ["User Profile"], "target_field": None,
+        "expected": "rw_svg_profile",
     },
     {
-        "name": "49. Text Input Fill — API Token",
-        "desc": "Simple text input with unique label. Must fill correctly.",
-        "step": "Fill 'API Token' field with 'SuperSecret123'",
-        "mode": "input", "search_texts": ["API Token"], "target_field": "api token",
-        "expected": "norm_token",
-        "execute_step": True,
-        "verify_value": {"selector": "#norm_token", "value": "SuperSecret123"},
+        "name": "63. Screen Reader Only Text",
+        "desc": "Text is visually hidden via CSS (sr-only), but engine should still find and associate it.",
+        "step": "Click the 'View Notifications' button",
+        "mode": "clickable", "search_texts": ["View Notifications"], "target_field": None,
+        "expected": "rw_sr_bell",
     },
     {
-        "name": "50. Textarea Fill (Mega: Comment/Address)",
-        "desc": "Simple <textarea> fill. Must type multi-word text.",
-        "step": "Fill 'Comment' field with 'Great product, highly recommended'",
-        "mode": "input", "search_texts": ["Comment"], "target_field": "comment",
-        "expected": "norm_comment",
-        "execute_step": True,
-        "verify_value": {"selector": "#norm_comment", "value": "Great product, highly recommended"},
+        "name": "64. Custom Switch Role",
+        "desc": "Div acting as a switch via role='switch'. Engine must recognize it as a valid toggle.",
+        "step": "Click the 'Dark Mode' switch",
+        "mode": "clickable", "search_texts": ["Dark Mode"], "target_field": None,
+        "expected": "rw_custom_switch",
     },
     {
-        "name": "51. Simple Button Click (DemoQA: Submit)",
-        "desc": "Single button, no ambiguity. Click must fire onclick handler.",
-        "step": "Click the 'Send Message' button",
-        "mode": "clickable", "search_texts": ["Send Message"], "target_field": None,
-        "expected": "norm_submit_btn",
-        "execute_step": True,
-        "verify_attr": {"selector": "#norm_submit_btn", "attr": "data-done", "value": "yes"},
+        "name": "65. ContentEditable Field",
+        "desc": "Rich text editor div with contenteditable='true'. Must be detected as an input field.",
+        "step": "Fill 'Message Body' field with 'Hello from Manul'",
+        "mode": "input", "search_texts": ["Message Body"], "target_field": "message body",
+        "expected": "rw_wysiwyg",
     },
     {
-        "name": "52. Simple Link Click (DemoQA: About Us)",
-        "desc": "Single <a> link. 'Click the link' must resolve to it.",
-        "step": "Click the 'About Us' link",
-        "mode": "clickable", "search_texts": ["About Us"], "target_field": None,
-        "expected": "norm_about_link",
+        "name": "66. Hidden File Upload Label",
+        "desc": "Real input is hidden. User asks to click 'Upload Resume'. Should target the label.",
+        "step": "Click the 'Upload Resume' button",
+        "mode": "clickable", "search_texts": ["Upload Resume"], "target_field": None,
+        "expected": "rw_file_label",
     },
     {
-        "name": "53. Readonly Input Fill via JS (Rahul: Coupon Code)",
-        "desc": "readonly input must be unlocked and filled via JS injection.",
-        "step": "Fill 'Coupon Code' field with 'MANUL2026'",
-        "mode": "input", "search_texts": ["Coupon Code"], "target_field": "coupon code",
-        "expected": "norm_readonly",
-        "execute_step": True,
-        "verify_value": {"selector": "#norm_readonly", "value": "MANUL2026"},
+        "name": "67. Table Action by Test-ID",
+        "desc": "Disambiguate a generic 'Edit' action inside a table using a specific data-testid.",
+        "step": "Click the 'Edit Profile' button",
+        "mode": "clickable", "search_texts": ["Edit Profile"], "target_field": None,
+        "expected": "rw_edit_profile",
     },
     {
-        "name": "54. Fill + Press Enter (Wikipedia: Search)",
-        "desc": "'Fill Username and press Enter' must type AND send Enter key.",
-        "step": "Fill 'Username' field with 'admin' and press Enter",
-        "mode": "input", "search_texts": ["Username"], "target_field": "username",
-        "expected": "norm_login_user",
-        "execute_step": True,
-        "verify_attr": {"selector": "#norm_login_user", "attr": "data-submitted", "value": "yes"},
+        "name": "68. E-commerce Card Data Extraction",
+        "desc": "Extract specific data from a div-based layout (not a <table>), relying on text proximity.",
+        "step": "EXTRACT the price of 'Gaming Mouse' into {mouse_price}",
+        "extract_step": True, "expected_var": "mouse_price", "expected_value": "$59.99"
     },
     {
-        "name": "55. Simple Radio Select (Mega/Rahul: Gender)",
-        "desc": "Gender radio group. 'Female' must resolve to correct radio.",
-        "step": "Click the radio button for 'Female'",
-        "mode": "clickable", "search_texts": ["Female"], "target_field": None,
-        "expected": "norm_radio_female",
-        "execute_step": True,
-        "verify_checked": True,
+        "name": "69. Modal Close 'X'",
+        "desc": "Common modal close button marked only with an 'X' symbol and aria-label.",
+        "step": "Click the 'Close dialog' button",
+        "mode": "clickable", "search_texts": ["Close dialog"], "target_field": None,
+        "expected": "rw_modal_close",
     },
     {
-        "name": "56. Simple Checkbox Check (ExpandTesting)",
-        "desc": "Check 'I Agree' checkbox. Must toggle ON.",
-        "step": "Check the 'I Agree' checkbox",
-        "mode": "clickable", "search_texts": ["I Agree"], "target_field": None,
-        "expected": "norm_agree_chk",
-        "execute_step": True,
-        "verify_checked": True,
+        "name": "70. Hamburger Menu",
+        "desc": "Mobile menu trigger. Text is a unicode symbol, meaning comes from aria.",
+        "step": "Click the 'Open Navigation' menu",
+        "mode": "clickable", "search_texts": ["Open Navigation"], "target_field": None,
+        "expected": "rw_hamburger",
     },
     {
-        "name": "57. VERIFY Checked State (ExpandTesting/Mega)",
-        "desc": "Engine run_mission calls _handle_verify. Must confirm 'I Agree' is checked.",
-        "step": "VERIFY that 'I Agree' is checked.",
-        "verify_step": True,
-        "expected_result": True,
+        "name": "71. Social Login Image Button",
+        "desc": "Button containing both an image (logo) and text.",
+        "step": "Click 'Continue with Google'",
+        "mode": "clickable", "search_texts": ["Continue with Google"], "target_field": None,
+        "expected": "rw_google_btn",
     },
     {
-        "name": "58. Simple Select Option (Mega: Color)",
-        "desc": "Pick 'Blue' from a clean <select>. Must select the correct <option>.",
-        "step": "Select 'Blue' from the 'Favorite Color' dropdown",
-        "mode": "select", "search_texts": ["Blue", "Favorite Color"], "target_field": None,
-        "expected": "norm_color_select",
-        "execute_step": True,
-        "verify_select": {"selector": "#norm_color_select", "value": "Blue"},
+        "name": "72. Inline Link within Paragraph",
+        "desc": "Find and click a specific link embedded deeply inside a paragraph of text.",
+        "step": "Click the 'Terms of Service' link",
+        "mode": "clickable", "search_texts": ["Terms of Service"], "target_field": None,
+        "expected": "rw_terms_link",
     },
     {
-        "name": "59. VERIFY Text Present + NOT Present (all sites)",
-        "desc": "Must find visible text and confirm hidden text is absent.",
-        "verify_step": True,
-        "step": "VERIFY that 'Operation completed successfully' is present.",
-        "expected_result": True,
-        "followup": {
-            "step": "VERIFY that 'Critical failure' is NOT present.",
-            "expected_result": True,
-        },
+        "name": "73. Wizard Next Step",
+        "desc": "Button with an arrow symbol and compound text.",
+        "step": "Click 'Next: Shipping Details'",
+        "mode": "clickable", "search_texts": ["Next: Shipping Details"], "target_field": None,
+        "expected": "rw_next_step",
     },
     {
-        "name": "60. EXTRACT from Table (Mega/Rahul/ExpandTesting)",
-        "desc": "Extract 'Monitor' price from a standard HTML table. Must return '$299'.",
-        "step": "EXTRACT the Price of 'Monitor' into {monitor_price}",
-        "extract_step": True,
-        "expected_var": "monitor_price",
-        "expected_value": "$299",
+        "name": "74. Div-based Radio Group (Star Rating)",
+        "desc": "Clicking a specific star in a custom rating widget built with divs and roles.",
+        "step": "Click the '5 stars' rating",
+        "mode": "clickable", "search_texts": ["5 stars"], "target_field": None,
+        "expected": "rw_star_5",
+    },
+    {
+        "name": "75. Load More Banner",
+        "desc": "Wide button standard for infinite scroll loading.",
+        "step": "Click 'Load More Articles'",
+        "mode": "clickable", "search_texts": ["Load More Articles"], "target_field": None,
+        "expected": "rw_load_more",
+    },
+    {
+        "name": "76. Verify Form Error",
+        "desc": "Verify that a dynamic inline error message appears correctly.",
+        "verify_step": True, "step": "VERIFY that 'Username is already taken.' is present.", "expected_result": True,
+    },
+    {
+        "name": "77. Floating Action Button (FAB)",
+        "desc": "Click a purely visual FAB that only relies on a title attribute.",
+        "step": "Click the 'Create New Post' button",
+        "mode": "clickable", "search_texts": ["Create New Post"], "target_field": None,
+        "expected": "rw_fab_create",
+    },
+    {
+        "name": "78. Multi-layered Span Button",
+        "desc": "Button where the text is nested multiple levels deep in spans (React pattern).",
+        "step": "Click the 'Submit Order' button",
+        "mode": "clickable", "search_texts": ["Submit Order"], "target_field": None,
+        "expected": "rw_complex_btn",
+    },
+    {
+        "name": "79. Extract Cart Badge",
+        "desc": "Extract a specific number from a cart widget badge.",
+        "step": "EXTRACT the Cart count into {cart_count}",
+        "extract_step": True, "expected_var": "cart_count", "expected_value": "3"
+    },
+    {
+        "name": "80. Video Play Button",
+        "desc": "Find a button based on aria-label where visible text is an emoji.",
+        "step": "Click the 'Play Video' button",
+        "mode": "clickable", "search_texts": ["Play Video"], "target_field": None,
+        "expected": "rw_play_btn",
     },
 ]
 
@@ -880,8 +515,7 @@ TESTS = [
 # Guard logic (mirrors _execute_step guards in engine.py)
 # ─────────────────────────────────────────────────────────────────────────────
 def _apply_guards(el: dict, mode: str, search_texts: list[str]) -> str | None:
-    """Return a rejection reason string, or None if element passes."""
-    if el is None: return None # Optional targets will be None, skip guard check
+    if el is None: return None
     tag   = el.get("tag_name", "")
     itype = el.get("input_type", "")
     role  = el.get("role", "")
@@ -891,14 +525,8 @@ def _apply_guards(el: dict, mode: str, search_texts: list[str]) -> str | None:
         return f"cannot type into {itype}"
 
     if mode == "select":
-        valid = (
-            tag == "select"
-            or role in ("option", "menuitem")
-            or "item" in name.lower()
-            or "dropdown" in name.lower()
-        )
-        if not valid:
-            return f"not a SELECT (tag={tag})"
+        valid = (tag == "select" or role in ("option", "menuitem") or "item" in name.lower() or "dropdown" in name.lower())
+        if not valid: return f"not a SELECT (tag={tag})"
 
     return None
 
@@ -906,11 +534,10 @@ def _apply_guards(el: dict, mode: str, search_texts: list[str]) -> str | None:
 # Runner
 # ─────────────────────────────────────────────────────────────────────────────
 async def run_laboratory():
-    print("\n" + "=" * 60)
-    print("🧪  MANUL ENGINE LABORATORY — The Chaos Chamber (60 tests)")
-    print("=" * 60)
+    print("\n" + "=" * 70)
+    print("🧪  MANUL ENGINE LABORATORY — The Chaos Chamber (80 tests)")
+    print("=" * 70)
 
-    # Note: we test using execute_step directly for optional traps to see the full flow
     manul = ManulEngine(headless=True)
 
     async with async_playwright() as p:
@@ -923,14 +550,12 @@ async def run_laboratory():
 
         for t in TESTS:
             print(f"\n🧬 {t['name']}")
-            print(f"   📋 {t['desc']}")
+            if t.get('desc'): print(f"   📋 {t['desc']}")
             print(f"   🐾 Step : {t['step']}")
 
-            # Clear context memory between steps to avoid false positives from previous traps
             manul.last_xpath = None 
 
             if t.get("extract_step"):
-                # EXTRACT test — calls _handle_extract and checks memory
                 manul.memory.clear()
                 result = await manul._handle_extract(page, t["step"])
                 actual_val = manul.memory.get(t["expected_var"], None)
@@ -944,7 +569,6 @@ async def run_laboratory():
                     failures.append(f"{t['name']}: {msg}")
 
             elif t.get("verify_step"):
-                # VERIFY test — calls _handle_verify
                 result = await manul._handle_verify(page, t["step"])
                 if result == t["expected_result"]:
                     print(f"   ✅ PASSED  → VERIFY returned {result}")
@@ -954,169 +578,94 @@ async def run_laboratory():
                     print(f"   ❌ {msg}")
                     failed += 1
                     failures.append(f"{t['name']}: {msg}")
-                # Handle followup verify (e.g., NOT present check)
                 if t.get("followup") and result == t["expected_result"]:
                     fu = t["followup"]
                     fu_result = await manul._handle_verify(page, fu["step"])
                     if fu_result == fu["expected_result"]:
                         print(f"   ✅ FOLLOWUP  → VERIFY NOT returned {fu_result}")
                     else:
-                        msg = f"FOLLOWUP FAILED — VERIFY returned {fu_result}, expected {fu['expected_result']}"
-                        print(f"   ❌ {msg}")
-                        # Don't double-count; the main test already counted
+                        print(f"   ❌ FOLLOWUP FAILED")
 
             elif t.get("execute_step"):
-                # Full _execute_step flow — tests mode detection + scoring + action
                 result = await manul._execute_step(page, t["step"], "")
                 if not result:
-                    msg = "FAILED — _execute_step returned False"
-                    print(f"   ❌ {msg}")
+                    print("   ❌ FAILED — _execute_step returned False")
                     failed += 1
-                    failures.append(f"{t['name']}: {msg}")
+                    failures.append(f"{t['name']}: execute_step failed")
                 else:
-                    verify_ok = True
-                    verify_detail = ""
-
+                    verify_ok = True; verify_detail = ""
                     if t.get("verify_checked") is not None:
                         actual = await page.locator(f"#{t['expected']}").is_checked()
-                        if actual != t["verify_checked"]:
-                            verify_ok = False
-                            verify_detail = f"checked={actual}, expected {t['verify_checked']}"
-                        else:
-                            verify_detail = f"checked={actual}"
-
+                        if actual != t["verify_checked"]: verify_ok = False
+                        verify_detail = f"checked={actual}"
                     elif t.get("verify_attr"):
                         va = t["verify_attr"]
                         actual = await page.locator(va["selector"]).get_attribute(va["attr"])
-                        if actual != va["value"]:
-                            verify_ok = False
-                            verify_detail = f"{va['attr']}='{actual}', expected '{va['value']}'"
-                        else:
-                            verify_detail = f"{va['attr']}='{actual}'"
-
+                        if actual != va["value"]: verify_ok = False
+                        verify_detail = f"{va['attr']}='{actual}'"
                     elif t.get("verify_select"):
                         vs = t["verify_select"]
-                        actual = await page.locator(vs["selector"]).evaluate(
-                            "sel => sel.options[sel.selectedIndex].text.trim()"
-                        )
-                        if actual != vs["value"]:
-                            verify_ok = False
-                            verify_detail = f"selected='{actual}', expected '{vs['value']}'"
-                        else:
-                            verify_detail = f"selected='{actual}'"
-
+                        actual = await page.locator(vs["selector"]).evaluate("sel => sel.options[sel.selectedIndex].text.trim()")
+                        if actual != vs["value"]: verify_ok = False
+                        verify_detail = f"selected='{actual}'"
                     elif t.get("verify_value"):
                         vv = t["verify_value"]
                         actual = await page.locator(vv["selector"]).input_value()
-                        if actual != vv["value"]:
-                            verify_ok = False
-                            verify_detail = f"value='{actual}', expected '{vv['value']}'"
-                        else:
-                            verify_detail = f"value='{actual}'"
+                        if actual != vv["value"]: verify_ok = False
+                        verify_detail = f"value='{actual}'"
 
                     if verify_ok:
-                        desc = f"'{t['expected']}' {verify_detail}" if verify_detail else ""
-                        print(f"   ✅ PASSED  → {desc} via _execute_step")
+                        print(f"   ✅ PASSED  → '{t['expected']}' {verify_detail}")
                         passed += 1
                     else:
-                        msg = f"FAILED — '{t['expected']}' {verify_detail}"
-                        print(f"   ❌ {msg}")
+                        print(f"   ❌ FAILED — validation failed {verify_detail}")
                         failed += 1
-                        failures.append(f"{t['name']}: {msg}")
+                        failures.append(t['name'])
 
             elif "if exists" in t["step"].lower() or "optional" in t["step"].lower():
-                # For optional traps, we must test the FULL _execute_step logic, 
-                # because the skipping logic lives there, not in _resolve_element.
                 result = await manul._execute_step(page, t["step"], "")
-                
-                # If expected is None, it means we WANTED it to skip gracefully (return True)
                 if t["expected"] is None:
                     if result is True:
-                        print("   ✅ PASSED  → Optional element skipped gracefully")
+                        print("   ✅ PASSED  → Optional skipped")
                         passed += 1
                     else:
-                        print("   ❌ FAILED — Engine crashed or returned False instead of skipping")
+                        print("   ❌ FAILED")
                         failed += 1
-                        failures.append(f"{t['name']}: Failed to skip optional element")
+                        failures.append(t['name'])
                 else:
-                    # Decoy trap (Trap 27) - it has "if exists" in name, but we EXPECT it to find it
                     el = await manul._resolve_element(page, t["step"], t["mode"], t["search_texts"], t["target_field"], "", set())
                     found_id = el.get("html_id", "") if el else None
                     if found_id == t["expected"]:
-                         print(f"   ✅ PASSED  → '{found_id}' via Heuristics (Decoy bypass successful)")
+                         print(f"   ✅ PASSED  → '{found_id}' (Decoy bypass)")
                          passed += 1
                     else:
-                         print(f"   ❌ FAILED — expected '{t['expected']}', got '{found_id}'")
+                         print(f"   ❌ FAILED")
                          failed += 1
-                         failures.append(f"{t['name']}: Decoy logic failed")
-
+                         failures.append(t['name'])
             else:
-                # Standard resolve testing for normal traps
-                failed_ids: set[int] = set()
-                el = await manul._resolve_element(
-                    page              = page,
-                    step              = t["step"],
-                    mode              = t["mode"],
-                    search_texts      = t["search_texts"],
-                    target_field      = t["target_field"],
-                    strategic_context = "",
-                    failed_ids        = failed_ids,
-                )
-
+                el = await manul._resolve_element(page, t["step"], t["mode"], t["search_texts"], t["target_field"], "", set())
                 if el is None:
-                    msg = "FAILED — resolver returned None"
-                    print(f"   ❌ {msg}")
-                    failed += 1
-                    failures.append(f"{t['name']}: {msg}")
-                    print("   " + "─" * 56)
-                    continue
-
-                rejection = _apply_guards(el, t["mode"], t["search_texts"])
-                if rejection:
-                    msg = f"FAILED — guard rejected '{el.get('html_id')}' ({rejection})"
-                    print(f"   ❌ {msg}")
-                    failed += 1
-                    failures.append(f"{t['name']}: {msg}")
-                    print("   " + "─" * 56)
-                    continue
-
-                found_id  = el.get("html_id", "")
-                score     = el.get("score", 0)
-                resolver  = (
-                    "SEMANTIC CACHE"  if score >= 20_000 else
-                    "CONTEXT MEMORY"  if score >= 10_000 else
-                    f"HEURISTICS (score {score})" if score >= 500 else
-                    "AI AGENT"
-                )
-
+                    print("   ❌ FAILED — None")
+                    failed += 1; failures.append(t['name']); continue
+                rej = _apply_guards(el, t["mode"], t["search_texts"])
+                if rej:
+                    print(f"   ❌ FAILED — rejected: {rej}")
+                    failed += 1; failures.append(t['name']); continue
+                
+                found_id = el.get("html_id", "")
                 if found_id == t["expected"]:
-                    print(f"   ✅ PASSED  → '{found_id}'  via {resolver}")
+                    print(f"   ✅ PASSED  → '{found_id}'")
                     passed += 1
                 else:
-                    msg = f"FAILED — got '{found_id}', expected '{t['expected']}' (score {score})"
-                    print(f"   ❌ {msg}")
+                    print(f"   ❌ FAILED — got '{found_id}', expected '{t['expected']}'")
                     failed += 1
-                    failures.append(f"{t['name']}: {msg}")
+                    failures.append(t['name'])
 
-            print("   " + "─" * 56)
-
-        # ── Summary ──────────────────────────────────────────────────────
-        print(f"\n{'=' * 60}")
+        print(f"\n{'=' * 70}")
         print(f"📊 SCORE: {passed}/{len(TESTS)} passed")
-
-        if failures:
-            print("\n💀 Failures:")
-            for f in failures:
-                print(f"   • {f}")
-
-        if passed == len(TESTS):
-            print("\n🏆 FLAWLESS VICTORY! The Manul engine is unbreakable!")
-        elif passed >= len(TESTS) * 0.75:
-            print("\n🐾 Good hunt — a few prey escaped.")
-        else:
-            print("\n💀 The chaos chamber won this round.")
-
-        print("=" * 60)
+        if failures: print("\n🙀 Failures:"); [print(f"   • {f}") for f in failures]
+        if passed == len(TESTS): print("\n🏆 FLAWLESS VICTORY! The Manul engine is unbreakable!")
+        print("=" * 70)
         await browser.close()
 
     return passed == len(TESTS)

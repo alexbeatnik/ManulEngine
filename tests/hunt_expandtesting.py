@@ -52,7 +52,7 @@ async def main():
         print("\n🏆 EPIC FATALITY! Manul dominated ExpandTesting!")
         print(f"📊 Collected Data: {manul.memory}")
     else:
-        print("\n💀 Mission Failed. The prey escaped.")
+        print("\n🙀 Mission Failed. The prey escaped.")
     return success
 
 if __name__ == "__main__":
