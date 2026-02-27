@@ -35,12 +35,11 @@ engine/
     test_11_cyber.py        synthetic DOM scenario pack
     test_12_ai_modes.py     synthetic DOM unit: Always-AI/strict/rejection
 tests/
-  hunt_demoqa.py            integration: forms, checkboxes, radios, tables
-  hunt_expandtesting.py     integration: login, inputs, dynamic tables
-  hunt_mega.py              integration: all element types, drag-drop, shadow DOM, custom dropdowns
-  hunt_rahul.py             integration: radios, autocomplete, hover
-  hunt_wikipedia.py         integration: search, navigate, extract, verify, shadow-dom inputs
-  hunt_cyber.py             integration: 100-step devsecops and terminal simulation
+  hunt_demoqa.hunt          integration: forms, checkboxes, radios, tables
+  hunt_expandtesting.hunt   integration: login, inputs, dynamic tables
+  hunt_mega.hunt            integration: all element types, drag-drop, shadow DOM, custom dropdowns
+  hunt_rahul.hunt           integration: radios, autocomplete, hover
+  hunt_wikipedia.hunt       integration: search, navigate, extract, verify, shadow-dom inputs
 
 ```
 
@@ -95,30 +94,21 @@ Optional steps contain "if exists" / "optional" **outside** the quoted target (e
 
 ## Writing integration tests (hunt files)
 
-```python
-import asyncio
-from engine import ManulEngine
+```text
+@context: My example site
+@blueprint: smoke
 
-async def main(headless: bool = False) -> bool:
-    manul = ManulEngine(headless=headless)
-
-    mission = """
-        1. NAVIGATE to https://example.com
-        2. Click the 'Submit' button
-        3. VERIFY that 'Success' is present.
-        4. DONE.
-    """
-    
-    return await manul.run_mission(mission, strategic_context="My example site")
-
-if __name__ == "__main__":
-    asyncio.run(main())
-
+1. NAVIGATE to https://example.com
+2. Click the 'Submit' button
+3. VERIFY that 'Success' is present.
+4. DONE.
 ```
 
-* File must be named `tests/hunt_*.py` with an `async def main()` returning `bool`.
-* If `main()` accepts `headless` parameter, the CLI injects it automatically.
-* Otherwise, the CLI monkey-patches `ManulEngine` to honour the `--headless` flag.
+* File must be named `tests/*.hunt` (common convention: `hunt_*.hunt`).
+* Optional metadata headers:
+  * `@context:` strategic context passed into `run_mission()`.
+  * `@blueprint:` short blueprint tag, prepended to context by CLI.
+* Mission body is plain numbered steps parsed by `run_mission()`.
 
 ## Code patterns to follow
 
@@ -139,8 +129,9 @@ source env/bin/activate       # Linux/Mac
 python manul.py test
 
 # Integration tests (needs Playwright browsers; Ollama optional)
-python manul.py               # run all hunt_*.py scripts
-python manul.py hunt_demoqa.py # single hunt
+python manul.py                # run all tests/*.hunt scripts
+python manul.py hunt_demoqa.hunt # single hunt
+python manul.py some_folder/   # all *.hunt in folder
 python manul.py --headless     # headless mode
 
 

@@ -37,13 +37,12 @@ browser-manul/
 │       ├── ...                  More packs (see engine/test/)
 │       ├── test_10_mess.py      Scenario pack: misc edge-cases (synthetic DOM)
 │       └── test_11_cyber.py     Scenario pack: cyber/terminal (synthetic DOM)
-└── tests/                Integration hunt tests (real websites)
-    ├── hunt_demoqa.py
-    ├── hunt_expandtesting.py
-    ├── hunt_mega.py
-    ├── hunt_rahul.py
-    ├── hunt_wikipedia.py
-    └── hunt_cyber.py            100-step DevSecOps & Terminal simulation
+└── tests/                Integration hunt tests (real websites, .hunt format)
+    ├── hunt_demoqa.hunt
+    ├── hunt_expandtesting.hunt
+    ├── hunt_mega.hunt
+    ├── hunt_rahul.hunt
+    └── hunt_wikipedia.hunt
 ```
 
 ---
@@ -186,11 +185,14 @@ MANUL_NAV_TIMEOUT=30000
 ## 🖥️ CLI Usage
 
 ```bash
-# Run all integration tests (tests/hunt_*.py)
+# Run all integration tests (tests/*.hunt)
 python manul.py
 
 # Run a specific hunt
-python manul.py hunt_demoqa.py
+python manul.py hunt_demoqa.hunt
+
+# Run all hunts from a custom folder
+python manul.py custom_folder/
 
 # Run in headless mode
 python manul.py --headless
@@ -206,27 +208,23 @@ python manul.py test
 
 ## 🚀 Quick Start
 
-Create a test file: `tests/hunt_mission.py`
+Create a hunt file: `tests/hunt_mission.hunt`
 
-```python
-import asyncio
-from engine import ManulEngine
+```text
+@context: Demo flow
+@blueprint: smoke
 
-async def main(headless: bool = False) -> bool:
-    manul = ManulEngine(headless=headless)
+1. NAVIGATE to https://demoqa.com/text-box
+2. Fill 'Full Name' field with 'Ghost Manul'
+3. Click the 'Submit' button
+4. VERIFY that 'Ghost Manul' is present.
+5. DONE.
+```
 
-    mission = (
-        "1. NAVIGATE to https://demoqa.com/text-box\n"
-        "2. Fill 'Full Name' field with 'Ghost Manul'\n"
-        "3. Click the 'Submit' button\n"
-        "4. VERIFY that 'Ghost Manul' is present.\n"
-        "5. DONE."
-    )
+Run it:
 
-    return await manul.run_mission(mission)
-
-if __name__ == "__main__":
-    asyncio.run(main())
+```bash
+python manul.py tests/hunt_mission.hunt
 ```
 
 ---
@@ -255,7 +253,7 @@ The engine is battle-tested with **1177+** synthetic DOM/unit tests covering the
 
 * **Synthetic DOM packs:** 11 scenario suites under `engine/test/`.
 * **AI modes regression suite:** `engine/test/test_12_ai_modes.py` (Always-AI, strict override, AI rejection).
-* **Integration hunts:** Real-site E2E flows under `tests/hunt_*.py` (requires Playwright). Includes `hunt_cyber.py` — a 100-step terminal and dashboard simulation.
+* **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
 Run the synthetic suite:
 
