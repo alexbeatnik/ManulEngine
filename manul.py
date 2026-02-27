@@ -123,9 +123,18 @@ def _collect(target: str | None) -> list[str]:
     print(f"❌ File not found: {target}")
     sys.exit(1)
 
-
 # ── Entry point ───────────────────────────────────────────────────────────────
 async def main() -> None:
+    # Ensure UTF-8 output for emoji-heavy logs on Windows.
+    # This avoids UnicodeEncodeError under legacy codepages.
+    try:
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+        if hasattr(sys.stderr, "reconfigure"):
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
     args     = sys.argv[1:]
     headless = "--headless" in args
     args     = [a for a in args if a != "--headless"]

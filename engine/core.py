@@ -15,8 +15,10 @@ drag-and-drop, click/type/select/hover via _execute_step).
 """
 
 import asyncio
+import datetime
 import json
 import re
+import time
 from playwright.async_api import async_playwright
 
 try:
@@ -25,7 +27,7 @@ except Exception:  # pragma: no cover
     ollama = None
 
 from . import prompts
-from .helpers import substitute_memory
+from .helpers import substitute_memory, compact_log_field
 from .js_scripts import SNAPSHOT_JS
 from .scoring import score_elements
 from .actions import _ActionsMixin
@@ -49,6 +51,43 @@ class ManulEngine(_ActionsMixin):
         self._executor_prompt = prompts.get_executor_prompt(self.model)
 
     # ── LLM helpers ───────────────────────────
+
+    def _passes_anti_phantom_guard(
+        self,
+        *,
+        mode: str,
+        is_blind: bool,
+        search_texts: list[str],
+        target_field: str | None,
+        ai_choice: dict,
+    ) -> bool:
+        if mode not in ("input", "select") or is_blind:
+            return True
+
+        search_terms = [t.lower() for t in search_texts]
+        if target_field:
+            search_terms.append(target_field.lower())
+
+        guard_words = set(re.findall(r"\b[a-z0-9]{2,}\b", " ".join(search_terms)))
+        element_text = (
+            f"{ai_choice.get('name', '')} "
+            f"{ai_choice.get('html_id', '')} "
+            f"{ai_choice.get('data_qa', '')} "
+            f"{ai_choice.get('aria_label', '')} "
+            f"{ai_choice.get('placeholder', '')}"
+        ).lower()
+
+        if not guard_words or any(w in element_text for w in guard_words):
+            return True
+
+        missing = search_texts[0] if search_texts else target_field
+        compact_name = compact_log_field(ai_choice.get("name", ""), "MANUL_LOG_NAME_MAXLEN")
+
+        print(
+            f"    👻 ANTI-PHANTOM GUARD: AI chose '{compact_name}', "
+            f"but target '{missing}' is missing. Rejecting."
+        )
+        return False
 
     async def _llm_json(self, system: str, user: str) -> dict | None:
         """Send a system+user prompt to the local LLM and parse JSON response."""
@@ -85,13 +124,22 @@ class ManulEngine(_ActionsMixin):
         payload = [
             {
                 "id":           el["id"],
+                "score":        int(el.get("score", 0)),
                 "name":         el["name"],
                 "tag":          el.get("tag_name", ""),
+                "input_type":   el.get("input_type", ""),
                 "role":         el.get("role", ""),
                 "data_qa":      el.get("data_qa", ""),
                 "html_id":      el.get("html_id", ""),
                 "class_name":   el.get("class_name", ""),
                 "icon_classes": el.get("icon_classes", ""),
+                "aria_label":   el.get("aria_label", ""),
+                "placeholder":  el.get("placeholder", ""),
+                "disabled":     el.get("disabled", False),
+                "aria_disabled": el.get("aria_disabled", ""),
+                "is_select":    el.get("is_select", False),
+                "is_shadow":    el.get("is_shadow", False),
+                "contenteditable": el.get("is_contenteditable", False),
             }
             for el in candidates
         ]
@@ -103,7 +151,8 @@ class ManulEngine(_ActionsMixin):
         system = self._executor_prompt.replace("{strategic_context}", strategic_context)
         obj = await self._llm_json(system, prompt)
         if not obj or not isinstance(obj, dict):
-            return 0
+            # In pure-AI mode we must not silently fall back to heuristics.
+            return None if getattr(prompts, "AI_ALWAYS", False) else 0
 
         raw_id = obj.get("id", None)
         if raw_id is None: # fallback for generic keys
@@ -128,7 +177,21 @@ class ManulEngine(_ActionsMixin):
             idx = next((i for i, el in enumerate(candidates) if el["id"] == chosen_id), 0)
         else:
             idx = 0
-        print(f"    🎯 AI DECISION: '{candidates[idx]['name'][:40]}' — {thought}")
+
+        # Optional deterministic guard for id-strict synthetic tests.
+        # When MANUL_AI_POLICY=strict, enforce best score even if the LLM picked a neighbor.
+        if getattr(prompts, "AI_ALWAYS", False) and getattr(prompts, "AI_POLICY", "prior") == "strict" and candidates:
+            best_idx = max(range(len(candidates)), key=lambda i: int(candidates[i].get("score", 0)))
+            if int(candidates[idx].get("score", 0)) < int(candidates[best_idx].get("score", 0)):
+                print(
+                    f"    🧷 AI OVERRIDE (strict): enforcing best score (ai={candidates[idx].get('score', 0)} "
+                    f"< best={candidates[best_idx].get('score', 0)})"
+                )
+                idx = best_idx
+        compact_name = compact_log_field(candidates[idx].get("name", ""), "MANUL_LOG_NAME_MAXLEN")
+        compact_thought = compact_log_field(thought, "MANUL_LOG_THOUGHT_MAXLEN")
+
+        print(f"    🎯 AI DECISION: '{compact_name}' — {compact_thought}")
         return idx
 
     # ── Visual feedback ───────────────────────
@@ -247,6 +310,31 @@ class ManulEngine(_ActionsMixin):
         top        = scored[:8]
         best_score = top[0].get("score", 0)
 
+        # Pure-AI mode: always ask the LLM element picker, regardless of heuristic confidence.
+        if getattr(prompts, "AI_ALWAYS", False):
+            if self._threshold <= 0:
+                print(f"    ⚙️  DOM HEURISTICS: AI disabled (threshold {self._threshold}); using best candidate (score {best_score})")
+                return top[0]
+            print(f"    🧠 AI AGENT: Always-AI enabled, analysing {len(top)} candidates…")
+            idx = await self._llm_select_element(step, mode, top, strategic_context)
+            if idx is None:
+                if failed_ids is not None:
+                    for c in top:
+                        failed_ids.add(c["id"])
+                return None
+            ai_choice = top[idx]
+
+            if not self._passes_anti_phantom_guard(
+                mode=mode,
+                is_blind=is_blind,
+                search_texts=search_texts,
+                target_field=target_field,
+                ai_choice=ai_choice,
+            ):
+                return None
+
+            return ai_choice
+
         if best_score >= 20_000:
             print(f"    🧠 SEMANTIC CACHE: Reusing learned element (score {best_score})")
             return top[0]
@@ -281,24 +369,14 @@ class ManulEngine(_ActionsMixin):
 
         ai_choice = top[idx]
 
-        # Anti-phantom guard — only for input/select modes
-        if mode in ("input", "select") and not is_blind:
-            search_terms = [t.lower() for t in search_texts]
-            if target_field:
-                search_terms.append(target_field.lower())
-            guard_words  = set(re.findall(r'\b[a-z0-9]{2,}\b', " ".join(search_terms)))
-            element_text = (
-                f"{ai_choice['name']} "
-                f"{ai_choice.get('html_id', '')} "
-                f"{ai_choice.get('data_qa', '')} "
-                f"{ai_choice.get('aria_label', '')} "
-                f"{ai_choice.get('placeholder', '')}"
-            ).lower()
-            if guard_words and not any(w in element_text for w in guard_words):
-                missing = search_texts[0] if search_texts else target_field
-                print(f"    👻 ANTI-PHANTOM GUARD: AI chose '{ai_choice['name']}', "
-                      f"but target '{missing}' is missing. Rejecting.")
-                return None
+        if not self._passes_anti_phantom_guard(
+            mode=mode,
+            is_blind=is_blind,
+            search_texts=search_texts,
+            target_field=target_field,
+            ai_choice=ai_choice,
+        ):
+            return None
 
         return ai_choice
 
@@ -334,41 +412,52 @@ class ManulEngine(_ActionsMixin):
                 return False
 
             ok = True
+            done = False
             try:
                 for i, raw_step in enumerate(plan, 1):
                     step = substitute_memory(raw_step, self.memory)
-                    print(f"\n[🐾 STEP {i}] {step}")
+                    started_at = datetime.datetime.now()
+                    started_perf = time.perf_counter()
+                    print(f"\n[🐾 STEP {i} @ {started_at.strftime('%H:%M:%S')}] {step}")
                     s_up = step.upper()
 
-                    if re.search(r'\bNAVIGATE\b', s_up):
-                        if not await self._handle_navigate(page, step):
-                            ok = False; break
+                    try:
+                        if re.search(r'\bNAVIGATE\b', s_up):
+                            if not await self._handle_navigate(page, step):
+                                ok = False; break
 
-                    elif re.search(r'\bWAIT\b', s_up):
-                        n = re.search(r'(\d+)', step)
-                        await asyncio.sleep(int(n.group(1)) if n else 2)
+                        elif re.search(r'\bWAIT\b', s_up):
+                            n = re.search(r'(\d+)', step)
+                            await asyncio.sleep(int(n.group(1)) if n else 2)
 
-                    elif re.search(r'\bSCROLL\b', s_up):
-                        await self._handle_scroll(page, step)
+                        elif re.search(r'\bSCROLL\b', s_up):
+                            await self._handle_scroll(page, step)
 
-                    elif re.search(r'\bEXTRACT\b', s_up):
-                        if not await self._handle_extract(page, step):
-                            ok = False; break
+                        elif re.search(r'\bEXTRACT\b', s_up):
+                            if not await self._handle_extract(page, step):
+                                ok = False; break
 
-                    elif re.search(r'\bVERIFY\b', s_up):
-                        if not await self._handle_verify(page, step):
-                            ok = False; break
+                        elif re.search(r'\bVERIFY\b', s_up):
+                            if not await self._handle_verify(page, step):
+                                ok = False; break
 
-                    elif re.search(r'\bDONE\b', s_up):
-                        print("    🏁 MISSION ACCOMPLISHED")
-                        return True
+                        elif re.search(r'\bDONE\b', s_up):
+                            print("    🏁 MISSION ACCOMPLISHED")
+                            done = True
+                            break
 
-                    else:
-                        if not await self._execute_step(page, step, strategic_context):
-                            print("    ❌ ACTION FAILED")
-                            ok = False; break
+                        else:
+                            if not await self._execute_step(page, step, strategic_context):
+                                print("    ❌ ACTION FAILED")
+                                ok = False; break
+                    finally:
+                        ended_at = datetime.datetime.now()
+                        duration_s = time.perf_counter() - started_perf
+                        print(
+                            f"    ⏱️  STEP END @ {ended_at.strftime('%H:%M:%S')} — duration {duration_s:.2f}s"
+                        )
 
             finally:
                 await browser.close()
 
-        return ok
+        return True if done else ok

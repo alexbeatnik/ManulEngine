@@ -3,6 +3,7 @@
 Shared helper functions and timing constants used across the engine.
 """
 
+import os
 import re
 
 # ── Timing constants ──────────────────────────────────────────────────────────
@@ -27,3 +28,19 @@ def extract_quoted(step: str, preserve_case: bool = False) -> list[str]:
     matches = re.findall(r'"([^"]*)"|\'([^\']*)\'', step)
     found = [m[0] if m[0] else m[1] for m in matches]
     return [x if preserve_case else x.lower() for x in found if x]
+
+
+def compact_log_field(raw_value: object, env_var: str, default_max_len: int = 0) -> str:
+    """Collapse whitespace and optionally truncate using an env var max length.
+
+    If env var is missing or invalid, default_max_len is used.
+    If max_len <= 0, truncation is disabled.
+    """
+    value = re.sub(r"\s+", " ", str(raw_value or "")).strip()
+    try:
+        max_len = int(os.getenv(env_var, str(default_max_len)))
+    except ValueError:
+        max_len = default_max_len
+    if max_len and len(value) > max_len:
+        value = value[: max(0, max_len - 1)] + "…"
+    return value
