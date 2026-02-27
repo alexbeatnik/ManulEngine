@@ -17,6 +17,7 @@ drag-and-drop, click/type/select/hover via _execute_step).
 import asyncio
 import datetime
 import json
+import os
 import re
 import time
 from playwright.async_api import async_playwright
@@ -151,7 +152,26 @@ class ManulEngine(_ActionsMixin):
                     f"< best={candidates[best_idx].get('score', 0)})"
                 )
                 idx = best_idx
-        print(f"    🎯 AI DECISION: '{candidates[idx]['name']}' — {thought}")
+        raw_name = str(candidates[idx].get("name", ""))
+        compact_name = re.sub(r"\s+", " ", raw_name).strip()
+        raw_thought = str(thought)
+        compact_thought = re.sub(r"\s+", " ", raw_thought).strip()
+
+        try:
+            name_max_len = int(os.getenv("MANUL_LOG_NAME_MAXLEN", "0"))
+        except ValueError:
+            name_max_len = 0
+        if name_max_len and len(compact_name) > name_max_len:
+            compact_name = compact_name[: max(0, name_max_len - 1)] + "…"
+
+        try:
+            thought_max_len = int(os.getenv("MANUL_LOG_THOUGHT_MAXLEN", "0"))
+        except ValueError:
+            thought_max_len = 0
+        if thought_max_len and len(compact_thought) > thought_max_len:
+            compact_thought = compact_thought[: max(0, thought_max_len - 1)] + "…"
+
+        print(f"    🎯 AI DECISION: '{compact_name}' — {compact_thought}")
         return idx
 
     # ── Visual feedback ───────────────────────

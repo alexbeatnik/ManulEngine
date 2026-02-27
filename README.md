@@ -126,6 +126,12 @@ ollama serve
 
 `.env` is optional. If it doesn't exist, ManulEngine uses built-in defaults.
 
+By default, **process environment variables win** over `.env` (safer for CI/prod). If you want the repo `.env` to override already-set environment variables (useful for local prompt tuning), set:
+
+```env
+MANUL_DOTENV_OVERRIDE=True
+```
+
 Typical **mixed mode** setup (heuristics-first + AI fallback) looks like this:
 
 ```env

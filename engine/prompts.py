@@ -18,13 +18,17 @@ import re as _re
 
 try:
     from dotenv import load_dotenv
-    # For local runs, prefer values from the repo's .env to avoid surprises from
-    # stale shell env vars (especially during prompt tuning).
     # Load from a stable path (repo root) so this works even if CWD differs.
+    #
+    # Precedence:
+    # - By default, process environment variables win (override=False).
+    # - For local prompt tuning you may prefer the repo's .env to override the
+    #   shell environment; set MANUL_DOTENV_OVERRIDE=true to enable that.
     _repo_root = Path(__file__).resolve().parents[1]
     _dotenv_path = _repo_root / ".env"
     if _dotenv_path.exists():
-        load_dotenv(dotenv_path=_dotenv_path, override=True)
+        _override = os.getenv("MANUL_DOTENV_OVERRIDE", "False").lower() in ("true", "1", "yes", "t")
+        load_dotenv(dotenv_path=_dotenv_path, override=_override)
 except ImportError:
     pass  # dotenv optional — fall back to os.environ
 
