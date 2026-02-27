@@ -523,9 +523,6 @@ class ManulEngine(_ActionsMixin):
 
         # Pure-AI mode: always ask the LLM element picker, regardless of heuristic confidence.
         if getattr(prompts, "AI_ALWAYS", False):
-            if self._threshold <= 0:
-                print(f"    ⚙️  DOM HEURISTICS: AI disabled (threshold {self._threshold}); using best candidate (score {best_score})")
-                return top[0]
             print(f"    🧠 AI AGENT: Always-AI enabled, analysing {len(top)} candidates…")
             idx = await self._llm_select_element(step, mode, top, strategic_context)
             if idx is None:
