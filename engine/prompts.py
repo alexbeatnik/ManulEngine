@@ -41,13 +41,19 @@ NAV_TIMEOUT   = int(os.getenv("MANUL_NAV_TIMEOUT", "30000"))
 
 # ── Persistent controls cache ────────────────────────────────────────────────
 CONTROLS_CACHE_ENABLED = os.getenv("MANUL_CONTROLS_CACHE_ENABLED", "True").lower() in ("true", "1", "yes", "t")
+_default_cache_dir = _REPO_ROOT / "cache"
 _cache_dir_raw = os.getenv(
     "MANUL_CONTROLS_CACHE_DIR",
-    str(_REPO_ROOT / "cache")
+    str(_default_cache_dir)
 )
 _cache_dir_path = Path(_cache_dir_raw)
 if not _cache_dir_path.is_absolute():
-    _cache_dir_path = _REPO_ROOT / _cache_dir_path
+    _resolved_cache_dir = (_REPO_ROOT / _cache_dir_path).resolve()
+    try:
+        _inside_repo = _resolved_cache_dir.is_relative_to(_REPO_ROOT)
+    except AttributeError:
+        _inside_repo = (_resolved_cache_dir == _REPO_ROOT) or (_REPO_ROOT in _resolved_cache_dir.parents)
+    _cache_dir_path = _resolved_cache_dir if _inside_repo else _default_cache_dir
 CONTROLS_CACHE_DIR = str(_cache_dir_path)
 
 # ── AI control switches ──────────────────────────────────────────────────────
