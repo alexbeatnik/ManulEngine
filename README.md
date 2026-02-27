@@ -54,6 +54,8 @@ browser-manul/
 
 95% of the heavy lifting (element finding, assertions, DOM parsing) is handled by ultra-fast JavaScript and Python heuristics. The AI steps in only when genuine ambiguity arises.
 
+When the LLM picker is used, Manul passes the heuristic `score` as a **prior** (hint) by default (`MANUL_AI_POLICY=prior`) — the model can override the ranking only with a clear, disqualifying reason.
+
 ### 🛡️ Unbreakable JS Fallbacks
 
 Modern websites love to hide elements behind invisible overlays, custom dropdowns, and zero-pixel traps. Manul primarily uses Playwright interactions with `force=True` plus retries/self-healing; for Shadow DOM elements it falls back to direct JS helpers (`window.manulClick`, `window.manulType`) to keep execution moving.
@@ -73,6 +75,18 @@ Control how quickly Manul falls back to the local LLM via `.env`:
 * **Low (200–500):** Blazing speed. Manul trusts heuristics.
 * **Default (auto):** Derived from model size (e.g., `qwen2.5:0.5b` uses 500).
 * **High (2,000+):** More AI involvement on ambiguous steps.
+
+If `MANUL_AI_THRESHOLD` is **not set** (missing or commented out in `.env`), Manul auto-calculates it from the model size:
+
+| Model size | Auto threshold |
+| --- | --- |
+| `< 1b` | `500` |
+| `1b – 4b` | `750` |
+| `5b – 9b` | `1000` |
+| `10b – 19b` | `1500` |
+| `20b+` | `2000` |
+
+You can always override this by explicitly setting `MANUL_AI_THRESHOLD` in `.env`.
 
 ### 📴 Offline / Heuristics-Only Mode
 
@@ -111,6 +125,14 @@ ollama serve
 ### 3️⃣ Configuration (.env)
 
 `.env` is optional. If it doesn't exist, ManulEngine uses built-in defaults.
+
+Typical **mixed mode** setup (heuristics-first + AI fallback) looks like this:
+
+```env
+MANUL_AI_THRESHOLD=500
+MANUL_AI_ALWAYS=False
+MANUL_AI_POLICY=prior
+```
 
 Create `.env` by copying the template:
 
