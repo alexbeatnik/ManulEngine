@@ -105,8 +105,6 @@ async def run_suite() -> bool:
 
             manul = ManulEngine(headless=True)
             
-            prompts.AI_ALWAYS = True 
-
             for t in TESTS:
                 print(f"\n🐾 Step {t['n']}: {t['step']}")
                 
