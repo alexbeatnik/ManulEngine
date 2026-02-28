@@ -137,9 +137,9 @@ class _ActionsMixin:
                 disabled_result = await page.evaluate(STATE_CHECK_JS, [search_text, state_check])
                 
                 if disabled_result is not None:
-                    if disabled_result: 
-                        print(f"    {'✅' if disabled_result else '❌'} Element {state_check}={disabled_result}")
-                        return disabled_result
+                    icon = '✅' if disabled_result else '❌'
+                    print(f"    {icon} Element {state_check}={disabled_result}")
+                    return disabled_result
                 if retry < 14:
                     await asyncio.sleep(1)
                     continue
@@ -339,7 +339,14 @@ class _ActionsMixin:
                                     await opt_loc.click(timeout=3000)
                                 except Exception: pass
                                 
-                    self.learned_elements[cache_key] = {"name": name, "tag": tag}
+                    self._remember_resolved_control(
+                        page=page,
+                        cache_key=cache_key,
+                        mode=mode,
+                        search_texts=search_texts,
+                        target_field=target_field,
+                        element=el,
+                    )
                     await asyncio.sleep(ACTION_WAIT)
                     return True
 

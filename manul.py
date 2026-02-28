@@ -137,7 +137,18 @@ def _collect(target: str | None) -> list[str]:
         elif os.path.isdir(os.path.join(TEST_DIR, target)):
             target_dir = os.path.join(TEST_DIR, target)
         else:
-            return [] # It's not a valid file or dir, probably an inline prompt
+            # Not a valid .hunt file or directory.  Distinguish between a
+            # likely filename/path and a free-form inline mission prompt.
+            looks_like_path = (
+                os.path.sep in target
+                or target.endswith(".hunt")
+                or os.path.exists(target)
+                or os.path.exists(os.path.join(TEST_DIR, target))
+            )
+            if looks_like_path:
+                print(f"\u274c Target is not a valid .hunt file or directory: {target}")
+                sys.exit(1)
+            return []  # Not a valid file/dir, probably an inline prompt
 
     if not os.path.isdir(target_dir):
         print(f"❌ Directory not found: {target_dir}")
@@ -171,6 +182,16 @@ async def main() -> None:
         import importlib
         import io
         import re as _re
+
+        # Synthetic suites should be deterministic and side-effect free.
+        # Disable persistent controls cache for the whole synthetic test run.
+        os.environ["MANUL_DOTENV_OVERRIDE"] = "False"
+        os.environ["MANUL_CONTROLS_CACHE_ENABLED"] = "False"
+        try:
+            from engine import prompts as _prompts
+            _prompts.CONTROLS_CACHE_ENABLED = False
+        except Exception:
+            pass
 
         if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
             sys.stdout = io.TextIOWrapper(

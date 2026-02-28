@@ -268,7 +268,8 @@ def score_elements(
                     common_depth += 1
                 else:
                     break
-            score += (common_depth * 400)
+            capped_depth = min(common_depth, 5)
+            score += (capped_depth * 400)
 
         el["score"] = score
 

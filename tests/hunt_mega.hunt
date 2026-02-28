@@ -2,7 +2,7 @@
 @blueprint: complex_ui_full_inspection
 
 # 🐾 THE MEGA HUNT: Ultimate Automation Challenge
-# Перевірка всіх можливих типів елементів на одній сторінці.
+# Validation of all possible element types on a single page.
 
 1. NAVIGATE to https://testautomationpractice.blogspot.com/
 
