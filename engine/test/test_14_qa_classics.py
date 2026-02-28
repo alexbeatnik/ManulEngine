@@ -230,12 +230,10 @@ async def run_suite() -> bool:
 
     async with async_playwright() as p:
         browser = await p.chromium.launch()
-        # Автоматично закривати алерти, як це робить Playwright за замовчуванням
+        # Automatically close alerts, same behavior as Playwright's default
         ctx  = await browser.new_context()
         page = await ctx.new_page()
-        page.on("dialog", lambda dialog: asyncio.create_task(dialog.accept())) # Перехоплювач алертів!
-        
-        await page.set_content(CLASSICS_DOM)
+        page.on("dialog", lambda dialog: asyncio.create_task(dialog.accept())) # Alert dialog interceptor
 
         passed = 0
         failures: list[str] = []
