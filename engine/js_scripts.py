@@ -171,6 +171,12 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             const lbl = document.querySelector(`label[for="${el.id}"]`);
             if (lbl) return lbl.innerText.trim();
             
+            const fieldset = el.closest('fieldset');
+            if (fieldset) {
+                const leg = fieldset.querySelector('legend');
+                if (leg) return leg.innerText.trim();
+            }
+
             // NEW: Fallback for bad HTML where label is near input but without 'for' attr
             const wrapper = el.closest('.form-group, .row, div[class*="wrapper"]');
             if (wrapper) {
@@ -422,7 +428,23 @@ EXTRACT_DATA_JS = """(args) => {
 
             if (t) {
                 const rows = Array.from(document.querySelectorAll('tr, [role="row"]'));
-                const row = rows.find(r => r.innerText.toLowerCase().includes(t));
+                let row = rows.find(r => r.innerText.toLowerCase().includes(t));
+                if (!row) {
+                    const targetWords = t.split(/\\s+/).filter(w => w.length > 2);
+                    let maxMatches = 0;
+                    for (const r of rows) {
+                        const rText = r.innerText.toLowerCase();
+                        const matches = targetWords.filter(w => wordMatch(rText, w)).length;
+                        if (matches > maxMatches) {
+                            maxMatches = matches;
+                            row = r;
+                        } else if (matches === maxMatches && maxMatches > 0) {
+                            if (rText.length < row.innerText.length) {
+                                row = r;
+                            }
+                        }
+                    }
+                }
                 if (row) {
                     let cells = Array.from(row.querySelectorAll('td'));
                     if (cells.length === 0)
