@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.03 — The Mastermind
+# 😼 ManulEngine v0.04 — The Mastermind
 
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 
@@ -25,10 +25,11 @@ browser-manul/
 ├── engine/               Core automation engine package
 │   ├── __init__.py       Public API — exports ManulEngine
 │   ├── prompts.py        Configuration, thresholds, LLM prompts
-│   ├── helpers.py        Pure utility functions and timing constants
-│   ├── js_scripts.py     JavaScript injected into the browser (DOM snapshot, JS fallbacks, deep text)
+│   ├── helpers.py        Pure utility functions, env helpers, timing constants
+│   ├── js_scripts.py     All JavaScript injected into the browser (DOM snapshot, JS fallbacks, extraction, verification)
 │   ├── scoring.py        Heuristic element-scoring algorithm (20+ rules)
 │   ├── core.py           ManulEngine class (LLM, resolution, mission runner)
+│   ├── cache.py          Persistent per-site controls cache mixin (_ControlsCacheMixin)
 │   ├── actions.py        Action execution mixin (click, type, select, hover, drag)
 │   └── test/
 │       ├── test_engine.py       Engine micro-suite (synthetic DOM via local HTML; uses Playwright)
@@ -36,14 +37,15 @@ browser-manul/
 │       ├── test_02_social.py    Scenario pack: social (synthetic DOM)
 │       ├── ...                  More packs (see engine/test/)
 │       ├── test_10_mess.py      Scenario pack: misc edge-cases (synthetic DOM)
-│       └── test_11_cyber.py     Scenario pack: cyber/terminal (synthetic DOM)
-└── tests/                Integration hunt tests (real websites)
-    ├── hunt_demoqa.py
-    ├── hunt_expandtesting.py
-    ├── hunt_mega.py
-    ├── hunt_rahul.py
-    ├── hunt_wikipedia.py
-    └── hunt_cyber.py            100-step DevSecOps & Terminal simulation
+│       ├── test_11_cyber.py     Scenario pack: cyber/terminal (synthetic DOM)
+│       ├── test_12_ai_modes.py  Unit test: Always-AI/strict/rejection
+│       └── test_13_controls_cache.py Unit test: persistent controls cache
+└── tests/                Integration hunt tests (real websites, .hunt format)
+    ├── hunt_demoqa.hunt
+    ├── hunt_expandtesting.hunt
+    ├── hunt_mega.hunt
+    ├── hunt_rahul.hunt
+    └── hunt_wikipedia.hunt
 ```
 
 ---
@@ -215,7 +217,7 @@ MANUL_NAV_TIMEOUT=30000
 ## 🖥️ CLI Usage
 
 ```bash
-# Run all integration tests (tests/hunt_*.py)
+# Run all integration tests (tests/*.hunt)
 python manul.py
 
 # Run a specific hunt
@@ -235,27 +237,23 @@ python manul.py test
 
 ## 🚀 Quick Start
 
-Create a test file: `tests/hunt_mission.py`
+Create a hunt file: `tests/hunt_mission.hunt`
 
-```python
-import asyncio
-from engine import ManulEngine
+```text
+@context: Demo flow
+@blueprint: smoke
 
-async def main(headless: bool = False) -> bool:
-    manul = ManulEngine(headless=headless)
+1. NAVIGATE to https://demoqa.com/text-box
+2. Fill 'Full Name' field with 'Ghost Manul'
+3. Click the 'Submit' button
+4. VERIFY that 'Ghost Manul' is present.
+5. DONE.
+```
 
-    mission = (
-        "1. NAVIGATE to https://example.com\n"
-        "2. Fill 'Full Name' field with 'Ghost Manul'\n"
-        "3. Click the 'Submit' button\n"
-        "4. VERIFY that 'Ghost Manul' is present.\n"
-        "5. DONE."
-    )
+Run it:
 
-    return await manul.run_mission(mission)
-
-if __name__ == "__main__":
-    asyncio.run(main())
+```bash
+python manul.py tests/hunt_mission.hunt
 ```
 
 ---
@@ -278,16 +276,15 @@ if __name__ == "__main__":
 
 ---
 
-## 🐾 Chaos Chamber Verified (1100+ Tests)
+## 🐾 Chaos Chamber Verified (1185+ Tests)
 
-The engine is battle-tested with **1100+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
+The engine is battle-tested with **1185+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
 
 * **Synthetic DOM packs:** scenario suites under `engine/test/`.
+* **Controls cache regression suite:** `engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).
 * **AI modes regression suite:** `engine/test/test_12_ai_modes.py` (Always-AI, strict override, AI rejection).
 * **Controls cache regression suite:** `engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).
-* **Integration hunts:** Real-site E2E flows under `tests/hunt_*.py` (requires Playwright). Includes `hunt_cyber.py` — a 100-step terminal and dashboard simulation.
-
-Synthetic runner note: `python manul.py test` disables persistent controls cache by default to keep runs deterministic and side-effect free.
+* **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
 Run the synthetic suite:
 
@@ -300,7 +297,7 @@ $env:MANUL_AI_THRESHOLD=0; python manul.py test
 
 ---
 
-**Version:** 0.03
+**Version:** 0.04
 
 **Codename:** The Mastermind
 

@@ -3,17 +3,15 @@
 🐾 Manul CLI — Browser Automation Runner
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Usage:
-  python manul.py                             run all hunt_*.py in ./tests/
-  python manul.py hunt_login.py               run one test by filename
-  python manul.py tests/hunt_login.py         run one test by path
-  python manul.py --headless                  run all tests headless
-  python manul.py hunt_login.py --headless    run one test headless
+  python manul.py                             run all *.hunt scripts in ./tests/
+  python manul.py my_script.hunt              run a specific Manul script
+  python manul.py custom_folder/              run all *.hunt scripts in a folder
+  python manul.py --headless                  run scripts in headless mode
   python manul.py "1. Navigate to ..."        run an inline mission prompt
-  python manul.py test                        run engine unit tests (60 traps)
+  python manul.py test                        run synthetic engine unit tests
 """
 
 import asyncio
-import importlib.util
 import os
 import sys
 import time
@@ -39,48 +37,64 @@ class _Tee:
         self._term.flush()
         self._file.flush()
 
-    def isatty(self) -> bool:           # needed by some libraries
+    def isatty(self) -> bool:
         return False
 
     def close(self) -> None:
         self._file.close()
 
 
-# ── Execute a single hunt_*.py file ──────────────────────────────────────────
-async def _run_file(path: str, headless: bool) -> bool:
-    """Import a hunt_*.py module and call its main(), injecting headless if accepted."""
-    print(f"\n{'='*54}")
-    print(f"🐾 EXECUTING: {os.path.basename(path)}")
-    print(f"{'='*54}")
+# ── Parse and Execute .hunt Script ────────────────────────────────────────────
+def parse_hunt_file(filepath: str) -> tuple[str, str, str]:
+    """Parse .hunt file to extract @context, @blueprint, and the mission body."""
+    context = ""
+    blueprint = ""
+    mission_lines = []
 
+    with open(filepath, 'r', encoding='utf-8') as f:
+        for line in f:
+            stripped = line.strip()
+            # Parse meta tags
+            if stripped.startswith('@context:'):
+                context = stripped.split(':', 1)[1].strip()
+            elif stripped.startswith('@blueprint:'):
+                blueprint = stripped.split(':', 1)[1].strip()
+            # Ignore comments, but keep mission lines
+            elif not stripped.startswith('#') and stripped:
+                mission_lines.append(line)
+
+    mission = "".join(mission_lines).strip()
+    return mission, context, blueprint
+
+
+async def _run_hunt_script(path: str, headless: bool) -> bool:
+    """Execute a .hunt text file mission."""
+    filename = os.path.basename(path)
+    print(f"\n{'='*60}")
+    print(f"📜 EXECUTING MANUL HUNT: {filename}")
+    print(f"{'='*60}")
+
+    mission, context, blueprint = parse_hunt_file(path)
+
+    if not mission:
+        print(f"⚠️  Skipping {filename}: File is empty or only contains comments.")
+        return True
+
+    # Fallback context if not explicitly provided in the file
+    if not context:
+        context = filename.replace('.hunt', '').replace('_', ' ').title()
+
+    if blueprint:
+        print(f"🧩 Blueprint: {blueprint}")
+        # Optionally merge blueprint into strategic context for the LLM
+        context = f"[{blueprint}] {context}"
+
+    from engine import ManulEngine
+    manul = ManulEngine(headless=headless)
+    
     try:
-        spec   = importlib.util.spec_from_file_location("_hunt_module", path)
-        module = importlib.util.module_from_spec(spec)           # type: ignore[arg-type]
-        spec.loader.exec_module(module)                          # type: ignore[union-attr]
-
-        import inspect
-        sig = inspect.signature(module.main)
-        if "headless" in sig.parameters:
-            result = await module.main(headless=headless)
-        else:
-            # Monkey-patch ManulEngine to honour the CLI headless flag
-            import engine as _engine_pkg
-            from engine import core as _engine
-            _OrigEngine = _engine.ManulEngine
-            class _PatchedEngine(_OrigEngine):
-                def __init__(self, *a, **kw):
-                    kw.setdefault("headless", headless)
-                    super().__init__(*a, **kw)
-            _engine.ManulEngine = _PatchedEngine
-            _engine_pkg.ManulEngine = _PatchedEngine
-            try:
-                result = await module.main()
-            finally:
-                _engine.ManulEngine = _OrigEngine
-                _engine_pkg.ManulEngine = _OrigEngine
-
+        result = await manul.run_mission(mission, strategic_context=context)
         return bool(result)
-
     except Exception as exc:
         print(f"\n💥 CRASH: {exc}")
         import traceback
@@ -91,47 +105,69 @@ async def _run_file(path: str, headless: bool) -> bool:
 # ── Run inline mission prompt ─────────────────────────────────────────────────
 async def _run_prompt(prompt: str, headless: bool) -> None:
     from engine import ManulEngine
-    print(f"\n{'='*54}")
-    print("🐾 EXECUTING DIRECT HUNT")
-    print(f"{'='*54}")
+    print(f"\n{'='*60}")
+    print("🐾 EXECUTING DIRECT HUNT (INLINE)")
+    print(f"{'='*60}")
     print(f"📜 Mission: {prompt[:120]}{'…' if len(prompt) > 120 else ''}")
 
     manul  = ManulEngine(headless=headless)
-    result = await manul.run_mission(prompt)
+    result = await manul.run_mission(prompt, strategic_context="Inline CLI Mission")
     status = "✅ ACCOMPLISHED" if result else "🙀 FAILED"
     print(f"\n{status}")
 
 
 # ── Collect test files ────────────────────────────────────────────────────────
 def _collect(target: str | None) -> list[str]:
-    """Resolve target to a list of absolute file paths."""
+    """Resolve target to a list of absolute .hunt file paths."""
+    files = []
+    
+    # 1. Default to TEST_DIR if nothing is provided
     if target is None:
-        if not os.path.isdir(TEST_DIR):
-            print(f"❌ Tests directory not found: {TEST_DIR}")
-            sys.exit(1)
-        return sorted(
-            os.path.join(TEST_DIR, f)
-            for f in os.listdir(TEST_DIR)
-            if f.startswith("hunt_") and f.endswith(".py")
-        )
+        target_dir = TEST_DIR
+    else:
+        # 2. Check if target is a specific file
+        if os.path.isfile(target) and target.endswith(".hunt"):
+            return [os.path.abspath(target)]
+        if os.path.isfile(os.path.join(TEST_DIR, target)) and target.endswith(".hunt"):
+            return [os.path.abspath(os.path.join(TEST_DIR, target))]
+            
+        # 3. Check if target is a directory
+        if os.path.isdir(target):
+            target_dir = target
+        elif os.path.isdir(os.path.join(TEST_DIR, target)):
+            target_dir = os.path.join(TEST_DIR, target)
+        else:
+            # Not a valid .hunt file or directory.  Distinguish between a
+            # likely filename/path and a free-form inline mission prompt.
+            looks_like_path = (
+                os.path.sep in target
+                or target.endswith(".hunt")
+                or os.path.exists(target)
+                or os.path.exists(os.path.join(TEST_DIR, target))
+            )
+            if looks_like_path:
+                print(f"\u274c Target is not a valid .hunt file or directory: {target}")
+                sys.exit(1)
+            return []  # Not a valid file/dir, probably an inline prompt
 
-    # Try as-is, then inside TEST_DIR
-    for candidate in [target, os.path.join(TEST_DIR, target)]:
-        if os.path.isfile(candidate):
-            return [os.path.abspath(candidate)]
+    if not os.path.isdir(target_dir):
+        print(f"❌ Directory not found: {target_dir}")
+        sys.exit(1)
 
-    print(f"❌ File not found: {target}")
-    sys.exit(1)
+    for f in os.listdir(target_dir):
+        if f.endswith(".hunt"):
+            files.append(os.path.abspath(os.path.join(target_dir, f)))
+
+    return sorted(files)
+
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 async def main() -> None:
-    # Ensure UTF-8 output for emoji-heavy logs on Windows.
-    # This avoids UnicodeEncodeError under legacy codepages.
     try:
         if hasattr(sys.stdout, "reconfigure"):
-            sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         if hasattr(sys.stderr, "reconfigure"):
-            sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+            sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     except Exception:
         pass
 
@@ -139,33 +175,29 @@ async def main() -> None:
     headless = "--headless" in args
     args     = [a for a in args if a != "--headless"]
 
-    # Decide what to run
     target = args[0] if args else None
 
-    # ── Engine unit tests ─────────────────────────────────────────────────
+    # ── Engine unit tests (.py synthetic tests) ───────────────────────────
     if target == "test":
         import importlib
         import io
         import re as _re
 
-        # Synthetic suites should be deterministic and side-effect free by default.
-        # Disable persistent controls cache for the whole synthetic test run, and
-        # prevent .env override from re-enabling it.
+        # Synthetic suites should be deterministic and side-effect free.
+        # Disable persistent controls cache for the whole synthetic test run.
         os.environ["MANUL_DOTENV_OVERRIDE"] = "False"
         os.environ["MANUL_CONTROLS_CACHE_ENABLED"] = "False"
         try:
-            from engine import prompts as _prompts  # type: ignore[import]
-            _prompts.CONTROLS_CACHE_ENABLED = False  # type: ignore[attr-defined]
+            from engine import prompts as _prompts
+            _prompts.CONTROLS_CACHE_ENABLED = False
         except Exception:
             pass
 
-        # Ensure UTF-8 output for emoji-heavy test suites on Windows
         if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
             sys.stdout = io.TextIOWrapper(
                 sys.stdout.detach(), encoding="utf-8", errors="replace", line_buffering=True
             )
 
-        # Tee test output to last_test_run.log + capture SCORE lines
         log_path = os.path.join(ROOT, "last_test_run.log")
         _real_stdout = sys.stdout
         _log_file    = open(log_path, "w", encoding="utf-8")
@@ -175,7 +207,6 @@ async def main() -> None:
             def write(self, msg):
                 _real_stdout.write(msg)
                 _log_file.write(msg)
-                # Capture score lines for grand summary
                 for line in msg.splitlines():
                     if "SCORE:" in line:
                         _score_lines.append(line.strip())
@@ -193,7 +224,7 @@ async def main() -> None:
             if f.startswith("test_") and f.endswith(".py")
         )
         all_ok = True
-        suite_results: list[tuple[str, int, int]] = []   # (name, passed, total)
+        suite_results: list[tuple[str, int, int]] = []
 
         for mod_name in test_files:
             full = f"engine.test.{mod_name}"
@@ -205,18 +236,16 @@ async def main() -> None:
             ok = await runner()
             if not ok:
                 all_ok = False
-            # Extract score from captured lines
             for sl in _score_lines[before:]:
                 m = _re.search(r"(\d+)/(\d+)", sl)
                 if m:
                     suite_results.append((mod_name, int(m.group(1)), int(m.group(2))))
 
-        # ── Grand Summary ─────────────────────────────────────────────────
         total_passed = sum(p for _, p, _ in suite_results)
         total_tests  = sum(t for _, _, t in suite_results)
 
         print(f"\n\n{'=' * 70}")
-        print("🐾 GRAND SUMMARY")
+        print("🐾 SYNTHETIC DOM LABORATORY SUMMARY")
         print(f"{'=' * 70}")
         for name, p, t in suite_results:
             icon = "✅" if p == t else "❌"
@@ -225,7 +254,7 @@ async def main() -> None:
         print(f"{'─' * 70}")
         print(f"   {'TOTAL':<30} {total_passed:>4}/{total_tests}")
         if total_passed == total_tests:
-            print("\n🏆 ALL TESTS PASSED — THE MANUL IS UNBREAKABLE!")
+            print("\n🏆 ALL TESTS PASSED — THE ENGINE IS UNBREAKABLE!")
         print(f"{'=' * 70}")
 
         sys.stdout = _real_stdout
@@ -233,23 +262,22 @@ async def main() -> None:
         print(f"\n📄 Full test log saved to: {log_path}")
         sys.exit(0 if all_ok else 1)
 
-    is_prompt = (
-        target is not None
-        and not target.endswith(".py")
-        and not os.path.isfile(target)
-        and not os.path.isfile(os.path.join(TEST_DIR, target))
-    )
-
-    # Mirror output to log file
+    # ── .hunt Scripts or Inline Prompts ───────────────────────────────────────
     tee = _Tee(LOG_FILE)
     sys.stdout = tee
 
     try:
-        if is_prompt:
+        files = _collect(target)
+        
+        # If no files found and target doesn't look like a file/dir, treat as inline prompt
+        if not files and target and not target.endswith(".hunt") and not os.path.exists(target):
             await _run_prompt(target, headless)
             return
+            
+        if not files:
+            print(f"📭 No .hunt scripts found in target: {target or TEST_DIR}")
+            return
 
-        files = _collect(target)
         print(f"😼 Manul CLI: Found {len(files)} target(s) in hunting grounds.")
 
         results: list[tuple[str, str, float]] = []
@@ -257,28 +285,26 @@ async def main() -> None:
 
         for path in files:
             t0      = time.perf_counter()
-            success = await _run_file(path, headless)
+            success = await _run_hunt_script(path, headless)
             elapsed = time.perf_counter() - t0
             results.append((os.path.basename(path), "PASS" if success else "FAIL", elapsed))
 
         total = time.perf_counter() - total_start
         passed = sum(1 for _, s, _ in results if s == "PASS")
 
-        # ── Summary ───────────────────────────────────────────────────────
         print(f"\n\n{'='*20} HUNT SUMMARY {'='*20}")
         for name, status, secs in results:
             icon  = "✅" if status == "PASS" else "❌"
             timer = f"{secs:5.1f}s"
             print(f"{icon} {name.ljust(34)} {status}  {timer}")
-        print("="*54)
+        print("="*60)
         print(f"   {passed}/{len(results)} passed  •  total {total:.1f}s")
-        print("="*54)
+        print("="*60)
         print(f"\n📄 Full log saved to: {LOG_FILE}")
 
     finally:
         sys.stdout = tee._term
         tee.close()
-
 
 if __name__ == "__main__":
     try:

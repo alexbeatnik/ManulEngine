@@ -16,6 +16,8 @@ import os
 from pathlib import Path
 import re as _re
 
+from .helpers import env_bool
+
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
 try:
@@ -28,19 +30,19 @@ try:
     #   shell environment; set MANUL_DOTENV_OVERRIDE=true to enable that.
     _dotenv_path = _REPO_ROOT / ".env"
     if _dotenv_path.exists():
-        _override = os.getenv("MANUL_DOTENV_OVERRIDE", "False").lower() in ("true", "1", "yes", "t")
+        _override = env_bool("MANUL_DOTENV_OVERRIDE")
         load_dotenv(dotenv_path=_dotenv_path, override=_override)
 except ImportError:
     pass  # dotenv optional — fall back to os.environ
 
 # ── Core ──────────────────────────────────────────────────────────────────────
 DEFAULT_MODEL = os.getenv("MANUL_MODEL", "qwen2.5:0.5b")
-HEADLESS_MODE = os.getenv("MANUL_HEADLESS", "False").lower() in ("true", "1", "yes", "t")
+HEADLESS_MODE = env_bool("MANUL_HEADLESS")
 TIMEOUT       = int(os.getenv("MANUL_TIMEOUT",     "5000"))
 NAV_TIMEOUT   = int(os.getenv("MANUL_NAV_TIMEOUT", "30000"))
 
 # ── Persistent controls cache ────────────────────────────────────────────────
-CONTROLS_CACHE_ENABLED = os.getenv("MANUL_CONTROLS_CACHE_ENABLED", "True").lower() in ("true", "1", "yes", "t")
+CONTROLS_CACHE_ENABLED = env_bool("MANUL_CONTROLS_CACHE_ENABLED", "True")
 _default_cache_dir = _REPO_ROOT / "cache"
 _cache_dir_raw = os.getenv(
     "MANUL_CONTROLS_CACHE_DIR",
@@ -58,7 +60,7 @@ CONTROLS_CACHE_DIR = str(_cache_dir_path)
 
 # ── AI control switches ──────────────────────────────────────────────────────
 # When enabled, ALL element resolution decisions go through the LLM picker.
-AI_ALWAYS = os.getenv("MANUL_AI_ALWAYS", "False").lower() in ("true", "1", "yes", "t")
+AI_ALWAYS = env_bool("MANUL_AI_ALWAYS")
 
 # Policy for how the LLM should treat heuristic scores when selecting.
 # - prior  (default): score is a hint/prior; model may override with a clear reason.

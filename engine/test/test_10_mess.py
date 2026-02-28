@@ -19,7 +19,7 @@ MESS_DOM = """
     <button id="x1" style="font-size:24px; background:green; color:white;">ACCEPT ALL COOKIES</button>
     <button id="x2" class="dark-pattern-btn">Manage Preferences</button>
     <button id="x3" class="dark-pattern-btn">Reject All (Takes 5 minutes)</button>
-    <div id="pref_modal" style="display:none;">
+    <div id="pref_modal">
         <input type="checkbox" id="x4" checked disabled><label>Strictly Necessary</label>
         <input type="checkbox" id="x5"><label>Marketing Cookies</label>
         <input type="checkbox" id="x6"><label>Analytics Cookies</label>
@@ -174,8 +174,8 @@ TESTS = [
     # Cookies & Privacy
     {"n": "1", "step": "Click 'ACCEPT ALL COOKIES'", "m": "clickable", "st": ["ACCEPT ALL COOKIES"], "tf": None, "exp": "x1"},
     {"n": "2", "step": "Click 'Manage Preferences'", "m": "clickable", "st": ["Manage Preferences"], "tf": None, "exp": "x2"},
-    {"n": "3", "step": "Click 'Reject All'", "m": "clickable", "st": ["Reject All"], "tf": None, "exp": "x3"},
-    {"n": "4", "step": "VERIFY 'Strictly Necessary' is disabled", "ver": True, "step": "VERIFY that 'Strictly Necessary' is present", "res": True}, # It's an input, checking label presence
+    {"n": "3", "step": "VERIFY that 'Strictly Necessary' is present", "ver": True, "res": True}, # Move VERIFY *BEFORE* closing modal
+    {"n": "4", "step": "Click 'Reject All'", "m": "clickable", "st": ["Reject All"], "tf": None, "exp": "x3"}, # Click closes modal
     {"n": "5", "step": "Check 'Marketing Cookies'", "m": "clickable", "st": ["Marketing Cookies"], "tf": None, "exp": "x5"},
     {"n": "6", "step": "Check 'Analytics Cookies'", "m": "clickable", "st": ["Analytics Cookies"], "tf": None, "exp": "x6"},
     {"n": "7", "step": "Click 'Save Preferences'", "m": "clickable", "st": ["Save Preferences"], "tf": None, "exp": "x7"},
@@ -201,7 +201,7 @@ TESTS = [
     {"n": "23", "step": "Uncheck 'Subscribe to spam newsletter'", "m": "clickable", "st": ["Subscribe to spam newsletter"], "tf": None, "exp": "x23"},
     {"n": "24", "step": "Uncheck 'sell your soul'", "m": "clickable", "st": ["sell your soul"], "tf": None, "exp": "x24"},
     {"n": "25", "step": "Click 'Continue without upgrading'", "m": "clickable", "st": ["Continue without upgrading"], "tf": None, "exp": "x25"},
-    {"n": "26", "step": "VERIFY 'Take 50% off!' is present if exists", "ver": True, "step": "VERIFY that 'Wait, don't leave!' is NOT present", "res": True}, # display none logic
+    {"n": "26", "step": "VERIFY that 'Wait, don't leave!' is NOT present", "ver": True, "res": True},
     {"n": "27", "step": "Click 'Claim 50% Discount' if exists", "m": "clickable", "st": ["Claim 50% Discount"], "tf": None, "exp": None},
     {"n": "28", "step": "EXTRACT time into {t}", "ex": True, "var": "t", "val": "Sale ends in 00:59"},
     {"n": "29", "step": "Click 'Read Terms'", "m": "clickable", "st": ["Read Terms"], "tf": None, "exp": "x29"},
@@ -247,7 +247,7 @@ TESTS = [
     {"n": "61", "step": "HOVER over 'Hover me'", "m": "hover", "st": ["Hover me"], "tf": None, "exp": "x61", "execute_step": True},
     {"n": "62", "step": "Click 'Submit' button", "m": "clickable", "st": ["Submit"], "tf": None, "exp": "x62"},
     {"n": "63", "step": "Click 'Click for more info'", "m": "clickable", "st": ["Click for more info"], "tf": None, "exp": "x63"},
-    {"n": "64", "step": "VERIFY 'Here is the secret info' is present if exists", "ver": True, "step": "VERIFY that 'Here is the secret info' is NOT present", "res": True}, # Hidden initially
+    {"n": "64", "step": "VERIFY that 'Here is the secret info' is NOT present", "ver": True, "res": True}, # Hidden initially
     {"n": "65", "step": "Click 'Close Popover'", "m": "clickable", "st": ["Close Popover"], "tf": None, "exp": "x65"},
     {"n": "66", "step": "Click 'Help' icon", "m": "clickable", "st": ["Help"], "tf": None, "exp": "x66"},
     {"n": "67", "step": "Fill 'Hover to reveal' with 'Test'", "m": "input", "st": ["Hover to reveal"], "tf": "hover to reveal", "exp": "x67"},
