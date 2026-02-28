@@ -235,6 +235,8 @@ async def run_suite() -> bool:
         page = await ctx.new_page()
         page.on("dialog", lambda dialog: asyncio.create_task(dialog.accept())) # Alert dialog interceptor
 
+        await page.set_content(CLASSICS_DOM)
+
         passed = 0
         failures: list[str] = []
 
