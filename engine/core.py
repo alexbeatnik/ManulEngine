@@ -334,10 +334,10 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         top        = scored[:8]
         best_score = top[0].get("score", 0)
 
-        # Pure-AI mode: always ask the LLM element picker, regardless of heuristic confidence.
+        # Pure-AI mode: usually asks the LLM, but fast-tracks if there is only 1 candidate.
         if getattr(prompts, "AI_ALWAYS", False):
-            if len(top) == 1:
-                print("    ⚡ FAST-TRACK: Found exact 1 candidate, bypassing AI.")
+            if len(scored) == 1:
+                print("    ⚡ FAST-TRACK: Found exactly 1 candidate, bypassing AI.")
                 idx = 0
             else:
                 print(f"    🧠 AI AGENT: Always-AI enabled, analysing {len(top)} candidates…")
@@ -380,9 +380,9 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             print(f"    ⚙️  DOM HEURISTICS: AI disabled (threshold {self._threshold}); using best candidate (score {best_score})")
             return top[0]
 
-        # Genuinely ambiguous → ask the LLM
-        if len(top) == 1:
-            print("    ⚡ FAST-TRACK: Found exact 1 candidate, bypassing AI.")
+        # Genuinely ambiguous → ask the LLM, unless there's only 1 candidate left
+        if len(scored) == 1:
+            print("    ⚡ FAST-TRACK: Found exactly 1 candidate, bypassing AI.")
             idx = 0
         else:
             print(f"    🧠 AI AGENT: Ambiguity detected, analysing {len(top)} candidates…")
