@@ -282,6 +282,7 @@ The engine is battle-tested with **1185+** synthetic DOM/unit tests covering the
 
 * **Synthetic DOM packs:** scenario suites under `engine/test/`.
 * **AI modes regression suite:** `engine/test/test_12_ai_modes.py` (Always-AI, strict override, AI rejection).
+* **Controls cache regression suite:** `engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
 Run the synthetic suite:

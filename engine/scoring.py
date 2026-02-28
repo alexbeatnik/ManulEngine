@@ -109,8 +109,8 @@ def score_elements(
                 
             t_dashed = tl.replace(" ", "-").replace("_", "-")
             if t_dashed == data_qa or tl == data_qa: 
-                score += 80_000                  # Піднято пріоритет для QA-атрибутів
-                is_perfect_text_match = True     # <--- ГОЛОВНИЙ ФІКС, активує синергію
+                score += 80_000                  # Increased priority for QA attributes
+                is_perfect_text_match = True     # Main fix: activates synergy
             elif t_dashed in data_qa: 
                 score += 5_000
 
