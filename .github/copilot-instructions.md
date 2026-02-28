@@ -36,6 +36,7 @@ engine/
     test_11_cyber.py        synthetic DOM scenario pack
     test_12_ai_modes.py     synthetic DOM unit: Always-AI/strict/rejection
     test_13_controls_cache.py synthetic DOM unit: persistent controls cache hit/miss
+    test_14_qa_classics.py  synthetic DOM unit: legacy HTML patterns, tables, fieldsets
 tests/
   hunt_demoqa.hunt          integration: forms, checkboxes, radios, tables
   hunt_expandtesting.hunt   integration: login, inputs, dynamic tables
@@ -192,6 +193,7 @@ Dotenv precedence note:
 * **Form Auto-clearing:** Before typing into an input using `loc.type()`, always `await loc.fill("")` to prevent appending text to pre-filled placeholders (especially critical on Wikipedia and search bars).
 * **Checkbox/Radio strictness:** Heuristics must ruthlessly penalize (-50_000) non-checkbox elements when the user specifically asks to "Check" or "Select the radio", to prevent clicking a nearby `<td>` that happens to share the target text.
 * **SVG quirks:** `el.className` might not be a string. In `SNAPSHOT_JS`, safely extract it: `typeof el.className === 'string' ? el.className : el.getAttribute('class')`.
+* **Table Extraction & Legacy HTML:** When extracting rows based on text, use the shared `wordMatch()` helper from `EXTRACT_DATA_JS` instead of ad‑hoc `.includes()` calls. It uses word-boundary matching for short tokens and falls back to substring matching for longer tokens to reduce partial hits (e.g., "Javascript" vs "Java"). For legacy forms without explicit `<label>` tags, inputs inside `<fieldset>` should inherit context from `<legend>`.
 * **AI Rejection loop:** If LLM returns `{"id": null}`, add the current top candidates to a `failed_ids` set, scroll the page, and retry `_snapshot` to discover hidden elements.
 
 ## Resolution fallback chain
