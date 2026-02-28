@@ -102,7 +102,8 @@ Optional steps contain "if exists" / "optional" **outside** the quoted target (e
 Hunt files are plain-text test scenarios parsed directly by `run_mission()`. They provide a robust way to write integration tests without Python boilerplate.
 
 ### 1. File Naming & Location
-* Must be placed in the `tests/` directory.
+* For this repo's default auto-discovery (`python manul.py` with no target), hunt files are discovered under the `tests/` directory.
+* You can also pass a specific `.hunt` file or a directory path to `manul.py` to run hunts from any location.
 * Must use the `.hunt` extension (common convention: `hunt_*.hunt`).
 
 ### 2. Metadata Headers
@@ -111,17 +112,17 @@ Placed at the top of the file. Used by the engine for logging and LLM context.
 * `@blueprint: [tag_name]` — Short tag representing the test suite.
 
 ### 3. Comments
-* Use `#` for comments. Comments are ignored during execution.
+* Use `#` at the beginning of a line for comments. Any line whose trimmed text starts with `#` is ignored during execution; `#` appearing after a step on the same line is treated as part of the step text, not a comment.
 
 ### 4. Step Formatting
 * Each action must be a numbered, atomic instruction (e.g., `1. `, `2. `).
 * Elements should be wrapped in single or double quotes for best heuristic matching (e.g., `'Submit'`, `"Password"`).
 
-### 5. System Keywords (Exact Matches)
-These bypass heuristics and are handled directly by the engine parser:
+### 5. System Keywords (parser-detected)
+These keywords are detected via word-boundary regex, bypass heuristics, and are handled directly by the engine parser:
 * `NAVIGATE to [url]` — Loads a URL and waits for DOM settlement.
 * `WAIT [seconds]` — Hard sleep (e.g., `WAIT 2`).
-* `SCROLL DOWN` / `SCROLL DOWN inside the list` / `SCROLL DOWN to the very bottom`
+* `SCROLL DOWN` / `SCROLL DOWN inside the list` — Scrolls down by one viewport height. Phrases like `SCROLL DOWN to the very bottom` are accepted but currently behave the same as a single `SCROLL DOWN` (they do not auto-scroll all the way to the bottom).
 * `EXTRACT [target] into {variable_name}` — Extracts text data into memory.
 * `VERIFY that [target] is present` (or `is NOT present`, `is DISABLED`, `is checked`)
 * `DONE.` — Explicitly ends the mission.
@@ -143,7 +144,7 @@ Variables extracted using `EXTRACT` can be substituted in downstream steps.
 
 ### 8. Best Practices
 * **Specify Element Type:** Include words like `button`, `field`, `link`, `dropdown`, `checkbox`, `radio` outside quotes. This acts as a strong heuristic signal.
-* **Exact Text Matching:** Put target texts in quotes (`'Save'`) to yield a high heuristic score (+5000).
+* **Exact Text Matching:** Put target texts in quotes (`'Save'`) to yield a high heuristic score.
 * **Verify After Actions:** Always use a `VERIFY` step after taking a significant action (e.g., login, form submit) before assuming the new page state.
 * **Implicit Context:** The engine reuses context if you refer to previous elements implicitly, e.g., `Type "Password" into that field`.
 
