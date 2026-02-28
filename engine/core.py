@@ -172,7 +172,6 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                     raw_id = obj[key]
                     break
 
-        # ── ОБРОБКА ВІДМОВИ ШІ (REJECTION) ──
         if raw_id is None or str(raw_id).lower() == "null":
             thought = obj.get("thought", "No matching element found.")
             print(f"    🚫 AI REJECTED CANDIDATES: '{thought}'")
@@ -335,10 +334,15 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         top        = scored[:8]
         best_score = top[0].get("score", 0)
 
-        # Pure-AI mode: always ask the LLM element picker, regardless of heuristic confidence.
+        # Pure-AI mode: usually asks the LLM, but fast-tracks if there is only 1 candidate.
         if getattr(prompts, "AI_ALWAYS", False):
-            print(f"    🧠 AI AGENT: Always-AI enabled, analysing {len(top)} candidates…")
-            idx = await self._llm_select_element(step, mode, top, strategic_context)
+            if len(scored) == 1:
+                print("    ⚡ FAST-TRACK: Found exactly 1 candidate, bypassing AI.")
+                idx = 0
+            else:
+                print(f"    🧠 AI AGENT: Always-AI enabled, analysing {len(top)} candidates…")
+                idx = await self._llm_select_element(step, mode, top, strategic_context)
+                
             if idx is None:
                 if failed_ids is not None:
                     for c in top:
@@ -376,12 +380,16 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             print(f"    ⚙️  DOM HEURISTICS: AI disabled (threshold {self._threshold}); using best candidate (score {best_score})")
             return top[0]
 
-        # Genuinely ambiguous → ask the LLM
-        print(f"    🧠 AI AGENT: Ambiguity detected, analysing {len(top)} candidates…")
-        try:
-            idx = await self._llm_select_element(step, mode, top, strategic_context)
-        except Exception:
+        # Genuinely ambiguous → ask the LLM, unless there's only 1 candidate left
+        if len(scored) == 1:
+            print("    ⚡ FAST-TRACK: Found exactly 1 candidate, bypassing AI.")
             idx = 0
+        else:
+            print(f"    🧠 AI AGENT: Ambiguity detected, analysing {len(top)} candidates…")
+            try:
+                idx = await self._llm_select_element(step, mode, top, strategic_context)
+            except Exception:
+                idx = 0
             
         if idx is None:
             if failed_ids is not None:

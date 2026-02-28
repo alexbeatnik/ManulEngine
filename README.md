@@ -276,9 +276,9 @@ python manul.py tests/hunt_mission.hunt
 
 ---
 
-## 🐾 Chaos Chamber Verified (1185+ Tests)
+## 🐾 Chaos Chamber Verified (1285+ Tests)
 
-The engine is battle-tested with **1185+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
+The engine is battle-tested with **1285+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
 
 * **Synthetic DOM packs:** scenario suites under `engine/test/`.
 * **Controls cache regression suite:** `engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).
