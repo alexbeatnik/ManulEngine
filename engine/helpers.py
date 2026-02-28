@@ -30,6 +30,11 @@ def extract_quoted(step: str, preserve_case: bool = False) -> list[str]:
     return [x if preserve_case else x.lower() for x in found if x]
 
 
+def env_bool(name: str, default: str = "False") -> bool:
+    """Read an environment variable as a boolean flag."""
+    return os.getenv(name, default).strip().lower() in ("true", "1", "yes", "t")
+
+
 def compact_log_field(raw_value: object, env_var: str, default_max_len: int = 0) -> str:
     """Collapse whitespace and optionally truncate using an env var max length.
 

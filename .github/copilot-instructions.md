@@ -22,11 +22,12 @@ manul.py                   CLI entry point
 engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
+  cache.py                 _ControlsCacheMixin (persistent per-site controls cache)
   actions.py               _ActionsMixin (navigate, scroll, extract, verify, drag, _execute_step)
   prompts.py               .env config, thresholds, LLM prompt templates (handles null-rejection)
   scoring.py               score_elements() — pure function, 20+ heuristic rules (text/attrs/type/context)
-  js_scripts.py            SNAPSHOT_JS (DOM collector + JS fallbacks), VISIBLE_TEXT_JS
-  helpers.py               substitute_memory(), extract_quoted(), timing constants
+  js_scripts.py            All JS injected into the browser: SNAPSHOT_JS, VISIBLE_TEXT_JS, EXTRACT_DATA_JS, DEEP_TEXT_JS, STATE_CHECK_JS
+  helpers.py               substitute_memory(), extract_quoted(), env_bool(), timing constants
   test/
     test_engine.py          synthetic DOM micro-suite (local HTML via Playwright)
     test_01_ecommerce.py    synthetic DOM scenario pack
@@ -118,7 +119,11 @@ Optional steps contain "if exists" / "optional" **outside** the quoted target (e
 * `scoring.py` is **stateless** — pure function, receives `learned_elements` and `last_xpath` as kwargs.
 * **Safety first in `scoring.py`:** Always cast fetched attributes using `str(el.get("...", ""))`. JavaScript can pass objects (like `SVGAnimatedString` for SVG icons) instead of strings, which will crash Python's `.lower()`.
 * `actions.py` is a **mixin** (`_ActionsMixin`) inherited by `ManulEngine` in `core.py`.
+* `cache.py` is a **mixin** (`_ControlsCacheMixin`) inherited by `ManulEngine` in `core.py`. It owns all persistent per-site controls-cache logic.
+* `ManulEngine` MRO: `class ManulEngine(_ControlsCacheMixin, _ActionsMixin)` in `core.py`.
 * `prompts.py` owns all `.env` settings and prompt strings.
+* `js_scripts.py` owns **all** JavaScript constants injected into the browser — no inline JS in Python files.
+* `helpers.py` provides `env_bool(name, default)` for parsing boolean env vars; used by `prompts.py`.
 
 ## Running tests
 

@@ -9,10 +9,11 @@ Package structure:
         helpers.py     — pure utility functions and timing constants
         js_scripts.py  — JavaScript injected into the browser page
         scoring.py     — heuristic element-scoring algorithm
+        cache.py       — persistent per-site controls cache mixin
         core.py        — ManulEngine class (LLM, resolution, mission runner)
         actions.py     — action execution mixin (click, type, select, hover, drag…)
         test/
-            test_engine.py — 60-trap unit test suite (Monster DOM)
+            test_*.py  — synthetic DOM unit tests
 
 Usage:
     from engine import ManulEngine
