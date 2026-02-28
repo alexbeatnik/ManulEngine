@@ -39,7 +39,9 @@ browser-manul/
 │       ├── test_10_mess.py      Scenario pack: misc edge-cases (synthetic DOM)
 │       ├── test_11_cyber.py     Scenario pack: cyber/terminal (synthetic DOM)
 │       ├── test_12_ai_modes.py  Unit test: Always-AI/strict/rejection
-│       └── test_13_controls_cache.py Unit test: persistent controls cache
+│       ├── test_13_controls_cache.py Unit test: persistent controls cache
+│       ├── test_14_qa_classics.py Unit test: legacy HTML patterns, tables, fieldsets
+│       └── test_15_facebook_final_boss.py Scenario pack: complex UI, dynamic states
 └── tests/                Integration hunt tests (real websites, .hunt format)
     ├── hunt_demoqa.hunt
     ├── hunt_expandtesting.hunt
@@ -276,9 +278,9 @@ python manul.py tests/hunt_mission.hunt
 
 ---
 
-## 🐾 Chaos Chamber Verified (1219+ Tests)
+## 🐾 Chaos Chamber Verified (1227+ Tests)
 
-The engine is battle-tested with **1219+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
+The engine is battle-tested with **1227+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
 
 * **Synthetic DOM packs:** scenario suites under `engine/test/`.
 * **Controls cache regression suite:** `engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).

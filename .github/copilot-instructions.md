@@ -37,6 +37,7 @@ engine/
     test_12_ai_modes.py     synthetic DOM unit: Always-AI/strict/rejection
     test_13_controls_cache.py synthetic DOM unit: persistent controls cache hit/miss
     test_14_qa_classics.py  synthetic DOM unit: legacy HTML patterns, tables, fieldsets
+    test_15_facebook_final_boss.py synthetic DOM scenario pack: complex UI, dynamic states
 tests/
   hunt_demoqa.hunt          integration: forms, checkboxes, radios, tables
   hunt_expandtesting.hunt   integration: login, inputs, dynamic tables
