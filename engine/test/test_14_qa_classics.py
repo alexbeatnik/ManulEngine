@@ -168,7 +168,7 @@ CLASSICS_DOM = """
 """
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Tests 1-30 (Classic QA Challenges)
+# Tests 1-31 (Classic QA Challenges)
 # ─────────────────────────────────────────────────────────────────────────────
 TESTS = [
     # ── RAHUL SHETTY ACADEMY ──
@@ -221,7 +221,7 @@ TESTS = [
     {"n": "30", "step": "VERIFY that 'Radio Button Example' is present", "ver": True, "res": True},
 ]
 
-async def run_suite():
+async def run_suite() -> bool:
     print(f"\n{'=' * 70}")
     print("🎓 QA CLASSICS HELL: 31 LEGACY HTML TRAPS")
     print(f"{'=' * 70}")
@@ -237,7 +237,7 @@ async def run_suite():
         
         await page.set_content(CLASSICS_DOM)
 
-        passed = failed = 0
+        passed = 0
         failures: list[str] = []
 
         for t in TESTS:
@@ -256,7 +256,6 @@ async def run_suite():
                 else:
                     msg = f"FAILED — got '{actual}', expected '{t['val']}'"
                     print(f"   ❌ {msg}")
-                    failed += 1
                     failures.append(f"{t['n']}: {msg}")
 
             elif t.get("ver"):
@@ -267,7 +266,6 @@ async def run_suite():
                 else:
                     msg = f"FAILED — VERIFY returned {result}, expected {t['res']}"
                     print(f"   ❌ {msg}")
-                    failed += 1
                     failures.append(f"{t['n']}: {msg}")
 
             elif t.get("execute_step"):
@@ -278,7 +276,6 @@ async def run_suite():
                 else:
                     msg = "FAILED — execute_step returned False"
                     print(f"   ❌ {msg}")
-                    failed += 1
                     failures.append(f"{t['n']}: {msg}")
 
             else:
@@ -290,7 +287,6 @@ async def run_suite():
                 else:
                     msg = f"FAILED — got '{found}', expected '{t['exp']}'"
                     print(f"   ❌ {msg}")
-                    failed += 1
                     failures.append(f"{t['n']}: {msg}")
 
         print(f"\n{'=' * 70}")

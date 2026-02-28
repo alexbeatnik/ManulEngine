@@ -431,6 +431,7 @@ EXTRACT_DATA_JS = """(args) => {
                 let row = null;
                 const targetWords = t.split(/\\s+/).filter(w => w.length > 2);
                 let maxMatches = 0;
+                let bestLen = Infinity;
                 for (const r of rows) {
                     const rText = r.innerText.toLowerCase();
                     let matches = 0;
@@ -441,9 +442,11 @@ EXTRACT_DATA_JS = """(args) => {
                     }
                     if (matches > maxMatches) {
                         maxMatches = matches;
+                        bestLen = rText.length;
                         row = r;
                     } else if (matches === maxMatches && maxMatches > 0) {
-                        if (rText.length < row.innerText.length) {
+                        if (rText.length < bestLen) {
+                            bestLen = rText.length;
                             row = r;
                         }
                     }
