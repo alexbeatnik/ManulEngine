@@ -115,7 +115,7 @@ Placed at the top of the file. Used by the engine for logging and LLM context.
 * Use `#` at the beginning of a line for comments. Any line whose trimmed text starts with `#` is ignored during execution; `#` appearing after a step on the same line is treated as part of the step text, not a comment.
 
 ### 4. Step Formatting
-* Each action must be a numbered, atomic instruction (e.g., `1. `, `2. `).
+* For deterministic hunts and when running without Ollama, each action should be a numbered, atomic instruction (e.g., `1. `, `2. `). Free-form, non-numbered text is also accepted and will be routed through the LLM planner, but may produce less deterministic runs.
 * Elements should be wrapped in single or double quotes for best heuristic matching (e.g., `'Submit'`, `"Password"`).
 
 ### 5. System Keywords (parser-detected)
@@ -171,8 +171,8 @@ source env/bin/activate       # Linux/Mac
 python manul.py test
 
 # Integration tests (needs Playwright browsers; Ollama optional)
-python manul.py               # run all hunt_*.py scripts
-python manul.py hunt_wikipedia.py # single hunt
+python manul.py               # run all hunt_*.hunt scripts
+python manul.py hunt_wikipedia.hunt # single hunt
 python manul.py --headless     # headless mode
 
 
