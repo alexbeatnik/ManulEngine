@@ -99,7 +99,7 @@ Optional steps contain "if exists" / "optional" **outside** the quoted target (e
 
 ## Writing integration tests (hunt files)
 
-Hunt files are plain-text test scenarios parsed directly by `run_mission()`. They provide a robust way to write integration tests without Python boilerplate.
+Hunt files are plain-text test scenarios that the CLI parses via `parse_hunt_file()` (to extract `@context` / `@blueprint` and strip full-line `#` comments) before passing the mission body into `run_mission()`, which then parses and executes the numbered steps. They provide a robust way to write integration tests without Python boilerplate.
 
 ### 1. File Naming & Location
 * For this repo's default auto-discovery (`python manul.py` with no target), hunt files are discovered under the `tests/` directory.
