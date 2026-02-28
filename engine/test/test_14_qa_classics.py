@@ -213,16 +213,17 @@ TESTS = [
     
     # Blogspot Table Extraction
     {"n": "27", "step": "EXTRACT the Author of 'Learn Selenium' into {sel_auth}", "ex": True, "var": "sel_auth", "val": "Amit"},
-    {"n": "28", "step": "EXTRACT the Price of 'Master In Java' into {java_price}", "ex": True, "var": "java_price", "val": "500"}, # Testing if it finds 'Learn Java' dynamically
+    {"n": "28", "step": "EXTRACT the Price of 'Master In Java' into {java_price}", "ex": True, "var": "java_price", "val": "500"},
+    {"n": "28b", "step": "EXTRACT the Price of 'Java' into {java_price_short}", "ex": True, "var": "java_price_short", "val": "500"}, # Ensure short ambiguous token matches "Java" row over "Javascript" row
     {"n": "29", "step": "EXTRACT the Subject of 'Master In Python' into {py_subj}", "ex": True, "var": "py_subj", "val": "Python"},
-    
+
     # Verify Legacy UI
     {"n": "30", "step": "VERIFY that 'Radio Button Example' is present", "ver": True, "res": True},
 ]
 
 async def run_suite():
     print(f"\n{'=' * 70}")
-    print("🎓 QA CLASSICS HELL: 30 LEGACY HTML TRAPS")
+    print("🎓 QA CLASSICS HELL: 31 LEGACY HTML TRAPS")
     print(f"{'=' * 70}")
 
     manul = ManulEngine(headless=True)
@@ -232,7 +233,7 @@ async def run_suite():
         # Автоматично закривати алерти, як це робить Playwright за замовчуванням
         ctx  = await browser.new_context()
         page = await ctx.new_page()
-        page.on("dialog", lambda dialog: dialog.accept()) # Перехоплювач алертів!
+        page.on("dialog", lambda dialog: asyncio.create_task(dialog.accept())) # Перехоплювач алертів!
         
         await page.set_content(CLASSICS_DOM)
 

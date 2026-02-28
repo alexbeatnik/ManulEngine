@@ -428,20 +428,23 @@ EXTRACT_DATA_JS = """(args) => {
 
             if (t) {
                 const rows = Array.from(document.querySelectorAll('tr, [role="row"]'));
-                let row = rows.find(r => r.innerText.toLowerCase().includes(t));
-                if (!row) {
-                    const targetWords = t.split(/\\s+/).filter(w => w.length > 2);
-                    let maxMatches = 0;
-                    for (const r of rows) {
-                        const rText = r.innerText.toLowerCase();
-                        const matches = targetWords.filter(w => wordMatch(rText, w)).length;
-                        if (matches > maxMatches) {
-                            maxMatches = matches;
+                let row = null;
+                const targetWords = t.split(/\\s+/).filter(w => w.length > 2);
+                let maxMatches = 0;
+                for (const r of rows) {
+                    const rText = r.innerText.toLowerCase();
+                    let matches = 0;
+                    if (targetWords.length === 0) {
+                        if (wordMatch(rText, t)) matches = 1;
+                    } else {
+                        matches = targetWords.filter(w => wordMatch(rText, w)).length;
+                    }
+                    if (matches > maxMatches) {
+                        maxMatches = matches;
+                        row = r;
+                    } else if (matches === maxMatches && maxMatches > 0) {
+                        if (rText.length < row.innerText.length) {
                             row = r;
-                        } else if (matches === maxMatches && maxMatches > 0) {
-                            if (rText.length < row.innerText.length) {
-                                row = r;
-                            }
                         }
                     }
                 }
