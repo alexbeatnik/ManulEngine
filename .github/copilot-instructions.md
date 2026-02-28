@@ -122,7 +122,7 @@ Placed at the top of the file. Used by the engine for logging and LLM context.
 These keywords are detected via word-boundary regex, bypass heuristics, and are handled directly by the engine parser:
 * `NAVIGATE to [url]` — Loads a URL and waits for DOM settlement.
 * `WAIT [seconds]` — Hard sleep (e.g., `WAIT 2`).
-* `SCROLL DOWN` / `SCROLL DOWN inside the list` — Scrolls down by one viewport height. Phrases like `SCROLL DOWN to the very bottom` are accepted but currently behave the same as a single `SCROLL DOWN` (they do not auto-scroll all the way to the bottom).
+* `SCROLL DOWN` — Scrolls the main page down by one viewport height. `SCROLL DOWN inside the list` — scrolls the first dropdown-style scroll container (e.g., `#dropdown` or any element whose class name contains `dropdown`) all the way to the bottom (by setting `scrollTop = scrollHeight`). Phrases like `SCROLL DOWN to the very bottom` are accepted but currently behave the same as a single `SCROLL DOWN` on the main page (they do not auto-scroll the page all the way to the bottom).
 * `EXTRACT [target] into {variable_name}` — Extracts text data into memory.
 * `VERIFY that [target] is present` (or `is NOT present`, `is DISABLED`, `is checked`)
 * `DONE.` — Explicitly ends the mission.
