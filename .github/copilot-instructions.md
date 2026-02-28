@@ -99,21 +99,53 @@ Optional steps contain "if exists" / "optional" **outside** the quoted target (e
 
 ## Writing integration tests (hunt files)
 
-```text
-@context: My example site
-@blueprint: smoke
+Hunt files are plain-text test scenarios parsed directly by `run_mission()`. They provide a robust way to write integration tests without Python boilerplate.
 
-1. NAVIGATE to https://example.com
-2. Click the 'Submit' button
-3. VERIFY that 'Success' is present.
-4. DONE.
-```
+### 1. File Naming & Location
+* Must be placed in the `tests/` directory.
+* Must use the `.hunt` extension (common convention: `hunt_*.hunt`).
 
-* File must be named `tests/*.hunt` (common convention: `hunt_*.hunt`).
-* Optional metadata headers:
-  * `@context:` strategic context passed into `run_mission()`.
-  * `@blueprint:` short blueprint tag, prepended to context by CLI.
-* Mission body is plain numbered steps parsed by `run_mission()`.
+### 2. Metadata Headers
+Placed at the top of the file. Used by the engine for logging and LLM context.
+* `@context: [description]` — Strategic context passed to the engine.
+* `@blueprint: [tag_name]` — Short tag representing the test suite.
+
+### 3. Comments
+* Use `#` for comments. Comments are ignored during execution.
+
+### 4. Step Formatting
+* Each action must be a numbered, atomic instruction (e.g., `1. `, `2. `).
+* Elements should be wrapped in single or double quotes for best heuristic matching (e.g., `'Submit'`, `"Password"`).
+
+### 5. System Keywords (Exact Matches)
+These bypass heuristics and are handled directly by the engine parser:
+* `NAVIGATE to [url]` — Loads a URL and waits for DOM settlement.
+* `WAIT [seconds]` — Hard sleep (e.g., `WAIT 2`).
+* `SCROLL DOWN` / `SCROLL DOWN inside the list` / `SCROLL DOWN to the very bottom`
+* `EXTRACT [target] into {variable_name}` — Extracts text data into memory.
+* `VERIFY that [target] is present` (or `is NOT present`, `is DISABLED`, `is checked`)
+* `DONE.` — Explicitly ends the mission.
+
+### 6. Interaction Actions (Parsed Modes)
+If not a System Keyword, the engine detects the interaction mode based on verbs:
+* **Clicking (`clickable`)**: `Click the 'Login' button`, `DOUBLE CLICK the 'Image'`, `Click on the 'Home' link`.
+* **Typing (`input`)**: `Fill 'Email' field with 'test@manul.ai'`, `Type 'Search' into that field`.
+* **Select/Dropdown (`select`)**: `Select 'Option 1' from the 'Menu' dropdown`.
+* **Checkboxes/Radios (`clickable`)**: `Check the checkbox for 'Terms'`, `Uncheck the checkbox for 'Promo'`, `Click the radio button for 'Male'`.
+* **Hovering (`hover`)**: `HOVER over the 'Menu'`.
+* **Drag & Drop (`drag`)**: `Drag the element "Item" and drop it into "Box"`.
+* **Locate (`locate`)**: `Locate the text input...` (highlights without acting).
+
+### 7. Variables & Memory
+Variables extracted using `EXTRACT` can be substituted in downstream steps.
+* *Extract:* `EXTRACT the Price of 'Laptop' into {laptop_price}`
+* *Reuse:* `VERIFY that '{laptop_price}' is present.`
+
+### 8. Best Practices
+* **Specify Element Type:** Include words like `button`, `field`, `link`, `dropdown`, `checkbox`, `radio` outside quotes. This acts as a strong heuristic signal.
+* **Exact Text Matching:** Put target texts in quotes (`'Save'`) to yield a high heuristic score (+5000).
+* **Verify After Actions:** Always use a `VERIFY` step after taking a significant action (e.g., login, form submit) before assuming the new page state.
+* **Implicit Context:** The engine reuses context if you refer to previous elements implicitly, e.g., `Type "Password" into that field`.
 
 ## Code patterns to follow
 
