@@ -120,7 +120,7 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
 <head>
   <meta charset="UTF-8"/>
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';"/>
+    content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}'; connect-src http://localhost:11434;"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>ManulEngine Config</title>
   <style>
@@ -150,6 +150,17 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       background: var(--vscode-editorWarning-background, #3a3000);
       border-left: 3px solid var(--vscode-editorWarning-foreground, #cca700);
       font-size: 0.85em; }
+    #model-wrap { position: relative; }
+    #model { width: 100%; box-sizing: border-box; padding: 4px 6px;
+      background: var(--vscode-input-background); color: var(--vscode-input-foreground);
+      border: 1px solid var(--vscode-input-border, #444); border-radius: 3px; font-size: 0.9em; }
+    #ollama-status { display: flex; align-items: center; gap: 5px; margin-top: 3px; font-size: 0.75em;
+      color: var(--vscode-descriptionForeground); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .dot.ok  { background: #4ec94e; }
+    .dot.off { background: #888; }
+    .dot.spin { background: #888; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
   </style>
 </head>
 <body>
@@ -161,10 +172,14 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
   </div>
 
   <div id="form">
-    <label>model
-      <input type="text" id="model" placeholder="null = heuristics-only (e.g. qwen2.5:0.5b)"/>
-    </label>
-    <div class="hint">Ollama model name. Leave empty for heuristics-only mode (no AI).</div>
+    <label>model</label>
+    <div id="model-wrap">
+      <input id="model" list="ollama-models" autocomplete="off"
+             placeholder="empty = heuristics-only (null)"/>
+      <datalist id="ollama-models"></datalist>
+    </div>
+    <div id="ollama-status"><span class="dot spin" id="ollama-dot"></span><span id="ollama-label">Checking Ollama…</span></div>
+    <div class="hint">Select from installed Ollama models, or type any model name. Leave empty to disable AI.</div>
 
     <div class="checkbox-row">
       <input type="checkbox" id="headless"/>
@@ -276,6 +291,28 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       const msg = event.data;
       if (msg.command === 'config') { doLoad(msg.config, msg.exists); }
     });
+
+    // ── Ollama model discovery ────────────────────────────────────────────────
+    (function fetchOllamaModels() {
+      const dot   = g('ollama-dot');
+      const label = g('ollama-label');
+      const dl    = g('ollama-models');
+
+      fetch('http://localhost:11434/api/tags', { signal: AbortSignal.timeout(3000) })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          const models = (data.models || []).map(function(m) { return m.name; });
+          dl.innerHTML = '<option value="">null (heuristics-only)</option>' +
+            models.map(function(n) { return '<option value="' + n + '">' + n + '</option>'; }).join('');
+          dot.className = 'dot ok';
+          label.textContent = 'Ollama connected — ' + models.length + ' model' + (models.length !== 1 ? 's' : '') + ' available';
+        })
+        .catch(function() {
+          dl.innerHTML = '<option value="">null (heuristics-only)</option>';
+          dot.className = 'dot off';
+          label.textContent = 'Ollama not available — type model name manually or leave empty';
+        });
+    })();
 
     vsc.postMessage({ command: 'load' });
   </script>
