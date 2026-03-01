@@ -102,37 +102,38 @@ async def run_tests(log_path: str) -> bool:
     all_ok = True
     suite_results: list[tuple[str, int, int]] = []
 
-    for mod_name in test_files:
-        mod = importlib.import_module(f"manul_engine.test.{mod_name}")
-        runner = getattr(mod, "run_laboratory", None) or getattr(mod, "run_suite", None)
-        if runner is None:
-            continue
-        before = len(score_lines)
-        ok = await runner()
-        if not ok:
-            all_ok = False
-        for sl in score_lines[before:]:
-            m = re.search(r"(\d+)/(\d+)", sl)
-            if m:
-                suite_results.append((mod_name, int(m.group(1)), int(m.group(2))))
+    try:
+        for mod_name in test_files:
+            mod = importlib.import_module(f"manul_engine.test.{mod_name}")
+            runner = getattr(mod, "run_laboratory", None) or getattr(mod, "run_suite", None)
+            if runner is None:
+                continue
+            before = len(score_lines)
+            ok = await runner()
+            if not ok:
+                all_ok = False
+            for sl in score_lines[before:]:
+                m = re.search(r"(\d+)/(\d+)", sl)
+                if m:
+                    suite_results.append((mod_name, int(m.group(1)), int(m.group(2))))
 
-    total_passed = sum(p for _, p, _ in suite_results)
-    total_tests = sum(t for _, _, t in suite_results)
+        total_passed = sum(p for _, p, _ in suite_results)
+        total_tests = sum(t for _, _, t in suite_results)
 
-    print(f"\n\n{'=' * 70}")
-    print("🐾 SYNTHETIC DOM LABORATORY SUMMARY")
-    print(f"{'=' * 70}")
-    for name, p, t in suite_results:
-        icon = "✅" if p == t else "❌"
-        label = name.replace("test_", "").replace("_", " ").upper()
-        print(f"   {icon} {label:<30} {p:>4}/{t}")
-    print(f"{'─' * 70}")
-    print(f"   {'TOTAL':<30} {total_passed:>4}/{total_tests}")
-    if total_passed == total_tests:
-        print("\n🏆 ALL TESTS PASSED — THE ENGINE IS UNBREAKABLE!")
-    print(f"{'=' * 70}")
-
-    sys.stdout = real_stdout
-    tee.close()
+        print(f"\n\n{'=' * 70}")
+        print("🐾 SYNTHETIC DOM LABORATORY SUMMARY")
+        print(f"{'=' * 70}")
+        for name, p, t in suite_results:
+            icon = "✅" if p == t else "❌"
+            label = name.replace("test_", "").replace("_", " ").upper()
+            print(f"   {icon} {label:<30} {p:>4}/{t}")
+        print(f"{'─' * 70}")
+        print(f"   {'TOTAL':<30} {total_passed:>4}/{total_tests}")
+        if total_passed == total_tests:
+            print("\n🏆 ALL TESTS PASSED — THE ENGINE IS UNBREAKABLE!")
+        print(f"{'=' * 70}")
+    finally:
+        sys.stdout = real_stdout
+        tee.close()
 
     return all_ok

@@ -17,9 +17,6 @@ import os
 import sys
 import time
 
-# Installed package directory — used to locate built-in resources.
-_PKG_DIR = os.path.dirname(os.path.abspath(__file__))
-
 # ─────────────────────────────────────────────────────────────────────────────
 _USAGE = """
 Usage:
@@ -110,7 +107,7 @@ async def _run_hunt_file(path: str, headless: bool) -> bool:
     except Exception as exc:
         print(f"\n💥 CRASH: {exc}")
         import traceback
-        traceback.print_exc()
+        traceback.print_exc(file=sys.stdout)
         return False
 
 
