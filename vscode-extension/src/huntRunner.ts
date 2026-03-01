@@ -1,14 +1,14 @@
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
-import { exec, spawn, ChildProcess } from "child_process";
+import { execFile, spawn, ChildProcess } from "child_process";
 import * as vscode from "vscode";
 
 /**
  * Probe candidate paths in order, then falls back to a one-time async
- * login-shell lookup using the user's default shell (`$SHELL -lic 'command -v
- * manul'`), so fish/zsh/bash init scripts and tools like conda, pyenv, and asdf
- * that inject shims via shell hooks are correctly resolved.
+ * login-shell lookup using the user's configured shell (`vscode.env.shell` →
+ * `$SHELL`), so fish/zsh/bash init scripts and tools like conda, pyenv, and
+ * asdf that inject shims via shell hooks are correctly resolved.
  *
  * The shell result is cached per workspaceRoot so the async lookup runs at
  * most once per workspace per extension-host session.
@@ -29,20 +29,24 @@ export async function findManulExecutable(workspaceRoot: string): Promise<string
   const isWin = process.platform === "win32";
 
   // Ordered list of static candidate paths to probe (synchronous, no overhead).
+  // Unix-only paths are excluded on Windows to avoid spurious existsSync probes.
   const candidates: string[] = [
-    // 1. Project-local venv (highest priority)
+    // 1. Project-local venv (all platforms)
     isWin
       ? path.join(workspaceRoot, ".venv", "Scripts", "manul.exe")
       : path.join(workspaceRoot, ".venv", "bin", "manul"),
-    // 2. pip --user install (Linux / macOS Intel)
-    path.join(os.homedir(), ".local", "bin", "manul"),
-    // 3. pipx-managed venv for manul-engine (user-level)
-    path.join(os.homedir(), ".local", "pipx", "venvs", "manul-engine", "bin", "manul"),
-    // 4. macOS Homebrew — Apple Silicon default prefix
-    "/opt/homebrew/bin/manul",
-    // 5. system-wide installs
-    "/usr/local/bin/manul",
-    "/usr/bin/manul",
+    // 2+. Unix-only install locations
+    ...(!isWin ? [
+      // 2. pip --user install (Linux / macOS Intel)
+      path.join(os.homedir(), ".local", "bin", "manul"),
+      // 3. pipx-managed venv for manul-engine (user-level)
+      path.join(os.homedir(), ".local", "pipx", "venvs", "manul-engine", "bin", "manul"),
+      // 4. macOS Homebrew — Apple Silicon default prefix
+      "/opt/homebrew/bin/manul",
+      // 5. system-wide installs
+      "/usr/local/bin/manul",
+      "/usr/bin/manul",
+    ] : []),
   ];
 
   for (const candidate of candidates) {
@@ -57,19 +61,29 @@ export async function findManulExecutable(workspaceRoot: string): Promise<string
   }
 
   // Async login-shell lookup — sources the user's real shell init so that
-  // conda/pyenv/asdf/direnv shims are visible. Uses $SHELL with -lic flags
-  // (login + interactive) so both profile and rc files are sourced.
-  // cwd is set to workspaceRoot so directory-sensitive tools (direnv, asdf)
-  // resolve against the project, consistent with the venv-first search above.
+  // conda/pyenv/asdf/direnv shims are visible. Uses execFile with an explicit
+  // argv array so the shell path is never parsed by another shell (no injection
+  // risk even if the path contains spaces). cwd is set to workspaceRoot so
+  // directory-sensitive tools (direnv, asdf) resolve against the project.
   const result = await new Promise<string>((resolve) => {
     if (isWin) {
-      exec("where manul", { cwd: workspaceRoot, timeout: 3000 }, (err, stdout) => {
+      // `where` is a built-in on Windows; no shell wrapping needed.
+      execFile("where", ["manul"], { cwd: workspaceRoot, timeout: 3000 }, (err, stdout) => {
         const line = stdout.trim().split("\n")[0].trim();
         resolve(!err && line && fs.existsSync(line) ? line : "manul");
       });
     } else {
-      const shell = process.env.SHELL || "/bin/sh";
-      exec(`${shell} -lic 'command -v manul'`, { cwd: workspaceRoot, timeout: 3000 }, (err, stdout) => {
+      // Prefer vscode.env.shell (the terminal shell the user configured in VS Code),
+      // then fall back to $SHELL. If neither is set, skip the lookup entirely —
+      // /bin/sh does not support -lic and would fail silently.
+      const shell = vscode.env.shell || process.env.SHELL;
+      if (!shell) {
+        resolve("manul");
+        return;
+      }
+      // -l (login) + -i (interactive) + -c ensures both profile and rc files
+      // are sourced. argv array avoids shell re-parsing of the shell path.
+      execFile(shell, ["-lic", "command -v manul"], { cwd: workspaceRoot, timeout: 3000 }, (err, stdout) => {
         const line = stdout.trim().split("\n")[0].trim();
         resolve(!err && line && fs.existsSync(line) ? line : "manul");
       });
