@@ -32,10 +32,17 @@ export function runHunt(
   token?: vscode.CancellationToken
 ): Promise<number> {
   return new Promise((resolve, reject) => {
+    // Prefer the workspace folder root as cwd so ManulEngine picks up
+    // manul_engine_configuration.json and cache paths from the project root.
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(
+      vscode.Uri.file(huntFile)
+    );
+    const cwd = workspaceFolder?.uri.fsPath ?? path.dirname(huntFile);
+
     let proc: ChildProcess;
     try {
       proc = spawn(manulExe, [huntFile], {
-        cwd: path.dirname(huntFile),
+        cwd,
         env: { ...process.env },
       });
     } catch (err) {

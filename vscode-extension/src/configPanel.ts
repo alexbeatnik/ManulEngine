@@ -257,7 +257,7 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
         headless: g('headless').checked,
         timeout: parseInt(g('timeout').value, 10) || 5000,
         nav_timeout: parseInt(g('nav_timeout').value, 10) || 30000,
-        ai_always: g('ai_always').checked,
+        ai_always: modelVal !== '' && g('ai_always').checked,
         ai_policy: g('ai_policy').value,
         ai_threshold: threshVal === '' ? null : parseInt(threshVal, 10),
         controls_cache_enabled: g('controls_cache_enabled').checked,
