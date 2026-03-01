@@ -1,21 +1,23 @@
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
-import { spawn, execSync, ChildProcess } from "child_process";
+import { exec, spawn, ChildProcess } from "child_process";
 import * as vscode from "vscode";
 
 /**
- * Probe candidate paths in order and return the first one that exists on disk.
- * When no static candidate matches, falls back to a one-time login-shell lookup
- * (`bash -lc 'command -v manul'` / `where manul`) so that conda, pyenv, and
- * other shell-initialised environments are covered. The shell result is cached
- * for the lifetime of the extension host so the blocking call runs at most once.
+ * Probe candidate paths in order, then falls back to a one-time async
+ * login-shell lookup using the user's default shell (`$SHELL -lic 'command -v
+ * manul'`), so fish/zsh/bash init scripts and tools like conda, pyenv, and asdf
+ * that inject shims via shell hooks are correctly resolved.
+ *
+ * The shell result is cached per workspaceRoot so the async lookup runs at
+ * most once per workspace per extension-host session.
  */
 
-// Cached result of the shell lookup so we block the extension host at most once.
-let _shellResolvedManul: string | undefined;
+// Per-workspace cache: avoids repeated shell lookups within a session.
+const _shellCache = new Map<string, string>();
 
-export function findManulExecutable(workspaceRoot: string): string {
+export async function findManulExecutable(workspaceRoot: string): Promise<string> {
   const custom = vscode.workspace
     .getConfiguration("manulEngine")
     .get<string>("manulPath", "")
@@ -26,7 +28,7 @@ export function findManulExecutable(workspaceRoot: string): string {
 
   const isWin = process.platform === "win32";
 
-  // Ordered list of static candidate paths to probe (no blocking I/O overhead).
+  // Ordered list of static candidate paths to probe (synchronous, no overhead).
   const candidates: string[] = [
     // 1. Project-local venv (highest priority)
     isWin
@@ -49,26 +51,33 @@ export function findManulExecutable(workspaceRoot: string): string {
     }
   }
 
-  // One-time login-shell lookup — sources ~/.bashrc / conda init / pyenv etc.
-  // Result is cached so the blocking call happens at most once per session.
-  if (_shellResolvedManul !== undefined) {
-    return _shellResolvedManul;
+  // Return cached shell result if we already ran the lookup for this workspace.
+  if (_shellCache.has(workspaceRoot)) {
+    return _shellCache.get(workspaceRoot)!;
   }
-  try {
-    const cmd = isWin
-      ? "where manul"
-      : "bash -lc 'command -v manul'";
-    const result = execSync(cmd, { encoding: "utf-8", timeout: 3000 })
-      .trim().split("\n")[0].trim();
-    if (result && fs.existsSync(result)) {
-      _shellResolvedManul = result;
-      return result;
+
+  // Async login-shell lookup — sources the user's real shell init so that
+  // conda/pyenv/asdf/direnv shims are visible. Uses $SHELL with -lic flags
+  // (login + interactive) so both profile and rc files are sourced.
+  // cwd is set to workspaceRoot so directory-sensitive tools (direnv, asdf)
+  // resolve against the project, consistent with the venv-first search above.
+  const result = await new Promise<string>((resolve) => {
+    if (isWin) {
+      exec("where manul", { cwd: workspaceRoot, timeout: 3000 }, (err, stdout) => {
+        const line = stdout.trim().split("\n")[0].trim();
+        resolve(!err && line && fs.existsSync(line) ? line : "manul");
+      });
+    } else {
+      const shell = process.env.SHELL || "/bin/sh";
+      exec(`${shell} -lic 'command -v manul'`, { cwd: workspaceRoot, timeout: 3000 }, (err, stdout) => {
+        const line = stdout.trim().split("\n")[0].trim();
+        resolve(!err && line && fs.existsSync(line) ? line : "manul");
+      });
     }
-  } catch {
-    // Shell lookup failed — fall through to bare name.
-  }
-  _shellResolvedManul = "manul"; // cache the fallback too
-  return "manul";
+  });
+
+  _shellCache.set(workspaceRoot, result);
+  return result;
 }
 
 /** Spawn manul <huntFile> and stream output. Resolves with exit code. */

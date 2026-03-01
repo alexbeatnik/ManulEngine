@@ -106,7 +106,7 @@ export function createHuntTestController(
       const run = ctrl.createTestRun(request);
       const roots = vscode.workspace.workspaceFolders ?? [];
       const workspaceRoot = roots[0]?.uri.fsPath ?? process.cwd();
-      const manulExe = findManulExecutable(workspaceRoot);
+      const manulExe = await findManulExecutable(workspaceRoot);
 
       // Collect top-level hunt-file items to run (deduplicated)
       const toRun = new Set<vscode.TestItem>();
@@ -240,7 +240,7 @@ export function createHuntTestController(
 }
 
 /** Run a single hunt file from context menu / editor title. */
-export function runHuntFileCommand(uri?: vscode.Uri): void {
+export async function runHuntFileCommand(uri?: vscode.Uri): Promise<void> {
   const target =
     uri ?? vscode.window.activeTextEditor?.document.uri;
   if (!target || !target.fsPath.endsWith(".hunt")) {
@@ -250,7 +250,7 @@ export function runHuntFileCommand(uri?: vscode.Uri): void {
 
   const roots = vscode.workspace.workspaceFolders ?? [];
   const workspaceRoot = roots[0]?.uri.fsPath ?? process.cwd();
-  const manulExe = findManulExecutable(workspaceRoot);
+  const manulExe = await findManulExecutable(workspaceRoot);
 
   const channel = vscode.window.createOutputChannel("ManulEngine");
   channel.show(true);
@@ -271,7 +271,7 @@ export function runHuntFileCommand(uri?: vscode.Uri): void {
 }
 
 /** Run hunt file in integrated terminal (raw, like the CLI). */
-export function runHuntFileInTerminalCommand(uri?: vscode.Uri): void {
+export async function runHuntFileInTerminalCommand(uri?: vscode.Uri): Promise<void> {
   const target =
     uri ?? vscode.window.activeTextEditor?.document.uri;
   if (!target || !target.fsPath.endsWith(".hunt")) {
@@ -281,7 +281,7 @@ export function runHuntFileInTerminalCommand(uri?: vscode.Uri): void {
 
   const roots = vscode.workspace.workspaceFolders ?? [];
   const workspaceRoot = roots[0]?.uri.fsPath ?? process.cwd();
-  const manulExe = findManulExecutable(workspaceRoot);
+  const manulExe = await findManulExecutable(workspaceRoot);
   const terminal = vscode.window.createTerminal("ManulEngine");
   terminal.show();
   terminal.sendText(`"${manulExe}" "${target.fsPath}"`);
