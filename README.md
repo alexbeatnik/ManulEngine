@@ -1,5 +1,8 @@
 # 😼 ManulEngine — The Mastermind
 
+[![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
+
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 
 Forget brittle CSS/XPath locators that break on every UI update — write tests in plain English.
