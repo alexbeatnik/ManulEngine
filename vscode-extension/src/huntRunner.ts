@@ -14,8 +14,9 @@ import * as vscode from "vscode";
  * most once per workspace per extension-host session.
  */
 
-// Per-workspace cache: avoids repeated shell lookups within a session.
-const _shellCache = new Map<string, string>();
+// Per-workspace cache of in-flight/resolved promises — concurrent calls for the
+// same workspaceRoot share one lookup rather than each spawning a shell.
+const _shellCache = new Map<string, Promise<string>>();
 
 export async function findManulExecutable(workspaceRoot: string): Promise<string> {
   const custom = vscode.workspace
@@ -55,7 +56,8 @@ export async function findManulExecutable(workspaceRoot: string): Promise<string
     }
   }
 
-  // Return cached shell result if we already ran the lookup for this workspace.
+  // Return the cached promise if a lookup is already in-flight or completed for
+  // this workspace — prevents concurrent calls from each spawning a shell.
   if (_shellCache.has(workspaceRoot)) {
     return _shellCache.get(workspaceRoot)!;
   }
@@ -65,7 +67,7 @@ export async function findManulExecutable(workspaceRoot: string): Promise<string
   // argv array so the shell path is never parsed by another shell (no injection
   // risk even if the path contains spaces). cwd is set to workspaceRoot so
   // directory-sensitive tools (direnv, asdf) resolve against the project.
-  const result = await new Promise<string>((resolve) => {
+  const promise = new Promise<string>((resolve) => {
     if (isWin) {
       // `where` is a built-in on Windows; no shell wrapping needed.
       execFile("where", ["manul"], { cwd: workspaceRoot, timeout: 3000 }, (err, stdout) => {
@@ -74,24 +76,39 @@ export async function findManulExecutable(workspaceRoot: string): Promise<string
       });
     } else {
       // Prefer vscode.env.shell (the terminal shell the user configured in VS Code),
-      // then fall back to $SHELL. If neither is set, skip the lookup entirely —
-      // /bin/sh does not support -lic and would fail silently.
+      // then fall back to $SHELL. If neither is set, skip the lookup entirely.
       const shell = vscode.env.shell || process.env.SHELL;
       if (!shell) {
         resolve("manul");
         return;
       }
-      // -l (login) + -i (interactive) + -c ensures both profile and rc files
-      // are sourced. argv array avoids shell re-parsing of the shell path.
-      execFile(shell, ["-lic", "command -v manul"], { cwd: workspaceRoot, timeout: 3000 }, (err, stdout) => {
+      // Choose flags that the detected shell actually supports. Not all shells
+      // accept combined flags like `-lic` or the -i (interactive) flag:
+      //   - fish:          supports -l and -c, but not -i or combined -lic
+      //   - sh/dash/ash:   only -c is portable (no login or interactive flags)
+      //   - bash/zsh/etc.: -l (login) + -i (interactive) + -c sources both
+      //                    profile and rc files
+      const shellName = path.basename(shell);
+      let shellArgs: string[];
+      if (shellName === "fish") {
+        shellArgs = ["-lc", "command -v manul"];
+      } else if (shellName === "sh" || shellName === "dash" || shellName === "ash") {
+        shellArgs = ["-c", "command -v manul"];
+      } else {
+        // bash, zsh, ksh, and most other POSIX-compatible shells.
+        shellArgs = ["-l", "-i", "-c", "command -v manul"];
+      }
+      // argv array avoids shell re-parsing of the shell path (no injection risk).
+      execFile(shell, shellArgs, { cwd: workspaceRoot, timeout: 3000 }, (err, stdout) => {
         const line = stdout.trim().split("\n")[0].trim();
         resolve(!err && line && fs.existsSync(line) ? line : "manul");
       });
     }
   });
 
-  _shellCache.set(workspaceRoot, result);
-  return result;
+  // Store the promise immediately so any concurrent callers await the same lookup.
+  _shellCache.set(workspaceRoot, promise);
+  return promise;
 }
 
 /** Spawn manul <huntFile> and stream output. Resolves with exit code. */
