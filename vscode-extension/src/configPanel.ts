@@ -201,7 +201,7 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       <input type="checkbox" id="ai_always"/>
       <label for="ai_always">ai_always</label>
     </div>
-    <div class="hint">Always call the LLM picker (bypasses heuristic short-circuits).</div>
+    <div class="hint" id="ai-always-hint">Always call the LLM picker (bypasses heuristic short-circuits). Has no effect when model is empty.</div>
 
     <label>ai_policy
       <select id="ai_policy">
@@ -281,11 +281,23 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       g('controls_cache_dir').value       = config.controls_cache_dir ?? 'cache';
       g('log_name_maxlen').value          = config.log_name_maxlen ?? 0;
       g('log_thought_maxlen').value       = config.log_thought_maxlen ?? 0;
+      syncAiAlways();
     }
 
     g('btn-generate').addEventListener('click', doGenerate);
     g('btn-save').addEventListener('click', doSave);
     g('btn-open').addEventListener('click', doOpen);
+
+    // Disable ai_always when no model is set
+    function syncAiAlways() {
+      const hasModel = g('model').value.trim() !== '';
+      g('ai_always').disabled = !hasModel;
+      g('ai-always-hint').style.color = hasModel
+        ? '' : 'var(--vscode-editorWarning-foreground, #cca700)';
+      if (!hasModel) { g('ai_always').checked = false; }
+    }
+    g('model').addEventListener('input', syncAiAlways);
+    g('model').addEventListener('change', syncAiAlways);
 
     window.addEventListener('message', function(event) {
       const msg = event.data;
