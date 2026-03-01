@@ -33,7 +33,7 @@ Strict protection against LLM hallucinations. If the model is unsure, it returns
 
 ### 🎛️ Adjustable AI Threshold
 
-Control how aggressively Manul falls back to the local LLM via `.env`. If `MANUL_AI_THRESHOLD` is not set, Manul auto-calculates it from the model size:
+Control how aggressively Manul falls back to the local LLM via `manul_engine_configuration.json` (`ai_threshold` key) or the `MANUL_AI_THRESHOLD` environment variable. If not set, Manul auto-calculates it from the model size:
 
 | Model size | Auto threshold |
 |---|---|

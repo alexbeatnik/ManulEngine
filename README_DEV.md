@@ -74,13 +74,13 @@ Strict protection against LLM hallucinations. If the model is unsure it can retu
 
 ### 🎛️ Adjustable AI Threshold (Paranoia Level)
 
-Control how quickly Manul falls back to the local LLM via `.env`:
+Control how quickly Manul falls back to the local LLM via `manul_engine_configuration.json` or `MANUL_AI_THRESHOLD` env var:
 
 * **Low (200–500):** Blazing speed. Manul trusts heuristics.
-* **Default (auto):** Derived from model size (e.g., `qwen2.5:0.5b` uses 500).
+* **Default (auto):** Derived from model size (e.g., `qwen2.5:0.5b` → 500).
 * **High (2,000+):** More AI involvement on ambiguous steps.
 
-If `MANUL_AI_THRESHOLD` is **not set** (missing or commented out in `.env`), Manul auto-calculates it from the model size:
+If `ai_threshold` is `null` (default) and a model is set, Manul auto-calculates from the model size:
 
 | Model size | Auto threshold |
 | --- | --- |

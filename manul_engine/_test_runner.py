@@ -19,8 +19,8 @@ import re
 import sys
 
 
-# Directory that holds test_*.py suites (resolves correctly whether running from
-# source or from an installed wheel).
+# Directory that holds synthetic test_*.py suites (available when running from
+# a source checkout; these tests are not packaged into the installed wheel).
 _PKG_DIR = os.path.dirname(os.path.abspath(__file__))
 _TEST_DIR = os.path.join(_PKG_DIR, "test")
 
@@ -58,8 +58,7 @@ async def run_tests(log_path: str) -> bool:
     Returns True if every suite passed, False otherwise.
     Writes a full log to *log_path*.
     """
-    # Disable controls cache and dotenv override for deterministic runs.
-    os.environ["MANUL_DOTENV_OVERRIDE"] = "False"
+    # Disable controls cache for deterministic runs.
     os.environ["MANUL_CONTROLS_CACHE_ENABLED"] = "False"
     try:
         from manul_engine import prompts as _prompts

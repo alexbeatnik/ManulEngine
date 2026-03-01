@@ -162,6 +162,9 @@ async def main() -> None:
 
     headless = "--headless" in args
     args = [a for a in args if a != "--headless"]
+    if not args:
+        print(_USAGE)
+        sys.exit(0)
     target = args[0]
 
     # ── Hunt files ────────────────────────────────────────────────────────
