@@ -7,7 +7,7 @@ import * as vscode from "vscode";
 export function findManulExecutable(workspaceRoot: string): string {
   const custom = vscode.workspace
     .getConfiguration("manulEngine")
-    .get<string>("pythonPath", "")
+    .get<string>("manulPath", "")
     .trim();
   if (custom) {
     return custom;

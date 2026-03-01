@@ -135,10 +135,10 @@
     "configuration": {
       "title": "ManulEngine",
       "properties": {
-        "manulEngine.pythonPath": {
+        "manulEngine.manulPath": {
           "type": "string",
           "default": "",
-          "description": "Path to the Python executable or venv to use for running hunt files. Leave empty to auto-detect (checks .venv/bin/python, then PATH)."
+          "description": "Path to the manul CLI executable to use for running hunt files. Leave empty to auto-detect (.venv/bin/manul, then PATH)."
         },
         "manulEngine.configFile": {
           "type": "string",
