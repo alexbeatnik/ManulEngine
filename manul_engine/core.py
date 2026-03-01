@@ -231,7 +231,14 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
     async def _snapshot(self, page, mode: str, texts: list[str]) -> list[dict]:
         """Inject SNAPSHOT_JS into the page and return a list of interactive elements."""
-        return await page.evaluate(SNAPSHOT_JS, [mode, texts or []])
+        for attempt in range(3):
+            try:
+                return await page.evaluate(SNAPSHOT_JS, [mode, texts or []])
+            except Exception as exc:
+                if "closed" in str(exc).lower() and attempt < 2:
+                    await asyncio.sleep(1.5)
+                    continue
+                raise
 
     # ── Scoring (delegates to scoring module) ─
 
@@ -341,7 +348,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         best_score = top[0].get("score", 0)
 
         # Pure-AI mode: usually asks the LLM, but fast-tracks if there is only 1 candidate.
-        if getattr(prompts, "AI_ALWAYS", False):
+        # Guard: ai_always has no effect without a model — fall through to heuristics.
+        if getattr(prompts, "AI_ALWAYS", False) and self.model is not None:
             if len(scored) == 1:
                 print("    ⚡ FAST-TRACK: Found exactly 1 candidate, bypassing AI.")
                 idx = 0

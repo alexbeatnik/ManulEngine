@@ -85,6 +85,7 @@ async def run_suite() -> bool:
             await page.set_content(AI_MODES_DOM)
 
             manul2 = ManulEngine(headless=True)
+            manul2.model = "mock"  # satisfy AI_ALWAYS guard; real LLM is mocked below
             called = {"n": 0}
 
             async def _fake_select(_step: str, _mode: str, cand: list[dict], _ctx: str) -> int:

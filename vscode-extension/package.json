@@ -1,0 +1,163 @@
+{
+  "name": "manul-engine",
+  "displayName": "ManulEngine",
+  "description": "Hunt file language support, test runner and configuration UI for ManulEngine browser automation",
+  "version": "0.0.51",
+  "publisher": "manul-engine",
+  "icon": "images/icon128.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alexbeatnik/ManulEngine"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Testing", "Programming Languages", "Other"],
+  "keywords": ["hunt", "playwright", "browser-automation", "e2e", "manul"],
+  "activationEvents": [
+    "workspaceContains:**/*.hunt"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "hunt",
+        "aliases": ["Hunt", "ManulEngine Hunt"],
+        "extensions": [".hunt"],
+        "icon": {
+          "light": "images/icon16.png",
+          "dark": "images/icon16.png"
+        },
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "hunt",
+        "scopeName": "source.hunt",
+        "path": "./syntaxes/hunt.tmLanguage.json"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "manul-engine",
+          "title": "ManulEngine",
+          "icon": "images/icon-activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "manul-engine": [
+        {
+          "type": "webview",
+          "id": "manul.configView",
+          "name": "Configuration"
+        },
+        {
+          "id": "manul.cacheView",
+          "name": "Cache",
+          "type": "tree"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "manul.runHuntFile",
+        "title": "ManulEngine: Run Hunt File",
+        "icon": "$(play)"
+      },
+      {
+        "command": "manul.runHuntFileInTerminal",
+        "title": "ManulEngine: Run Hunt File in Terminal",
+        "icon": "$(terminal)"
+      },
+      {
+        "command": "manul.generateConfig",
+        "title": "ManulEngine: Generate Default Config"
+      },
+      {
+        "command": "manul.clearAllCache",
+        "title": "ManulEngine: Clear All Cache",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "manul.clearSiteCache",
+        "title": "Clear Cache for This Site",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "manul.refreshCache",
+        "title": "ManulEngine: Refresh Cache View",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "manul.runHuntFile",
+          "when": "resourceExtname == .hunt",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "manul.runHuntFile",
+          "when": "resourceExtname == .hunt",
+          "group": "navigation@1"
+        },
+        {
+          "command": "manul.runHuntFileInTerminal",
+          "when": "resourceExtname == .hunt",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "manul.clearSiteCache",
+          "when": "view == manul.cacheView && viewItem == cacheEntry",
+          "group": "inline"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "manul.clearAllCache",
+          "when": "view == manul.cacheView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "manul.refreshCache",
+          "when": "view == manul.cacheView",
+          "group": "navigation@2"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "ManulEngine",
+      "properties": {
+        "manulEngine.manulPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the manul CLI executable to use for running hunt files. Leave empty to auto-detect (.venv/bin/manul, then PATH)."
+        },
+        "manulEngine.configFile": {
+          "type": "string",
+          "default": "manul_engine_configuration.json",
+          "description": "Name of the ManulEngine config file in the workspace root."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.x",
+    "typescript": "^5.3.x",
+    "@vscode/vsce": "^2.24.0"
+  }
+}

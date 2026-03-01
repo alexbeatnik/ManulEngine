@@ -104,6 +104,7 @@ async def run_suite() -> bool:
             await page.set_content(FB_EXTREME_DOM)
 
             manul = ManulEngine(headless=True)
+            manul.model = "mock"  # satisfy AI_ALWAYS guard; real LLM is mocked below
             prompts.AI_ALWAYS = True 
 
             # Mock LLM for CI environment where Ollama is not present

@@ -199,6 +199,8 @@ async def main() -> None:
         print("=" * 60)
         print(f"\n📄 Full log saved to: {log_file}")
 
+        return len(results) - passed  # number of failures
+
     finally:
         sys.stdout = tee._term
         tee.close()
@@ -207,6 +209,8 @@ async def main() -> None:
 def sync_main() -> None:
     """Synchronous entry point registered as the `manul` console_scripts command."""
     try:
-        asyncio.run(main())
+        failures = asyncio.run(main())
+        if failures:
+            sys.exit(1)
     except KeyboardInterrupt:
         print("\n🐾 Manul returned to the den.")
