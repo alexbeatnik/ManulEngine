@@ -22,7 +22,6 @@ ManulEngine/
 ├── manul_engine_configuration.json   Project configuration (JSON)
 ├── pyproject.toml                    Build config — package: manul-engine 0.0.5
 ├── requirements.txt                  Python dependencies
-├── .env.example                      Legacy note: config moved to JSON
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
 │   ├── cli.py                        Installed CLI entry point (`manul` command)
@@ -42,12 +41,21 @@ ManulEngine/
 │       ├── test_13_controls_cache.py Unit: persistent controls cache
 │       ├── test_14_qa_classics.py    Unit: legacy HTML patterns, tables, fieldsets
 │       └── test_15_facebook_final_boss.py
-└── tests/                            Integration hunt tests (real websites)
-    ├── hunt_demoqa.hunt
-    ├── hunt_expandtesting.hunt
-    ├── hunt_mega.hunt
-    ├── hunt_rahul.hunt
-    └── hunt_wikipedia.hunt
+├── tests/                            Integration hunt tests (real websites)
+│   ├── hunt_demoqa.hunt
+│   ├── hunt_expandtesting.hunt
+│   ├── hunt_mega.hunt
+│   ├── hunt_rahul.hunt
+│   └── hunt_wikipedia.hunt
+└── vscode-extension/                 VS Code extension (language support + UI)
+    ├── package.json                  Extension manifest (v0.0.5)
+    ├── src/
+    │   ├── extension.ts              Activation, command registration
+    │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
+    │   ├── huntTestController.ts     VS Code Test Explorer integration
+    │   ├── configPanel.ts            Webview sidebar: config editor + Ollama discovery
+    │   └── cacheTreeProvider.ts      Sidebar tree: controls cache browser
+    └── syntaxes/hunt.tmLanguage.json Hunt file syntax grammar
 ```
 
 ---
@@ -143,7 +151,7 @@ Environment variables (`MANUL_*`) always override JSON values — useful for CI/
   "timeout": 5000,
   "nav_timeout": 30000,
 
-  "ai_always": false,
+  "ai_always": false,       // forced to false when model is null
   "ai_policy": "prior",
   "ai_threshold": null,
 
@@ -252,6 +260,38 @@ python manul.py test
 # Set "model": null in manul_engine_configuration.json
 python manul.py test
 ```
+
+---
+
+## 🖱️ VS Code Extension
+
+The `vscode-extension/` directory contains a companion VS Code extension (v0.0.5) that provides:
+
+| Feature | Details |
+| --- | --- |
+| **Hunt language support** | Syntax highlighting, bracket matching, and comment toggling for `.hunt` files |
+| **Test Explorer integration** | Hunt files appear in VS Code's native Test Explorer; step-level pass/fail reporting |
+| **Config sidebar** | Webview panel to edit `manul_engine_configuration.json` visually; live Ollama model discovery via `localhost:11434` |
+| **Cache browser** | Tree-view sidebar showing the controls cache hierarchy (`site → page → controls.json`) |
+| **Run commands** | `ManulEngine: Run Hunt File` (output panel) and `ManulEngine: Run Hunt File in Terminal` (raw CLI) |
+
+### Extension behaviour notes
+
+* **Working directory:** The extension spawns `manul` with `cwd` set to the **VS Code workspace folder root** (not the directory of the `.hunt` file). This ensures `manul_engine_configuration.json` and the cache directory are always resolved from the project root, matching what you get when running `manul` from the terminal.
+* **`ai_always` guard:** The config panel automatically forces `ai_always` to `false` when no model is selected, preventing an invalid heuristics-only config from being saved with `ai_always: true`.
+* **Ollama discovery:** On panel open the extension fetches `http://localhost:11434/api/tags` and populates a `<datalist>` with installed model names. If Ollama is not running the field accepts free-text input instead.
+
+### Building the extension
+
+```bash
+cd vscode-extension
+npm install
+npm run compile      # tsc one-shot
+npm run watch        # incremental (dev)
+npx vsce package     # produce .vsix
+```
+
+Press **F5** in VS Code (with the extension folder open) to launch a dev Extension Host.
 
 ---
 
