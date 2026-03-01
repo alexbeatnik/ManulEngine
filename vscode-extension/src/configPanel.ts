@@ -156,7 +156,7 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
   <div id="no-config">
     ⚠️ No <code>manul_engine_configuration.json</code> found in workspace root.
     <div class="btn-row" style="margin-top:8px">
-      <button onclick="generate()">Generate Default Config</button>
+      <button id="btn-generate">Generate Default Config</button>
     </div>
   </div>
 
@@ -221,8 +221,8 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
     <div class="hint">Truncate LLM thought strings in logs (0 = no limit).</div>
 
     <div class="btn-row">
-      <button onclick="save()">💾 Save</button>
-      <button class="secondary" onclick="openFile()">Open in Editor</button>
+      <button id="btn-save">💾 Save</button>
+      <button id="btn-open" class="secondary">Open in Editor</button>
     </div>
   </div>
 
@@ -231,11 +231,11 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
 
     function g(id) { return document.getElementById(id); }
 
-    function generate() { vsc.postMessage({ command: 'generate' }); }
-    function openFile() { vsc.postMessage({ command: 'open' }); }
+    function doGenerate() { vsc.postMessage({ command: 'generate' }); }
+    function doOpen()     { vsc.postMessage({ command: 'open' }); }
 
-    function save() {
-      const modelVal = g('model').value.trim();
+    function doSave() {
+      const modelVal  = g('model').value.trim();
       const threshVal = g('ai_threshold').value.trim();
       const cfg = {
         model: modelVal === '' ? null : modelVal,
@@ -253,7 +253,7 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       vsc.postMessage({ command: 'save', config: cfg });
     }
 
-    function load(config, exists) {
+    function doLoad(config, exists) {
       g('no-config').style.display = exists ? 'none' : 'block';
       g('model').value         = config.model ?? '';
       g('headless').checked    = !!config.headless;
@@ -268,9 +268,13 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       g('log_thought_maxlen').value       = config.log_thought_maxlen ?? 0;
     }
 
-    window.addEventListener('message', event => {
+    g('btn-generate').addEventListener('click', doGenerate);
+    g('btn-save').addEventListener('click', doSave);
+    g('btn-open').addEventListener('click', doOpen);
+
+    window.addEventListener('message', function(event) {
       const msg = event.data;
-      if (msg.command === 'config') { load(msg.config, msg.exists); }
+      if (msg.command === 'config') { doLoad(msg.config, msg.exists); }
     });
 
     vsc.postMessage({ command: 'load' });
