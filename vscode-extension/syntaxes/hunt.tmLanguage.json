@@ -1,0 +1,100 @@
+{
+  "name": "Hunt",
+  "scopeName": "source.hunt",
+  "fileTypes": ["hunt"],
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#metadata" },
+    { "include": "#step" }
+  ],
+  "repository": {
+    "comment": {
+      "name": "comment.line.number-sign.hunt",
+      "match": "^\\s*#.*$"
+    },
+    "metadata": {
+      "patterns": [
+        {
+          "name": "meta.annotation.hunt",
+          "match": "^(@context|@blueprint)(:)(.*)$",
+          "captures": {
+            "1": { "name": "keyword.other.metadata.hunt" },
+            "2": { "name": "punctuation.separator.hunt" },
+            "3": { "name": "string.unquoted.metadata.value.hunt" }
+          }
+        }
+      ]
+    },
+    "step": {
+      "patterns": [
+        {
+          "name": "meta.step.hunt",
+          "begin": "^\\s*(\\d+\\.)",
+          "beginCaptures": {
+            "1": { "name": "constant.numeric.step-number.hunt" }
+          },
+          "end": "$",
+          "patterns": [
+            { "include": "#system-keyword" },
+            { "include": "#action-verb" },
+            { "include": "#quoted-single" },
+            { "include": "#quoted-double" },
+            { "include": "#variable" },
+            { "include": "#url" },
+            { "include": "#modifier" }
+          ]
+        },
+        {
+          "name": "meta.freeform.hunt",
+          "begin": "^\\s*(?!#|@|\\d+\\.)",
+          "end": "$",
+          "patterns": [
+            { "include": "#system-keyword" },
+            { "include": "#action-verb" },
+            { "include": "#quoted-single" },
+            { "include": "#quoted-double" },
+            { "include": "#variable" },
+            { "include": "#url" },
+            { "include": "#modifier" }
+          ]
+        }
+      ]
+    },
+    "system-keyword": {
+      "name": "keyword.control.hunt",
+      "match": "\\b(NAVIGATE to|NAVIGATE|VERIFY that|VERIFY|EXTRACT|SCROLL DOWN inside the list|SCROLL DOWN|SCROLL|WAIT|DONE|DOUBLE CLICK|HOVER)\\b"
+    },
+    "action-verb": {
+      "name": "keyword.operator.action.hunt",
+      "match": "(?i)\\b(Click|Fill|Type|Select|Choose|Check|Uncheck|Hover|Drag|Drop|Locate|Navigate|Enter)\\b"
+    },
+    "quoted-single": {
+      "name": "string.quoted.single.hunt",
+      "begin": "'",
+      "end": "'",
+      "patterns": [
+        { "include": "#variable" }
+      ]
+    },
+    "quoted-double": {
+      "name": "string.quoted.double.hunt",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        { "include": "#variable" }
+      ]
+    },
+    "variable": {
+      "name": "variable.other.hunt",
+      "match": "\\{[a-zA-Z_][a-zA-Z0-9_]*\\}"
+    },
+    "url": {
+      "name": "markup.underline.link.hunt",
+      "match": "https?://[^\\s]+"
+    },
+    "modifier": {
+      "name": "keyword.other.modifier.hunt",
+      "match": "\\b(if exists|optional|NOT|DISABLED|is present|is checked|is NOT present|into|from|that|the|field|button|link|checkbox|radio|dropdown|input)\\b"
+    }
+  }
+}

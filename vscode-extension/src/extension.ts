@@ -1,0 +1,81 @@
+import * as vscode from "vscode";
+import {
+  createHuntTestController,
+  runHuntFileCommand,
+  runHuntFileInTerminalCommand,
+} from "./huntTestController";
+import { ConfigPanelProvider, generateConfigCommand } from "./configPanel";
+import {
+  CacheTreeProvider,
+  CacheItem,
+  clearAllCacheCommand,
+  clearSiteCacheCommand,
+} from "./cacheTreeProvider";
+
+export function activate(context: vscode.ExtensionContext): void {
+  // ── Test Controller (Test Explorer) ────────────────────────────────────────
+  createHuntTestController(context);
+
+  // ── Config Webview Panel ───────────────────────────────────────────────────
+  const configProvider = new ConfigPanelProvider(context);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      ConfigPanelProvider.viewId,
+      configProvider
+    )
+  );
+
+  // ── Cache Tree View ────────────────────────────────────────────────────────
+  const cacheProvider = new CacheTreeProvider();
+  const cacheView = vscode.window.createTreeView("manul.cacheView", {
+    treeDataProvider: cacheProvider,
+    showCollapseAll: true,
+  });
+  context.subscriptions.push(cacheView);
+
+  // ── Commands ───────────────────────────────────────────────────────────────
+  context.subscriptions.push(
+    vscode.commands.registerCommand("manul.runHuntFile", (uri?: vscode.Uri) =>
+      runHuntFileCommand(uri)
+    ),
+
+    vscode.commands.registerCommand(
+      "manul.runHuntFileInTerminal",
+      (uri?: vscode.Uri) => runHuntFileInTerminalCommand(uri)
+    ),
+
+    vscode.commands.registerCommand("manul.generateConfig", () =>
+      generateConfigCommand()
+    ),
+
+    vscode.commands.registerCommand("manul.refreshCache", () =>
+      cacheProvider.refresh()
+    ),
+
+    vscode.commands.registerCommand(
+      "manul.clearAllCache",
+      () => clearAllCacheCommand(cacheProvider)
+    ),
+
+    vscode.commands.registerCommand(
+      "manul.clearSiteCache",
+      (item: CacheItem) => clearSiteCacheCommand(item, cacheProvider)
+    )
+  );
+
+  // Refresh cache view when workspace folders change
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeWorkspaceFolders(() => cacheProvider.refresh())
+  );
+
+  // Refresh config view when the config file changes
+  const configWatcher = vscode.workspace.createFileSystemWatcher(
+    "**/manul_engine_configuration.json"
+  );
+  context.subscriptions.push(configWatcher);
+  configWatcher.onDidChange(() => cacheProvider.refresh());
+}
+
+export function deactivate(): void {
+  // nothing to clean up (subscriptions handle it)
+}
