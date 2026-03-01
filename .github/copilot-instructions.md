@@ -44,6 +44,15 @@ tests/
   hunt_mega.hunt            integration: all element types, drag-drop, shadow DOM, custom dropdowns
   hunt_rahul.hunt           integration: radios, autocomplete, hover
   hunt_wikipedia.hunt       integration: search, navigate, extract, verify, shadow-dom inputs
+vscode-extension/
+  package.json              Extension manifest (v0.0.5)
+  src/
+    extension.ts            Activation, command registration
+    huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
+    huntTestController.ts   VS Code Test Explorer integration (step-level reporting)
+    configPanel.ts          Webview sidebar: config editor + Ollama model discovery
+    cacheTreeProvider.ts    Sidebar tree: controls cache browser
+  syntaxes/hunt.tmLanguage.json  Hunt file syntax grammar
 ```
 
 ## How the engine works
@@ -194,7 +203,7 @@ Environment variables (`MANUL_*`) always override JSON values.
 | `model` | `null` | Ollama model name. `null` = heuristics-only (no AI) |
 | `headless` | `false` | Run browser headless |
 | `ai_threshold` | auto | Score threshold before LLM fallback. `null` = auto-derive from model size |
-| `ai_always` | `false` | If `true`, always ask the LLM picker (bypasses heuristic short-circuits) |
+| `ai_always` | `false` | If `true`, always ask the LLM picker (bypasses heuristic short-circuits). Has no effect and is forced to `false` when `model` is `null` |
 | `ai_policy` | `"prior"` | How to treat heuristic score in LLM picker: `"prior"` (hint) or `"strict"` (force max-score) |
 | `controls_cache_enabled` | `true` | Enables persistent per-site controls cache |
 | `controls_cache_dir` | `"cache"` | Directory for cache files (relative to CWD or absolute) |
@@ -261,3 +270,15 @@ Each element dict returned by `SNAPSHOT_JS` contains:
 * `substitute_memory()` replaces `{var}` placeholders.
 * `self.learned_elements` — semantic cache: `(mode, search_texts, target_field) → {name, tag}`.
 * `self.last_xpath` — used for Contextual Reuse (if next step says "in that field").
+
+## VS Code extension (`vscode-extension/`)
+
+A companion extension that provides hunt file language support, Test Explorer integration, a config sidebar, and a cache browser.
+
+**Key rules when editing extension code:**
+
+* `huntRunner.ts` — `runHunt()` spawns `manul` with `cwd` set to the **VS Code workspace folder root** (resolved via `vscode.workspace.getWorkspaceFolder()`), not `path.dirname(huntFile)`. This ensures `manul_engine_configuration.json` and relative `controls_cache_dir` paths are always resolved from the project root, matching CLI behaviour.
+* `configPanel.ts` — `doSave()` forces `ai_always: false` whenever `model` is empty/null (`modelVal !== '' && g('ai_always').checked`). Do not remove this guard — saving `ai_always: true` with no model would produce an invalid config that causes runtime errors. The `syncAiAlways()` function also disables and unchecks the `ai_always` checkbox in the UI when the model field is cleared.
+* Config panel reads/writes `manul_engine_configuration.json` at the workspace root using `_configPath()`. The config file name is user-configurable via the `manulEngine.configFile` VS Code setting.
+* Ollama model discovery: the panel fetches `http://localhost:11434/api/tags` on open and populates a `<datalist>` for the model input. Gracefully degrades to free-text input if Ollama is not running.
+* Build: `cd vscode-extension && npm install && npm run compile`. Use `npx vsce package` to produce a `.vsix`. Press F5 in VS Code with the extension folder open to launch a dev Extension Host.
