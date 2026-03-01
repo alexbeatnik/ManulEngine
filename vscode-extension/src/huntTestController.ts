@@ -290,5 +290,12 @@ export async function runHuntFileInTerminalCommand(uri?: vscode.Uri): Promise<vo
   const manulExe = await findManulExecutable(workspaceRoot);
   const terminal = vscode.window.createTerminal("ManulEngine");
   terminal.show();
-  terminal.sendText(`"${manulExe}" "${target.fsPath}"`);
+  // PowerShell requires `&` to invoke a path-quoted executable; other shells
+  // (bash, zsh, fish, cmd) use plain quoting.
+  const shellBase = path.basename((vscode.env.shell || "").toLowerCase());
+  const isPowerShell = shellBase === "powershell.exe" || shellBase === "pwsh" || shellBase === "pwsh.exe";
+  const command = isPowerShell
+    ? `& "${manulExe}" "${target.fsPath}"`
+    : `"${manulExe}" "${target.fsPath}"`;
+  terminal.sendText(command);
 }

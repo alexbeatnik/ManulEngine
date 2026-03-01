@@ -71,8 +71,9 @@ export async function findManulExecutable(workspaceRoot: string): Promise<string
     if (isWin) {
       // `where` is a built-in on Windows; no shell wrapping needed.
       execFile("where", ["manul"], { cwd: workspaceRoot, timeout: 3000 }, (err, stdout) => {
-        const line = stdout.trim().split("\n")[0].trim();
-        resolve(!err && line && fs.existsSync(line) ? line : "manul");
+        // `where` can return multiple matches; pick the first that actually exists.
+        const found = stdout.split("\n").map(l => l.trim()).find(l => l && fs.existsSync(l));
+        resolve(!err && found ? found : "manul");
       });
     } else {
       // Prefer vscode.env.shell (the terminal shell the user configured in VS Code),
@@ -100,8 +101,10 @@ export async function findManulExecutable(workspaceRoot: string): Promise<string
       }
       // argv array avoids shell re-parsing of the shell path (no injection risk).
       execFile(shell, shellArgs, { cwd: workspaceRoot, timeout: 3000 }, (err, stdout) => {
-        const line = stdout.trim().split("\n")[0].trim();
-        resolve(!err && line && fs.existsSync(line) ? line : "manul");
+        // Login/interactive shells can emit banners or warnings before the path.
+        // Scan all lines and pick the first one that resolves to an existing file.
+        const found = stdout.split("\n").map(l => l.trim()).find(l => l && fs.existsSync(l));
+        resolve(!err && found ? found : "manul");
       });
     }
   });
