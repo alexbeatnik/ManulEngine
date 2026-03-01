@@ -6,10 +6,15 @@ import * as vscode from "vscode";
 
 /**
  * Probe candidate paths in order and return the first one that exists on disk.
- * Falls back to resolving via the shell `which`/`where` command, so pip
- * user-installs (~/.local/bin) and conda envs are found even if VS Code's
- * inherited PATH is trimmed.
+ * When no static candidate matches, falls back to a one-time login-shell lookup
+ * (`bash -lc 'command -v manul'` / `where manul`) so that conda, pyenv, and
+ * other shell-initialised environments are covered. The shell result is cached
+ * for the lifetime of the extension host so the blocking call runs at most once.
  */
+
+// Cached result of the shell lookup so we block the extension host at most once.
+let _shellResolvedManul: string | undefined;
+
 export function findManulExecutable(workspaceRoot: string): string {
   const custom = vscode.workspace
     .getConfiguration("manulEngine")
@@ -21,17 +26,19 @@ export function findManulExecutable(workspaceRoot: string): string {
 
   const isWin = process.platform === "win32";
 
-  // Ordered list of candidate paths to probe
+  // Ordered list of static candidate paths to probe (no blocking I/O overhead).
   const candidates: string[] = [
-    // 1. Project-local venv (cross-platform)
+    // 1. Project-local venv (highest priority)
     isWin
       ? path.join(workspaceRoot, ".venv", "Scripts", "manul.exe")
       : path.join(workspaceRoot, ".venv", "bin", "manul"),
-    // 2. pip --user install location (Linux / macOS)
+    // 2. pip --user install (Linux / macOS Intel)
     path.join(os.homedir(), ".local", "bin", "manul"),
-    // 3. macOS Homebrew / pipx default bin
+    // 3. pipx-managed venv for manul-engine (user-level)
     path.join(os.homedir(), ".local", "pipx", "venvs", "manul-engine", "bin", "manul"),
-    // 4. system-wide installs
+    // 4. macOS Homebrew — Apple Silicon default prefix
+    "/opt/homebrew/bin/manul",
+    // 5. system-wide installs
     "/usr/local/bin/manul",
     "/usr/bin/manul",
   ];
@@ -42,18 +49,26 @@ export function findManulExecutable(workspaceRoot: string): string {
     }
   }
 
-  // Last resort: ask the shell to find it (handles conda, pyenv, custom PATH)
+  // One-time login-shell lookup — sources ~/.bashrc / conda init / pyenv etc.
+  // Result is cached so the blocking call happens at most once per session.
+  if (_shellResolvedManul !== undefined) {
+    return _shellResolvedManul;
+  }
   try {
-    const cmd = isWin ? "where manul" : "which manul";
-    const result = execSync(cmd, { encoding: "utf-8", timeout: 3000 }).trim().split("\n")[0].trim();
+    const cmd = isWin
+      ? "where manul"
+      : "bash -lc 'command -v manul'";
+    const result = execSync(cmd, { encoding: "utf-8", timeout: 3000 })
+      .trim().split("\n")[0].trim();
     if (result && fs.existsSync(result)) {
+      _shellResolvedManul = result;
       return result;
     }
   } catch {
-    // which/where failed — fall through to bare name and let spawn error naturally
+    // Shell lookup failed — fall through to bare name.
   }
-
-  return "manul"; // final fallback: rely on PATH at spawn time
+  _shellResolvedManul = "manul"; // cache the fallback too
+  return "manul";
 }
 
 /** Spawn manul <huntFile> and stream output. Resolves with exit code. */
