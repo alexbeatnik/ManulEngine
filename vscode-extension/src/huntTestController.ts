@@ -109,6 +109,8 @@ export function createHuntTestController(
         }
 
         run.started(item);
+        // Reset all child steps to "running" state so stale results are cleared
+        item.children.forEach((child) => run.started(child));
         const output: string[] = [];
 
         try {
@@ -124,13 +126,38 @@ export function createHuntTestController(
 
           if (exitCode === 0) {
             run.passed(item);
-            // Mark child steps as passed too
+            // Mark all child steps as passed
             item.children.forEach((child) => run.passed(child));
           } else {
-            const msg = new vscode.TestMessage(
-              `Exit code: ${exitCode}\n${output.join("")}`
-            );
+            const fullOutput = output.join("");
+            const msg = new vscode.TestMessage(`Exit code: ${exitCode}\n${fullOutput}`);
             run.failed(item, msg);
+
+            // Parse output to find which step crashed/failed.
+            // Successful steps print "⏱️  STEP END", the crashing one doesn't get that line.
+            // We also look for 💥 CRASH or ❌ to find the failure step number.
+            const passedStepNums = new Set<string>();
+            for (const m of fullOutput.matchAll(/\[🐾 STEP (\d+)\s+@[^\]]+\][\s\S]*?⏱️\s+STEP END/g)) {
+              passedStepNums.add(m[1]);
+            }
+            // Find the failing step number from CRASH or ❌ lines
+            const crashMatch = fullOutput.match(/\[🐾 STEP (\d+)\s+@[^\]]*\][^]*?(?:💥 CRASH|❌)/);
+            const failedStepNum = crashMatch?.[1] ?? null;
+
+            item.children.forEach((child) => {
+              // child.id is like "file://...#stepNum"
+              const stepNum = child.id.split("#")[1];
+              if (!stepNum) { return; }
+              if (passedStepNums.has(stepNum)) {
+                run.passed(child);
+              } else if (stepNum === failedStepNum) {
+                run.failed(child, new vscode.TestMessage(
+                  `Step ${stepNum} failed:\n${fullOutput}`
+                ));
+              } else {
+                run.skipped(child);
+              }
+            });
           }
         } catch (err: unknown) {
           const errMsg = err instanceof Error ? err.message : String(err);
