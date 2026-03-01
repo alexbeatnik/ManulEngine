@@ -1,7 +1,7 @@
 import sys, os, asyncio
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from playwright.async_api import async_playwright
-from engine import ManulEngine
+from manul_engine import ManulEngine
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DOM: Travel & Booking (100 Elements)

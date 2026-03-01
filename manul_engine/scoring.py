@@ -1,4 +1,4 @@
-# engine/scoring.py
+# manul_engine/scoring.py
 """
 Heuristic scoring logic for ManulEngine.
 Determines which element is the most likely target for a given step.

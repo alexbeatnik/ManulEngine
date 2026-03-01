@@ -1,4 +1,4 @@
-# engine/helpers.py
+# manul_engine/helpers.py
 """
 Shared helper functions and timing constants used across the engine.
 """

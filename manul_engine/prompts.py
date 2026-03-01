@@ -1,9 +1,10 @@
-# engine/prompts.py
+# manul_engine/prompts.py
 """
 ManulEngine configuration, thresholds, and LLM prompts.
 
-Reads settings from .env (via python-dotenv) or environment variables.
-All values can be overridden in code via ManulEngine(model=..., ai_threshold=...).
+Reads settings from manul_engine_configuration.json (repo root) or environment
+variables. Environment variables (MANUL_* prefix) always win over the JSON file.
+All values can also be overridden in code via ManulEngine(model=..., ai_threshold=...).
 
 Exports:
     DEFAULT_MODEL, HEADLESS_MODE, TIMEOUT, NAV_TIMEOUT — core settings
@@ -12,6 +13,7 @@ Exports:
     PLANNER_SYSTEM_PROMPT — planner system prompt
 """
 
+import json
 import os
 from pathlib import Path
 import re as _re
@@ -20,43 +22,61 @@ from .helpers import env_bool
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
-try:
-    from dotenv import load_dotenv
-    # Load from a stable path (repo root) so this works even if CWD differs.
-    #
-    # Precedence:
-    # - By default, process environment variables win (override=False).
-    # - For local prompt tuning you may prefer the repo's .env to override the
-    #   shell environment; set MANUL_DOTENV_OVERRIDE=true to enable that.
-    _dotenv_path = _REPO_ROOT / ".env"
-    if _dotenv_path.exists():
-        _override = env_bool("MANUL_DOTENV_OVERRIDE")
-        load_dotenv(dotenv_path=_dotenv_path, override=_override)
-except ImportError:
-    pass  # dotenv optional — fall back to os.environ
+# ── JSON config loading ───────────────────────────────────────────────────────
+# Look for manul_engine_configuration.json first in the current working
+# directory (user's project root), then fall back to the package source root
+# (useful when running directly from the ManulEngine dev repo).
+# Environment variables (MANUL_*) always override JSON values.
+_CONFIG_PATH = Path.cwd() / "manul_engine_configuration.json"
+if not _CONFIG_PATH.exists():
+    _CONFIG_PATH = _REPO_ROOT / "manul_engine_configuration.json"
+
+# Maps JSON config keys → corresponding MANUL_* environment variable names.
+_KEY_MAP: dict[str, str] = {
+    "model":                  "MANUL_MODEL",
+    "headless":               "MANUL_HEADLESS",
+    "timeout":                "MANUL_TIMEOUT",
+    "nav_timeout":            "MANUL_NAV_TIMEOUT",
+    "ai_threshold":           "MANUL_AI_THRESHOLD",
+    "ai_always":              "MANUL_AI_ALWAYS",
+    "ai_policy":              "MANUL_AI_POLICY",
+    "controls_cache_enabled": "MANUL_CONTROLS_CACHE_ENABLED",
+    "controls_cache_dir":     "MANUL_CONTROLS_CACHE_DIR",
+    "log_name_maxlen":        "MANUL_LOG_NAME_MAXLEN",
+    "log_thought_maxlen":     "MANUL_LOG_THOUGHT_MAXLEN",
+}
+
+if _CONFIG_PATH.exists():
+    try:
+        with open(_CONFIG_PATH, encoding="utf-8") as _f:
+            _json_cfg: dict = json.load(_f)
+        for _jk, _ek in _KEY_MAP.items():
+            # Skip keys starting with "_" (comments/notes) and skip if env already set.
+            if _jk in _json_cfg and _ek not in os.environ:
+                _val = _json_cfg[_jk]
+                if _val is not None:
+                    # Python booleans → lowercase strings so env_bool() parses them correctly.
+                    os.environ[_ek] = str(_val).lower() if isinstance(_val, bool) else str(_val)
+    except (json.JSONDecodeError, OSError) as _cfg_err:
+        import warnings
+        warnings.warn(f"ManulEngine: could not load config file '{_CONFIG_PATH}': {_cfg_err}")
 
 # ── Core ──────────────────────────────────────────────────────────────────────
-DEFAULT_MODEL = os.getenv("MANUL_MODEL", "qwen2.5:0.5b")
+# If MANUL_MODEL is unset or empty, DEFAULT_MODEL is None — AI is fully disabled.
+DEFAULT_MODEL: "str | None" = os.getenv("MANUL_MODEL") or None
 HEADLESS_MODE = env_bool("MANUL_HEADLESS")
 TIMEOUT       = int(os.getenv("MANUL_TIMEOUT",     "5000"))
 NAV_TIMEOUT   = int(os.getenv("MANUL_NAV_TIMEOUT", "30000"))
 
 # ── Persistent controls cache ────────────────────────────────────────────────
 CONTROLS_CACHE_ENABLED = env_bool("MANUL_CONTROLS_CACHE_ENABLED", "True")
-_default_cache_dir = _REPO_ROOT / "cache"
-_cache_dir_raw = os.getenv(
-    "MANUL_CONTROLS_CACHE_DIR",
-    str(_default_cache_dir)
-)
+_cache_dir_raw = os.getenv("MANUL_CONTROLS_CACHE_DIR", "cache")
 _cache_dir_path = Path(_cache_dir_raw)
+# Relative paths are always resolved against CWD (the user's project root),
+# not against the package installation directory.
 if not _cache_dir_path.is_absolute():
-    _resolved_cache_dir = (_REPO_ROOT / _cache_dir_path).resolve()
-    try:
-        _inside_repo = _resolved_cache_dir.is_relative_to(_REPO_ROOT)
-    except AttributeError:
-        _inside_repo = (_resolved_cache_dir == _REPO_ROOT) or (_REPO_ROOT in _resolved_cache_dir.parents)
-    _cache_dir_path = _resolved_cache_dir if _inside_repo else _default_cache_dir
-CONTROLS_CACHE_DIR = str(_cache_dir_path)
+    _cache_dir_path = Path.cwd() / _cache_dir_path
+CONTROLS_CACHE_DIR = str(_cache_dir_path.resolve())
 
 # ── AI control switches ──────────────────────────────────────────────────────
 # When enabled, ALL element resolution decisions go through the LLM picker.
@@ -75,17 +95,20 @@ _env_threshold  = os.getenv("MANUL_AI_THRESHOLD")
 ENV_AI_THRESHOLD: "int | None" = int(_env_threshold) if _env_threshold else None
 
 
-def _threshold_for_model(model_name: str) -> int:
+def _threshold_for_model(model_name: "str | None") -> int:
     """
     Auto-derive LLM confidence threshold from model parameter count.
-    Larger models can handle more ambiguity → higher threshold before calling AI.
+    Returns 0 (disable AI) when model_name is None.
 
+        None    →    0  (heuristics-only mode)
         < 1 b   →  500
         1–4 b   →  750
         5–9 b   → 1 000
        10–19 b  → 1 500
        20 b+    → 2 000
     """
+    if not model_name:
+        return 0
     m = _re.search(r'(\d+(?:\.\d+)?)\s*b', model_name.lower())
     if not m:
         return 500
@@ -97,18 +120,19 @@ def _threshold_for_model(model_name: str) -> int:
     else:             return 2_000
 
 
-def get_threshold(model_name: str, custom_threshold: "int | None" = None) -> int:
+def get_threshold(model_name: "str | None", custom_threshold: "int | None" = None) -> int:
     """
     Priority:
       1. custom_threshold  (passed directly to ManulEngine)
-      2. MANUL_AI_THRESHOLD in .env
-      3. Auto-calculated from model size
+      2. MANUL_AI_THRESHOLD in config / env
+      3. 0 when model_name is None (heuristics-only mode)
+      4. Auto-calculated from model size
     """
     if custom_threshold is not None:
         return custom_threshold
     if ENV_AI_THRESHOLD is not None:
         return ENV_AI_THRESHOLD
-    return _threshold_for_model(model_name)
+    return _threshold_for_model(model_name)  # returns 0 when model_name is None
 
 
 # ── Planner prompt ─────────────────────────────────────────────────────────────
@@ -222,8 +246,10 @@ OUTPUT (strictly valid JSON, no markdown):
 {"id": <integer or null>, "thought": "one sentence"}
 """
 
-def get_executor_prompt(model_name: str) -> str:
+def get_executor_prompt(model_name: "str | None") -> str:
     """Return executor prompt sized for the model's parameter count."""
+    if not model_name:
+        return EXECUTOR_PROMPT_TINY  # fallback; won't be called in heuristics-only mode
     m = _re.search(r'(\d+(?:\.\d+)?)\s*b', model_name.lower())
     size = float(m.group(1)) if m else 0.5
     if   size < 1:  return EXECUTOR_PROMPT_TINY

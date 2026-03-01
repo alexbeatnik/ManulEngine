@@ -7,8 +7,8 @@ from playwright.async_api import async_playwright
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from engine import ManulEngine
-from engine import prompts
+from manul_engine import ManulEngine
+from manul_engine import prompts
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DOM: Facebook Comet UI (Real patterns extracted from provided HTML)

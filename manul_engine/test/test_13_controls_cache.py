@@ -9,8 +9,8 @@ import shutil
 from pathlib import Path
 from playwright.async_api import async_playwright
 
-from engine import ManulEngine
-from engine import prompts
+from manul_engine import ManulEngine
+from manul_engine import prompts
 
 
 CACHE_TEST_DOM = """

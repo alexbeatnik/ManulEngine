@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 import asyncio
 import re
 from playwright.async_api import async_playwright
-from engine import ManulEngine
+from manul_engine import ManulEngine
 
 # ─────────────────────────────────────────────────────────────────────────────
 # MONSTER DOM  —  80 TESTS (Traps + Integration Bugs + Real World Frameworks)
