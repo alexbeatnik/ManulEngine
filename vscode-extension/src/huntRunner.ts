@@ -36,14 +36,16 @@ export async function findManulExecutable(workspaceRoot: string): Promise<string
     isWin
       ? path.join(workspaceRoot, ".venv", "Scripts", "manul.exe")
       : path.join(workspaceRoot, ".venv", "bin", "manul"),
-    // 2+. Unix-only install locations
+    // 2+. Platform-specific user-level install locations
     ...(!isWin ? [
       // 2. pip --user install — Linux and macOS Intel common path
       path.join(os.homedir(), ".local", "bin", "manul"),
-      // 3. macOS pip --user installs to ~/Library/Python/<major>.<minor>/bin on some versions.
-      // Scan all version directories that actually contain the binary.
+      // 3. macOS only: pip --user may install to ~/Library/Python/<ver>/bin.
+      // Guard with platform and existsSync to avoid a thrown exception on Linux.
       ...(() => {
+        if (process.platform !== "darwin") { return []; }
         const base = path.join(os.homedir(), "Library", "Python");
+        if (!fs.existsSync(base)) { return []; }
         try {
           return fs.readdirSync(base)
             .map((v) => path.join(base, v, "bin", "manul"))
@@ -57,7 +59,26 @@ export async function findManulExecutable(workspaceRoot: string): Promise<string
       // 6. system-wide installs
       "/usr/local/bin/manul",
       "/usr/bin/manul",
-    ] : []),
+    ] : [
+      // Windows: pip --user installs scripts under %APPDATA%\Python\<ver>\Scripts
+      // and %LOCALAPPDATA%\Programs\Python\<ver>\Scripts. Scan both trees.
+      ...(() => {
+        const results: string[] = [];
+        for (const base of [
+          process.env.APPDATA ? path.join(process.env.APPDATA, "Python") : "",
+          process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, "Programs", "Python") : "",
+        ]) {
+          if (!base || !fs.existsSync(base)) { continue; }
+          try {
+            for (const entry of fs.readdirSync(base)) {
+              const candidate = path.join(base, entry, "Scripts", "manul.exe");
+              if (fs.existsSync(candidate)) { results.push(candidate); }
+            }
+          } catch { /* ignore */ }
+        }
+        return results;
+      })(),
+    ]),
   ];
 
   for (const candidate of candidates) {
@@ -93,16 +114,13 @@ export async function findManulExecutable(workspaceRoot: string): Promise<string
         resolve("manul");
         return;
       }
-      // Choose flags that the detected shell actually supports. Not all shells
-      // accept combined flags like `-lic` or the -i (interactive) flag:
-      //   - fish:          supports -l and -c, but not -i or combined -lic
-      //   - sh/dash/ash:   only -c is portable (no login or interactive flags)
-      //   - bash/zsh/etc.: -l (login) + -i (interactive) + -c sources both
-      //                    profile and rc files
-      const shellName = path.basename(shell);
+      // Normalise shell name: lowercase and strip .exe suffix so comparisons
+      // work on Windows paths (e.g. "fish.exe") and mixed-case entries.
+      const shellName = path.basename(shell).toLowerCase().replace(/\.exe$/, "");
       let shellArgs: string[];
       if (shellName === "fish") {
-        shellArgs = ["-lc", "command -v manul"];
+        // fish supports -l (login) and -c but not -i; pass as separate args.
+        shellArgs = ["-l", "-c", "command -v manul"];
       } else if (shellName === "sh" || shellName === "dash" || shellName === "ash") {
         shellArgs = ["-c", "command -v manul"];
       } else {
