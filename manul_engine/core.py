@@ -231,7 +231,14 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
     async def _snapshot(self, page, mode: str, texts: list[str]) -> list[dict]:
         """Inject SNAPSHOT_JS into the page and return a list of interactive elements."""
-        return await page.evaluate(SNAPSHOT_JS, [mode, texts or []])
+        for attempt in range(3):
+            try:
+                return await page.evaluate(SNAPSHOT_JS, [mode, texts or []])
+            except Exception as exc:
+                if "closed" in str(exc).lower() and attempt < 2:
+                    await asyncio.sleep(1.5)
+                    continue
+                raise
 
     # ── Scoring (delegates to scoring module) ─
 
