@@ -24,7 +24,13 @@ export async function findManulExecutable(workspaceRoot: string): Promise<string
     .get<string>("manulPath", "")
     .trim();
   if (custom) {
-    return custom;
+    if (fs.existsSync(custom)) {
+      return custom;
+    }
+    // Path is configured but doesn't exist — warn and fall through to auto-detection.
+    vscode.window.showWarningMessage(
+      `ManulEngine: configured manulPath "${custom}" not found. Falling back to auto-detection.`
+    );
   }
 
   const isWin = process.platform === "win32";
@@ -138,8 +144,17 @@ export async function findManulExecutable(workspaceRoot: string): Promise<string
   });
 
   // Store the promise immediately so any concurrent callers await the same lookup.
-  _shellCache.set(workspaceRoot, promise);
-  return promise;
+  // If the lookup fell back to the plain "manul" string (shell init failed or timed
+  // out), evict the cache so the next call retries rather than permanently locking
+  // in the failure for the rest of the extension-host session.
+  const cached = promise.then((result) => {
+    if (result === "manul") {
+      _shellCache.delete(workspaceRoot);
+    }
+    return result;
+  });
+  _shellCache.set(workspaceRoot, cached);
+  return cached;
 }
 
 /** Spawn manul <huntFile> and stream output. Resolves with exit code. */
