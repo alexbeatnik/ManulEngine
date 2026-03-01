@@ -7,8 +7,7 @@ name = "manul-engine"
 version = "0.0.5"
 description = "Resilient neuro-symbolic browser automation framework powered by Playwright and local LLMs (Ollama)"
 readme = "README.md"
-license = "Apache-2.0"
-license-files = ["LICENSE"]
+license = { text = "Apache-2.0" }
 requires-python = ">=3.11"
 authors = [{ name = "ManulEngine Contributors" }]
 keywords = [

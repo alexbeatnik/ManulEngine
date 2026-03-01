@@ -58,11 +58,15 @@ async def run_tests(log_path: str) -> bool:
     Returns True if every suite passed, False otherwise.
     Writes a full log to *log_path*.
     """
-    # Disable controls cache for deterministic runs.
+    # Force heuristics-only, deterministic execution for the synthetic suite.
+    # MANUL_AI_THRESHOLD=0 prevents any LLM calls even if the developer has
+    # MANUL_MODEL set in their shell.
     os.environ["MANUL_CONTROLS_CACHE_ENABLED"] = "False"
+    os.environ["MANUL_AI_THRESHOLD"] = "0"
     try:
         from manul_engine import prompts as _prompts
         _prompts.CONTROLS_CACHE_ENABLED = False
+        _prompts.ENV_AI_THRESHOLD = 0
     except Exception:
         pass
 
