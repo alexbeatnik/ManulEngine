@@ -1,9 +1,15 @@
 import * as path from "path";
 import * as fs from "fs";
-import { spawn, ChildProcess } from "child_process";
+import * as os from "os";
+import { spawn, execSync, ChildProcess } from "child_process";
 import * as vscode from "vscode";
 
-/** Locate the manul CLI: checks user setting, .venv/bin, then PATH. */
+/**
+ * Probe candidate paths in order and return the first one that exists on disk.
+ * Falls back to resolving via the shell `which`/`where` command, so pip
+ * user-installs (~/.local/bin) and conda envs are found even if VS Code's
+ * inherited PATH is trimmed.
+ */
 export function findManulExecutable(workspaceRoot: string): string {
   const custom = vscode.workspace
     .getConfiguration("manulEngine")
@@ -13,15 +19,41 @@ export function findManulExecutable(workspaceRoot: string): string {
     return custom;
   }
 
-  const venvBin = path.join(workspaceRoot, ".venv", "bin", "manul");
-  const venvScripts = path.join(workspaceRoot, ".venv", "Scripts", "manul.exe");
-  if (fs.existsSync(venvBin)) {
-    return venvBin;
+  const isWin = process.platform === "win32";
+
+  // Ordered list of candidate paths to probe
+  const candidates: string[] = [
+    // 1. Project-local venv (cross-platform)
+    isWin
+      ? path.join(workspaceRoot, ".venv", "Scripts", "manul.exe")
+      : path.join(workspaceRoot, ".venv", "bin", "manul"),
+    // 2. pip --user install location (Linux / macOS)
+    path.join(os.homedir(), ".local", "bin", "manul"),
+    // 3. macOS Homebrew / pipx default bin
+    path.join(os.homedir(), ".local", "pipx", "venvs", "manul-engine", "bin", "manul"),
+    // 4. system-wide installs
+    "/usr/local/bin/manul",
+    "/usr/bin/manul",
+  ];
+
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
   }
-  if (fs.existsSync(venvScripts)) {
-    return venvScripts;
+
+  // Last resort: ask the shell to find it (handles conda, pyenv, custom PATH)
+  try {
+    const cmd = isWin ? "where manul" : "which manul";
+    const result = execSync(cmd, { encoding: "utf-8", timeout: 3000 }).trim().split("\n")[0].trim();
+    if (result && fs.existsSync(result)) {
+      return result;
+    }
+  } catch {
+    // which/where failed — fall through to bare name and let spawn error naturally
   }
-  return "manul"; // fall back to PATH
+
+  return "manul"; // final fallback: rely on PATH at spawn time
 }
 
 /** Spawn manul <huntFile> and stream output. Resolves with exit code. */
