@@ -134,7 +134,7 @@ See the [ManulEngine README](https://github.com/alexbeatnik/ManulEngine) for the
 
 ## Release Notes
 
-### 0.0.51
+### 0.0.52
 - Hunt file syntax highlighting, Test Explorer integration, configuration panel, cache browser
 - Smart `manul` executable auto-detection across pip, pipx, Homebrew, pyenv, conda, and custom paths
 - Per-file workspace root resolution for multi-root workspaces
