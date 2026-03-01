@@ -12,8 +12,18 @@
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Testing", "Programming Languages", "Other"],
-  "keywords": ["hunt", "playwright", "browser-automation", "e2e", "manul"],
+  "categories": [
+    "Testing",
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "hunt",
+    "playwright",
+    "browser-automation",
+    "e2e",
+    "manul"
+  ],
   "activationEvents": [
     "workspaceContains:**/*.hunt"
   ],
@@ -22,8 +32,13 @@
     "languages": [
       {
         "id": "hunt",
-        "aliases": ["Hunt", "ManulEngine Hunt"],
-        "extensions": [".hunt"],
+        "aliases": [
+          "Hunt",
+          "ManulEngine Hunt"
+        ],
+        "extensions": [
+          ".hunt"
+        ],
         "icon": {
           "light": "images/icon16.png",
           "dark": "images/icon16.png"

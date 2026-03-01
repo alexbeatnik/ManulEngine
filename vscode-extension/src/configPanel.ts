@@ -126,35 +126,35 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
   <style>
     body { font-family: var(--vscode-font-family); font-size: var(--vscode-font-size);
            color: var(--vscode-foreground); padding: 10px; }
-    h2 { font-size: 1em; margin-bottom: 8px; }
-    label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.85em; }
+    h2 { font-size: 1.1em; margin-bottom: 8px; }
+    label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.95em; }
     input[type=text], input[type=number], select {
       width: 100%; box-sizing: border-box; padding: 4px 6px;
       background: var(--vscode-input-background);
       color: var(--vscode-input-foreground);
       border: 1px solid var(--vscode-input-border, #444); border-radius: 3px;
-      font-size: 0.9em; }
+      font-size: 1em; }
     input[type=checkbox] { margin-top: 6px; }
     .checkbox-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
     .checkbox-row label { margin-top: 0; }
-    .hint { font-size: 0.78em; color: var(--vscode-descriptionForeground); margin-top: 2px; }
+    .hint { font-size: 0.85em; color: var(--vscode-descriptionForeground); margin-top: 2px; }
     .btn-row { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
     button {
       padding: 5px 12px; border: none; border-radius: 3px; cursor: pointer;
       background: var(--vscode-button-background);
-      color: var(--vscode-button-foreground); font-size: 0.85em; }
+      color: var(--vscode-button-foreground); font-size: 0.95em; }
     button.secondary {
       background: var(--vscode-button-secondaryBackground);
       color: var(--vscode-button-secondaryForeground); }
     #no-config { display: none; margin-bottom: 12px; padding: 8px;
       background: var(--vscode-editorWarning-background, #3a3000);
       border-left: 3px solid var(--vscode-editorWarning-foreground, #cca700);
-      font-size: 0.85em; }
+      font-size: 0.92em; }
     #model-wrap { position: relative; }
     #model { width: 100%; box-sizing: border-box; padding: 4px 6px;
       background: var(--vscode-input-background); color: var(--vscode-input-foreground);
-      border: 1px solid var(--vscode-input-border, #444); border-radius: 3px; font-size: 0.9em; }
-    #ollama-status { display: flex; align-items: center; gap: 5px; margin-top: 3px; font-size: 0.75em;
+      border: 1px solid var(--vscode-input-border, #444); border-radius: 3px; font-size: 1em; }
+    #ollama-status { display: flex; align-items: center; gap: 5px; margin-top: 3px; font-size: 0.85em;
       color: var(--vscode-descriptionForeground); }
     .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
     .dot.ok  { background: #4ec94e; }

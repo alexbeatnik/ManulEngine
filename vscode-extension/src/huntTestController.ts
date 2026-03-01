@@ -56,10 +56,10 @@ export function createHuntTestController(
     }
     const label = path.basename(uri.fsPath, ".hunt");
     const item = ctrl.createTestItem(uri.toString(), label, uri);
-    item.canResolveChildren = true;
-
-    // Attach step children
-    refreshStepChildren(item, uri);
+    // Steps are added only during a run (for step-level reporting), not at
+    // discovery time — otherwise VS Code counts each step as a separate test
+    // and the total shown in the explorer is wrong.
+    item.canResolveChildren = false;
 
     ctrl.items.add(item);
     return item;
@@ -88,7 +88,9 @@ export function createHuntTestController(
   watcher.onDidChange((uri) => {
     const existing = ctrl.items.get(uri.toString());
     if (existing) {
-      refreshStepChildren(existing, uri);
+      // Clear any leftover step children from a previous run so the count
+      // stays at file-level until the next run.
+      existing.children.replace([]);
     } else {
       getOrCreateTestItem(uri);
     }
@@ -104,9 +106,6 @@ export function createHuntTestController(
     vscode.TestRunProfileKind.Run,
     async (request, token) => {
       const run = ctrl.createTestRun(request);
-      const roots = vscode.workspace.workspaceFolders ?? [];
-      const workspaceRoot = roots[0]?.uri.fsPath ?? process.cwd();
-      const manulExe = findManulExecutable(workspaceRoot);
 
       // Collect top-level hunt-file items to run (deduplicated)
       const toRun = new Set<vscode.TestItem>();
@@ -136,6 +135,14 @@ export function createHuntTestController(
           run.skipped(item);
           continue;
         }
+
+        // Resolve the workspace folder from this specific item's URI so that
+        // multi-root workspaces use the correct .venv / config for each file.
+        const itemWorkspaceRoot =
+          (item.uri ? vscode.workspace.getWorkspaceFolder(item.uri)?.uri.fsPath : undefined)
+          ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
+          ?? process.cwd();
+        const manulExe = await findManulExecutable(itemWorkspaceRoot);
 
         // Recreate children fresh every run to avoid VS Code's stale state cache
         if (item.uri) {
@@ -232,6 +239,10 @@ export function createHuntTestController(
       }
 
       run.end();
+
+      // Remove step children so the explorer reverts to file-level items
+      // (correct test count) until the next run.
+      toRun.forEach((item) => item.children.replace([]));
     },
     true
   );
@@ -240,7 +251,7 @@ export function createHuntTestController(
 }
 
 /** Run a single hunt file from context menu / editor title. */
-export function runHuntFileCommand(uri?: vscode.Uri): void {
+export async function runHuntFileCommand(uri?: vscode.Uri): Promise<void> {
   const target =
     uri ?? vscode.window.activeTextEditor?.document.uri;
   if (!target || !target.fsPath.endsWith(".hunt")) {
@@ -249,8 +260,11 @@ export function runHuntFileCommand(uri?: vscode.Uri): void {
   }
 
   const roots = vscode.workspace.workspaceFolders ?? [];
-  const workspaceRoot = roots[0]?.uri.fsPath ?? process.cwd();
-  const manulExe = findManulExecutable(workspaceRoot);
+  const workspaceRoot =
+    vscode.workspace.getWorkspaceFolder(target)?.uri.fsPath
+    ?? roots[0]?.uri.fsPath
+    ?? path.dirname(target.fsPath);
+  const manulExe = await findManulExecutable(workspaceRoot);
 
   const channel = vscode.window.createOutputChannel("ManulEngine");
   channel.show(true);
@@ -271,7 +285,7 @@ export function runHuntFileCommand(uri?: vscode.Uri): void {
 }
 
 /** Run hunt file in integrated terminal (raw, like the CLI). */
-export function runHuntFileInTerminalCommand(uri?: vscode.Uri): void {
+export async function runHuntFileInTerminalCommand(uri?: vscode.Uri): Promise<void> {
   const target =
     uri ?? vscode.window.activeTextEditor?.document.uri;
   if (!target || !target.fsPath.endsWith(".hunt")) {
@@ -280,9 +294,19 @@ export function runHuntFileInTerminalCommand(uri?: vscode.Uri): void {
   }
 
   const roots = vscode.workspace.workspaceFolders ?? [];
-  const workspaceRoot = roots[0]?.uri.fsPath ?? process.cwd();
-  const manulExe = findManulExecutable(workspaceRoot);
+  const workspaceRoot =
+    vscode.workspace.getWorkspaceFolder(target)?.uri.fsPath
+    ?? roots[0]?.uri.fsPath
+    ?? path.dirname(target.fsPath);
+  const manulExe = await findManulExecutable(workspaceRoot);
   const terminal = vscode.window.createTerminal("ManulEngine");
   terminal.show();
-  terminal.sendText(`"${manulExe}" "${target.fsPath}"`);
+  // PowerShell requires `&` to invoke a path-quoted executable; other shells
+  // (bash, zsh, fish, cmd) use plain quoting.
+  const shellBase = path.basename((vscode.env.shell || "").toLowerCase());
+  const isPowerShell = shellBase === "powershell.exe" || shellBase === "pwsh" || shellBase === "pwsh.exe";
+  const command = isPowerShell
+    ? `& "${manulExe}" "${target.fsPath}"`
+    : `"${manulExe}" "${target.fsPath}"`;
+  terminal.sendText(command);
 }
