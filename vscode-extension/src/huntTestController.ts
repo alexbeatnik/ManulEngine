@@ -28,28 +28,6 @@ export function createHuntTestController(
     const label = path.basename(uri.fsPath, ".hunt");
     const item = ctrl.createTestItem(uri.toString(), label, uri);
     item.canResolveChildren = false;
-
-    // Parse steps as children for better visibility
-    try {
-      const text = require("fs").readFileSync(uri.fsPath, "utf-8") as string;
-      const lines: string[] = text.split("\n");
-      const stepItems: vscode.TestItem[] = [];
-      for (const line of lines) {
-        const m = line.match(/^\s*(\d+)\.\s+(.+)/);
-        if (m) {
-          const stepId = `${uri.toString()}#${m[1]}`;
-          const stepItem = ctrl.createTestItem(stepId, `${m[1]}. ${m[2].trim()}`);
-          stepItem.canResolveChildren = false;
-          stepItems.push(stepItem);
-        }
-      }
-      if (stepItems.length > 0) {
-        item.children.replace(stepItems);
-      }
-    } catch {
-      // ignore parse errors
-    }
-
     ctrl.items.add(item);
     return item;
   }
@@ -109,8 +87,6 @@ export function createHuntTestController(
         }
 
         run.started(item);
-        // Reset all child steps to "running" state so stale results are cleared
-        item.children.forEach((child) => run.started(child));
         const output: string[] = [];
 
         try {
@@ -126,12 +102,9 @@ export function createHuntTestController(
 
           if (exitCode === 0) {
             run.passed(item);
-            item.children.forEach((child) => run.passed(child));
           } else {
             const fullOutput = output.join("");
             run.failed(item, new vscode.TestMessage(`Exit code: ${exitCode}\n${fullOutput}`));
-            // Explicitly mark every child step as skipped so stale green results are cleared
-            item.children.forEach((child) => run.skipped(child));
           }
         } catch (err: unknown) {
           const errMsg = err instanceof Error ? err.message : String(err);
