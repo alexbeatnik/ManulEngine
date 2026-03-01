@@ -38,13 +38,23 @@ export async function findManulExecutable(workspaceRoot: string): Promise<string
       : path.join(workspaceRoot, ".venv", "bin", "manul"),
     // 2+. Unix-only install locations
     ...(!isWin ? [
-      // 2. pip --user install (Linux / macOS Intel)
+      // 2. pip --user install — Linux and macOS Intel common path
       path.join(os.homedir(), ".local", "bin", "manul"),
-      // 3. pipx-managed venv for manul-engine (user-level)
+      // 3. macOS pip --user installs to ~/Library/Python/<major>.<minor>/bin on some versions.
+      // Scan all version directories that actually contain the binary.
+      ...(() => {
+        const base = path.join(os.homedir(), "Library", "Python");
+        try {
+          return fs.readdirSync(base)
+            .map((v) => path.join(base, v, "bin", "manul"))
+            .filter((p) => fs.existsSync(p));
+        } catch { return []; }
+      })(),
+      // 4. pipx-managed venv for manul-engine (user-level)
       path.join(os.homedir(), ".local", "pipx", "venvs", "manul-engine", "bin", "manul"),
-      // 4. macOS Homebrew — Apple Silicon default prefix
+      // 5. macOS Homebrew — Apple Silicon default prefix
       "/opt/homebrew/bin/manul",
-      // 5. system-wide installs
+      // 6. system-wide installs
       "/usr/local/bin/manul",
       "/usr/bin/manul",
     ] : []),
