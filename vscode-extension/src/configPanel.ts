@@ -310,17 +310,30 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       const label = g('ollama-label');
       const dl    = g('ollama-models');
 
+      function buildDatalist(models) {
+        dl.textContent = ''; // safe DOM clear (no innerHTML)
+        var nullOpt = document.createElement('option');
+        nullOpt.value = '';
+        nullOpt.textContent = 'null (heuristics-only)';
+        dl.appendChild(nullOpt);
+        models.forEach(function(n) {
+          var opt = document.createElement('option');
+          opt.value = String(n);
+          opt.textContent = String(n);
+          dl.appendChild(opt);
+        });
+      }
+
       fetch('http://localhost:11434/api/tags', { signal: AbortSignal.timeout(3000) })
         .then(function(r) { return r.json(); })
         .then(function(data) {
           const models = (data.models || []).map(function(m) { return m.name; });
-          dl.innerHTML = '<option value="">null (heuristics-only)</option>' +
-            models.map(function(n) { return '<option value="' + n + '">' + n + '</option>'; }).join('');
+          buildDatalist(models);
           dot.className = 'dot ok';
           label.textContent = 'Ollama connected — ' + models.length + ' model' + (models.length !== 1 ? 's' : '') + ' available';
         })
         .catch(function() {
-          dl.innerHTML = '<option value="">null (heuristics-only)</option>';
+          buildDatalist([]);
           dot.className = 'dot off';
           label.textContent = 'Ollama not available — type model name manually or leave empty';
         });
