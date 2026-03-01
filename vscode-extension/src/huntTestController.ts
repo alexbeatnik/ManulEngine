@@ -56,10 +56,10 @@ export function createHuntTestController(
     }
     const label = path.basename(uri.fsPath, ".hunt");
     const item = ctrl.createTestItem(uri.toString(), label, uri);
-    item.canResolveChildren = true;
-
-    // Attach step children
-    refreshStepChildren(item, uri);
+    // Steps are added only during a run (for step-level reporting), not at
+    // discovery time — otherwise VS Code counts each step as a separate test
+    // and the total shown in the explorer is wrong.
+    item.canResolveChildren = false;
 
     ctrl.items.add(item);
     return item;
@@ -88,7 +88,9 @@ export function createHuntTestController(
   watcher.onDidChange((uri) => {
     const existing = ctrl.items.get(uri.toString());
     if (existing) {
-      refreshStepChildren(existing, uri);
+      // Clear any leftover step children from a previous run so the count
+      // stays at file-level until the next run.
+      existing.children.replace([]);
     } else {
       getOrCreateTestItem(uri);
     }
@@ -232,6 +234,10 @@ export function createHuntTestController(
       }
 
       run.end();
+
+      // Remove step children so the explorer reverts to file-level items
+      // (correct test count) until the next run.
+      toRun.forEach((item) => item.children.replace([]));
     },
     true
   );
