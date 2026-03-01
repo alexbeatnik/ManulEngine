@@ -1,4 +1,4 @@
-# engine/core.py
+# manul_engine/core.py
 """
 ManulEngine — the main browser automation class.
 
@@ -43,6 +43,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         ai_threshold:   "int | None"  = None,
         **_kwargs,
     ):
+        # None model → heuristics-only mode (AI fully disabled)
         self.model    = model    if model    is not None else prompts.DEFAULT_MODEL
         self.headless = headless if headless is not None else prompts.HEADLESS_MODE
         self.memory:          dict = {}
@@ -54,9 +55,12 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         self._controls_cache_url: str | None = None
         self._controls_cache_path: Path | None = None
         self._controls_cache_data: dict[str, dict] = {}
-        # Resolve model-specific settings once at construction time
+        # Resolve model-specific settings once at construction time.
+        # get_threshold returns 0 when self.model is None → AI is disabled.
         self._threshold       = prompts.get_threshold(self.model, ai_threshold)
         self._executor_prompt = prompts.get_executor_prompt(self.model)
+        if self.model is None:
+            print("    ℹ️  No model configured — running in heuristics-only mode (AI disabled).")
 
     # ── Persistent controls cache ─────────────────────────────────────
     # All cache methods live in engine/cache.py (_ControlsCacheMixin).
@@ -102,6 +106,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
     async def _llm_json(self, system: str, user: str) -> dict | None:
         """Send a system+user prompt to the local LLM and parse JSON response."""
+        if self.model is None:
+            return None  # heuristics-only mode
         if ollama is None:
             print("    ⚠️  LLM unavailable: Python package 'ollama' is not installed.")
             return None
@@ -419,7 +425,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         The task can be either a numbered step list ("1. Navigate to ... 2. Click ...")
         or a free-text description that will be decomposed by the LLM planner.
         """
-        print(f"\n🐾 ManulEngine [{self.model}]  — Transparent AI")
+        mode_label = f"[{self.model}]  — Transparent AI" if self.model else "— Heuristics-only (no AI)"
+        print(f"\n🐾 ManulEngine {mode_label}")
 
         async with async_playwright() as p:
             browser = await p.chromium.launch(

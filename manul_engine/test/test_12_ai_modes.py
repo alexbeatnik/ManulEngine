@@ -5,8 +5,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 import asyncio
 from playwright.async_api import async_playwright
 
-from engine import ManulEngine
-from engine import prompts
+from manul_engine import ManulEngine
+from manul_engine import prompts
 
 
 AI_MODES_DOM = """

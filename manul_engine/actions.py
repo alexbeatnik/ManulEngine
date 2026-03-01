@@ -1,4 +1,4 @@
-﻿# engine/actions.py
+﻿# manul_engine/actions.py
 import asyncio
 import re
 from .helpers import extract_quoted, compact_log_field, SCROLL_WAIT, ACTION_WAIT, NAV_WAIT

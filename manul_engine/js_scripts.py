@@ -1,4 +1,4 @@
-# engine/js_scripts.py
+# manul_engine/js_scripts.py
 """
 JavaScript constants injected into the browser page.
 

@@ -201,6 +201,13 @@ cython_debug/
 
 # Manul persistent control cache
 cache/
+
+# Manul runtime logs
+last_run.log
+last_test_run.log
+
+# VS Code extension artifacts
+*.vsix
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore

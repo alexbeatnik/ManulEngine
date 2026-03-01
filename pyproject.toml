@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "manul-engine"
+version = "0.0.5"
+description = "Resilient neuro-symbolic browser automation framework powered by Playwright and local LLMs (Ollama)"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [{ name = "ManulEngine Contributors" }]
+keywords = [
+    "browser-automation",
+    "playwright",
+    "llm",
+    "ollama",
+    "e2e-testing",
+    "web-testing",
+    "neuro-symbolic",
+    "heuristics",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Internet :: WWW/HTTP :: Browsers",
+    "Typing :: Typed",
+]
+dependencies = [
+    "playwright>=1.40.0",
+    "ollama>=0.1.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "build",
+    "twine",
+]
+
+[project.scripts]
+manul = "manul_engine.cli:sync_main"
+
+[project.urls]
+Homepage = "https://github.com/your-org/ManulEngine"
+Repository = "https://github.com/your-org/ManulEngine"
+"Bug Tracker" = "https://github.com/your-org/ManulEngine/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["manul_engine*"]
+exclude = ["manul_engine.test*"]
+
+[tool.setuptools.package-data]
+manul_engine = ["py.typed"]

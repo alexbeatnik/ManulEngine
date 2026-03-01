@@ -1,0 +1,262 @@
+
+---
+
+# 😼 ManulEngine v0.0.5 — The Mastermind
+
+ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
+
+Forget brittle CSS/XPath locators that break on every UI update—write tests in plain English.
+Stop paying for expensive cloud APIs and waiting seconds for every click—leverage local micro-LLMs via Ollama.
+
+Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristics, and the reasoning of local neural networks. It is fast, private, and highly resilient to UI changes.
+
+> The Manul goes hunting and never returns without its prey.
+
+---
+
+## 📁 Project Structure
+
+```text
+ManulEngine/
+├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
+├── manul_engine_configuration.json   Project configuration (JSON)
+├── pyproject.toml                    Build config — package: manul-engine 0.0.5
+├── requirements.txt                  Python dependencies
+├── .env.example                      Legacy note: config moved to JSON
+├── manul_engine/                     Core automation engine package
+│   ├── __init__.py                   Public API — exports ManulEngine
+│   ├── cli.py                        Installed CLI entry point (`manul` command)
+│   ├── _test_runner.py               Dev-only synthetic test runner (not in public CLI)
+│   ├── prompts.py                    JSON config loader, thresholds, LLM prompts
+│   ├── helpers.py                    Pure utility functions, env helpers, timing constants
+│   ├── js_scripts.py                 All JavaScript injected into the browser
+│   ├── scoring.py                    Heuristic element-scoring algorithm (20+ rules)
+│   ├── core.py                       ManulEngine class (LLM, resolution, mission runner)
+│   ├── cache.py                      Persistent per-site controls cache mixin
+│   ├── actions.py                    Action execution mixin (click, type, select, hover, drag)
+│   └── test/
+│       ├── test_00_engine.py         Engine micro-suite (synthetic DOM via local HTML)
+│       ├── test_01_ecommerce.py      Scenario pack: ecommerce
+│       ├── ...
+│       ├── test_12_ai_modes.py       Unit: Always-AI/strict/rejection
+│       ├── test_13_controls_cache.py Unit: persistent controls cache
+│       ├── test_14_qa_classics.py    Unit: legacy HTML patterns, tables, fieldsets
+│       └── test_15_facebook_final_boss.py
+└── tests/                            Integration hunt tests (real websites)
+    ├── hunt_demoqa.hunt
+    ├── hunt_expandtesting.hunt
+    ├── hunt_mega.hunt
+    ├── hunt_rahul.hunt
+    └── hunt_wikipedia.hunt
+```
+
+---
+
+## ✨ Key Features
+
+### ⚡ Heuristics-First Architecture
+
+95% of the heavy lifting (element finding, assertions, DOM parsing) is handled by ultra-fast JavaScript and Python heuristics. The AI steps in only when genuine ambiguity arises.
+
+When the LLM picker is used, Manul passes the heuristic `score` as a **prior** (hint) by default (`MANUL_AI_POLICY=prior`) — the model can override the ranking only with a clear, disqualifying reason.
+
+### 🛡️ Unbreakable JS Fallbacks
+
+Modern websites love to hide elements behind invisible overlays, custom dropdowns, and zero-pixel traps. Manul primarily uses Playwright interactions with `force=True` plus retries/self-healing; for Shadow DOM elements it falls back to direct JS helpers (`window.manulClick`, `window.manulType`) to keep execution moving.
+
+### 🌑 Shadow DOM Awareness
+
+The DOM snapshotter recursively inspects shadow roots and can interact with elements in the shadow tree.
+
+### 👻 Smart Anti-Phantom Guard & AI Rejection
+
+Strict protection against LLM hallucinations. If the model is unsure it can return `{"id": null}`; the engine treats that as a rejection and retries with self-healing.
+
+### 🎛️ Adjustable AI Threshold (Paranoia Level)
+
+Control how quickly Manul falls back to the local LLM via `.env`:
+
+* **Low (200–500):** Blazing speed. Manul trusts heuristics.
+* **Default (auto):** Derived from model size (e.g., `qwen2.5:0.5b` uses 500).
+* **High (2,000+):** More AI involvement on ambiguous steps.
+
+If `MANUL_AI_THRESHOLD` is **not set** (missing or commented out in `.env`), Manul auto-calculates it from the model size:
+
+| Model size | Auto threshold |
+| --- | --- |
+| `< 1b` | `500` |
+| `1b – 4b` | `750` |
+| `5b – 9b` | `1000` |
+| `10b – 19b` | `1500` |
+| `20b+` | `2000` |
+
+You can always override auto-threshold by setting `"ai_threshold"` in `manul_engine_configuration.json` or via `MANUL_AI_THRESHOLD` env var.
+
+### 📴 Heuristics-Only Mode (no Ollama needed)
+
+Set `"model": null` in `manul_engine_configuration.json` (or omit the key entirely):
+
+```json
+{ "model": null }
+```
+
+This disables the LLM element-picker and planner completely (`threshold = 0`). No Ollama process needed. The engine relies entirely on deterministic heuristics — fastest, most reproducible mode.
+
+---
+
+## 🛠️ Installation
+
+### From source (dev mode)
+
+```bash
+git clone https://github.com/alexbeatnik/ManulEngine.git
+cd ManulEngine
+python -m venv .venv && source .venv/bin/activate
+pip install -e .
+pip install playwright
+playwright install chromium
+```
+
+### From wheel (packaged)
+
+```bash
+pip install manul-engine
+playwright install chromium
+```
+
+Optional — local LLM via Ollama:
+
+```bash
+ollama pull qwen2.5:0.5b
+ollama serve
+```
+
+## ⚙️ Configuration (manul_engine_configuration.json)
+
+Create `manul_engine_configuration.json` in your project root. All keys are optional.
+Environment variables (`MANUL_*`) always override JSON values — useful for CI/CD.
+
+```json
+{
+  "model": "qwen2.5:0.5b",
+  "headless": false,
+  "timeout": 5000,
+  "nav_timeout": 30000,
+
+  "ai_always": false,
+  "ai_policy": "prior",
+  "ai_threshold": null,
+
+  "controls_cache_enabled": true,
+  "controls_cache_dir": "cache",
+
+  "log_name_maxlen": 0,
+  "log_thought_maxlen": 0
+}
+```
+
+> Set `"model": null` (or omit) → heuristics-only mode, no Ollama needed.
+
+Cache layout:
+
+```text
+cache/
+    example.com/
+        root/
+            controls.json
+        text-box/
+            controls.json
+```
+
+Relative `controls_cache_dir` is resolved against CWD (the directory where you invoke `manul`), not the package installation path.
+
+Synthetic tests (`python manul.py test`) disable cache by default for deterministic, side-effect-free results.
+
+---
+
+## 🖥️ CLI Usage
+
+```bash
+# Installed CLI (after pip install manul-engine)
+manul tests/                       # run all *.hunt files
+manul tests/hunt_wikipedia.hunt    # single hunt
+manul --headless tests/            # headless mode
+manul .                            # all *.hunt in current directory
+
+# Dev launcher (from repo root, no install needed)
+python manul.py test               # run synthetic DOM laboratory tests
+python manul.py tests/             # run integration hunts
+python manul.py --headless tests/  # headless
+```
+
+---
+
+## 🚀 Quick Start
+
+Create a hunt file: `tests/hunt_mission.hunt`
+
+```text
+@context: Demo flow
+@blueprint: smoke
+
+1. NAVIGATE to https://demoqa.com/text-box
+2. Fill 'Full Name' field with 'Ghost Manul'
+3. Click the 'Submit' button
+4. VERIFY that 'Ghost Manul' is present.
+5. DONE.
+```
+
+Run it:
+
+```bash
+manul tests/hunt_mission.hunt
+```
+
+---
+
+## 📜 Available Commands
+
+| Category | Command Syntax |
+| --- | --- |
+| **Navigation** | `NAVIGATE to [URL]` |
+| **Input** | `Fill [Field] with [Text]`, `Type [Text] into [Field]` |
+| **Click** | `Click [Element]`, `DOUBLE CLICK [Element]` |
+| **Selection** | `Select [Option] from [Dropdown]`, `Check [Checkbox]`, `Uncheck [Checkbox]` |
+| **Mouse Action** | `HOVER over [Element]`, `Drag [Element] and drop it into [Target]` |
+| **Data Extraction** | `EXTRACT [Target] into {variable_name}` |
+| **Verification** | `VERIFY that [Text] is present/absent`, `VERIFY that [Element] is checked/disabled` |
+| **Flow Control** | `WAIT [seconds]`, `SCROLL DOWN` |
+| **Finish** | `DONE.` |
+
+*Note: You can append `if exists` or `optional` to the end of any step (outside quoted text) to make it non-blocking, e.g. `Click 'Close Ad' if exists`.*
+
+---
+
+## 🐾 Chaos Chamber Verified (1227+ Tests)
+
+The engine is battle-tested with **1227+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
+
+* **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
+* **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).
+* **AI modes regression suite:** `manul_engine/test/test_12_ai_modes.py` (Always-AI, strict override, AI rejection).
+* **QA Classics regression suite:** `manul_engine/test/test_14_qa_classics.py` (legacy HTML patterns, tables, fieldsets).
+* **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
+
+Run the synthetic suite:
+
+```bash
+# From repo root (dev mode)
+python manul.py test
+
+# Heuristics-only (no Ollama), deterministic:
+# Set "model": null in manul_engine_configuration.json
+python manul.py test
+```
+
+---
+
+**Version:** 0.0.5
+
+**Codename:** The Mastermind
+
+**Status:** Hunting...

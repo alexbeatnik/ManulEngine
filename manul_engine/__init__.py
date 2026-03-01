@@ -1,9 +1,9 @@
-# engine/__init__.py
+# manul_engine/__init__.py
 """
 ManulEngine — AI-powered browser automation engine.
 
 Package structure:
-    engine/
+    manul_engine/
         __init__.py    — public API (re-exports ManulEngine)
         prompts.py     — configuration, thresholds, LLM prompts
         helpers.py     — pure utility functions and timing constants
@@ -16,7 +16,7 @@ Package structure:
             test_*.py  — synthetic DOM unit tests
 
 Usage:
-    from engine import ManulEngine
+    from manul_engine import ManulEngine
 
     manul = ManulEngine()
     await manul.run_mission("1. Navigate to ...")

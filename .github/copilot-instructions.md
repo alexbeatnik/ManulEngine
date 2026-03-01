@@ -12,39 +12,38 @@ Current operating mode in this repo is typically **mixed**:
 - Heuristics rank candidates first.
 - LLM is called only when heuristics are not confident (best score < `MANUL_AI_THRESHOLD`).
 - When LLM is used, heuristic `score` is treated as a *prior* (hint), not a hard constraint (`MANUL_AI_POLICY=prior`).
+- If `model` is `null` or not set, the engine runs in **heuristics-only mode** (AI fully disabled, threshold = 0).
 
-**Stack:** Python 3.11 · Playwright async · Ollama (qwen2.5:0.5b) · python-dotenv
+**Stack:** Python 3.11 · Playwright async · Ollama (qwen2.5:0.5b, optional) · stdlib only (no dotenv)
 
 ## Repository layout
 
 ```text
-manul.py                   CLI entry point
-engine/
+manul.py                   Dev CLI entry point (intercepts `test` subcommand)
+manul_engine_configuration.json  Project configuration (JSON, replaces .env)
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.5
+manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
   cache.py                 _ControlsCacheMixin (persistent per-site controls cache)
   actions.py               _ActionsMixin (navigate, scroll, extract, verify, drag, _execute_step)
-  prompts.py               .env config, thresholds, LLM prompt templates (handles null-rejection)
-  scoring.py               score_elements() — pure function, 20+ heuristic rules (text/attrs/type/context)
-  js_scripts.py            All JS injected into the browser: SNAPSHOT_JS, VISIBLE_TEXT_JS, EXTRACT_DATA_JS, DEEP_TEXT_JS, STATE_CHECK_JS
+  prompts.py               JSON config loader, thresholds, LLM prompt templates
+  scoring.py               score_elements() — pure function, 20+ heuristic rules
+  js_scripts.py            All JS injected into the browser
   helpers.py               substitute_memory(), extract_quoted(), env_bool(), timing constants
+  cli.py                   Public installed CLI entry point (manul command)
+  _test_runner.py          Dev-only synthetic test runner (not in public CLI)
   test/
-    test_engine.py          synthetic DOM micro-suite (local HTML via Playwright)
+    test_00_engine.py       synthetic DOM micro-suite (local HTML via Playwright)
     test_01_ecommerce.py    synthetic DOM scenario pack
     ...
-    test_10_mess.py         synthetic DOM scenario pack
-    test_11_cyber.py        synthetic DOM scenario pack
-    test_12_ai_modes.py     synthetic DOM unit: Always-AI/strict/rejection
-    test_13_controls_cache.py synthetic DOM unit: persistent controls cache hit/miss
-    test_14_qa_classics.py  synthetic DOM unit: legacy HTML patterns, tables, fieldsets
-    test_15_facebook_final_boss.py synthetic DOM scenario pack: complex UI, dynamic states
+    test_15_facebook_final_boss.py
 tests/
   hunt_demoqa.hunt          integration: forms, checkboxes, radios, tables
   hunt_expandtesting.hunt   integration: login, inputs, dynamic tables
   hunt_mega.hunt            integration: all element types, drag-drop, shadow DOM, custom dropdowns
   hunt_rahul.hunt           integration: radios, autocomplete, hover
   hunt_wikipedia.hunt       integration: search, navigate, extract, verify, shadow-dom inputs
-
 ```
 
 ## How the engine works
@@ -150,74 +149,80 @@ Variables extracted using `EXTRACT` can be substituted in downstream steps.
 
 ## Code patterns to follow
 
-* Import: `from engine import ManulEngine` (never `framework`).
+* Import: `from manul_engine import ManulEngine` (never `engine` or `framework`).
 * `scoring.py` is **stateless** — pure function, receives `learned_elements` and `last_xpath` as kwargs.
 * **Safety first in `scoring.py`:** Always cast fetched attributes using `str(el.get("...", ""))`. JavaScript can pass objects (like `SVGAnimatedString` for SVG icons) instead of strings, which will crash Python's `.lower()`.
 * `actions.py` is a **mixin** (`_ActionsMixin`) inherited by `ManulEngine` in `core.py`.
 * `cache.py` is a **mixin** (`_ControlsCacheMixin`) inherited by `ManulEngine` in `core.py`. It owns all persistent per-site controls-cache logic.
 * `ManulEngine` MRO: `class ManulEngine(_ControlsCacheMixin, _ActionsMixin)` in `core.py`.
-* `prompts.py` owns all `.env` settings and prompt strings.
+* `prompts.py` loads config from `manul_engine_configuration.json` (CWD first, then package root fallback). No dotenv dependency.
 * `js_scripts.py` owns **all** JavaScript constants injected into the browser — no inline JS in Python files.
 * `helpers.py` provides `env_bool(name, default)` for parsing boolean env vars; used by `prompts.py`.
+* **Null model = heuristics-only:** When `model` is `None`, `_llm_json()` returns `None` immediately. `get_threshold(None)` returns `0`. No Ollama calls are made.
 
 ## Running tests
 
 ```bash
 # Activate venv
-env\Scripts\activate          # Windows
-source env/bin/activate       # Linux/Mac
+source .venv/bin/activate       # Linux/Mac
+.venv\Scripts\activate          # Windows
 
 # Synthetic DOM laboratory tests (local HTML via Playwright; no real websites)
 python manul.py test
 
 # Integration tests (needs Playwright browsers; Ollama optional)
-python manul.py               # run all hunt_*.hunt scripts
-python manul.py hunt_wikipedia.hunt # single hunt
-python manul.py --headless     # headless mode
-
+manul tests/                     # run all *.hunt files in tests/
+manul tests/hunt_wikipedia.hunt  # single hunt
+manul --headless tests/          # headless mode
+```
 
 Ollama is optional, but required for:
 - free-text tasks (AI planner)
-- AI element-picker fallback when heuristics confidence is below `MANUL_AI_THRESHOLD`
-
-
-```
+- AI element-picker fallback when heuristics confidence is below `ai_threshold`
 
 **Rule:** after any engine change, `python manul.py test` must exit with code **0**.
-Tip: Set `MANUL_AI_THRESHOLD=0` to force heuristics-only resolution. This ensures deterministic unit tests without making expensive/variable LLM calls.
+Tip: Set `"ai_threshold": 0` (or `"model": null`) in `manul_engine_configuration.json` to force heuristics-only. Ensures deterministic unit tests without LLM calls.
 Note: `python manul.py test` disables persistent controls cache by default for deterministic synthetic suites. `test_13_controls_cache.py` explicitly enables cache in a temporary `cache/run_<datetime>` folder and removes it after the test.
 
-## Configuration (.env)
+## Configuration (manul_engine_configuration.json)
 
-| Variable | Default | Description |
+JSON file at the **project root** (CWD when `manul` is invoked). All keys are optional.
+Environment variables (`MANUL_*`) always override JSON values.
+
+| Key | Default | Description |
 | --- | --- | --- |
-| `MANUL_MODEL` | `qwen2.5:0.5b` | Ollama model name |
-| `MANUL_HEADLESS` | `False` | Run browser headless |
-| `MANUL_DOTENV_OVERRIDE` | `False` | If `True`, repo `.env` overrides process env vars (useful locally; CI/prod usually wants env to win) |
-| `MANUL_AI_THRESHOLD` | auto | Score threshold before LLM fallback |
-| `MANUL_AI_ALWAYS` | `False` | If `True`, always ask the LLM picker (bypasses heuristic short-circuits) |
-| `MANUL_AI_POLICY` | `prior` | How to treat heuristic score in LLM picker: `prior` (hint) or `strict` (force max-score) |
-| `MANUL_CONTROLS_CACHE_ENABLED` | `True` | Enables persistent per-site controls cache |
-| `MANUL_CONTROLS_CACHE_DIR` | `cache` | Directory for persistent controls cache files |
-| `MANUL_LOG_NAME_MAXLEN` | `0` | If > 0, truncates element names in logs (whitespace is compacted regardless) |
-| `MANUL_LOG_THOUGHT_MAXLEN` | `0` | If > 0, truncates LLM "thought" strings in logs |
-| `MANUL_TIMEOUT` | `5000` | Default action timeout (ms) |
-| `MANUL_NAV_TIMEOUT` | `30000` | Navigation timeout (ms) |
+| `model` | `null` | Ollama model name. `null` = heuristics-only (no AI) |
+| `headless` | `false` | Run browser headless |
+| `ai_threshold` | auto | Score threshold before LLM fallback. `null` = auto-derive from model size |
+| `ai_always` | `false` | If `true`, always ask the LLM picker (bypasses heuristic short-circuits) |
+| `ai_policy` | `"prior"` | How to treat heuristic score in LLM picker: `"prior"` (hint) or `"strict"` (force max-score) |
+| `controls_cache_enabled` | `true` | Enables persistent per-site controls cache |
+| `controls_cache_dir` | `"cache"` | Directory for cache files (relative to CWD or absolute) |
+| `log_name_maxlen` | `0` | If > 0, truncates element names in logs |
+| `log_thought_maxlen` | `0` | If > 0, truncates LLM “thought” strings in logs |
+| `timeout` | `5000` | Default action timeout (ms) |
+| `nav_timeout` | `30000` | Navigation timeout (ms) |
 
-Threshold auto-calculation by model size: `<1b → 500`, `1-4b → 750`, `5-9b → 1000`, `10-19b → 1500`, `20b+ → 2000`.
+Threshold auto-calculation by model size: `<1b → 500`, `1-4b → 750`, `5-9b → 1000`, `10-19b → 1500`, `20b+ → 2000`, `null → 0`.
 
-Suggested `.env` for mixed mode (the current default expectation):
+Suggested config for mixed mode:
 
-```env
-MANUL_AI_THRESHOLD=500
-MANUL_AI_ALWAYS=False
-MANUL_AI_POLICY=prior
-MANUL_CONTROLS_CACHE_ENABLED=True
+```json
+{
+  "model": "qwen2.5:0.5b",
+  "ai_policy": "prior",
+  "controls_cache_enabled": true
+}
 ```
 
-Dotenv precedence note:
-- Default behavior is `MANUL_DOTENV_OVERRIDE=False` (process env wins).
-- For local prompt-tuning where you want repo `.env` to win over stale shell env vars, set `MANUL_DOTENV_OVERRIDE=True`.
+Suggested config for heuristics-only (no Ollama needed):
+
+```json
+{
+  "model": null,
+  "controls_cache_enabled": true
+}
+```
 
 ## Common pitfalls & Advanced Learnings
 
