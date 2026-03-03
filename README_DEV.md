@@ -47,6 +47,10 @@ ManulEngine/
 │   ├── mega.hunt
 │   ├── rahul.hunt
 │   └── wikipedia.hunt
+├── prompts/                          LLM prompt templates for hunt file generation
+│   ├── README.md                     Usage guide (Copilot, ChatGPT, Claude, Ollama)
+│   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
+│   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 └── vscode-extension/                 VS Code extension (language support + UI)
     ├── package.json                  Extension manifest (v0.0.53)
     ├── src/
@@ -263,6 +267,31 @@ python manul.py test
 # Set "model": null in manul_engine_configuration.json
 python manul.py test
 ```
+
+---
+
+## 🤖 LLM Prompts for Hunt File Generation
+
+The `prompts/` directory contains ready-to-use LLM prompt templates that let you generate complete `.hunt` test files automatically.
+
+| File | Purpose |
+|---|---|
+| `prompts/html_to_hunt.md` | Paste HTML → get hunt steps |
+| `prompts/description_to_hunt.md` | Describe a flow in plain text → get hunt steps |
+| `prompts/README.md` | Full usage guide for all LLM clients |
+
+### Usage options
+
+**GitHub Copilot Chat (VS Code)**
+- Attach `prompts/html_to_hunt.md` via the paperclip icon, paste HTML in the message.
+- Or use `#file:prompts/html_to_hunt.md` reference inline in the chat.
+- Or open a blank `.hunt` file, press `Ctrl+I`, and reference the prompt file.
+
+**ChatGPT / Claude (web):** Copy the entire prompt file, replace the `<!-- PASTE ... HERE -->` placeholder, send.
+
+**API (Python):** Use the prompt file content as the `system` message and your HTML/description as the `user` message.
+
+**Ollama (local):** `cat prompts/html_to_hunt.md mypage.html | ollama run qwen2.5:7b`
 
 ---
 
