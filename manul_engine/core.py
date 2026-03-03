@@ -51,7 +51,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         _VALID_BROWSERS = ("chromium", "firefox", "webkit")
         _b = (browser or prompts.BROWSER).strip().lower()
         self.browser: str = _b if _b in _VALID_BROWSERS else "chromium"
-        self.browser_args: list[str] = browser_args if browser_args is not None else list(prompts.BROWSER_ARGS)
+        self.browser_args: list[str] = list(browser_args) if browser_args is not None else list(prompts.BROWSER_ARGS)
         self.memory:          dict = {}
         self.last_xpath:      "str | None" = None
         self.learned_elements: dict = {}        # semantic cache: cache_key → {name, tag}

@@ -290,7 +290,8 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       g('no-config').style.display = exists ? 'none' : 'block';
       g('model').value         = config.model ?? '';
       g('headless').checked    = !!config.headless;
-      g('browser').value       = config.browser ?? 'chromium';
+      const _validBrowsers = ['chromium', 'firefox', 'webkit'];
+      g('browser').value       = _validBrowsers.includes(config.browser) ? config.browser : 'chromium';
       g('browser_args').value  = Array.isArray(config.browser_args) ? config.browser_args.join(', ') : '';
       g('timeout').value       = config.timeout ?? 5000;
       g('nav_timeout').value   = config.nav_timeout ?? 30000;
