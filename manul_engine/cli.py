@@ -172,9 +172,10 @@ async def main() -> None:
         if idx + 1 >= len(args):
             print("Error: --browser requires a browser name (chromium, firefox, webkit).", file=sys.stderr)
             sys.exit(1)
-        candidate = args[idx + 1]
+        raw_candidate = args[idx + 1]
+        candidate = raw_candidate.strip().lower()
         if candidate not in _VALID_BROWSERS:
-            print(f"Error: unsupported browser '{candidate}'. Allowed: chromium, firefox, webkit.", file=sys.stderr)
+            print(f"Error: unsupported browser '{raw_candidate}'. Allowed: chromium, firefox, webkit.", file=sys.stderr)
             sys.exit(1)
         browser = candidate
         args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]

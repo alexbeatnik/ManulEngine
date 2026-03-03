@@ -202,8 +202,10 @@ Environment variables (`MANUL_*`) always override JSON values.
 | Key | Default | Description |
 | --- | --- | --- |
 | `model` | `null` | Ollama model name. `null` = heuristics-only (no AI) |
-| `headless` | `false` | Run browser headless || `browser` | `"chromium"` | Browser engine: `chromium` (default), `firefox`, or `webkit` |
-| `browser_args` | `[]` | Extra launch flags passed to the browser (array of strings). Overridable via `MANUL_BROWSER_ARGS` (comma/space-separated) || `ai_threshold` | auto | Score threshold before LLM fallback. `null` = auto-derive from model size |
+| `headless` | `false` | Run browser headless |
+| `browser` | `"chromium"` | Browser engine: `chromium` (default), `firefox`, or `webkit` |
+| `browser_args` | `[]` | Extra launch flags passed to the browser (array of strings). Overridable via `MANUL_BROWSER_ARGS` (comma/space-separated) |
+| `ai_threshold` | auto | Score threshold before LLM fallback. `null` = auto-derive from model size |
 | `ai_always` | `false` | If `true`, always ask the LLM picker (bypasses heuristic short-circuits). Has no effect and is forced to `false` when `model` is `null` |
 | `ai_policy` | `"prior"` | How to treat heuristic score in LLM picker: `"prior"` (hint) or `"strict"` (force max-score) |
 | `controls_cache_enabled` | `true` | Enables persistent per-site controls cache |

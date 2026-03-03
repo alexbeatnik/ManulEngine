@@ -280,8 +280,8 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
         ai_threshold: threshVal === '' ? null : parseInt(threshVal, 10),
         controls_cache_enabled: g('controls_cache_enabled').checked,
         controls_cache_dir: g('controls_cache_dir').value.trim() || 'cache',
-        log_name_maxlen: parseInt(g('log_name_maxlen').value, 10) || 120,
-        log_thought_maxlen: parseInt(g('log_thought_maxlen').value, 10) || 240,
+        log_name_maxlen: (v => isNaN(v) ? 120 : v)(parseInt(g('log_name_maxlen').value, 10)),
+        log_thought_maxlen: (v => isNaN(v) ? 240 : v)(parseInt(g('log_thought_maxlen').value, 10)),
       };
       vsc.postMessage({ command: 'save', config: cfg });
     }
@@ -307,22 +307,6 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
     g('btn-generate').addEventListener('click', doGenerate);
     g('btn-save').addEventListener('click', doSave);
     g('btn-open').addEventListener('click', doOpen);
-
-    // Auto-save on any change (debounced 600 ms)
-    var _saveTimer = null;
-    function schedSave() {
-      if (_saveTimer) clearTimeout(_saveTimer);
-      _saveTimer = setTimeout(doSave, 600);
-    }
-    ['model','headless','browser','browser_args','timeout','nav_timeout',
-     'ai_always','ai_policy','ai_threshold','controls_cache_enabled',
-     'controls_cache_dir','log_name_maxlen','log_thought_maxlen'
-    ].forEach(function(id) {
-      var el = g(id);
-      if (!el) return;
-      el.addEventListener('input',  schedSave);
-      el.addEventListener('change', schedSave);
-    });
 
     // Disable ai_always when no model is set
     function syncAiAlways() {
