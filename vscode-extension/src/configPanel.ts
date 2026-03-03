@@ -300,8 +300,8 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       g('ai_threshold').value  = config.ai_threshold ?? '';
       g('controls_cache_enabled').checked = config.controls_cache_enabled !== false;
       g('controls_cache_dir').value       = config.controls_cache_dir ?? 'cache';
-      g('log_name_maxlen').value          = config.log_name_maxlen ?? 120;
-      g('log_thought_maxlen').value       = config.log_thought_maxlen ?? 240;
+      g('log_name_maxlen').value          = config.log_name_maxlen ?? 0;
+      g('log_thought_maxlen').value       = config.log_thought_maxlen ?? 0;
       syncAiAlways();
     }
 
