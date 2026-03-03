@@ -9,6 +9,8 @@ const DEFAULT_CONFIG = {
     "ManulEngine configuration. All keys are optional. Env vars MANUL_* always override.",
   model: null,
   headless: false,
+  browser: "chromium",
+  browser_args: [],
   timeout: 5000,
   nav_timeout: 30000,
   ai_always: false,
@@ -187,6 +189,20 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
     </div>
     <div class="hint">Run browser in headless mode.</div>
 
+    <label>browser
+      <select id="browser">
+        <option value="chromium">Chromium (default)</option>
+        <option value="firefox">Firefox</option>
+        <option value="webkit">WebKit (Safari)</option>
+      </select>
+    </label>
+    <div class="hint">Browser engine used by Playwright to run hunt tests.</div>
+
+    <label>browser_args
+      <input type="text" id="browser_args" placeholder="e.g. --disable-gpu, --lang=uk"/>
+    </label>
+    <div class="hint">Extra launch flags passed to the browser, comma-separated. Chromium always gets --no-sandbox --start-maximized.</div>
+
     <label>timeout (ms)
       <input type="number" id="timeout" min="500" step="500"/>
     </label>
@@ -255,6 +271,8 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       const cfg = {
         model: modelVal === '' ? null : modelVal,
         headless: g('headless').checked,
+        browser: g('browser').value,
+        browser_args: g('browser_args').value.trim().split(/[,\s]+/).map(s => s.trim()).filter(Boolean),
         timeout: parseInt(g('timeout').value, 10) || 5000,
         nav_timeout: parseInt(g('nav_timeout').value, 10) || 30000,
         ai_always: modelVal !== '' && g('ai_always').checked,
@@ -272,6 +290,8 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       g('no-config').style.display = exists ? 'none' : 'block';
       g('model').value         = config.model ?? '';
       g('headless').checked    = !!config.headless;
+      g('browser').value       = (config.browser as string) ?? 'chromium';
+      g('browser_args').value  = Array.isArray(config.browser_args) ? config.browser_args.join(', ') : '';
       g('timeout').value       = config.timeout ?? 5000;
       g('nav_timeout').value   = config.nav_timeout ?? 30000;
       g('ai_always').checked   = !!config.ai_always;

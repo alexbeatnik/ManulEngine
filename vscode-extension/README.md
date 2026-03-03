@@ -40,6 +40,8 @@ An interactive sidebar panel for editing `manul_engine_configuration.json` witho
 - **AI Policy** — `prior` (heuristic as hint) or `strict`
 - **AI Threshold** — score cutoff before LLM fallback (`null` = auto)
 - **AI Always** — always call the LLM picker (automatically disabled when no model is set)
+- **Browser** — browser engine: Chromium, Firefox, or WebKit
+- **Browser Args** — extra launch flags for the browser (comma-separated)
 - **Headless** — run browser headless
 - **Timeouts** — action and navigation timeouts in ms
 - **Controls Cache** — enable/disable and set the cache directory
@@ -134,7 +136,7 @@ See the [ManulEngine README](https://github.com/alexbeatnik/ManulEngine) for the
 
 ## Release Notes
 
-### 0.0.52
+### 0.0.53
 - Hunt file syntax highlighting, Test Explorer integration, configuration panel, cache browser
 - Smart `manul` executable auto-detection across pip, pipx, Homebrew, pyenv, conda, and custom paths
 - Per-file workspace root resolution for multi-root workspaces
@@ -142,3 +144,5 @@ See the [ManulEngine README](https://github.com/alexbeatnik/ManulEngine) for the
 - Shell-specific login flags (bash/zsh vs fish vs sh/dash)
 - Fallback cache eviction on transient shell lookup failures
 - Font size improvements in the configuration panel
+- Browser selection (`chromium`, `firefox`, `webkit`) in the configuration panel
+- Browser args field for passing extra launch flags to the browser

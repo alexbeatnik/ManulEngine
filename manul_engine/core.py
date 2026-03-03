@@ -40,12 +40,18 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         self,
         model:          "str | None"  = None,
         headless:       "bool | None" = None,
+        browser:        "str | None"  = None,
+        browser_args:   "list[str] | None" = None,
         ai_threshold:   "int | None"  = None,
         **_kwargs,
     ):
         # None model → heuristics-only mode (AI fully disabled)
         self.model    = model    if model    is not None else prompts.DEFAULT_MODEL
         self.headless = headless if headless is not None else prompts.HEADLESS_MODE
+        _VALID_BROWSERS = ("chromium", "firefox", "webkit")
+        _b = (browser or prompts.BROWSER).strip().lower()
+        self.browser: str = _b if _b in _VALID_BROWSERS else "chromium"
+        self.browser_args: list[str] = browser_args if browser_args is not None else list(prompts.BROWSER_ARGS)
         self.memory:          dict = {}
         self.last_xpath:      "str | None" = None
         self.learned_elements: dict = {}        # semantic cache: cache_key → {name, tag}
@@ -434,12 +440,14 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         or a free-text description that will be decomposed by the LLM planner.
         """
         mode_label = f"[{self.model}]  — Transparent AI" if self.model else "— Heuristics-only (no AI)"
-        print(f"\n🐾 ManulEngine {mode_label}")
+        print(f"\n🐾 ManulEngine {mode_label}  |  browser: {self.browser}")
 
         async with async_playwright() as p:
-            browser = await p.chromium.launch(
+            _launch_args = ["--no-sandbox", "--start-maximized"] if self.browser == "chromium" else []
+            _launch_args = _launch_args + [a for a in self.browser_args if a not in _launch_args]
+            browser = await getattr(p, self.browser).launch(
                 headless=self.headless,
-                args=["--no-sandbox", "--start-maximized"],
+                args=_launch_args,
             )
             ctx  = await browser.new_context(no_viewport=True)
             page = await ctx.new_page()

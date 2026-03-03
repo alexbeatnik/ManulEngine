@@ -76,7 +76,7 @@ ollama serve
 
 ### 1. Create a hunt file
 
-`my_tests/hunt_smoke.hunt`
+`my_tests/smoke.hunt`
 
 ```text
 @context: Demo smoke test
@@ -93,13 +93,17 @@ ollama serve
 
 ```bash
 # Run a specific hunt file
-manul my_tests/hunt_smoke.hunt
+manul my_tests/smoke.hunt
 
 # Run all *.hunt files in a folder
 manul my_tests/
 
 # Run headless
 manul my_tests/ --headless
+
+# Choose a different browser
+manul my_tests/ --browser firefox
+manul my_tests/ --headless --browser webkit
 
 # Run an inline one-liner
 manul "1. NAVIGATE to https://example.com  2. Click the 'More' link  3. DONE."
@@ -199,6 +203,8 @@ Create `manul_engine_configuration.json` in your project root — all settings a
 {
   "model": "qwen2.5:0.5b",
   "headless": false,
+  "browser": "chromium",
+  "browser_args": [],
   "timeout": 5000,
   "nav_timeout": 30000,
 
@@ -222,12 +228,16 @@ Environment variables (`MANUL_*`) always override JSON values — useful for CI/
 export MANUL_HEADLESS=true
 export MANUL_AI_THRESHOLD=0
 export MANUL_MODEL=qwen2.5:0.5b
+export MANUL_BROWSER=firefox
+export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 ```
 
 | Key | Default | Description |
 |---|---|---|
 | `model` | `null` | Ollama model name. `null` = heuristics-only (no AI) |
 | `headless` | `false` | Hide browser window |
+| `browser` | `"chromium"` | Browser engine: `chromium`, `firefox`, or `webkit` |
+| `browser_args` | `[]` | Extra launch flags for the browser (array of strings) |
 | `ai_threshold` | auto | Score threshold before LLM fallback. `null` = auto by model size |
 | `ai_always` | `false` | Always use LLM picker, bypass heuristic short-circuits |
 | `ai_policy` | `"prior"` | `"prior"` (LLM may override score) or `"strict"` (enforce max-score) |
@@ -271,4 +281,4 @@ ManulEngine is verified against **1200+ synthetic DOM tests** covering:
 
 ---
 
-**Version:** 0.0.5.2 · **Status:** Hunting...
+**Version:** 0.0.5.3 · **Status:** Hunting...

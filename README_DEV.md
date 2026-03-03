@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.0.5.1 — The Mastermind
+# 😼 ManulEngine v0.0.5.3 — The Mastermind
 
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 
@@ -20,7 +20,7 @@ Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristi
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.5.1
+├── pyproject.toml                    Build config — package: manul-engine 0.0.5.3
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
@@ -42,13 +42,13 @@ ManulEngine/
 │       ├── test_14_qa_classics.py    Unit: legacy HTML patterns, tables, fieldsets
 │       └── test_15_facebook_final_boss.py
 ├── tests/                            Integration hunt tests (real websites)
-│   ├── hunt_demoqa.hunt
-│   ├── hunt_expandtesting.hunt
-│   ├── hunt_mega.hunt
-│   ├── hunt_rahul.hunt
-│   └── hunt_wikipedia.hunt
+│   ├── demoqa.hunt
+│   ├── expandtesting.hunt
+│   ├── mega.hunt
+│   ├── rahul.hunt
+│   └── wikipedia.hunt
 └── vscode-extension/                 VS Code extension (language support + UI)
-    ├── package.json                  Extension manifest (v0.0.51)
+    ├── package.json                  Extension manifest (v0.0.53)
     ├── src/
     │   ├── extension.ts              Activation, command registration
     │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
@@ -148,6 +148,8 @@ Environment variables (`MANUL_*`) always override JSON values — useful for CI/
 {
   "model": "qwen2.5:0.5b",
   "headless": false,
+  "browser": "chromium",
+  "browser_args": [],
   "timeout": 5000,
   "nav_timeout": 30000,
 
@@ -187,8 +189,9 @@ Synthetic tests (`python manul.py test`) disable cache by default for determinis
 ```bash
 # Installed CLI (after pip install manul-engine)
 manul tests/                       # run all *.hunt files
-manul tests/hunt_wikipedia.hunt    # single hunt
+manul tests/wikipedia.hunt         # single hunt
 manul --headless tests/            # headless mode
+manul --browser firefox tests/     # run in Firefox
 manul .                            # all *.hunt in current directory
 
 # Dev launcher (from repo root, no install needed)
@@ -201,7 +204,7 @@ python manul.py --headless tests/  # headless
 
 ## 🚀 Quick Start
 
-Create a hunt file: `tests/hunt_mission.hunt`
+Create a hunt file: `tests/mission.hunt`
 
 ```text
 @context: Demo flow
@@ -217,7 +220,7 @@ Create a hunt file: `tests/hunt_mission.hunt`
 Run it:
 
 ```bash
-manul tests/hunt_mission.hunt
+manul tests/mission.hunt
 ```
 
 ---
@@ -265,7 +268,7 @@ python manul.py test
 
 ## 🖱️ VS Code Extension
 
-The `vscode-extension/` directory contains a companion VS Code extension (v0.0.51) that provides:
+The `vscode-extension/` directory contains a companion VS Code extension (v0.0.53) that provides:
 
 | Feature | Details |
 | --- | --- |
@@ -295,7 +298,7 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 ---
 
-**Version:** 0.0.5.1 (extension: 0.0.51)
+**Version:** 0.0.5.3 (extension: 0.0.53)
 
 **Codename:** The Mastermind
 

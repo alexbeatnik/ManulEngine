@@ -26,6 +26,7 @@ Usage:
 
 Flags:
   --headless                 — run browser in headless mode
+  --browser <name>           — browser to use: chromium (default), firefox, webkit
 
 Examples:
   manul .
@@ -33,10 +34,14 @@ Examples:
   manul tests/hunt_example.hunt
   manul tests/my_script.hunt
   manul --headless tests/
+  manul --browser firefox tests/
+  manul --headless --browser webkit tests/hunt_example.hunt
 
 Notes:
   Any file with the .hunt extension is accepted.
   The "hunt_" filename prefix is a convention only — not required.
+  Browser can also be set via "browser" key in manul_engine_configuration.json
+  or the MANUL_BROWSER environment variable.
 """
 
 # ── Tee stdout → log file ─────────────────────────────────────────────────────
@@ -81,7 +86,7 @@ def parse_hunt_file(filepath: str) -> tuple[str, str, str]:
 
 
 # ── Execute a single .hunt file ───────────────────────────────────────────────
-async def _run_hunt_file(path: str, headless: bool) -> bool:
+async def _run_hunt_file(path: str, headless: bool, browser: "str | None" = None) -> bool:
     filename = os.path.basename(path)
     print(f"\n{'='*60}")
     print(f"📜 EXECUTING MANUL HUNT: {filename}")
@@ -100,7 +105,7 @@ async def _run_hunt_file(path: str, headless: bool) -> bool:
         context = f"[{blueprint}] {context}"
 
     from manul_engine import ManulEngine
-    manul = ManulEngine(headless=headless)
+    manul = ManulEngine(headless=headless, browser=browser)
     try:
         result = await manul.run_mission(mission, strategic_context=context)
         return bool(result)
@@ -159,6 +164,15 @@ async def main() -> None:
 
     headless = "--headless" in args
     args = [a for a in args if a != "--headless"]
+    # Extract --browser <name> flag
+    browser: str | None = None
+    if "--browser" in args:
+        idx = args.index("--browser")
+        if idx + 1 < len(args):
+            browser = args[idx + 1]
+            args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+        else:
+            args = [a for i, a in enumerate(args) if i != idx]
     if not args:
         print(_USAGE)
         sys.exit(0)
@@ -183,7 +197,7 @@ async def main() -> None:
 
         for path in files:
             t0 = time.perf_counter()
-            success = await _run_hunt_file(path, headless)
+            success = await _run_hunt_file(path, headless, browser)
             elapsed = time.perf_counter() - t0
             results.append((os.path.basename(path), "PASS" if success else "FAIL", elapsed))
 
