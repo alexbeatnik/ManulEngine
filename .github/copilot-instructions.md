@@ -4,7 +4,7 @@
 ## What is this project?
 
 ManulEngine is a highly resilient, neuro-symbolic browser automation framework.
-It drives Chromium via Playwright, scores DOM elements with 20+ heuristic rules,
+It drives Chromium (and optionally Firefox or WebKit) via Playwright, scores DOM elements with 20+ heuristic rules,
 and falls back to a local LLM (Ollama) when the heuristics are ambiguous.
 It is designed to bypass modern web traps (Shadow DOM, invisible overlays, zero-pixel honeypots, custom dropdowns) entirely locally — no cloud APIs.
 
@@ -21,7 +21,7 @@ Current operating mode in this repo is typically **mixed**:
 ```text
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.5.1
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.5.3
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
@@ -39,13 +39,13 @@ manul_engine/
     ...
     test_15_facebook_final_boss.py
 tests/
-  hunt_demoqa.hunt          integration: forms, checkboxes, radios, tables
-  hunt_expandtesting.hunt   integration: login, inputs, dynamic tables
-  hunt_mega.hunt            integration: all element types, drag-drop, shadow DOM, custom dropdowns
-  hunt_rahul.hunt           integration: radios, autocomplete, hover
-  hunt_wikipedia.hunt       integration: search, navigate, extract, verify, shadow-dom inputs
+  demoqa.hunt             integration: forms, checkboxes, radios, tables
+  expandtesting.hunt      integration: login, inputs, dynamic tables
+  mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
+  rahul.hunt              integration: radios, autocomplete, hover
+  wikipedia.hunt          integration: search, navigate, extract, verify, shadow-dom inputs
 vscode-extension/
-  package.json              Extension manifest (v0.0.51)
+  package.json              Extension manifest (v0.0.53)
   src/
     extension.ts            Activation, command registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
@@ -112,7 +112,7 @@ Hunt files are plain-text test scenarios that the CLI parses via `parse_hunt_fil
 ### 1. File Naming & Location
 * For this repo's default auto-discovery (`python manul.py` with no target), hunt files are discovered under the `tests/` directory.
 * You can also pass a specific `.hunt` file or a directory path to `manul.py` to run hunts from any location.
-* Must use the `.hunt` extension (common convention: `hunt_*.hunt`).
+* Must use the `.hunt` extension. The filename can be anything — no prefix is required or enforced.
 
 ### 2. Metadata Headers
 Placed at the top of the file. Used by the engine for logging and LLM context.
@@ -181,8 +181,9 @@ python manul.py test
 
 # Integration tests (needs Playwright browsers; Ollama optional)
 manul tests/                     # run all *.hunt files in tests/
-manul tests/hunt_wikipedia.hunt  # single hunt
+manul tests/wikipedia.hunt       # single hunt
 manul --headless tests/          # headless mode
+manul --browser firefox tests/   # run in Firefox instead of Chromium
 ```
 
 Ollama is optional, but required for:
@@ -202,6 +203,8 @@ Environment variables (`MANUL_*`) always override JSON values.
 | --- | --- | --- |
 | `model` | `null` | Ollama model name. `null` = heuristics-only (no AI) |
 | `headless` | `false` | Run browser headless |
+| `browser` | `"chromium"` | Browser engine: `chromium` (default), `firefox`, or `webkit` |
+| `browser_args` | `[]` | Extra launch flags passed to the browser (array of strings). Overridable via `MANUL_BROWSER_ARGS` (comma/space-separated) |
 | `ai_threshold` | auto | Score threshold before LLM fallback. `null` = auto-derive from model size |
 | `ai_always` | `false` | If `true`, always ask the LLM picker (bypasses heuristic short-circuits). Has no effect and is forced to `false` when `model` is `null` |
 | `ai_policy` | `"prior"` | How to treat heuristic score in LLM picker: `"prior"` (hint) or `"strict"` (force max-score) |
@@ -219,6 +222,8 @@ Suggested config for mixed mode:
 ```json
 {
   "model": "qwen2.5:0.5b",
+  "browser": "chromium",
+  "browser_args": [],
   "ai_policy": "prior",
   "controls_cache_enabled": true
 }
@@ -229,6 +234,7 @@ Suggested config for heuristics-only (no Ollama needed):
 ```json
 {
   "model": null,
+  "browser": "chromium",
   "controls_cache_enabled": true
 }
 ```

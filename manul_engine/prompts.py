@@ -35,6 +35,7 @@ if not _CONFIG_PATH.exists():
 _KEY_MAP: dict[str, str] = {
     "model":                  "MANUL_MODEL",
     "headless":               "MANUL_HEADLESS",
+    "browser":                "MANUL_BROWSER",
     "timeout":                "MANUL_TIMEOUT",
     "nav_timeout":            "MANUL_NAV_TIMEOUT",
     "ai_threshold":           "MANUL_AI_THRESHOLD",
@@ -45,6 +46,10 @@ _KEY_MAP: dict[str, str] = {
     "log_name_maxlen":        "MANUL_LOG_NAME_MAXLEN",
     "log_thought_maxlen":     "MANUL_LOG_THOUGHT_MAXLEN",
 }
+
+# browser_args is a list and cannot be round-tripped through a plain env string
+# via _KEY_MAP, so it is handled separately below after the main loop.
+_json_cfg_browser_args: "list[str]" = []
 
 if _CONFIG_PATH.exists():
     try:
@@ -57,6 +62,9 @@ if _CONFIG_PATH.exists():
                 if _val is not None:
                     # Python booleans → lowercase strings so env_bool() parses them correctly.
                     os.environ[_ek] = str(_val).lower() if isinstance(_val, bool) else str(_val)
+        # browser_args: list — handled outside _KEY_MAP to preserve type.
+        if isinstance(_json_cfg.get("browser_args"), list):
+            _json_cfg_browser_args = [str(a) for a in _json_cfg["browser_args"] if str(a).strip()]
     except (json.JSONDecodeError, OSError) as _cfg_err:
         import warnings
         warnings.warn(f"ManulEngine: could not load config file '{_CONFIG_PATH}': {_cfg_err}")
@@ -65,6 +73,21 @@ if _CONFIG_PATH.exists():
 # If MANUL_MODEL is unset or empty, DEFAULT_MODEL is None — AI is fully disabled.
 DEFAULT_MODEL: "str | None" = os.getenv("MANUL_MODEL") or None
 HEADLESS_MODE = env_bool("MANUL_HEADLESS")
+_VALID_BROWSERS = ("chromium", "firefox", "webkit")
+_raw_browser = (os.getenv("MANUL_BROWSER") or "chromium").strip().lower()
+BROWSER: str = _raw_browser if _raw_browser in _VALID_BROWSERS else "chromium"
+# MANUL_BROWSER_ARGS: comma-or-space separated extra flags, e.g. "--disable-gpu, --lang=uk"
+# Env var always wins — even an empty value means "no extra args" (overrides JSON).
+if "MANUL_BROWSER_ARGS" in os.environ:
+    _env_browser_args = os.environ["MANUL_BROWSER_ARGS"].strip()
+    if _env_browser_args:
+        import re as _re_args
+        BROWSER_ARGS: "list[str]" = [a.strip() for a in _re_args.split(r"[,\s]+", _env_browser_args) if a.strip()]
+    else:
+        # Explicitly set but empty → clear any JSON browser_args.
+        BROWSER_ARGS: "list[str]" = []
+else:
+    BROWSER_ARGS = _json_cfg_browser_args
 TIMEOUT       = int(os.getenv("MANUL_TIMEOUT",     "5000"))
 NAV_TIMEOUT   = int(os.getenv("MANUL_NAV_TIMEOUT", "30000"))
 

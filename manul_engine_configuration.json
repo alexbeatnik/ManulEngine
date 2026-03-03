@@ -3,6 +3,8 @@
 
   "model": null,
   "headless": false,
+  "browser": "chromium",
+  "browser_args": [],
   "timeout": 5000,
   "nav_timeout": 30000,
 
