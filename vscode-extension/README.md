@@ -78,7 +78,7 @@ The **Cache** sidebar tree shows per-site cache entries created by ManulEngine's
 The extension probes the following locations in order (platform-aware):
 
 1. Custom path from **`manulEngine.manulPath`** setting (if set and exists)
-2. `.venv/bin/manul` in the workspace root
+2. `.venv/bin/manul` in the workspace root (also checks `venv/`, `env/`, `.env/`)
 3. `~/.local/bin/manul` (pip --user, Linux/macOS)
 4. `~/Library/Python/*/bin/manul` (pip --user, macOS)
 5. `~/.local/pipx/venvs/manul-engine/bin/manul` (pipx)
@@ -135,6 +135,9 @@ See the [ManulEngine README](https://github.com/alexbeatnik/ManulEngine) for the
 ---
 
 ## Release Notes
+
+### 0.0.54
+- Executable auto-detection now checks `venv/`, `env/`, and `.env/` in addition to `.venv/` — fixes `spawn manul ENOENT` for projects that use a non-dotted venv folder name
 
 ### 0.0.53
 - Hunt file syntax highlighting, Test Explorer integration, configuration panel, cache browser

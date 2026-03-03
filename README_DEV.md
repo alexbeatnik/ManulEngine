@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.0.5.3 — The Mastermind
+# 😼 ManulEngine v0.0.5.4 — The Mastermind
 
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 
@@ -20,7 +20,7 @@ Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristi
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.5.3
+├── pyproject.toml                    Build config — package: manul-engine 0.0.5.4
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
