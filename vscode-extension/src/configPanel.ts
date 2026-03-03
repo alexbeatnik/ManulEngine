@@ -18,8 +18,8 @@ const DEFAULT_CONFIG = {
   ai_threshold: null,
   controls_cache_enabled: true,
   controls_cache_dir: "cache",
-  log_name_maxlen: 120,
-  log_thought_maxlen: 240,
+  log_name_maxlen: 0,
+  log_thought_maxlen: 0,
 };
 
 // ── WebviewViewProvider ───────────────────────────────────────────────────────
@@ -280,8 +280,8 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
         ai_threshold: threshVal === '' ? null : parseInt(threshVal, 10),
         controls_cache_enabled: g('controls_cache_enabled').checked,
         controls_cache_dir: g('controls_cache_dir').value.trim() || 'cache',
-        log_name_maxlen: (v => isNaN(v) ? 120 : v)(parseInt(g('log_name_maxlen').value, 10)),
-        log_thought_maxlen: (v => isNaN(v) ? 240 : v)(parseInt(g('log_thought_maxlen').value, 10)),
+        log_name_maxlen: (v => isNaN(v) ? 0 : v)(parseInt(g('log_name_maxlen').value, 10)),
+        log_thought_maxlen: (v => isNaN(v) ? 0 : v)(parseInt(g('log_thought_maxlen').value, 10)),
       };
       vsc.postMessage({ command: 'save', config: cfg });
     }
