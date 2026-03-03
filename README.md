@@ -195,6 +195,26 @@ VERIFY that '{price}' is present.
 
 ---
 
+## 🤖 Generate Hunt Files with AI Prompts
+
+The `prompts/` directory contains ready-to-use LLM prompt templates that let you generate complete `.hunt` test files automatically — no manual step writing needed.
+
+| Prompt file | When to use |
+|---|---|
+| `prompts/html_to_hunt.md` | Paste a page's HTML source → get complete hunt steps |
+| `prompts/description_to_hunt.md` | Describe a page or flow in plain text → get hunt steps |
+
+### Quick example — GitHub Copilot Chat
+
+1. Open Copilot Chat (`Ctrl+Alt+I`).
+2. Click the paperclip icon → attach `prompts/html_to_hunt.md`.
+3. Paste your HTML in the chat and press Enter.
+4. Save the response as `tests/<name>.hunt` and run `manul tests/<name>.hunt`.
+
+See [`prompts/README.md`](prompts/README.md) for usage with ChatGPT, Claude, OpenAI/Anthropic API, and local Ollama.
+
+---
+
 ## ⚙️ Configuration
 
 Create `manul_engine_configuration.json` in your project root — all settings are optional:
