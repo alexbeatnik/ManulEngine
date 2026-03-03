@@ -28,21 +28,21 @@ N. DONE.
 - `DONE.` — end of mission
 
 ### Interaction steps (element name always in single quotes)
-- **Click:** `Click the '<label>' button` / `Click the '<label>' link` / `Click on '<label>'`
-- **Double-click:** `DOUBLE CLICK the '<label>'`
+- **Click:** `Click the '<label>' button` / `Click the '<label>' link` / `Click on the '<label>' button`
+- **Double-click:** `DOUBLE CLICK the '<label>' button`
 - **Type:** `Fill '<field_label>' field with '<value>'` / `Type '<value>' into the '<field_label>' field`
 - **Select/Dropdown:** `Select '<option>' from the '<dropdown_label>' dropdown`
 - **Checkbox:** `Check the checkbox for '<label>'` / `Uncheck the checkbox for '<label>'`
 - **Radio:** `Click the radio button for '<label>'`
-- **Hover:** `HOVER over the '<label>'`
+- **Hover:** `HOVER over the '<label>' menu`
 - **Drag & Drop:** `Drag the element '<source>' and drop it into '<target>'`
-- **Optional steps:** add `if exists` at the end — `Click 'Close Ad' if exists`
+- **Optional steps:** add `if exists` at the end — `Click the 'Close Ad' button if exists`
 
 ### Variables & Memory
 ```
 EXTRACT the '<field>' into {var_name}
 # later use it:
-VERIFY that '{var_name}' is present.
+VERIFY that '{var_name}' is present
 Fill 'Search' field with '{var_name}'
 ```
 
