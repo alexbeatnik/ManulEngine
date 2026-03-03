@@ -96,11 +96,11 @@ cat prompts/html_to_hunt.md mypage.html | ollama run qwen2.5:7b
 
 Or with the API:
 ```bash
-curl http://localhost:11434/api/generate -d '{
-  "model": "qwen2.5:7b",
-  "prompt": "'$(cat prompts/html_to_hunt.md | tr -d '\n' | sed "s/'/\\\'/g")'",
-  "stream": false
-}' | jq -r .response
+jq -Rs '{model: "qwen2.5:7b", prompt: ., stream: false}' prompts/html_to_hunt.md \
+  | curl http://localhost:11434/api/generate \
+      -H 'Content-Type: application/json' \
+      --data-binary @- \
+  | jq -r .response
 ```
 
 ---

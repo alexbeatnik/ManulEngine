@@ -19,7 +19,8 @@ N. DONE.
 ### System Keywords (handled directly by the engine, no heuristics)
 - `NAVIGATE to <url>` — load a URL
 - `WAIT <seconds>` — pause (e.g. `WAIT 2`)
-- `SCROLL DOWN` — scroll the page one viewport down
+- `SCROLL DOWN` — scroll the main page one viewport down
+- `SCROLL DOWN inside the list` — scroll the first dropdown/list container to the bottom (use when a dropdown menu needs scrolling to reveal more options)
 - `EXTRACT the '<target>' into {variable_name}` — capture a value into memory
 - `VERIFY that '<target>' is present` — assert text/element exists
 - `VERIFY that '<target>' is NOT present`
