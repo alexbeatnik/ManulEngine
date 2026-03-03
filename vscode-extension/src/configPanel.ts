@@ -18,8 +18,8 @@ const DEFAULT_CONFIG = {
   ai_threshold: null,
   controls_cache_enabled: true,
   controls_cache_dir: "cache",
-  log_name_maxlen: 0,
-  log_thought_maxlen: 0,
+  log_name_maxlen: 120,
+  log_thought_maxlen: 240,
 };
 
 // ── WebviewViewProvider ───────────────────────────────────────────────────────
@@ -280,8 +280,8 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
         ai_threshold: threshVal === '' ? null : parseInt(threshVal, 10),
         controls_cache_enabled: g('controls_cache_enabled').checked,
         controls_cache_dir: g('controls_cache_dir').value.trim() || 'cache',
-        log_name_maxlen: parseInt(g('log_name_maxlen').value, 10) || 0,
-        log_thought_maxlen: parseInt(g('log_thought_maxlen').value, 10) || 0,
+        log_name_maxlen: parseInt(g('log_name_maxlen').value, 10) || 120,
+        log_thought_maxlen: parseInt(g('log_thought_maxlen').value, 10) || 240,
       };
       vsc.postMessage({ command: 'save', config: cfg });
     }
@@ -290,7 +290,7 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       g('no-config').style.display = exists ? 'none' : 'block';
       g('model').value         = config.model ?? '';
       g('headless').checked    = !!config.headless;
-      g('browser').value       = (config.browser as string) ?? 'chromium';
+      g('browser').value       = config.browser ?? 'chromium';
       g('browser_args').value  = Array.isArray(config.browser_args) ? config.browser_args.join(', ') : '';
       g('timeout').value       = config.timeout ?? 5000;
       g('nav_timeout').value   = config.nav_timeout ?? 30000;
@@ -299,14 +299,30 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       g('ai_threshold').value  = config.ai_threshold ?? '';
       g('controls_cache_enabled').checked = config.controls_cache_enabled !== false;
       g('controls_cache_dir').value       = config.controls_cache_dir ?? 'cache';
-      g('log_name_maxlen').value          = config.log_name_maxlen ?? 0;
-      g('log_thought_maxlen').value       = config.log_thought_maxlen ?? 0;
+      g('log_name_maxlen').value          = config.log_name_maxlen ?? 120;
+      g('log_thought_maxlen').value       = config.log_thought_maxlen ?? 240;
       syncAiAlways();
     }
 
     g('btn-generate').addEventListener('click', doGenerate);
     g('btn-save').addEventListener('click', doSave);
     g('btn-open').addEventListener('click', doOpen);
+
+    // Auto-save on any change (debounced 600 ms)
+    var _saveTimer = null;
+    function schedSave() {
+      if (_saveTimer) clearTimeout(_saveTimer);
+      _saveTimer = setTimeout(doSave, 600);
+    }
+    ['model','headless','browser','browser_args','timeout','nav_timeout',
+     'ai_always','ai_policy','ai_threshold','controls_cache_enabled',
+     'controls_cache_dir','log_name_maxlen','log_thought_maxlen'
+    ].forEach(function(id) {
+      var el = g(id);
+      if (!el) return;
+      el.addEventListener('input',  schedSave);
+      el.addEventListener('change', schedSave);
+    });
 
     // Disable ai_always when no model is set
     function syncAiAlways() {

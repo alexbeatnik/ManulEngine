@@ -15,6 +15,6 @@
   "controls_cache_enabled": true,
   "controls_cache_dir": "cache",
 
-  "log_name_maxlen": 0,
-  "log_thought_maxlen": 0
+  "log_name_maxlen": 120,
+  "log_thought_maxlen": 240
 }
