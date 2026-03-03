@@ -2,7 +2,7 @@
   "name": "manul-engine",
   "displayName": "ManulEngine",
   "description": "Hunt file language support, test runner and configuration UI for ManulEngine browser automation",
-  "version": "0.0.53",
+  "version": "0.0.54",
   "publisher": "manul-engine",
   "icon": "images/icon128.png",
   "repository": {
@@ -90,6 +90,10 @@
       {
         "command": "manul.generateConfig",
         "title": "ManulEngine: Generate Default Config"
+      },
+      {
+        "command": "manul.addDefaultPrompts",
+        "title": "ManulEngine: Add Default Prompts"
       },
       {
         "command": "manul.clearAllCache",

@@ -1,4 +1,6 @@
 import * as vscode from "vscode";
+import * as path from "path";
+import * as fs from "fs";
 import {
   createHuntTestController,
   runHuntFileCommand,
@@ -47,6 +49,30 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("manul.generateConfig", () =>
       generateConfigCommand()
     ),
+
+    vscode.commands.registerCommand("manul.addDefaultPrompts", () => {
+      const folders = vscode.workspace.workspaceFolders;
+      if (!folders || folders.length === 0) {
+        vscode.window.showWarningMessage("No workspace folder open.");
+        return;
+      }
+      const workspaceRoot = folders[0].uri.fsPath;
+      const destDir = path.join(workspaceRoot, "prompts");
+      if (fs.existsSync(destDir)) {
+        vscode.window.showWarningMessage(
+          "ManulEngine: prompts/ folder already exists in workspace."
+        );
+        return;
+      }
+      const srcDir = path.join(context.extensionPath, "prompts");
+      fs.mkdirSync(destDir, { recursive: true });
+      for (const file of fs.readdirSync(srcDir)) {
+        fs.copyFileSync(path.join(srcDir, file), path.join(destDir, file));
+      }
+      vscode.window.showInformationMessage(
+        "ManulEngine: default prompts added to prompts/ folder."
+      );
+    }),
 
     vscode.commands.registerCommand("manul.refreshCache", () =>
       cacheProvider.refresh()
