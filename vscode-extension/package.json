@@ -153,7 +153,7 @@
         "manulEngine.manulPath": {
           "type": "string",
           "default": "",
-          "description": "Path to the manul CLI executable to use for running hunt files. Leave empty to auto-detect (.venv/bin/manul, then PATH)."
+          "description": "Path to the manul CLI executable to use for running hunt files. Leave empty to auto-detect (.venv, venv, env, .env, then PATH)."
         },
         "manulEngine.configFile": {
           "type": "string",
@@ -170,9 +170,12 @@
     "lint": "eslint src --ext ts"
   },
   "devDependencies": {
-    "@types/vscode": "^1.85.0",
     "@types/node": "^20.x",
-    "typescript": "^5.3.x",
-    "@vscode/vsce": "^2.24.0"
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.22.0",
+    "typescript": "^5.3.x"
+  },
+  "dependencies": {
+    "undici": "^5.29.0"
   }
 }
