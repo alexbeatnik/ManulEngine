@@ -77,10 +77,15 @@ _VALID_BROWSERS = ("chromium", "firefox", "webkit")
 _raw_browser = (os.getenv("MANUL_BROWSER") or "chromium").strip().lower()
 BROWSER: str = _raw_browser if _raw_browser in _VALID_BROWSERS else "chromium"
 # MANUL_BROWSER_ARGS: comma-or-space separated extra flags, e.g. "--disable-gpu, --lang=uk"
-_env_browser_args = os.getenv("MANUL_BROWSER_ARGS", "").strip()
-if _env_browser_args:
-    import re as _re_args
-    BROWSER_ARGS: "list[str]" = [a.strip() for a in _re_args.split(r"[,\s]+", _env_browser_args) if a.strip()]
+# Env var always wins — even an empty value means "no extra args" (overrides JSON).
+if "MANUL_BROWSER_ARGS" in os.environ:
+    _env_browser_args = os.environ["MANUL_BROWSER_ARGS"].strip()
+    if _env_browser_args:
+        import re as _re_args
+        BROWSER_ARGS: "list[str]" = [a.strip() for a in _re_args.split(r"[,\s]+", _env_browser_args) if a.strip()]
+    else:
+        # Explicitly set but empty → clear any JSON browser_args.
+        BROWSER_ARGS: "list[str]" = []
 else:
     BROWSER_ARGS = _json_cfg_browser_args
 TIMEOUT       = int(os.getenv("MANUL_TIMEOUT",     "5000"))

@@ -165,14 +165,19 @@ async def main() -> None:
     headless = "--headless" in args
     args = [a for a in args if a != "--headless"]
     # Extract --browser <name> flag
+    _VALID_BROWSERS = {"chromium", "firefox", "webkit"}
     browser: str | None = None
     if "--browser" in args:
         idx = args.index("--browser")
-        if idx + 1 < len(args):
-            browser = args[idx + 1]
-            args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
-        else:
-            args = [a for i, a in enumerate(args) if i != idx]
+        if idx + 1 >= len(args):
+            print("Error: --browser requires a browser name (chromium, firefox, webkit).", file=sys.stderr)
+            sys.exit(1)
+        candidate = args[idx + 1]
+        if candidate not in _VALID_BROWSERS:
+            print(f"Error: unsupported browser '{candidate}'. Allowed: chromium, firefox, webkit.", file=sys.stderr)
+            sys.exit(1)
+        browser = candidate
+        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
     if not args:
         print(_USAGE)
         sys.exit(0)
