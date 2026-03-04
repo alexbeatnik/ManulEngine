@@ -95,9 +95,14 @@ def _find_manul_exe() -> str:
     """Return the path used to invoke the current process (for subprocess workers)."""
     # If invoked as the installed `manul` console script, sys.argv[0] is the right path.
     candidate = os.path.abspath(sys.argv[0])
-    if candidate.endswith(("manul", "manul.exe", "__main__.py")):
+    if candidate.endswith(("manul", "manul.exe", "__main__.py")) and os.path.exists(candidate):
         return candidate
-    # Fallback: locate __main__.py next to this file so create_subprocess_exec
+    # Try shutil.which as a more reliable lookup when argv[0] is just "manul".
+    import shutil
+    which = shutil.which("manul")
+    if which:
+        return which
+    # Final fallback: use __main__.py next to this file so create_subprocess_exec
     # can prepend sys.executable and call it correctly.
     return str(os.path.join(os.path.dirname(__file__), "__main__.py"))
 
@@ -210,7 +215,15 @@ async def main() -> None:
         except Exception:
             pass
     # Priority: CLI flag (below) > MANUL_WORKERS env var > JSON config > 1
-    workers = int(os.getenv("MANUL_WORKERS", str(_json_workers)))
+    workers = _json_workers
+    _env_workers = os.getenv("MANUL_WORKERS")
+    if _env_workers is not None:
+        _env_workers_stripped = _env_workers.strip()
+        if _env_workers_stripped:
+            try:
+                workers = max(1, int(_env_workers_stripped))
+            except ValueError:
+                pass  # fall back to JSON/default value
     if "--workers" in args:
         idx = args.index("--workers")
         if idx + 1 >= len(args):

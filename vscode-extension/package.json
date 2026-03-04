@@ -185,6 +185,5 @@
     "typescript": "^5.3.x"
   },
   "dependencies": {
-    "undici": "^5.29.0"
   }
 }

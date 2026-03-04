@@ -376,7 +376,9 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       const msg = event.data;
       if (msg.command === 'config') {
         doLoad(msg.config, msg.exists);
-        syncPromptsBtn(msg.promptsExist);
+        if ('promptsExist' in msg) {
+          syncPromptsBtn(msg.promptsExist);
+        }
       }
       if (msg.command === 'promptsExist') { syncPromptsBtn(msg.exists); }
     });

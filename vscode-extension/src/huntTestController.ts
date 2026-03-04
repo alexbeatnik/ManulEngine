@@ -6,8 +6,10 @@ import { findManulExecutable, runHunt } from "./huntRunner";
 // ── Concurrency helpers ────────────────────────────────────────────────────
 
 /**
- * Read the `workers` value from manul_engine_configuration.json in the given
- * workspace root. Falls back to the VS Code setting, then to 4.
+ * Read the `workers` value for the given workspace root.
+ * Prefers the VS Code setting `manulEngine.workers`, then falls back to
+ * the `workers` field in manul_engine_configuration.json (or the file
+ * specified by `manulEngine.configFile`), and finally to 4.
  */
 function readWorkers(workspaceRoot: string): number {
   const cfg = vscode.workspace
@@ -293,8 +295,15 @@ export function createHuntTestController(
       await vscode.commands.executeCommand("workbench.panel.testResults.view.focus");
 
       // Determine concurrency limit from config (workers setting).
+      // Use the workspace folder of the first queued item so multi-root
+      // workspaces pick up the correct manul_engine_configuration.json.
+      const firstItem = [...toRun][0];
       const workspaceRoot =
-        vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
+        (firstItem?.uri
+          ? vscode.workspace.getWorkspaceFolder(firstItem.uri)?.uri.fsPath
+          : undefined) ??
+        vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ??
+        process.cwd();
       const workers = readWorkers(workspaceRoot);
 
       // Run hunt files with bounded concurrency — respects the `workers` setting.
