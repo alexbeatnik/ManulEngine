@@ -197,7 +197,20 @@ async def main() -> None:
         browser = candidate
         args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
     # Extract --workers <n> flag
-    workers = int(os.getenv("MANUL_WORKERS", "1"))
+    # prompts.py (which maps JSON → env vars) hasn't been imported yet at this
+    # point, so read 'workers' from the JSON config file directly.
+    import json as _json, pathlib as _pathlib
+    _cfg_path = _pathlib.Path.cwd() / "manul_engine_configuration.json"
+    if not _cfg_path.exists():
+        _cfg_path = _pathlib.Path(__file__).resolve().parents[1] / "manul_engine_configuration.json"
+    _json_workers: int = 1
+    if _cfg_path.exists():
+        try:
+            _json_workers = max(1, int(_json.loads(_cfg_path.read_text("utf-8")).get("workers", 1)))
+        except Exception:
+            pass
+    # Priority: CLI flag (below) > MANUL_WORKERS env var > JSON config > 1
+    workers = int(os.getenv("MANUL_WORKERS", str(_json_workers)))
     if "--workers" in args:
         idx = args.index("--workers")
         if idx + 1 >= len(args):
