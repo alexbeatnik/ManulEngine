@@ -155,6 +155,9 @@ See the [ManulEngine README](https://github.com/alexbeatnik/ManulEngine) for the
 
 ## Release Notes
 
+### 0.0.60
+- Version bump to 0.0.6 — aligns with Python package `manul-engine 0.0.6`
+
 ### 0.0.54
 - **Real-time step reporting** — hunt steps appear in Test Explorer with pass/fail status *while the hunt is running*, not just after it finishes
 - **Bounded concurrency** — Test Explorer now respects the `workers` setting (from `manul_engine_configuration.json` or the new `manulEngine.workers` VS Code setting) instead of running all hunt files with unbounded `Promise.all`
