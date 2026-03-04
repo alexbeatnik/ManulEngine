@@ -168,8 +168,13 @@ export function createHuntTestController(
         // Step tracking state
         let currentStepNum = 0;
         let currentStepOutput: string[] = [];
+        let currentStepDone = false; // true once ✅ PASSED seen for currentStepNum
         // Regex to detect step-start lines from the engine
         const stepStartRe = /\[🐾 STEP (\d+) @/;
+        // Regex to detect immediate pass — report in real-time without waiting for next step header
+        const stepPassRe = /✅ PASSED/;
+        // Regex to detect immediate fail
+        const stepFailRe = /❌ FAILED|💥 CRASH/;
 
         function finaliseStep(stepNum: number, failed: boolean): void {
           const stepItem = stepItems.get(stepNum);
@@ -191,19 +196,30 @@ export function createHuntTestController(
               run.appendOutput(chunk.replace(/\r?\n/g, "\r\n"), undefined, item);
 
               // Process chunk line-by-line for step tracking.
-              // If a new step header appears, the previous step MUST have passed
-              // (the engine breaks immediately on any step failure).
               const lines = chunk.split("\n");
               for (const line of lines) {
                 const stepMatch = line.match(stepStartRe);
                 if (stepMatch) {
-                  if (currentStepNum > 0) {
-                    finaliseStep(currentStepNum, false); // previous step completed → passed
+                  // New step starting — if previous step wasn't already finalised
+                  // via ✅ PASSED detection, finalise it now as passed.
+                  if (currentStepNum > 0 && !currentStepDone) {
+                    finaliseStep(currentStepNum, false);
                   }
                   currentStepNum = parseInt(stepMatch[1], 10);
                   currentStepOutput = [line + "\n"];
+                  currentStepDone = false;
                 } else {
                   currentStepOutput.push(line + "\n");
+                  // Real-time pass/fail reporting — don't wait for the next step header.
+                  if (!currentStepDone && currentStepNum > 0) {
+                    if (stepPassRe.test(line)) {
+                      finaliseStep(currentStepNum, false);
+                      currentStepDone = true;
+                    } else if (stepFailRe.test(line)) {
+                      finaliseStep(currentStepNum, true);
+                      currentStepDone = true;
+                    }
+                  }
                 }
               }
             },
@@ -211,7 +227,8 @@ export function createHuntTestController(
           );
 
           // Finalise the last active step using the exit code as ground truth
-          if (currentStepNum > 0) {
+          // (only if it wasn't already finalised by the real-time detection above).
+          if (currentStepNum > 0 && !currentStepDone) {
             finaliseStep(currentStepNum, exitCode !== 0);
           }
 
