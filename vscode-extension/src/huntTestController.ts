@@ -3,6 +3,55 @@ import * as path from "path";
 import * as fs from "fs";
 import { findManulExecutable, runHunt } from "./huntRunner";
 
+// ── Concurrency helpers ────────────────────────────────────────────────────
+
+/**
+ * Read the `workers` value from manul_engine_configuration.json in the given
+ * workspace root. Falls back to the VS Code setting, then to 4.
+ */
+function readWorkers(workspaceRoot: string): number {
+  const cfg = vscode.workspace
+    .getConfiguration("manulEngine")
+    .get<number>("workers");
+  if (cfg !== undefined && cfg !== null && cfg > 0) {
+    return cfg;
+  }
+  try {
+    const configFile = vscode.workspace
+      .getConfiguration("manulEngine")
+      .get<string>("configFile") ?? "manul_engine_configuration.json";
+    const raw = fs.readFileSync(path.join(workspaceRoot, configFile), "utf-8");
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const w = parsed["workers"];
+    if (typeof w === "number" && w > 0) {
+      return w;
+    }
+  } catch {
+    // config not found or invalid — use default
+  }
+  return 4;
+}
+
+/**
+ * Run `tasks` with at most `concurrency` tasks executing at the same time.
+ */
+async function runWithConcurrency<T>(
+  tasks: (() => Promise<T>)[],
+  concurrency: number
+): Promise<T[]> {
+  const results: T[] = [];
+  let index = 0;
+  async function worker(): Promise<void> {
+    while (index < tasks.length) {
+      const i = index++;
+      results[i] = await tasks[i]();
+    }
+  }
+  const workers = Array.from({ length: Math.min(concurrency, tasks.length) }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
+
 // ── Hunt file step parsing ─────────────────────────────────────────────────
 
 interface HuntStep {
@@ -243,14 +292,20 @@ export function createHuntTestController(
       // Focus the Test Results panel so the user sees output immediately.
       await vscode.commands.executeCommand("workbench.panel.testResults.view.focus");
 
-      // Run all items in parallel — each hunt file gets its own browser process.
-      await Promise.all([...toRun].map(async (item) => {
+      // Determine concurrency limit from config (workers setting).
+      const workspaceRoot =
+        vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? process.cwd();
+      const workers = readWorkers(workspaceRoot);
+
+      // Run hunt files with bounded concurrency — respects the `workers` setting.
+      const tasks = [...toRun].map((item) => async () => {
         if (token.isCancellationRequested) {
           run.skipped(item);
           return;
         }
         await _runItem(ctrl, run, item, token);
-      }));
+      });
+      await runWithConcurrency(tasks, workers);
 
       run.end();
 

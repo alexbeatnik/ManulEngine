@@ -163,6 +163,11 @@
           "type": "string",
           "default": "manul_engine_configuration.json",
           "description": "Name of the ManulEngine config file in the workspace root."
+        },
+        "manulEngine.workers": {
+          "type": "number",
+          "default": null,
+          "description": "Maximum number of hunt files to run concurrently in Test Explorer. Overrides the `workers` key from manul_engine_configuration.json. Leave empty to read from the config file (default: 4)."
         }
       }
     }
