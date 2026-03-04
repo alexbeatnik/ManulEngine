@@ -70,13 +70,26 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
       const srcDir = path.join(context.extensionPath, "prompts");
-      fs.mkdirSync(destDir, { recursive: true });
-      for (const file of fs.readdirSync(srcDir)) {
-        fs.copyFileSync(path.join(srcDir, file), path.join(destDir, file));
+      if (!fs.existsSync(srcDir)) {
+        vscode.window.showErrorMessage(
+          "ManulEngine: bundled prompts/ folder is missing from the extension package."
+        );
+        return;
       }
-      vscode.window.showInformationMessage(
-        "ManulEngine: default prompts added to prompts/ folder."
-      );
+      try {
+        fs.mkdirSync(destDir, { recursive: true });
+        for (const file of fs.readdirSync(srcDir)) {
+          fs.copyFileSync(path.join(srcDir, file), path.join(destDir, file));
+        }
+        vscode.window.showInformationMessage(
+          "ManulEngine: default prompts added to prompts/ folder."
+        );
+      } catch (err) {
+        console.error("ManulEngine: failed to add default prompts.", err);
+        vscode.window.showErrorMessage(
+          "ManulEngine: failed to add default prompts. Check workspace permissions and try again."
+        );
+      }
     }),
 
     vscode.commands.registerCommand("manul.refreshCache", () =>

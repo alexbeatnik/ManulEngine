@@ -12,11 +12,18 @@ import { findManulExecutable, runHunt } from "./huntRunner";
  * specified by `manulEngine.configFile`), and finally to 4.
  */
 function readWorkers(workspaceRoot: string): number {
+  const clamp = (n: number): number => {
+    const v = Math.max(1, Math.min(16, Math.round(n)));
+    if (v !== Math.round(n)) {
+      console.warn(`ManulEngine: workers value ${n} is out of supported range [1–16]; clamped to ${v}.`);
+    }
+    return v;
+  };
   const cfg = vscode.workspace
     .getConfiguration("manulEngine")
     .get<number>("workers");
   if (cfg !== undefined && cfg !== null && cfg > 0) {
-    return cfg;
+    return clamp(cfg);
   }
   try {
     const configFile = vscode.workspace
@@ -26,7 +33,7 @@ function readWorkers(workspaceRoot: string): number {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     const w = parsed["workers"];
     if (typeof w === "number" && w > 0) {
-      return w;
+      return clamp(w);
     }
   } catch {
     // config not found or invalid — use default
@@ -136,7 +143,7 @@ async function _runItem(
   let currentStepOutput: string[] = [];
   let currentStepDone = false;
   const stepStartRe = /\[\u{1F43E} STEP (\d+) @/u;
-  const stepPassRe = /\u2705 PASSED/u;
+  const stepPassRe = /\u23F1\uFE0F.*STEP END @/u;  // ⏱️  STEP END @ — emitted by core.py on clean step completion
   const stepFailRe = /\u274C.*FAILED|\u{1F4A5} CRASH/u;
 
   function finaliseStep(stepNum: number, failed: boolean): void {

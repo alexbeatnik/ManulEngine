@@ -20,7 +20,7 @@ const DEFAULT_CONFIG = {
   controls_cache_dir: "cache",
   log_name_maxlen: 0,
   log_thought_maxlen: 0,
-  workers: 1,
+  workers: 4,
 };
 
 // ── WebviewViewProvider ───────────────────────────────────────────────────────
