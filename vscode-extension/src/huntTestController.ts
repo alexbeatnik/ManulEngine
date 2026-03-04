@@ -130,10 +130,11 @@ export function createHuntTestController(
         ctrl.items.forEach((item) => toRun.add(item));
       }
 
-      for (const item of toRun) {
+      // Run all items in parallel — each hunt file gets its own browser process.
+      await Promise.all([...toRun].map(async (item) => {
         if (token.isCancellationRequested) {
           run.skipped(item);
-          continue;
+          return;
         }
 
         // Resolve the workspace folder from this specific item's URI so that
@@ -236,7 +237,7 @@ export function createHuntTestController(
             if (si) { run.errored(si, new vscode.TestMessage(errMsg)); }
           }
         }
-      }
+      }));
 
       run.end();
 

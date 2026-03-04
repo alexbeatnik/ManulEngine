@@ -176,7 +176,9 @@ export function runHunt(
 
     let proc: ChildProcess;
     try {
-      proc = spawn(manulExe, [huntFile], {
+      // --workers 1 forces sequential mode so each Test Explorer invocation
+      // runs directly in-process (no subprocess spawning overhead / recursion).
+      proc = spawn(manulExe, ["--workers", "1", huntFile], {
         cwd,
         env: { ...process.env },
       });
