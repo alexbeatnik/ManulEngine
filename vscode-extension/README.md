@@ -1,11 +1,28 @@
-# ManulEngine — VS Code Extension
+# 😼 ManulEngine — The Mastermind
 
-> Hunt file language support, one-click test runner, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) browser automation.
-
-[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
+
+ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing. **It is built to bridge the gap between Manual QA and Engineering.**
+
+Forget brittle CSS/XPath locators that break on every UI update. Stop paying for expensive cloud APIs. Manul combines the blazing speed of **Playwright**, powerful JavaScript DOM heuristics, and the reasoning of local neural networks (via **Ollama**) entirely on your machine.
+
+> The Manul goes hunting and never returns without its prey.
 
 ---
+
+## 🤝 The Team Workflow (Why managers love it)
+
+ManulEngine changes the economics of test automation. You don't write controls — you write tests.
+
+* **For Manual QA:** You don't need to know Python, CSS, or XPath. You open a `.hunt` file and write scenarios in plain English. If the UI changes, you get a green run anyway because the engine heals itself.
+* **For Developers / SDETs:** No more maintaining thousands of brittle `page.locator()` calls. If your app has a crazy custom React virtual-table that baffles the AI, you can write a custom Python control hook in two minutes. The QA team keeps writing plain English, and your hook handles the heavy lifting behind the scenes.
+
+---
+
+## VS Code Extension Features
+
+> Hunt file language support, one-click test runner, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) browser automation.
 
 ## Features
 
