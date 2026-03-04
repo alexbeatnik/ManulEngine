@@ -46,9 +46,10 @@ An interactive sidebar panel for editing `manul_engine_configuration.json` witho
 - **Timeouts** — action and navigation timeouts in ms
 - **Controls Cache** — enable/disable and set the cache directory
 - **Log truncation** — max length for element names and LLM thoughts in logs
+- **Workers** — max number of hunt files to run concurrently in Test Explorer (1–4)
 - **Ollama status indicator** — live dot showing whether Ollama is reachable at `localhost:11434`, with model autocomplete from the running instance
 
-Changes are saved to `manul_engine_configuration.json` at the workspace root. A *Generate Default Config* button creates the file if it doesn't exist yet.
+Changes are saved to `manul_engine_configuration.json` at the workspace root. An **Add Default Prompts** button copies built-in prompt templates into `prompts/` if they don't already exist. A *Generate Default Config* button creates the file if it doesn't exist yet.
 
 ### 🗂️ Cache Browser
 The **Cache** sidebar tree shows per-site cache entries created by ManulEngine's persistent controls cache. You can:
@@ -95,6 +96,7 @@ The extension probes the following locations in order (platform-aware):
 |---------|---------|-------------|
 | `manulEngine.manulPath` | `""` | Absolute path to the `manul` CLI. Leave empty to auto-detect. |
 | `manulEngine.configFile` | `manul_engine_configuration.json` | Config file name resolved from the workspace root. |
+| `manulEngine.workers` | `null` | Max concurrent hunt files in Test Explorer. Overrides `workers` in config. Leave empty to use the config value (default: 4). |
 
 ---
 
@@ -137,6 +139,10 @@ See the [ManulEngine README](https://github.com/alexbeatnik/ManulEngine) for the
 ## Release Notes
 
 ### 0.0.54
+- **Real-time step reporting** — hunt steps appear in Test Explorer with pass/fail status *while the hunt is running*, not just after it finishes
+- **Bounded concurrency** — Test Explorer now respects the `workers` setting (from `manul_engine_configuration.json` or the new `manulEngine.workers` VS Code setting) instead of running all hunt files with unbounded `Promise.all`
+- **Workers combobox** — config panel sidebar exposes a Workers field (1–4)
+- **Add Default Prompts** button — copies built-in prompt templates into `prompts/` with one click
 - Executable auto-detection now checks `venv/`, `env/`, and `.env/` in addition to `.venv/` — fixes `spawn manul ENOENT` for projects that use a non-dotted venv folder name
 
 ### 0.0.53

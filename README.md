@@ -107,6 +107,9 @@ manul my_tests/ --headless --browser webkit
 
 # Run an inline one-liner
 manul "1. NAVIGATE to https://example.com  2. Click the 'More' link  3. DONE."
+
+# Run multiple hunt files in parallel (4 concurrent browsers)
+manul my_tests/ --workers 4
 ```
 
 ### 3. Python API
@@ -227,16 +230,14 @@ Create `manul_engine_configuration.json` in your project root — all settings a
   "browser_args": [],
   "timeout": 5000,
   "nav_timeout": 30000,
-
   "ai_always": false,
   "ai_policy": "prior",
   "ai_threshold": null,
-
   "controls_cache_enabled": true,
   "controls_cache_dir": "cache",
-
   "log_name_maxlen": 0,
-  "log_thought_maxlen": 0
+  "log_thought_maxlen": 0,
+  "workers": 4
 }
 ```
 
@@ -267,6 +268,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 | `nav_timeout` | `30000` | Navigation timeout (ms) |
 | `log_name_maxlen` | `0` | Truncate element names in logs (0 = no limit) |
 | `log_thought_maxlen` | `0` | Truncate LLM thoughts in logs (0 = no limit) |
+| `workers` | `1` | Number of hunt files to run concurrently (each gets its own browser) |
 
 ---
 
