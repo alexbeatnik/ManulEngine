@@ -261,16 +261,22 @@ async def main() -> None:
             manul_exe = _find_manul_exe()
 
             async def _run_subprocess(path: str) -> tuple[str, str, float, str]:
-                cmd: list[str]
+                # Build base command: executable + optional script path
+                base: list[str]
                 if manul_exe.endswith(".py"):
-                    # Invoked via python -m, need to prepend interpreter
-                    cmd = [sys.executable, manul_exe, path]
+                    base = [sys.executable, manul_exe]
                 else:
-                    cmd = [manul_exe, path]
+                    base = [manul_exe]
+                # Flags first, then the hunt file path.
+                # --workers 1 is mandatory: without it the child process would
+                # read workers=N from JSON again and try to spawn grandchildren,
+                # causing infinite subprocess recursion and a permanent hang.
+                flags: list[str] = ["--workers", "1"]
                 if headless:
-                    cmd.insert(-1, "--headless")
+                    flags.append("--headless")
                 if browser:
-                    cmd[-1:-1] = ["--browser", browser]
+                    flags += ["--browser", browser]
+                cmd = base + flags + [path]
 
                 async with sem:
                     t0 = time.perf_counter()
