@@ -2,7 +2,7 @@
   "name": "manul-engine",
   "displayName": "ManulEngine",
   "description": "Hunt file language support, test runner and configuration UI for ManulEngine browser automation",
-  "version": "0.0.53",
+  "version": "0.0.54",
   "publisher": "manul-engine",
   "icon": "images/icon128.png",
   "repository": {
@@ -92,6 +92,10 @@
         "title": "ManulEngine: Generate Default Config"
       },
       {
+        "command": "manul.addDefaultPrompts",
+        "title": "ManulEngine: Add Default Prompts"
+      },
+      {
         "command": "manul.clearAllCache",
         "title": "ManulEngine: Clear All Cache",
         "icon": "$(trash)"
@@ -153,12 +157,17 @@
         "manulEngine.manulPath": {
           "type": "string",
           "default": "",
-          "description": "Path to the manul CLI executable to use for running hunt files. Leave empty to auto-detect (.venv/bin/manul, then PATH)."
+          "description": "Path to the manul CLI executable to use for running hunt files. Leave empty to auto-detect (.venv, venv, env, .env, then PATH)."
         },
         "manulEngine.configFile": {
           "type": "string",
           "default": "manul_engine_configuration.json",
           "description": "Name of the ManulEngine config file in the workspace root."
+        },
+        "manulEngine.workers": {
+          "type": "number",
+          "default": null,
+          "description": "Maximum number of hunt files to run concurrently in Test Explorer. Overrides the `workers` key from manul_engine_configuration.json. Leave empty to read from the config file (default: 4)."
         }
       }
     }
@@ -170,9 +179,11 @@
     "lint": "eslint src --ext ts"
   },
   "devDependencies": {
-    "@types/vscode": "^1.85.0",
     "@types/node": "^20.x",
-    "typescript": "^5.3.x",
-    "@vscode/vsce": "^2.24.0"
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.22.0",
+    "typescript": "^5.3.x"
+  },
+  "dependencies": {
   }
 }

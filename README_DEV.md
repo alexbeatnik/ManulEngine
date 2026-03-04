@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.0.5.3 — The Mastermind
+# 😼 ManulEngine v0.0.5.4 — The Mastermind
 
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 
@@ -20,7 +20,7 @@ Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristi
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.5.3
+├── pyproject.toml                    Build config — package: manul-engine 0.0.5.4
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
@@ -43,16 +43,16 @@ ManulEngine/
 │       └── test_15_facebook_final_boss.py
 ├── tests/                            Integration hunt tests (real websites)
 │   ├── demoqa.hunt
-│   ├── expandtesting.hunt
 │   ├── mega.hunt
 │   ├── rahul.hunt
+│   ├── saucedemo.hunt
 │   └── wikipedia.hunt
 ├── prompts/                          LLM prompt templates for hunt file generation
 │   ├── README.md                     Usage guide (Copilot, ChatGPT, Claude, Ollama)
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 └── vscode-extension/                 VS Code extension (language support + UI)
-    ├── package.json                  Extension manifest (v0.0.53)
+    ├── package.json                  Extension manifest (v0.0.54)
     ├── src/
     │   ├── extension.ts              Activation, command registration
     │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
@@ -165,7 +165,8 @@ Environment variables (`MANUL_*`) always override JSON values — useful for CI/
   "controls_cache_dir": "cache",
 
   "log_name_maxlen": 0,
-  "log_thought_maxlen": 0
+  "log_thought_maxlen": 0,
+  "workers": 4
 }
 ```
 
@@ -196,6 +197,7 @@ manul tests/                       # run all *.hunt files
 manul tests/wikipedia.hunt         # single hunt
 manul --headless tests/            # headless mode
 manul --browser firefox tests/     # run in Firefox
+manul tests/ --workers 4           # run 4 hunt files in parallel
 manul .                            # all *.hunt in current directory
 
 # Dev launcher (from repo root, no install needed)
@@ -302,10 +304,11 @@ The `vscode-extension/` directory contains a companion VS Code extension (v0.0.5
 | Feature | Details |
 | --- | --- |
 | **Hunt language support** | Syntax highlighting, bracket matching, and comment toggling for `.hunt` files |
-| **Test Explorer integration** | Hunt files appear in VS Code's native Test Explorer; step-level pass/fail reporting |
-| **Config sidebar** | Webview panel to edit `manul_engine_configuration.json` visually; live Ollama model discovery via `localhost:11434` |
+| **Test Explorer integration** | Hunt files appear in VS Code's native Test Explorer; **real-time** step-level pass/fail reporting while the hunt is running |
+| **Config sidebar** | Webview panel to edit `manul_engine_configuration.json` visually; **Workers** combobox; **Add Default Prompts** button; live Ollama model discovery via `localhost:11434` |
 | **Cache browser** | Tree-view sidebar showing the controls cache hierarchy (`site → page → controls.json`) |
 | **Run commands** | `ManulEngine: Run Hunt File` (output panel) and `ManulEngine: Run Hunt File in Terminal` (raw CLI) |
+| **Bounded concurrency** | Test Explorer respects `workers` config or `manulEngine.workers` VS Code setting (default: 4) |
 
 ### Extension behaviour notes
 
@@ -327,7 +330,7 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 ---
 
-**Version:** 0.0.5.3 (extension: 0.0.53)
+**Version:** 0.0.5.4 (extension: 0.0.54)
 
 **Codename:** The Mastermind
 

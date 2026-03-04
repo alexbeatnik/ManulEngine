@@ -1,20 +1,16 @@
 {
-  "_note": "ManulEngine configuration. Environment variables (MANUL_* prefix) always override values here. Set 'model' to null to run in heuristics-only mode (no AI).",
-
   "model": null,
   "headless": false,
   "browser": "chromium",
   "browser_args": [],
   "timeout": 5000,
   "nav_timeout": 30000,
-
   "ai_always": false,
   "ai_policy": "prior",
   "ai_threshold": null,
-
   "controls_cache_enabled": true,
   "controls_cache_dir": "cache",
-
   "log_name_maxlen": 0,
-  "log_thought_maxlen": 0
+  "log_thought_maxlen": 0,
+  "workers": 1
 }

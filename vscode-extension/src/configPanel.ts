@@ -20,6 +20,7 @@ const DEFAULT_CONFIG = {
   controls_cache_dir: "cache",
   log_name_maxlen: 0,
   log_thought_maxlen: 0,
+  workers: 4,
 };
 
 // ── WebviewViewProvider ───────────────────────────────────────────────────────
@@ -53,6 +54,7 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
               command: "config",
               config: this._readConfig(),
               exists: this._configExists(),
+              promptsExist: this._promptsExist(),
             });
             break;
 
@@ -82,6 +84,27 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
               .openTextDocument(this._configPath())
               .then((doc) => vscode.window.showTextDocument(doc));
             break;
+
+          case "addPrompts": {
+            const destDir = path.join(this._workspaceRoot, "prompts");
+            if (fs.existsSync(destDir)) {
+              vscode.window.showWarningMessage(
+                "ManulEngine: prompts/ folder already exists in workspace."
+              );
+              webviewView.webview.postMessage({ command: "promptsExist", exists: true });
+              break;
+            }
+            const srcDir = path.join(this._context.extensionPath, "prompts");
+            fs.mkdirSync(destDir, { recursive: true });
+            for (const file of fs.readdirSync(srcDir)) {
+              fs.copyFileSync(path.join(srcDir, file), path.join(destDir, file));
+            }
+            vscode.window.showInformationMessage(
+              "ManulEngine: default prompts added to prompts/ folder."
+            );
+            webviewView.webview.postMessage({ command: "promptsExist", exists: true });
+            break;
+          }
         }
       },
       undefined,
@@ -98,6 +121,10 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
 
   private _configExists(): boolean {
     return fs.existsSync(this._configPath());
+  }
+
+  private _promptsExist(): boolean {
+    return fs.existsSync(path.join(this._workspaceRoot, "prompts"));
   }
 
   private _readConfig(): Record<string, unknown> {
@@ -251,10 +278,25 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
     </label>
     <div class="hint">Truncate LLM thought strings in logs (0 = no limit).</div>
 
+    <label>workers
+      <select id="workers">
+        <option value="1">1 (sequential, default)</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+    </label>
+    <div class="hint">Max hunt files to run in parallel. Each worker spawns a separate browser process.</div>
+
     <div class="btn-row">
       <button id="btn-save">💾 Save</button>
       <button id="btn-open" class="secondary">Open in Editor</button>
     </div>
+
+    <div class="btn-row" style="margin-top:20px;border-top:1px solid var(--vscode-widget-border,#444);padding-top:14px">
+      <button id="btn-add-prompts" class="secondary">Add Default Prompts</button>
+    </div>
+    <div class="hint">Copies LLM prompt templates (html_to_hunt.md, description_to_hunt.md) into a <code>prompts/</code> folder in your workspace. Disabled if the folder already exists.</div>
   </div>
 
   <script nonce="${nonce}">
@@ -282,6 +324,7 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
         controls_cache_dir: g('controls_cache_dir').value.trim() || 'cache',
         log_name_maxlen: (v => isNaN(v) ? 0 : v)(parseInt(g('log_name_maxlen').value, 10)),
         log_thought_maxlen: (v => isNaN(v) ? 0 : v)(parseInt(g('log_thought_maxlen').value, 10)),
+        workers: parseInt(g('workers').value, 10) || 1,
       };
       vsc.postMessage({ command: 'save', config: cfg });
     }
@@ -302,12 +345,16 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       g('controls_cache_dir').value       = config.controls_cache_dir ?? 'cache';
       g('log_name_maxlen').value          = config.log_name_maxlen ?? 0;
       g('log_thought_maxlen').value       = config.log_thought_maxlen ?? 0;
+      const _w = Math.min(4, Math.max(1, parseInt(String(config.workers ?? 1), 10)));
+      g('workers').value                  = String(isNaN(_w) ? 1 : _w);
       syncAiAlways();
     }
 
+    function doAddPrompts() { vsc.postMessage({ command: 'addPrompts' }); }
     g('btn-generate').addEventListener('click', doGenerate);
     g('btn-save').addEventListener('click', doSave);
     g('btn-open').addEventListener('click', doOpen);
+    g('btn-add-prompts').addEventListener('click', doAddPrompts);
 
     // Disable ai_always when no model is set
     function syncAiAlways() {
@@ -320,9 +367,20 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
     g('model').addEventListener('input', syncAiAlways);
     g('model').addEventListener('change', syncAiAlways);
 
+    function syncPromptsBtn(exists) {
+      const btn = g('btn-add-prompts');
+      btn.disabled = !!exists;
+      btn.title = exists ? 'prompts/ folder already exists in workspace' : '';
+    }
     window.addEventListener('message', function(event) {
       const msg = event.data;
-      if (msg.command === 'config') { doLoad(msg.config, msg.exists); }
+      if (msg.command === 'config') {
+        doLoad(msg.config, msg.exists);
+        if ('promptsExist' in msg) {
+          syncPromptsBtn(msg.promptsExist);
+        }
+      }
+      if (msg.command === 'promptsExist') { syncPromptsBtn(msg.exists); }
     });
 
     // ── Ollama model discovery ────────────────────────────────────────────────

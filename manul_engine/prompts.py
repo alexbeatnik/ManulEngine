@@ -45,6 +45,7 @@ _KEY_MAP: dict[str, str] = {
     "controls_cache_dir":     "MANUL_CONTROLS_CACHE_DIR",
     "log_name_maxlen":        "MANUL_LOG_NAME_MAXLEN",
     "log_thought_maxlen":     "MANUL_LOG_THOUGHT_MAXLEN",
+    "workers":                "MANUL_WORKERS",
 }
 
 # browser_args is a list and cannot be round-tripped through a plain env string

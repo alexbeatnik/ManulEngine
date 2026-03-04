@@ -38,10 +38,12 @@ export async function findManulExecutable(workspaceRoot: string): Promise<string
   // Ordered list of static candidate paths to probe (synchronous, no overhead).
   // Unix-only paths are excluded on Windows to avoid spurious existsSync probes.
   const candidates: string[] = [
-    // 1. Project-local venv (all platforms)
-    isWin
-      ? path.join(workspaceRoot, ".venv", "Scripts", "manul.exe")
-      : path.join(workspaceRoot, ".venv", "bin", "manul"),
+    // 1. Project-local venv — check common folder names (.venv, venv, env, .env)
+    ...(['.venv', 'venv', 'env', '.env'].map((dir) =>
+      isWin
+        ? path.join(workspaceRoot, dir, 'Scripts', 'manul.exe')
+        : path.join(workspaceRoot, dir, 'bin', 'manul')
+    )),
     // 2+. Platform-specific user-level install locations
     ...(!isWin ? [
       // 2. pip --user install — Linux and macOS Intel common path
@@ -174,9 +176,16 @@ export function runHunt(
 
     let proc: ChildProcess;
     try {
-      proc = spawn(manulExe, [huntFile], {
+      // --workers 1 forces sequential mode so each Test Explorer invocation
+      // runs directly in-process (no subprocess spawning overhead / recursion).
+      proc = spawn(manulExe, ["--workers", "1", huntFile], {
         cwd,
-        env: { ...process.env },
+        env: {
+          ...process.env,
+          // Force Python to flush stdout immediately — without this, output
+          // is block-buffered when piped and steps appear only at the end.
+          PYTHONUNBUFFERED: "1",
+        },
       });
     } catch (err) {
       reject(err);

@@ -3,6 +3,64 @@ import * as path from "path";
 import * as fs from "fs";
 import { findManulExecutable, runHunt } from "./huntRunner";
 
+// ── Concurrency helpers ────────────────────────────────────────────────────
+
+/**
+ * Read the `workers` value for the given workspace root.
+ * Prefers the VS Code setting `manulEngine.workers`, then falls back to
+ * the `workers` field in manul_engine_configuration.json (or the file
+ * specified by `manulEngine.configFile`), and finally to 4.
+ */
+function readWorkers(workspaceRoot: string): number {
+  const clamp = (n: number): number => {
+    const v = Math.max(1, Math.min(16, Math.round(n)));
+    if (v !== Math.round(n)) {
+      console.warn(`ManulEngine: workers value ${n} is out of supported range [1–16]; clamped to ${v}.`);
+    }
+    return v;
+  };
+  const cfg = vscode.workspace
+    .getConfiguration("manulEngine")
+    .get<number>("workers");
+  if (cfg !== undefined && cfg !== null && cfg > 0) {
+    return clamp(cfg);
+  }
+  try {
+    const configFile = vscode.workspace
+      .getConfiguration("manulEngine")
+      .get<string>("configFile") ?? "manul_engine_configuration.json";
+    const raw = fs.readFileSync(path.join(workspaceRoot, configFile), "utf-8");
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const w = parsed["workers"];
+    if (typeof w === "number" && w > 0) {
+      return clamp(w);
+    }
+  } catch {
+    // config not found or invalid — use default
+  }
+  return 4;
+}
+
+/**
+ * Run `tasks` with at most `concurrency` tasks executing at the same time.
+ */
+async function runWithConcurrency<T>(
+  tasks: (() => Promise<T>)[],
+  concurrency: number
+): Promise<T[]> {
+  const results: T[] = [];
+  let index = 0;
+  async function worker(): Promise<void> {
+    while (index < tasks.length) {
+      const i = index++;
+      results[i] = await tasks[i]();
+    }
+  }
+  const workers = Array.from({ length: Math.min(concurrency, tasks.length) }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
+
 // ── Hunt file step parsing ─────────────────────────────────────────────────
 
 interface HuntStep {
@@ -29,6 +87,130 @@ function parseHuntSteps(filePath: string): HuntStep[] {
     }
   }
   return steps;
+}
+
+// ── Module-level run counter and helpers (shared by Test Explorer + play button)
+let _runCounter = 0;
+
+function _refreshStepChildren(
+  ctrl: vscode.TestController,
+  item: vscode.TestItem,
+  uri: vscode.Uri,
+  runId?: number
+): void {
+  item.children.replace([]);
+  const steps = parseHuntSteps(uri.fsPath);
+  const suffix = runId !== undefined ? `@${runId}` : "";
+  for (const step of steps) {
+    const stepId = `${uri.toString()}#${step.num}${suffix}`;
+    const stepItem = ctrl.createTestItem(stepId, `${step.num}. ${step.label}`, uri);
+    stepItem.canResolveChildren = false;
+    item.children.add(stepItem);
+  }
+}
+
+/**
+ * Core per-item run logic shared by Test Explorer and the editor play-button.
+ * Handles step discovery, real-time pass/fail reporting, and output streaming.
+ */
+async function _runItem(
+  ctrl: vscode.TestController,
+  run: vscode.TestRun,
+  item: vscode.TestItem,
+  token?: vscode.CancellationToken
+): Promise<void> {
+  const itemWorkspaceRoot =
+    (item.uri ? vscode.workspace.getWorkspaceFolder(item.uri)?.uri.fsPath : undefined)
+    ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
+    ?? process.cwd();
+  const manulExe = await findManulExecutable(itemWorkspaceRoot);
+
+  if (item.uri) {
+    _refreshStepChildren(ctrl, item, item.uri, ++_runCounter);
+  }
+
+  const stepItems = new Map<number, vscode.TestItem>();
+  item.children.forEach((child) => {
+    const m = child.id.match(/#(\d+)(?:@\d+)?$/);
+    if (m) { stepItems.set(parseInt(m[1], 10), child); }
+  });
+
+  run.started(item);
+  stepItems.forEach((s) => run.started(s));
+
+  const output: string[] = [];
+  let currentStepNum = 0;
+  let currentStepOutput: string[] = [];
+  let currentStepDone = false;
+  const stepStartRe = /\[\u{1F43E} STEP (\d+) @/u;
+  const stepPassRe = /\u23F1\uFE0F.*STEP END @/u;  // ⏱️  STEP END @ — emitted by core.py on clean step completion
+  const stepFailRe = /\u274C.*FAILED|\u{1F4A5} CRASH/u;
+
+  function finaliseStep(stepNum: number, failed: boolean): void {
+    const stepItem = stepItems.get(stepNum);
+    if (!stepItem) { return; }
+    const msg = currentStepOutput.join("");
+    if (failed) {
+      run.failed(stepItem, new vscode.TestMessage(msg));
+    } else {
+      run.passed(stepItem);
+    }
+  }
+
+  try {
+    const exitCode = await runHunt(
+      manulExe,
+      item.uri!.fsPath,
+      (chunk) => {
+        output.push(chunk);
+        run.appendOutput(chunk.replace(/\r?\n/g, "\r\n"), undefined, item);
+        const lines = chunk.split("\n");
+        for (const line of lines) {
+          const stepMatch = line.match(stepStartRe);
+          if (stepMatch) {
+            if (currentStepNum > 0 && !currentStepDone) {
+              finaliseStep(currentStepNum, false);
+            }
+            currentStepNum = parseInt(stepMatch[1], 10);
+            currentStepOutput = [line + "\n"];
+            currentStepDone = false;
+          } else {
+            currentStepOutput.push(line + "\n");
+            if (!currentStepDone && currentStepNum > 0) {
+              if (stepPassRe.test(line)) {
+                finaliseStep(currentStepNum, false);
+                currentStepDone = true;
+              } else if (stepFailRe.test(line)) {
+                finaliseStep(currentStepNum, true);
+                currentStepDone = true;
+              }
+            }
+          }
+        }
+      },
+      token
+    );
+
+    if (currentStepNum > 0 && !currentStepDone) {
+      finaliseStep(currentStepNum, exitCode !== 0);
+    }
+    stepItems.forEach((s, num) => {
+      if (num > currentStepNum) { run.skipped(s); }
+    });
+
+    if (exitCode === 0) {
+      run.passed(item);
+    } else {
+      run.failed(item, new vscode.TestMessage(`Exit code: ${exitCode}\n${output.join("")}`));
+    }
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    run.errored(item, new vscode.TestMessage(errMsg));
+    if (currentStepNum > 0 && !currentStepDone) {
+      const si = stepItems.get(currentStepNum);
+      if (si) { run.errored(si, new vscode.TestMessage(errMsg)); }
+    }
+  }
 }
 
 export function createHuntTestController(
@@ -65,21 +247,7 @@ export function createHuntTestController(
     return item;
   }
 
-  function refreshStepChildren(item: vscode.TestItem, uri: vscode.Uri, runId?: number): void {
-    item.children.replace([]);
-    const steps = parseHuntSteps(uri.fsPath);
-    const suffix = runId !== undefined ? `@${runId}` : "";
-    for (const step of steps) {
-      const stepId = `${uri.toString()}#${step.num}${suffix}`;
-      const stepItem = ctrl.createTestItem(stepId, `${step.num}. ${step.label}`, uri);
-      stepItem.canResolveChildren = false;
-      item.children.add(stepItem);
-    }
-  }
-
   // ── File watcher ───────────────────────────────────────────────────────────
-
-  let runCounter = 0;
 
   const watcher = vscode.workspace.createFileSystemWatcher("**/*.hunt");
   context.subscriptions.push(watcher);
@@ -130,113 +298,30 @@ export function createHuntTestController(
         ctrl.items.forEach((item) => toRun.add(item));
       }
 
-      for (const item of toRun) {
+      // Focus the Test Results panel so the user sees output immediately.
+      await vscode.commands.executeCommand("workbench.panel.testResults.view.focus");
+
+      // Determine concurrency limit from config (workers setting).
+      // Use the workspace folder of the first queued item so multi-root
+      // workspaces pick up the correct manul_engine_configuration.json.
+      const firstItem = [...toRun][0];
+      const workspaceRoot =
+        (firstItem?.uri
+          ? vscode.workspace.getWorkspaceFolder(firstItem.uri)?.uri.fsPath
+          : undefined) ??
+        vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ??
+        process.cwd();
+      const workers = readWorkers(workspaceRoot);
+
+      // Run hunt files with bounded concurrency — respects the `workers` setting.
+      const tasks = [...toRun].map((item) => async () => {
         if (token.isCancellationRequested) {
           run.skipped(item);
-          continue;
+          return;
         }
-
-        // Resolve the workspace folder from this specific item's URI so that
-        // multi-root workspaces use the correct .venv / config for each file.
-        const itemWorkspaceRoot =
-          (item.uri ? vscode.workspace.getWorkspaceFolder(item.uri)?.uri.fsPath : undefined)
-          ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
-          ?? process.cwd();
-        const manulExe = await findManulExecutable(itemWorkspaceRoot);
-
-        // Recreate children fresh every run to avoid VS Code's stale state cache
-        if (item.uri) {
-          refreshStepChildren(item, item.uri, ++runCounter);
-        }
-
-        // Build a map of step number → TestItem from children
-        const stepItems = new Map<number, vscode.TestItem>();
-        item.children.forEach((child) => {
-          const m = child.id.match(/#(\d+)(?:@\d+)?$/);
-          if (m) {
-            stepItems.set(parseInt(m[1], 10), child);
-          }
-        });
-
-        // Mark all as started
-        run.started(item);
-        stepItems.forEach((s) => run.started(s));
-
-        const output: string[] = [];
-
-        // Step tracking state
-        let currentStepNum = 0;
-        let currentStepOutput: string[] = [];
-        // Regex to detect step-start lines from the engine
-        const stepStartRe = /\[🐾 STEP (\d+) @/;
-
-        function finaliseStep(stepNum: number, failed: boolean): void {
-          const stepItem = stepItems.get(stepNum);
-          if (!stepItem) { return; }
-          const msg = currentStepOutput.join("");
-          if (failed) {
-            run.failed(stepItem, new vscode.TestMessage(msg));
-          } else {
-            run.passed(stepItem);
-          }
-        }
-
-        try {
-          const exitCode = await runHunt(
-            manulExe,
-            item.uri!.fsPath,
-            (chunk) => {
-              output.push(chunk);
-              run.appendOutput(chunk.replace(/\r?\n/g, "\r\n"), undefined, item);
-
-              // Process chunk line-by-line for step tracking.
-              // If a new step header appears, the previous step MUST have passed
-              // (the engine breaks immediately on any step failure).
-              const lines = chunk.split("\n");
-              for (const line of lines) {
-                const stepMatch = line.match(stepStartRe);
-                if (stepMatch) {
-                  if (currentStepNum > 0) {
-                    finaliseStep(currentStepNum, false); // previous step completed → passed
-                  }
-                  currentStepNum = parseInt(stepMatch[1], 10);
-                  currentStepOutput = [line + "\n"];
-                } else {
-                  currentStepOutput.push(line + "\n");
-                }
-              }
-            },
-            token
-          );
-
-          // Finalise the last active step using the exit code as ground truth
-          if (currentStepNum > 0) {
-            finaliseStep(currentStepNum, exitCode !== 0);
-          }
-
-          // Any steps that never started (engine stopped early) → skipped
-          stepItems.forEach((s, num) => {
-            if (num > currentStepNum) {
-              run.skipped(s);
-            }
-          });
-
-          if (exitCode === 0) {
-            run.passed(item);
-          } else {
-            const fullOutput = output.join("");
-            run.failed(item, new vscode.TestMessage(`Exit code: ${exitCode}\n${fullOutput}`));
-          }
-        } catch (err: unknown) {
-          const errMsg = err instanceof Error ? err.message : String(err);
-          run.errored(item, new vscode.TestMessage(errMsg));
-          // Mark the active step as errored too
-          if (currentStepNum > 0) {
-            const si = stepItems.get(currentStepNum);
-            if (si) { run.errored(si, new vscode.TestMessage(errMsg)); }
-          }
-        }
-      }
+        await _runItem(ctrl, run, item, token);
+      });
+      await runWithConcurrency(tasks, workers);
 
       run.end();
 
@@ -250,38 +335,31 @@ export function createHuntTestController(
   return ctrl;
 }
 
-/** Run a single hunt file from context menu / editor title. */
-export async function runHuntFileCommand(uri?: vscode.Uri): Promise<void> {
-  const target =
-    uri ?? vscode.window.activeTextEditor?.document.uri;
-  if (!target || !target.fsPath.endsWith(".hunt")) {
-    vscode.window.showWarningMessage("Please open or select a .hunt file.");
-    return;
+/**
+ * Run a single hunt file via the Test Controller — shows step-level results
+ * in Test Explorer exactly like running from the explorer itself.
+ */
+export async function runHuntFileViaController(
+  ctrl: vscode.TestController,
+  uri: vscode.Uri
+): Promise<void> {
+  // Find or create the TestItem for this file
+  let item = ctrl.items.get(uri.toString());
+  if (!item) {
+    const label = path.basename(uri.fsPath, ".hunt");
+    item = ctrl.createTestItem(uri.toString(), label, uri);
+    item.canResolveChildren = false;
+    ctrl.items.add(item);
   }
-
-  const roots = vscode.workspace.workspaceFolders ?? [];
-  const workspaceRoot =
-    vscode.workspace.getWorkspaceFolder(target)?.uri.fsPath
-    ?? roots[0]?.uri.fsPath
-    ?? path.dirname(target.fsPath);
-  const manulExe = await findManulExecutable(workspaceRoot);
-
-  const channel = vscode.window.createOutputChannel("ManulEngine");
-  channel.show(true);
-  channel.appendLine(`🐾 Running: ${path.basename(target.fsPath)}`);
-  channel.appendLine(`   manul ${target.fsPath}\n`);
-
-  runHunt(manulExe, target.fsPath, (chunk) => channel.append(chunk)).then(
-    (code) => {
-      channel.appendLine(
-        code === 0 ? "\n✅ PASSED" : `\n❌ FAILED (exit ${code})`
-      );
-    },
-    (err: unknown) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      channel.appendLine(`\n💥 ERROR: ${msg}`);
-    }
-  );
+  const request = new vscode.TestRunRequest([item]);
+  const run = ctrl.createTestRun(request);
+  await vscode.commands.executeCommand("workbench.panel.testResults.view.focus");
+  try {
+    await _runItem(ctrl, run, item);
+  } finally {
+    run.end();
+    item.children.replace([]);
+  }
 }
 
 /** Run hunt file in integrated terminal (raw, like the CLI). */
