@@ -20,6 +20,7 @@ const DEFAULT_CONFIG = {
   controls_cache_dir: "cache",
   log_name_maxlen: 0,
   log_thought_maxlen: 0,
+  workers: 1,
 };
 
 // ── WebviewViewProvider ───────────────────────────────────────────────────────
@@ -277,6 +278,16 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
     </label>
     <div class="hint">Truncate LLM thought strings in logs (0 = no limit).</div>
 
+    <label>workers
+      <select id="workers">
+        <option value="1">1 (sequential, default)</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+    </label>
+    <div class="hint">Max hunt files to run in parallel. Each worker spawns a separate browser process.</div>
+
     <div class="btn-row">
       <button id="btn-save">💾 Save</button>
       <button id="btn-open" class="secondary">Open in Editor</button>
@@ -313,6 +324,7 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
         controls_cache_dir: g('controls_cache_dir').value.trim() || 'cache',
         log_name_maxlen: (v => isNaN(v) ? 0 : v)(parseInt(g('log_name_maxlen').value, 10)),
         log_thought_maxlen: (v => isNaN(v) ? 0 : v)(parseInt(g('log_thought_maxlen').value, 10)),
+        workers: parseInt(g('workers').value, 10) || 1,
       };
       vsc.postMessage({ command: 'save', config: cfg });
     }
@@ -333,6 +345,8 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       g('controls_cache_dir').value       = config.controls_cache_dir ?? 'cache';
       g('log_name_maxlen').value          = config.log_name_maxlen ?? 0;
       g('log_thought_maxlen').value       = config.log_thought_maxlen ?? 0;
+      const _w = Math.min(4, Math.max(1, parseInt(String(config.workers ?? 1), 10)));
+      g('workers').value                  = String(isNaN(_w) ? 1 : _w);
       syncAiAlways();
     }
 
