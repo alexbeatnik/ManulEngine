@@ -155,6 +155,9 @@ See the [ManulEngine README](https://github.com/alexbeatnik/ManulEngine) for the
 
 ## Release Notes
 
+### 0.0.61
+- Add `PRESS ENTER` system keyword — submits focused form fields without requiring a visible submit button
+
 ### 0.0.60
 - Version bump to 0.0.6 — aligns with Python package `manul-engine 0.0.6`
 
