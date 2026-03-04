@@ -8,6 +8,7 @@ Usage:
   manul path/to/folder/              run all *.hunt files in that folder
   manul path/to/script.hunt          run a specific hunt file
   manul --headless .                 any of the above in headless mode
+  manul --workers 4 tests/           run up to 4 hunt files in parallel
 
 Hunt file format: plain text, numbered steps, optional @context / @blueprint headers.
 """
@@ -27,6 +28,7 @@ Usage:
 Flags:
   --headless                 — run browser in headless mode
   --browser <name>           — browser to use: chromium (default), firefox, webkit
+  --workers <n>              — max hunt files to run in parallel (default: 1)
 
 Examples:
   manul .
@@ -36,12 +38,15 @@ Examples:
   manul --headless tests/
   manul --browser firefox tests/
   manul --headless --browser webkit tests/hunt_example.hunt
+  manul --workers 4 tests/
 
 Notes:
   Any file with the .hunt extension is accepted.
   The "hunt_" filename prefix is a convention only — not required.
   Browser can also be set via "browser" key in manul_engine_configuration.json
   or the MANUL_BROWSER environment variable.
+  --workers can also be set via "workers" in manul_engine_configuration.json
+  or the MANUL_WORKERS environment variable.
 """
 
 # ── Tee stdout → log file ─────────────────────────────────────────────────────
@@ -83,6 +88,18 @@ def parse_hunt_file(filepath: str) -> tuple[str, str, str]:
                 mission_lines.append(line)
 
     return "".join(mission_lines).strip(), context, blueprint
+
+
+# ── Find the current manul executable ───────────────────────────────────────
+def _find_manul_exe() -> str:
+    """Return the path used to invoke the current process (for subprocess workers)."""
+    # If invoked as the installed `manul` console script, sys.argv[0] is the right path.
+    candidate = os.path.abspath(sys.argv[0])
+    if candidate.endswith(("manul", "manul.exe", "__main__.py")):
+        return candidate
+    # Fallback: locate __main__.py next to this file so create_subprocess_exec
+    # can prepend sys.executable and call it correctly.
+    return str(os.path.join(os.path.dirname(__file__), "__main__.py"))
 
 
 # ── Execute a single .hunt file ───────────────────────────────────────────────
@@ -179,6 +196,19 @@ async def main() -> None:
             sys.exit(1)
         browser = candidate
         args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+    # Extract --workers <n> flag
+    workers = int(os.getenv("MANUL_WORKERS", "1"))
+    if "--workers" in args:
+        idx = args.index("--workers")
+        if idx + 1 >= len(args):
+            print("Error: --workers requires a number.", file=sys.stderr)
+            sys.exit(1)
+        try:
+            workers = max(1, int(args[idx + 1]))
+        except ValueError:
+            print(f"Error: --workers value must be an integer, got '{args[idx + 1]}'.", file=sys.stderr)
+            sys.exit(1)
+        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
     if not args:
         print(_USAGE)
         sys.exit(0)
@@ -201,11 +231,54 @@ async def main() -> None:
         results: list[tuple[str, str, float]] = []
         total_start = time.perf_counter()
 
-        for path in files:
-            t0 = time.perf_counter()
-            success = await _run_hunt_file(path, headless, browser)
-            elapsed = time.perf_counter() - t0
-            results.append((os.path.basename(path), "PASS" if success else "FAIL", elapsed))
+        if workers == 1:
+            # ── Sequential (default) ──────────────────────────────────────
+            for path in files:
+                t0 = time.perf_counter()
+                success = await _run_hunt_file(path, headless, browser)
+                elapsed = time.perf_counter() - t0
+                results.append((os.path.basename(path), "PASS" if success else "FAIL", elapsed))
+        else:
+            # ── Parallel via subprocesses ─────────────────────────────────
+            # Each hunt is spawned as a separate `manul <file>` subprocess so
+            # that browsers run in truly separate processes (no shared Playwright
+            # event loop) and stdout is captured cleanly without interleaving.
+            print(f"\u2699\ufe0f  Running with up to {workers} parallel worker(s)\n")
+            sem = asyncio.Semaphore(workers)
+            manul_exe = _find_manul_exe()
+
+            async def _run_subprocess(path: str) -> tuple[str, str, float, str]:
+                cmd: list[str]
+                if manul_exe.endswith(".py"):
+                    # Invoked via python -m, need to prepend interpreter
+                    cmd = [sys.executable, manul_exe, path]
+                else:
+                    cmd = [manul_exe, path]
+                if headless:
+                    cmd.insert(-1, "--headless")
+                if browser:
+                    cmd[-1:-1] = ["--browser", browser]
+
+                async with sem:
+                    t0 = time.perf_counter()
+                    proc = await asyncio.create_subprocess_exec(
+                        *cmd,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.STDOUT,
+                    )
+                    raw, _ = await proc.communicate()
+                    elapsed = time.perf_counter() - t0
+                    output = raw.decode("utf-8", errors="replace")
+                    status = "PASS" if proc.returncode == 0 else "FAIL"
+                    return os.path.basename(path), status, elapsed, output
+
+            tasks = [asyncio.create_task(_run_subprocess(p)) for p in files]
+            subprocess_results = await asyncio.gather(*tasks)
+
+            # Print each hunt's buffered output in original submission order
+            for name, status, elapsed, output in subprocess_results:
+                print(output, end="")
+                results.append((name, status, elapsed))
 
         total = time.perf_counter() - total_start
         passed = sum(1 for _, s, _ in results if s == "PASS")
