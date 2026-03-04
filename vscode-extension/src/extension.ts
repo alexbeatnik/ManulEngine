@@ -3,7 +3,7 @@ import * as path from "path";
 import * as fs from "fs";
 import {
   createHuntTestController,
-  runHuntFileCommand,
+  runHuntFileViaController,
   runHuntFileInTerminalCommand,
 } from "./huntTestController";
 import { ConfigPanelProvider, generateConfigCommand } from "./configPanel";
@@ -16,7 +16,7 @@ import {
 
 export function activate(context: vscode.ExtensionContext): void {
   // ── Test Controller (Test Explorer) ────────────────────────────────────────
-  createHuntTestController(context);
+  const ctrl = createHuntTestController(context);
 
   // ── Config Webview Panel ───────────────────────────────────────────────────
   const configProvider = new ConfigPanelProvider(context);
@@ -37,9 +37,14 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // ── Commands ───────────────────────────────────────────────────────────────
   context.subscriptions.push(
-    vscode.commands.registerCommand("manul.runHuntFile", (uri?: vscode.Uri) =>
-      runHuntFileCommand(uri)
-    ),
+    vscode.commands.registerCommand("manul.runHuntFile", async (uri?: vscode.Uri) => {
+      const target = uri ?? vscode.window.activeTextEditor?.document.uri;
+      if (!target || !target.fsPath.endsWith(".hunt")) {
+        vscode.window.showWarningMessage("Please open or select a .hunt file.");
+        return;
+      }
+      return runHuntFileViaController(ctrl, target);
+    }),
 
     vscode.commands.registerCommand(
       "manul.runHuntFileInTerminal",
