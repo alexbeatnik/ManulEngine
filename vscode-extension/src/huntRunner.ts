@@ -180,7 +180,12 @@ export function runHunt(
       // runs directly in-process (no subprocess spawning overhead / recursion).
       proc = spawn(manulExe, ["--workers", "1", huntFile], {
         cwd,
-        env: { ...process.env },
+        env: {
+          ...process.env,
+          // Force Python to flush stdout immediately — without this, output
+          // is block-buffered when piped and steps appear only at the end.
+          PYTHONUNBUFFERED: "1",
+        },
       });
     } catch (err) {
       reject(err);

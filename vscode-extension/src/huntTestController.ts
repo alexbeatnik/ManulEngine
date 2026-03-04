@@ -148,7 +148,7 @@ async function _runItem(
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : String(err);
     run.errored(item, new vscode.TestMessage(errMsg));
-    if (currentStepNum > 0) {
+    if (currentStepNum > 0 && !currentStepDone) {
       const si = stepItems.get(currentStepNum);
       if (si) { run.errored(si, new vscode.TestMessage(errMsg)); }
     }
@@ -240,6 +240,9 @@ export function createHuntTestController(
         ctrl.items.forEach((item) => toRun.add(item));
       }
 
+      // Focus the Test Results panel so the user sees output immediately.
+      await vscode.commands.executeCommand("workbench.panel.testResults.view.focus");
+
       // Run all items in parallel — each hunt file gets its own browser process.
       await Promise.all([...toRun].map(async (item) => {
         if (token.isCancellationRequested) {
@@ -279,6 +282,7 @@ export async function runHuntFileViaController(
   }
   const request = new vscode.TestRunRequest([item]);
   const run = ctrl.createTestRun(request);
+  await vscode.commands.executeCommand("workbench.panel.testResults.view.focus");
   try {
     await _runItem(ctrl, run, item);
   } finally {
