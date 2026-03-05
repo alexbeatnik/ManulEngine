@@ -2,7 +2,7 @@
   "name": "manul-engine",
   "displayName": "ManulEngine",
   "description": "Hunt file language support, test runner and configuration UI for ManulEngine browser automation",
-  "version": "0.0.60",
+  "version": "0.0.61",
   "publisher": "manul-engine",
   "icon": "images/icon128.png",
   "repository": {
@@ -167,7 +167,7 @@
         "manulEngine.workers": {
           "type": "number",
           "default": null,
-          "description": "Maximum number of hunt files to run concurrently in Test Explorer. Overrides the `workers` key from manul_engine_configuration.json. Leave empty to read from the config file (default: 4)."
+          "description": "Maximum number of hunt files to run concurrently in Test Explorer. Overrides the `workers` key from manul_engine_configuration.json. Leave empty to read from the config file (default: 1)."
         }
       }
     }

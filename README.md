@@ -66,7 +66,8 @@ playwright install chromium
 Ollama is only needed for AI element-picker fallback or free-text mission planning.
 
 ```bash
-ollama pull qwen2.5:0.5b
+pip install ollama          # Python client library
+ollama pull qwen2.5:0.5b   # download model (requires Ollama app: https://ollama.com)
 ollama serve
 ```
 
@@ -154,6 +155,7 @@ Lines starting with `#` are ignored.
 |---|---|
 | `NAVIGATE to [URL]` | Load a URL and wait for DOM settlement |
 | `WAIT [seconds]` | Hard sleep |
+| `PRESS ENTER` | Press Enter on the currently focused element (submit forms after filling a field) |
 | `SCROLL DOWN` | Scroll the main page down one viewport |
 | `EXTRACT [target] into {var}` | Extract text into a memory variable |
 | `VERIFY that [target] is present` | Assert text/element is visible |
@@ -237,7 +239,7 @@ Create `manul_engine_configuration.json` in your project root — all settings a
   "controls_cache_dir": "cache",
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
-  "workers": 4
+  "workers": 1
 }
 ```
 
@@ -283,7 +285,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 | **Mouse Action** | `HOVER over [Element]`, `Drag [Element] and drop it into [Target]` |
 | **Data Extraction** | `EXTRACT [Target] into {variable_name}` |
 | **Verification** | `VERIFY that [Text] is present/absent`, `VERIFY that [Element] is checked/disabled` |
-| **Flow Control** | `WAIT [seconds]`, `SCROLL DOWN` |
+| **Flow Control** | `WAIT [seconds]`, `PRESS ENTER`, `SCROLL DOWN` |
 | **Finish** | `DONE.` |
 
 > Append `if exists` or `optional` to any step (outside quoted text) to make it non-blocking,
@@ -303,4 +305,4 @@ ManulEngine is verified against **1200+ synthetic DOM tests** covering:
 
 ---
 
-**Version:** 0.0.6 · **Status:** Hunting...
+**Version:** 0.0.6.1 · **Status:** Hunting...

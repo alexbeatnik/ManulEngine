@@ -88,6 +88,10 @@ The **Cache** sidebar tree shows per-site cache entries created by ManulEngine's
 - **Python 3.11+**
 - **Playwright** browsers (installed by ManulEngine's setup)
 - **Ollama** (optional) — only needed for AI-assisted element picking
+  ```bash
+  pip install ollama   # Python client library
+  ```
+  Plus the [Ollama app](https://ollama.com) running locally with a model pulled (e.g. `ollama pull qwen2.5:0.5b`)
 
 ---
 
@@ -113,7 +117,7 @@ The extension probes the following locations in order (platform-aware):
 |---------|---------|-------------|
 | `manulEngine.manulPath` | `""` | Absolute path to the `manul` CLI. Leave empty to auto-detect. |
 | `manulEngine.configFile` | `manul_engine_configuration.json` | Config file name resolved from the workspace root. |
-| `manulEngine.workers` | `null` | Max concurrent hunt files in Test Explorer. Overrides `workers` in config. Leave empty to use the config value (default: 4). |
+| `manulEngine.workers` | `null` | Max concurrent hunt files in Test Explorer. Overrides `workers` in config. Leave empty to use the config value (default: 1). |
 
 ---
 
@@ -154,6 +158,9 @@ See the [ManulEngine README](https://github.com/alexbeatnik/ManulEngine) for the
 ---
 
 ## Release Notes
+
+### 0.0.61
+- Add `PRESS ENTER` system keyword — submits focused form fields without requiring a visible submit button
 
 ### 0.0.60
 - Version bump to 0.0.6 — aligns with Python package `manul-engine 0.0.6`

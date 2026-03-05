@@ -21,7 +21,7 @@ Current operating mode in this repo is typically **mixed**:
 ```text
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.6
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.6.1
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
@@ -45,7 +45,7 @@ tests/
   rahul.hunt              integration: radios, autocomplete, hover
   wikipedia.hunt          integration: search, navigate, extract, verify, shadow-dom inputs
 vscode-extension/
-  package.json              Extension manifest (v0.0.60)
+  package.json              Extension manifest (v0.0.61)
   src/
     extension.ts            Activation, command registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
@@ -130,6 +130,7 @@ Placed at the top of the file. Used by the engine for logging and LLM context.
 These keywords are detected via word-boundary regex, bypass heuristics, and are handled directly by the engine parser:
 * `NAVIGATE to [url]` — Loads a URL and waits for DOM settlement.
 * `WAIT [seconds]` — Hard sleep (e.g., `WAIT 2`).
+* `PRESS ENTER` — Presses the Enter key on the currently focused element (useful to submit forms after filling a field).
 * `SCROLL DOWN` — Scrolls the main page down by one viewport height. `SCROLL DOWN inside the list` — scrolls the first dropdown-style scroll container (e.g., `#dropdown` or any element whose class name contains `dropdown`) all the way to the bottom (by setting `scrollTop = scrollHeight`). Phrases like `SCROLL DOWN to the very bottom` are accepted but currently behave the same as a single `SCROLL DOWN` on the main page (they do not auto-scroll the page all the way to the bottom).
 * `EXTRACT [target] into {variable_name}` — Extracts text data into memory.
 * `VERIFY that [target] is present` (or `is NOT present`, `is DISABLED`, `is checked`)
@@ -190,6 +191,8 @@ manul --browser firefox tests/   # run in Firefox instead of Chromium
 Ollama is optional, but required for:
 - free-text tasks (AI planner)
 - AI element-picker fallback when heuristics confidence is below `ai_threshold`
+
+To use Ollama: install the [Ollama app](https://ollama.com), run `pip install ollama` (Python client), pull a model (`ollama pull qwen2.5:0.5b`), and start the server (`ollama serve`).
 
 **Rule:** after any engine change, `python manul.py test` must exit with code **0**.
 Tip: Set `"ai_threshold": 0` (or `"model": null`) in `manul_engine_configuration.json` to force heuristics-only. Ensures deterministic unit tests without LLM calls.

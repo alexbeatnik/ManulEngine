@@ -52,6 +52,18 @@ class _ActionsMixin:
             await page.evaluate("window.scrollBy(0, window.innerHeight)")
         await asyncio.sleep(SCROLL_WAIT)
 
+    async def _handle_press_enter(self, page) -> bool:
+        """Press the Enter key on the currently focused element.
+
+        Useful for submitting search forms or other inputs where no visible
+        submit button is present. Always returns True — keyboard events do
+        not produce a recoverable failure state.
+        """
+        await page.keyboard.press("Enter")
+        await asyncio.sleep(ACTION_WAIT)
+        print("    ↩️  Pressed Enter")
+        return True
+
     async def _handle_extract(self, page, step: str) -> bool:
         var_m  = re.search(r'\{(.*?)\}', step)
         target = (extract_quoted(step) or [""])[0].replace("'", "")
