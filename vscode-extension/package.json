@@ -2,7 +2,7 @@
   "name": "manul-engine",
   "displayName": "ManulEngine",
   "description": "Hunt file language support, test runner and configuration UI for ManulEngine browser automation",
-  "version": "0.0.61",
+  "version": "0.0.7",
   "publisher": "manul-engine",
   "icon": "images/icon128.png",
   "repository": {
@@ -66,6 +66,11 @@
       "manul-engine": [
         {
           "type": "webview",
+          "id": "manul.stepBuilder",
+          "name": "Step Builder"
+        },
+        {
+          "type": "webview",
           "id": "manul.configView",
           "name": "Configuration"
         },
@@ -86,6 +91,11 @@
         "command": "manul.runHuntFileInTerminal",
         "title": "ManulEngine: Run Hunt File in Terminal",
         "icon": "$(terminal)"
+      },
+      {
+        "command": "manul.newHuntFile",
+        "title": "ManulEngine: New Hunt File",
+        "icon": "$(new-file)"
       },
       {
         "command": "manul.generateConfig",
@@ -168,6 +178,11 @@
           "type": "number",
           "default": null,
           "description": "Maximum number of hunt files to run concurrently in Test Explorer. Overrides the `workers` key from manul_engine_configuration.json. Leave empty to read from the config file (default: 1)."
+        },
+        "manulEngine.testsHome": {
+          "type": "string",
+          "default": "tests",
+          "description": "Directory where new hunt files are created by the Step Builder. Relative to workspace root or absolute path. Overrides the `tests_home` key in manul_engine_configuration.json."
         }
       }
     }

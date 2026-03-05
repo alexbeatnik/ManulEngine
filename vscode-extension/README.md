@@ -22,7 +22,7 @@ ManulEngine changes the economics of test automation. You don't write controls �
 
 ## VS Code Extension Features
 
-> Hunt file language support, one-click test runner, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) browser automation.
+> Hunt file language support, one-click test runner, step builder, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) browser automation.
 
 ## Features
 
@@ -74,6 +74,14 @@ The **Cache** sidebar tree shows per-site cache entries created by ManulEngine's
 - Clear the cache for a specific site (trash icon on hover)
 - Clear all cache entries at once (toolbar button)
 - Refresh the tree manually
+
+### 🧱 Step Builder
+A sidebar panel that lets you insert hunt steps with a single click — no typing required.
+
+- **＋ New Hunt File** button — prompts for a name, creates a `.hunt` file with a starter template in the `tests_home` directory (configured via `tests_home` in `manul_engine_configuration.json`, defaults to `tests/`), and opens it
+- **Step buttons** — one button per step type: Navigate, Fill field, Click, Double Click, Select, Check, Radio, Hover, Drag & Drop, Extract, Verify present/absent/state, Press Enter, Wait, Scroll Down, Done
+- Each click appends the next numbered step to the currently open `.hunt` file and positions the cursor inside the first `''` pair for immediate editing
+- Works even when the sidebar has focus (the editor is not the active panel)
 
 ---
 
@@ -158,6 +166,11 @@ See the [ManulEngine README](https://github.com/alexbeatnik/ManulEngine) for the
 ---
 
 ## Release Notes
+
+### 0.0.7
+- Fix step-insertion buttons in Step Builder sidebar — inline `onclick` handlers were blocked by VS Code webview CSP; replaced with `data-template` attributes and `addEventListener`
+- Fix step insertion when sidebar webview steals editor focus — track last known `.hunt` document URI and use `WorkspaceEdit` for reliable insertion
+- New **Step Builder** sidebar panel with one-click step templates (Navigate, Fill, Click, Select, Verify, Extract, etc.) and a **＋ New Hunt File** button
 
 ### 0.0.61
 - Add `PRESS ENTER` system keyword — submits focused form fields without requiring a visible submit button

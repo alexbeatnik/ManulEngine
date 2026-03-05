@@ -1,0 +1,305 @@
+/**
+ * stepBuilderPanel.ts
+ *
+ * Sidebar webview that provides:
+ *  - "New Hunt File" button — prompts for a name, creates a .hunt file in the
+ *    configured `tests_home` directory, and opens it.
+ *  - Step-insertion buttons — append the next numbered step to the active .hunt
+ *    file with a single click.
+ */
+
+import * as vscode from "vscode";
+import * as path from "path";
+import * as fs from "fs";
+
+// ── Step templates ────────────────────────────────────────────────────────────
+
+interface StepTemplate {
+  label: string;
+  icon: string;
+  template: string;
+}
+
+const STEP_TEMPLATES: StepTemplate[] = [
+  { label: "Navigate",      icon: "🌐", template: "NAVIGATE to " },
+  { label: "Fill field",    icon: "⌨️",  template: "Fill '' field with ''" },
+  { label: "Click",         icon: "🖱️",  template: "Click the '' button" },
+  { label: "Double Click",  icon: "🖱️🖱️", template: "DOUBLE CLICK the '' button" },
+  { label: "Select",        icon: "📋", template: "Select '' from the '' dropdown" },
+  { label: "Check",         icon: "☑️",  template: "Check the checkbox for ''" },
+  { label: "Radio",         icon: "🔘", template: "Click the radio button for ''" },
+  { label: "Hover",         icon: "🔍", template: "HOVER over ''" },
+  { label: "Drag & Drop",   icon: "↕️",  template: "Drag '' and drop it into ''" },
+  { label: "Extract",       icon: "📤", template: "EXTRACT the '' into {}" },
+  { label: "Verify present",icon: "✅", template: "VERIFY that '' is present" },
+  { label: "Verify absent", icon: "🚫", template: "VERIFY that '' is NOT present" },
+  { label: "Verify state",  icon: "🔒", template: "VERIFY that '' is DISABLED" },
+  { label: "Press Enter",   icon: "↩️",  template: "PRESS ENTER" },
+  { label: "Wait",          icon: "⏸️",  template: "WAIT 2" },
+  { label: "Scroll Down",   icon: "⬇️",  template: "SCROLL DOWN" },
+  { label: "Done",          icon: "🏁", template: "DONE." },
+];
+
+// ── Provider ──────────────────────────────────────────────────────────────────
+
+export class StepBuilderProvider implements vscode.WebviewViewProvider {
+  public static readonly viewType = "manul.stepBuilder";
+
+  private _view?: vscode.WebviewView;
+  /**
+   * URI of the last .hunt document that was active.
+   * We store the URI (not the TextEditor object) because editor references
+   * become stale as soon as the webview steals focus — stale editors silently
+   * reject edit() calls.
+   */
+  private _lastHuntUri?: vscode.Uri;
+
+  constructor(private readonly _context: vscode.ExtensionContext) {
+    // Track the URI whenever the active editor changes to a .hunt file.
+    _context.subscriptions.push(
+      vscode.window.onDidChangeActiveTextEditor((editor) => {
+        if (editor && editor.document.fileName.endsWith(".hunt")) {
+          this._lastHuntUri = editor.document.uri;
+        }
+      })
+    );
+    // Capture whatever is already open when the extension loads.
+    const active = vscode.window.activeTextEditor;
+    if (active && active.document.fileName.endsWith(".hunt")) {
+      this._lastHuntUri = active.document.uri;
+    }
+  }
+
+  public resolveWebviewView(
+    webviewView: vscode.WebviewView,
+    _context: vscode.WebviewViewResolveContext,
+    _token: vscode.CancellationToken
+  ): void {
+    this._view = webviewView;
+    webviewView.webview.options = { enableScripts: true };
+    webviewView.webview.html = this._getHtml(webviewView.webview);
+
+    webviewView.webview.onDidReceiveMessage(async (msg: { command: string; template?: string }) => {
+      if (msg.command === "insertStep" && msg.template !== undefined) {
+        await insertStep(msg.template, this._lastHuntUri);
+      } else if (msg.command === "newHuntFile") {
+        await newHuntFileCommand(this._context);
+      }
+    });
+  }
+
+  private _getHtml(webview: vscode.Webview): string {
+    // Generate a nonce for the CSP — required for inline scripts in VS Code webviews.
+    const nonce = getNonce();
+    const csp = `default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';`;
+
+    // Use data attributes instead of inline onclick — avoids CSP inline-handler block.
+    const buttons = STEP_TEMPLATES.map(
+      (s) =>
+        `<button class="step-btn" data-template=${JSON.stringify(s.template)}>${s.icon} ${s.label}</button>`
+    ).join("\n");
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="${csp}">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    padding: 8px;
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size);
+    color: var(--vscode-foreground);
+  }
+  .new-btn {
+    display: block; width: 100%; padding: 7px 10px; margin-bottom: 12px;
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none; cursor: pointer; border-radius: 3px; font-size: 13px;
+    font-weight: 600;
+  }
+  .new-btn:hover { background: var(--vscode-button-hoverBackground); }
+  h3 {
+    margin: 0 0 6px 0; font-size: 10px; text-transform: uppercase;
+    letter-spacing: 0.08em; opacity: 0.6;
+  }
+  .step-btn {
+    display: block; width: 100%; padding: 5px 8px; margin-bottom: 4px;
+    background: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+    border: none; cursor: pointer; text-align: left; border-radius: 3px;
+    font-size: 12px;
+  }
+  .step-btn:hover { background: var(--vscode-button-secondaryHoverBackground); }
+</style>
+</head>
+<body>
+  <button class="new-btn" id="btn-new-file">＋ New Hunt File</button>
+  <h3>Insert Step</h3>
+  ${buttons}
+  <script nonce="${nonce}">
+    const vsc = acquireVsCodeApi();
+    document.getElementById('btn-new-file').addEventListener('click', function() {
+      vsc.postMessage({ command: 'newHuntFile' });
+    });
+    document.querySelectorAll('.step-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        vsc.postMessage({ command: 'insertStep', template: btn.dataset.template });
+      });
+    });
+  </script>
+</body></html>`;
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Generate a random nonce string for the webview Content-Security-Policy. */
+function getNonce(): string {
+  let text = "";
+  const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  for (let i = 0; i < 32; i++) {
+    text += possible.charAt(Math.floor(Math.random() * possible.length));
+  }
+  return text;
+}
+
+/**
+ * Determine the next step number from the active .hunt document text.
+ * Scans for lines matching `\d+.` and returns max + 1 (or 1 if none found).
+ */
+function nextStepNumber(text: string): number {
+  const matches = [...text.matchAll(/^(\d+)\./gm)];
+  if (matches.length === 0) { return 1; }
+  return Math.max(...matches.map((m) => parseInt(m[1], 10))) + 1;
+}
+
+/**
+ * Append a numbered step to the active .hunt file.
+ * Positions the cursor inside the first pair of '' in the inserted line.
+ *
+ * Uses WorkspaceEdit (not editor.edit) so that the insert works even when
+ * the sidebar webview holds focus and activeTextEditor is undefined / stale.
+ *
+ * @param lastHuntUri - URI of the last known .hunt document, kept by the
+ *   provider across webview focus changes.
+ */
+async function insertStep(template: string, lastHuntUri?: vscode.Uri): Promise<void> {
+  // 1. Active editor (if it's a .hunt file)
+  const activeUri = vscode.window.activeTextEditor?.document.fileName.endsWith(".hunt")
+    ? vscode.window.activeTextEditor.document.uri
+    : undefined;
+
+  // 2. Remembered URI from the last time user focused a .hunt file
+  // 3. Any .hunt doc currently open in the workspace (last resort)
+  const anyOpenHunt = vscode.workspace.textDocuments.find((d) =>
+    d.fileName.endsWith(".hunt") && !d.isClosed
+  )?.uri;
+
+  const uri = activeUri ?? lastHuntUri ?? anyOpenHunt;
+
+  if (!uri) {
+    vscode.window.showWarningMessage("Open a .hunt file first.");
+    return;
+  }
+
+  // Bring the document to the foreground FIRST so we get a live editor.
+  const doc = await vscode.workspace.openTextDocument(uri);
+  const editor = await vscode.window.showTextDocument(doc, { preview: false, preserveFocus: false });
+
+  const text = doc.getText();
+  const num = nextStepNumber(text);
+  const stepText = `${num}. ${template}`;
+
+  // Determine insertion point: end of file, prefixed with newline if needed.
+  const lastLine = doc.lineAt(doc.lineCount - 1);
+  const endPos = lastLine.range.end;
+  const prefix = lastLine.text.trim() === "" ? "" : "\n";
+
+  // Use editor.edit() on the freshly-focused, live editor reference.
+  const ok = await editor.edit((eb) => {
+    eb.insert(endPos, `${prefix}${stepText}`);
+  });
+
+  if (!ok) {
+    vscode.window.showWarningMessage("Could not insert step — document may be read-only.");
+    return;
+  }
+
+  // Position cursor inside the first '' pair.
+  const updatedText = doc.getText();
+  const lines = updatedText.split("\n");
+  const insertedLineIdx = lines.findIndex((l) => l.startsWith(`${num}. `));
+  if (insertedLineIdx === -1) { return; }
+
+  const lineText = lines[insertedLineIdx];
+  const quoteIdx = lineText.indexOf("''");
+  if (quoteIdx !== -1) {
+    const pos = new vscode.Position(insertedLineIdx, quoteIdx + 1);
+    editor.selection = new vscode.Selection(pos, pos);
+    editor.revealRange(new vscode.Range(pos, pos));
+  }
+}
+
+/**
+ * "New Hunt File" command: reads `tests_home` from the workspace config,
+ * prompts for a file name, creates the file with a starter template, and opens it.
+ */
+export async function newHuntFileCommand(
+  _context: vscode.ExtensionContext
+): Promise<void> {
+  const folders = vscode.workspace.workspaceFolders;
+  if (!folders || folders.length === 0) {
+    vscode.window.showErrorMessage("No workspace folder open.");
+    return;
+  }
+  const workspaceRoot = folders[0].uri.fsPath;
+
+  // Read tests_home from manul_engine_configuration.json
+  const cfgFile = path.join(workspaceRoot, "manul_engine_configuration.json");
+  let testsHome = "tests";
+  try {
+    const cfg = JSON.parse(fs.readFileSync(cfgFile, "utf8"));
+    if (typeof cfg.tests_home === "string" && cfg.tests_home.trim()) {
+      testsHome = cfg.tests_home.trim();
+    }
+  } catch { /* config missing or malformed — use default */ }
+
+  const testsDir = path.isAbsolute(testsHome)
+    ? testsHome
+    : path.join(workspaceRoot, testsHome);
+
+  const name = await vscode.window.showInputBox({
+    prompt: "Hunt file name (without .hunt extension)",
+    placeHolder: "my_test",
+    validateInput: (v) =>
+      /^[\w\-]+$/.test(v.trim()) ? null : "Use letters, digits, - or _ only",
+  });
+  if (!name) { return; }
+
+  if (!fs.existsSync(testsDir)) {
+    fs.mkdirSync(testsDir, { recursive: true });
+  }
+
+  const filePath = path.join(testsDir, `${name}.hunt`);
+  if (fs.existsSync(filePath)) {
+    vscode.window.showErrorMessage(`File already exists: ${filePath}`);
+    return;
+  }
+
+  const starter = `@context: \n@blueprint: ${name}\n\n1. NAVIGATE to \n`;
+  fs.writeFileSync(filePath, starter, "utf8");
+
+  const doc = await vscode.workspace.openTextDocument(filePath);
+  await vscode.window.showTextDocument(doc);
+
+  // Position cursor at the end of the NAVIGATE line
+  const editor = vscode.window.activeTextEditor;
+  if (editor) {
+    const line = doc.lineAt(3); // "1. NAVIGATE to "
+    const end = line.range.end;
+    editor.selection = new vscode.Selection(end, end);
+    editor.revealRange(new vscode.Range(end, end));
+  }
+}

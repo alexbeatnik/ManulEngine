@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.0.6.1 — The Mastermind
+# 😼 ManulEngine v0.0.7 — The Mastermind
 
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 
@@ -20,7 +20,7 @@ Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristi
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.6.1
+├── pyproject.toml                    Build config — package: manul-engine 0.0.7
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
@@ -52,7 +52,7 @@ ManulEngine/
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 └── vscode-extension/                 VS Code extension (language support + UI)
-    ├── package.json                  Extension manifest (v0.0.61)
+    ├── package.json                  Extension manifest (v0.0.7)
     ├── src/
     │   ├── extension.ts              Activation, command registration
     │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
@@ -300,7 +300,7 @@ The `prompts/` directory contains ready-to-use LLM prompt templates that let you
 
 ## 🖱️ VS Code Extension
 
-The `vscode-extension/` directory contains a companion VS Code extension (v0.0.61) that provides:
+The `vscode-extension/` directory contains a companion VS Code extension (v0.0.7) that provides:
 
 | Feature | Details |
 | --- | --- |
@@ -331,7 +331,7 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 ---
 
-**Version:** 0.0.6.1 (extension: 0.0.61)
+**Version:** 0.0.7
 
 **Codename:** The Mastermind
 

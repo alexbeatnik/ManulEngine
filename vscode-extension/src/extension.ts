@@ -7,6 +7,7 @@ import {
   runHuntFileInTerminalCommand,
 } from "./huntTestController";
 import { ConfigPanelProvider, generateConfigCommand } from "./configPanel";
+import { StepBuilderProvider, newHuntFileCommand } from "./stepBuilderPanel";
 import {
   CacheTreeProvider,
   CacheItem,
@@ -17,6 +18,15 @@ import {
 export function activate(context: vscode.ExtensionContext): void {
   // ── Test Controller (Test Explorer) ────────────────────────────────────────
   const ctrl = createHuntTestController(context);
+
+  // ── Step Builder Webview Panel ────────────────────────────────────────────
+  const stepBuilderProvider = new StepBuilderProvider(context);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      StepBuilderProvider.viewType,
+      stepBuilderProvider
+    )
+  );
 
   // ── Config Webview Panel ───────────────────────────────────────────────────
   const configProvider = new ConfigPanelProvider(context);
@@ -49,6 +59,10 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(
       "manul.runHuntFileInTerminal",
       (uri?: vscode.Uri) => runHuntFileInTerminalCommand(uri)
+    ),
+
+    vscode.commands.registerCommand("manul.newHuntFile", () =>
+      newHuntFileCommand(context)
     ),
 
     vscode.commands.registerCommand("manul.generateConfig", () =>

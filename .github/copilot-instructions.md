@@ -21,7 +21,7 @@ Current operating mode in this repo is typically **mixed**:
 ```text
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.6.1
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.7
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
@@ -45,13 +45,14 @@ tests/
   rahul.hunt              integration: radios, autocomplete, hover
   wikipedia.hunt          integration: search, navigate, extract, verify, shadow-dom inputs
 vscode-extension/
-  package.json              Extension manifest (v0.0.61)
-  src/
+  package.json              Extension manifest (v0.0.7)
+  src:
     extension.ts            Activation, command registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
     huntTestController.ts   VS Code Test Explorer integration (step-level reporting)
     configPanel.ts          Webview sidebar: config editor + Ollama model discovery
     cacheTreeProvider.ts    Sidebar tree: controls cache browser
+    stepBuilderPanel.ts     Sidebar webview: step-insertion buttons + new hunt file
   syntaxes/hunt.tmLanguage.json  Hunt file syntax grammar
 ```
 
