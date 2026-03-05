@@ -155,6 +155,7 @@ Lines starting with `#` are ignored.
 |---|---|
 | `NAVIGATE to [URL]` | Load a URL and wait for DOM settlement |
 | `WAIT [seconds]` | Hard sleep |
+| `PRESS ENTER` | Press Enter on the currently focused element (submit forms after filling a field) |
 | `SCROLL DOWN` | Scroll the main page down one viewport |
 | `EXTRACT [target] into {var}` | Extract text into a memory variable |
 | `VERIFY that [target] is present` | Assert text/element is visible |
@@ -284,7 +285,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 | **Mouse Action** | `HOVER over [Element]`, `Drag [Element] and drop it into [Target]` |
 | **Data Extraction** | `EXTRACT [Target] into {variable_name}` |
 | **Verification** | `VERIFY that [Text] is present/absent`, `VERIFY that [Element] is checked/disabled` |
-| **Flow Control** | `WAIT [seconds]`, `SCROLL DOWN` |
+| **Flow Control** | `WAIT [seconds]`, `PRESS ENTER`, `SCROLL DOWN` |
 | **Finish** | `DONE.` |
 
 > Append `if exists` or `optional` to any step (outside quoted text) to make it non-blocking,

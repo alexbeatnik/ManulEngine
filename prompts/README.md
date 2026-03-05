@@ -131,6 +131,7 @@ jq -Rs '{model: "qwen2.5:7b", prompt: ., stream: false}' prompts/html_to_hunt.md
 ### Keywords
 - `NAVIGATE to <url>`
 - `WAIT <seconds>`
+- `PRESS ENTER`
 - `SCROLL DOWN`
 - `EXTRACT the '<target>' into {var}`
 - `VERIFY that '<target>' is present / is NOT present / is DISABLED / is checked`
