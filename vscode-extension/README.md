@@ -117,7 +117,7 @@ The extension probes the following locations in order (platform-aware):
 |---------|---------|-------------|
 | `manulEngine.manulPath` | `""` | Absolute path to the `manul` CLI. Leave empty to auto-detect. |
 | `manulEngine.configFile` | `manul_engine_configuration.json` | Config file name resolved from the workspace root. |
-| `manulEngine.workers` | `null` | Max concurrent hunt files in Test Explorer. Overrides `workers` in config. Leave empty to use the config value (default: 4). |
+| `manulEngine.workers` | `null` | Max concurrent hunt files in Test Explorer. Overrides `workers` in config. Leave empty to use the config value (default: 1). |
 
 ---
 

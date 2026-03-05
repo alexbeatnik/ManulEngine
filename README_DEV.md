@@ -167,7 +167,7 @@ Environment variables (`MANUL_*`) always override JSON values — useful for CI/
 
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
-  "workers": 4
+  "workers": 1
 }
 ```
 
@@ -309,7 +309,7 @@ The `vscode-extension/` directory contains a companion VS Code extension (v0.0.6
 | **Config sidebar** | Webview panel to edit `manul_engine_configuration.json` visually; **Workers** combobox; **Add Default Prompts** button; live Ollama model discovery via `localhost:11434` |
 | **Cache browser** | Tree-view sidebar showing the controls cache hierarchy (`site → page → controls.json`) |
 | **Run commands** | `ManulEngine: Run Hunt File` (output panel) and `ManulEngine: Run Hunt File in Terminal` (raw CLI) |
-| **Bounded concurrency** | Test Explorer respects `workers` config or `manulEngine.workers` VS Code setting (default: 4) |
+| **Bounded concurrency** | Test Explorer respects `workers` config or `manulEngine.workers` VS Code setting (default: 1) |
 
 ### Extension behaviour notes
 

@@ -238,7 +238,7 @@ Create `manul_engine_configuration.json` in your project root — all settings a
   "controls_cache_dir": "cache",
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
-  "workers": 4
+  "workers": 1
 }
 ```
 

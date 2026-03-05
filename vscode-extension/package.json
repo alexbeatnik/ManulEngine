@@ -167,7 +167,7 @@
         "manulEngine.workers": {
           "type": "number",
           "default": null,
-          "description": "Maximum number of hunt files to run concurrently in Test Explorer. Overrides the `workers` key from manul_engine_configuration.json. Leave empty to read from the config file (default: 4)."
+          "description": "Maximum number of hunt files to run concurrently in Test Explorer. Overrides the `workers` key from manul_engine_configuration.json. Leave empty to read from the config file (default: 1)."
         }
       }
     }
