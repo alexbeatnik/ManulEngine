@@ -66,7 +66,8 @@ playwright install chromium
 Ollama is only needed for AI element-picker fallback or free-text mission planning.
 
 ```bash
-ollama pull qwen2.5:0.5b
+pip install ollama          # Python client library
+ollama pull qwen2.5:0.5b   # download model (requires Ollama app: https://ollama.com)
 ollama serve
 ```
 

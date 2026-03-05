@@ -192,6 +192,8 @@ Ollama is optional, but required for:
 - free-text tasks (AI planner)
 - AI element-picker fallback when heuristics confidence is below `ai_threshold`
 
+To use Ollama: install the [Ollama app](https://ollama.com), run `pip install ollama` (Python client), pull a model (`ollama pull qwen2.5:0.5b`), and start the server (`ollama serve`).
+
 **Rule:** after any engine change, `python manul.py test` must exit with code **0**.
 Tip: Set `"ai_threshold": 0` (or `"model": null`) in `manul_engine_configuration.json` to force heuristics-only. Ensures deterministic unit tests without LLM calls.
 Note: `python manul.py test` disables persistent controls cache by default for deterministic synthetic suites. `test_13_controls_cache.py` explicitly enables cache in a temporary `cache/run_<datetime>` folder and removes it after the test.

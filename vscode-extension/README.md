@@ -88,6 +88,10 @@ The **Cache** sidebar tree shows per-site cache entries created by ManulEngine's
 - **Python 3.11+**
 - **Playwright** browsers (installed by ManulEngine's setup)
 - **Ollama** (optional) — only needed for AI-assisted element picking
+  ```bash
+  pip install ollama   # Python client library
+  ```
+  Plus the [Ollama app](https://ollama.com) running locally with a model pulled (e.g. `ollama pull qwen2.5:0.5b`)
 
 ---
 

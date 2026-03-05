@@ -139,7 +139,8 @@ playwright install chromium
 Optional — local LLM via Ollama:
 
 ```bash
-ollama pull qwen2.5:0.5b
+pip install ollama          # Python client library
+ollama pull qwen2.5:0.5b   # download model (requires Ollama app: https://ollama.com)
 ollama serve
 ```
 
