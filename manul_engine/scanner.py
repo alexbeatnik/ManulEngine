@@ -179,6 +179,23 @@ async def scan_page(
     print(f"{'─'*60}\n")
 
 
+def _default_output(filename: str = "draft.hunt") -> str:
+    """Return tests_home/filename, reading tests_home from the project config."""
+    import json, pathlib
+    cfg_path = pathlib.Path.cwd() / "manul_engine_configuration.json"
+    if not cfg_path.exists():
+        cfg_path = pathlib.Path(__file__).resolve().parents[1] / "manul_engine_configuration.json"
+    tests_home = "tests"
+    if cfg_path.exists():
+        try:
+            tests_home = json.loads(cfg_path.read_text("utf-8")).get("tests_home", "tests") or "tests"
+        except Exception:
+            pass
+    folder = pathlib.Path(tests_home)
+    folder.mkdir(parents=True, exist_ok=True)
+    return str(folder / filename)
+
+
 async def scan_main(args: list[str]) -> None:
     """Async entry point called by cli.main() when first real arg is 'scan'."""
 
@@ -198,7 +215,7 @@ async def scan_main(args: list[str]) -> None:
                 sys.exit(1)
             args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
 
-    output_file = "draft.hunt"
+    output_file = _default_output()
     if "--output" in args:
         idx = args.index("--output")
         if idx + 1 < len(args):
