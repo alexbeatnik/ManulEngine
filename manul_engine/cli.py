@@ -15,6 +15,7 @@ Hunt file format: plain text, numbered steps, optional @context / @blueprint hea
 
 import asyncio
 import os
+import re
 import sys
 import time
 
@@ -30,6 +31,8 @@ Flags:
   --headless                 — run browser in headless mode
   --browser <name>           — browser to use: chromium (default), firefox, webkit
   --workers <n>              — max hunt files to run in parallel (default: 1)
+  --debug                    — interactive step-by-step mode with visual element highlighting
+  --break-lines <n,n,...>    — pause before steps whose line numbers match (set by clicking the editor gutter)
 
 Scan-specific flags (only with `manul scan`):
   --output <file>            — output file for the draft (default: draft.hunt)
@@ -77,14 +80,20 @@ class _Tee:
 
 
 # ── Parse .hunt file ─────────────────────────────────────────────────────────
-def parse_hunt_file(filepath: str) -> tuple[str, str, str]:
-    """Return (mission_body, context, blueprint) from a .hunt file."""
+def parse_hunt_file(filepath: str) -> tuple[str, str, str, list[int]]:
+    """Return (mission_body, context, blueprint, step_file_lines) from a .hunt file.
+
+    step_file_lines[i] is the 1-based file line number of the (i+1)-th numbered
+    step, in order of appearance.  Used to map editor gutter breakpoints to step
+    indices that ManulEngine should pause before.
+    """
     context = ""
     blueprint = ""
     mission_lines: list[str] = []
+    step_file_lines: list[int] = []
 
     with open(filepath, "r", encoding="utf-8") as fh:
-        for line in fh:
+        for lineno, line in enumerate(fh, 1):
             stripped = line.strip()
             if stripped.startswith("@context:"):
                 context = stripped.split(":", 1)[1].strip()
@@ -92,8 +101,10 @@ def parse_hunt_file(filepath: str) -> tuple[str, str, str]:
                 blueprint = stripped.split(":", 1)[1].strip()
             elif not stripped.startswith("#") and stripped:
                 mission_lines.append(line)
+                if re.match(r'^\d+\.', stripped):
+                    step_file_lines.append(lineno)
 
-    return "".join(mission_lines).strip(), context, blueprint
+    return "".join(mission_lines).strip(), context, blueprint, step_file_lines
 
 
 # ── Find the current manul executable ───────────────────────────────────────
@@ -114,13 +125,27 @@ def _find_manul_exe() -> str:
 
 
 # ── Execute a single .hunt file ───────────────────────────────────────────────
-async def _run_hunt_file(path: str, headless: bool, browser: "str | None" = None) -> bool:
+async def _run_hunt_file(
+    path: str,
+    headless: bool,
+    browser: "str | None" = None,
+    debug: bool = False,
+    break_lines: "set[int] | None" = None,
+) -> bool:
     filename = os.path.basename(path)
     print(f"\n{'='*60}")
     print(f"📜 EXECUTING MANUL HUNT: {filename}")
     print(f"{'='*60}")
 
-    mission, context, blueprint = parse_hunt_file(path)
+    mission, context, blueprint, step_file_lines = parse_hunt_file(path)
+
+    # Map file line numbers (from editor gutter breakpoints) to step indices.
+    _break_lines = break_lines or set()
+    break_steps: set[int] = {
+        step_idx
+        for step_idx, file_line in enumerate(step_file_lines, 1)
+        if file_line in _break_lines
+    }
 
     if not mission:
         print(f"⚠️  Skipping {filename}: empty or comments-only.")
@@ -133,7 +158,7 @@ async def _run_hunt_file(path: str, headless: bool, browser: "str | None" = None
         context = f"[{blueprint}] {context}"
 
     from manul_engine import ManulEngine
-    manul = ManulEngine(headless=headless, browser=browser)
+    manul = ManulEngine(headless=headless, browser=browser, debug_mode=debug, break_steps=break_steps)
     try:
         result = await manul.run_mission(mission, strategic_context=context)
         return bool(result)
@@ -196,8 +221,8 @@ async def main() -> None:
     _non_flag_args = [
         a for i, a in enumerate(args)
         if a not in ("--headless",)
-        and not (i > 0 and args[i - 1] in ("--browser", "--workers", "--output"))
-        and a not in ("--browser", "--workers", "--output")
+        and not (i > 0 and args[i - 1] in ("--browser", "--workers", "--output", "--break-lines"))
+        and a not in ("--browser", "--workers", "--output", "--break-lines")
     ]
     if _non_flag_args and _non_flag_args[0] == "scan":
         from manul_engine.scanner import scan_main
@@ -208,7 +233,19 @@ async def main() -> None:
         return
 
     headless = "--headless" in args
-    args = [a for a in args if a != "--headless"]
+    debug = "--debug" in args
+    args = [a for a in args if a not in ("--headless", "--debug")]
+    # Extract --break-lines <n,n,...> flag (gutter breakpoints from VS Code).
+    break_lines: set[int] = set()
+    if "--break-lines" in args:
+        idx = args.index("--break-lines")
+        if idx + 1 < len(args):
+            try:
+                break_lines = {int(x.strip()) for x in args[idx + 1].split(",") if x.strip()}
+            except ValueError:
+                print("Error: --break-lines values must be integers.", file=sys.stderr)
+                sys.exit(1)
+        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
     # Extract --browser <name> flag
     _VALID_BROWSERS = {"chromium", "firefox", "webkit"}
     browser: str | None = None
@@ -284,7 +321,7 @@ async def main() -> None:
             # ── Sequential (default) ──────────────────────────────────────
             for path in files:
                 t0 = time.perf_counter()
-                success = await _run_hunt_file(path, headless, browser)
+                success = await _run_hunt_file(path, headless, browser, debug, break_lines)
                 elapsed = time.perf_counter() - t0
                 results.append((os.path.basename(path), "PASS" if success else "FAIL", elapsed))
         else:
@@ -310,6 +347,10 @@ async def main() -> None:
                 flags: list[str] = ["--workers", "1"]
                 if headless:
                     flags.append("--headless")
+                if debug:
+                    flags.append("--debug")
+                if break_lines:
+                    flags += ["--break-lines", ",".join(str(l) for l in sorted(break_lines))]
                 if browser:
                     flags += ["--browser", browser]
                 cmd = base + flags + [path]

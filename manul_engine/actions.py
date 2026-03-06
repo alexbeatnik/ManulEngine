@@ -293,11 +293,16 @@ class _ActionsMixin:
 
             loc = page.locator(f"xpath={xpath}").first
             try:
-                if not is_shad: 
+                if not is_shad:
                     await loc.scroll_into_view_if_needed(timeout=2000)
                     await self._highlight(page, loc)
                 else:
                     await self._highlight(page, el_id, by_js_id=True)
+                if getattr(self, "debug_mode", False):
+                    if not is_shad:
+                        await self._debug_highlight(page, loc)
+                    else:
+                        await self._debug_highlight(page, el_id, by_js_id=True)
             except Exception: pass
 
             try:

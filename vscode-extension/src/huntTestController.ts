@@ -1,7 +1,8 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
-import { findManulExecutable, runHunt } from "./huntRunner";
+import { findManulExecutable, runHunt, runHuntFileDebugPanel, getHuntBreakpointLines } from "./huntRunner";
+import { DebugControlPanel } from "./debugControlPanel";
 
 // ── Concurrency helpers ────────────────────────────────────────────────────
 
@@ -92,6 +93,9 @@ function parseHuntSteps(filePath: string): HuntStep[] {
 // ── Module-level run counter and helpers (shared by Test Explorer + play button)
 let _runCounter = 0;
 
+/** Function shape shared by runHunt (normal) and runHuntFileDebugPanel (debug). */
+type HuntRunFn = typeof runHunt;
+
 function _refreshStepChildren(
   ctrl: vscode.TestController,
   item: vscode.TestItem,
@@ -117,7 +121,8 @@ async function _runItem(
   ctrl: vscode.TestController,
   run: vscode.TestRun,
   item: vscode.TestItem,
-  token?: vscode.CancellationToken
+  token?: vscode.CancellationToken,
+  runFn: HuntRunFn = runHunt
 ): Promise<void> {
   const itemWorkspaceRoot =
     (item.uri ? vscode.workspace.getWorkspaceFolder(item.uri)?.uri.fsPath : undefined)
@@ -158,7 +163,8 @@ async function _runItem(
   }
 
   try {
-    const exitCode = await runHunt(
+    const breakLines = item.uri ? getHuntBreakpointLines(item.uri.fsPath) : [];
+    const exitCode = await runFn(
       manulExe,
       item.uri!.fsPath,
       (chunk) => {
@@ -188,7 +194,8 @@ async function _runItem(
           }
         }
       },
-      token
+      token,
+      breakLines
     );
 
     if (currentStepNum > 0 && !currentStepDone) {
@@ -330,6 +337,59 @@ export function createHuntTestController(
       toRun.forEach((item) => item.children.replace([]));
     },
     true
+  );
+
+  // ── Debug run profile ──────────────────────────────────────────────────────
+  // Runs each selected hunt file sequentially (workers=1) using the
+  // stdout/stdin pause protocol.  Python pauses before each step and the
+  // extension shows a VS Code notification with ⏭ Next Step / ▶ Continue All.
+
+  ctrl.createRunProfile(
+    "Debug Hunt",
+    vscode.TestRunProfileKind.Debug,
+    async (request, token) => {
+      const run = ctrl.createTestRun(request);
+
+      const toRun = new Set<vscode.TestItem>();
+      function collect(item: vscode.TestItem): void {
+        const parentId = item.id.includes("#") ? item.id.split("#")[0] : null;
+        if (parentId) {
+          const parent = ctrl.items.get(parentId);
+          if (parent) { toRun.add(parent); return; }
+        }
+        toRun.add(item);
+      }
+      if (request.include) {
+        for (const item of request.include) { collect(item); }
+      } else {
+        ctrl.items.forEach((item) => toRun.add(item));
+      }
+
+      await vscode.commands.executeCommand("workbench.panel.testResults.view.focus");
+      // Also show the Test Explorer tree so the user sees spinning/pass/fail.
+      await vscode.commands.executeCommand("workbench.view.testing.focus");
+
+      // Debug always runs sequentially (one file at a time).
+      const panel = DebugControlPanel.getInstance(context);
+
+      // Wire Stop button → abort the active QuickPick so Python unblocks.
+      const abortDisposable = token.onCancellationRequested(() => panel.abort());
+
+      const debugRunFn: HuntRunFn = (exe, file, onData, tok, brk) =>
+        runHuntFileDebugPanel(exe, file, onData, tok, brk,
+          (step, idx) => panel.showPause(step, idx));
+
+      for (const item of toRun) {
+        if (token.isCancellationRequested) { run.skipped(item); continue; }
+        await _runItem(ctrl, run, item, token, debugRunFn);
+      }
+      abortDisposable.dispose();
+      panel.dispose();
+
+      run.end();
+      toRun.forEach((item) => item.children.replace([]));
+    },
+    false
   );
 
   return ctrl;

@@ -38,6 +38,7 @@ const STEP_TEMPLATES: StepTemplate[] = [
   { label: "Wait",          icon: "⏸️",  template: "WAIT 2" },
   { label: "Scroll Down",   icon: "⬇️",  template: "SCROLL DOWN" },
   { label: "Scan Page",     icon: "🔍", template: "SCAN PAGE into draft.hunt" },
+  { label: "Debug / Pause", icon: "🐛", template: "DEBUG" },
   { label: "Done",          icon: "🏁", template: "DONE." },
 ];
 

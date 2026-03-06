@@ -6,6 +6,8 @@ import {
   runHuntFileViaController,
   runHuntFileInTerminalCommand,
 } from "./huntTestController";
+import { findManulExecutable, runHuntFileDebugPanel, getHuntBreakpointLines } from "./huntRunner";
+import { DebugControlPanel } from "./debugControlPanel";
 import { ConfigPanelProvider, generateConfigCommand } from "./configPanel";
 import { StepBuilderProvider, newHuntFileCommand } from "./stepBuilderPanel";
 import {
@@ -16,6 +18,9 @@ import {
 } from "./cacheTreeProvider";
 
 export function activate(context: vscode.ExtensionContext): void {
+  // Output channel reused across debug runs from the editor button / context menu.
+  const debugOutputChannel = vscode.window.createOutputChannel("ManulEngine Debug");
+  context.subscriptions.push(debugOutputChannel);
   // ── Test Controller (Test Explorer) ────────────────────────────────────────
   const ctrl = createHuntTestController(context);
 
@@ -54,6 +59,35 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
       return runHuntFileViaController(ctrl, target);
+    }),
+
+    vscode.commands.registerCommand("manul.debugHuntFile", async (uri?: vscode.Uri) => {
+      const target = uri ?? vscode.window.activeTextEditor?.document.uri;
+      if (!target || !target.fsPath.endsWith(".hunt")) {
+        vscode.window.showWarningMessage("Please open or select a .hunt file.");
+        return;
+      }
+      const roots = vscode.workspace.workspaceFolders ?? [];
+      const workspaceRoot =
+        vscode.workspace.getWorkspaceFolder(target)?.uri.fsPath
+        ?? roots[0]?.uri.fsPath
+        ?? path.dirname(target.fsPath);
+      const manulExe = await findManulExecutable(workspaceRoot);
+      const breakLines = getHuntBreakpointLines(target.fsPath);
+      debugOutputChannel.clear();
+      debugOutputChannel.show(true);
+      debugOutputChannel.appendLine(`🐾 ManulEngine Debug — ${path.basename(target.fsPath)}`);
+      const panel = DebugControlPanel.getInstance(context);
+      await runHuntFileDebugPanel(
+        manulExe,
+        target.fsPath,
+        (chunk) => debugOutputChannel.append(chunk),
+        undefined,
+        breakLines,
+        (step, idx) => panel.showPause(step, idx)
+      );
+      panel.dispose();
+      debugOutputChannel.appendLine("\n✅ Debug run complete.");
     }),
 
     vscode.commands.registerCommand(

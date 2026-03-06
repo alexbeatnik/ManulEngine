@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.0.8.1 — The Mastermind
+# 😼 ManulEngine v0.0.8.2 — The Mastermind
 
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 
@@ -20,7 +20,7 @@ Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristi
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.8.1
+├── pyproject.toml                    Build config — package: manul-engine 0.0.8.2
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
@@ -53,14 +53,15 @@ ManulEngine/
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 └── vscode-extension/                 VS Code extension (language support + UI)
-    ├── package.json                  Extension manifest (v0.0.81)
+    ├── package.json                  Extension manifest (v0.0.82)
     ├── src/
     │   ├── extension.ts              Activation, command registration
     │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
     │   ├── huntTestController.ts     VS Code Test Explorer integration
     │   ├── configPanel.ts            Webview sidebar: config editor + Ollama discovery
     │   ├── cacheTreeProvider.ts      Sidebar tree: controls cache browser
-    │   └── stepBuilderPanel.ts       Step Builder sidebar (incl. Scan Page button)
+    │   ├── stepBuilderPanel.ts       Step Builder sidebar (incl. Scan Page button)
+    │   └── debugControlPanel.ts      Singleton QuickPick overlay for interactive debug stepping
     └── syntaxes/hunt.tmLanguage.json Hunt file syntax grammar
 ```
 
@@ -169,7 +170,8 @@ Environment variables (`MANUL_*`) always override JSON values — useful for CI/
 
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
-  "workers": 1
+  "workers": 1,
+  "tests_home": "tests"
 }
 ```
 
@@ -202,6 +204,12 @@ manul --headless tests/            # headless mode
 manul --browser firefox tests/     # run in Firefox
 manul tests/ --workers 4           # run 4 hunt files in parallel
 manul .                            # all *.hunt in current directory
+
+# Interactive debug mode (terminal) — pauses before every step, prompts ENTER
+manul --debug tests/saucedemo.hunt
+
+# Gutter breakpoint mode (VS Code extension debug runner)
+manul --break-lines 5,10,15 tests/saucedemo.hunt
 
 # Smart Page Scanner
 manul scan https://example.com                  # scan → tests/draft.hunt (tests_home from config)
@@ -252,6 +260,7 @@ manul tests/mission.hunt
 | **Data Extraction** | `EXTRACT [Target] into {variable_name}` |
 | **Verification** | `VERIFY that [Text] is present/absent`, `VERIFY that [Element] is checked/disabled` |
 | **Page Scanner** | `SCAN PAGE`, `SCAN PAGE into {filename}` |
+| **Debug** | `DEBUG` / `PAUSE` — pause execution at that step (use with `--debug` or VS Code gutter breakpoints) |
 | **Flow Control** | `WAIT [seconds]`, `PRESS ENTER`, `SCROLL DOWN` |
 | **Finish** | `DONE.` |
 
@@ -318,13 +327,16 @@ The `vscode-extension/` directory contains a companion VS Code extension (v0.0.7
 | **Config sidebar** | Webview panel to edit `manul_engine_configuration.json` visually; **Workers** combobox; **Add Default Prompts** button; live Ollama model discovery via `localhost:11434` |
 | **Cache browser** | Tree-view sidebar showing the controls cache hierarchy (`site → page → controls.json`) |
 | **Run commands** | `ManulEngine: Run Hunt File` (output panel) and `ManulEngine: Run Hunt File in Terminal` (raw CLI) |
+| **Debug run profile** | Test Explorer exposes a **Debug** run profile alongside the normal one; places gutter breakpoints (red dots) in `.hunt` files, pauses at each with a floating QuickPick overlay — **⏭ Next Step** / **▶ Continue All**. The Test Explorer **Stop** button aborts the run cleanly (no hanging QuickPick). On Linux, a system notification appears via `notify-send` when execution pauses. |
+| **Step Builder** | Sidebar buttons for every step type including **Debug / Pause** (inserts `DEBUG` step) |
 | **Bounded concurrency** | Test Explorer respects `workers` config or `manulEngine.workers` VS Code setting (default: 1) |
 
 ### Extension behaviour notes
 
 * **Working directory:** The extension spawns `manul` with `cwd` set to the **VS Code workspace folder root** (not the directory of the `.hunt` file). This ensures `manul_engine_configuration.json` and the cache directory are always resolved from the project root, matching what you get when running `manul` from the terminal.
+* **Debug protocol:** `runHuntFileDebugPanel` spawns `manul` with `--break-lines` (never `--debug`) and piped stdio. Python emits `\x00MANUL_DEBUG_PAUSE\x00{"step":"...","idx":N}\n` when pausing; TS responds with `"next\n"` or `"continue\n"`. "Next Step" adds `idx+1` to active break-steps; "Continue All" resets to original gutter breakpoints.
 * **`ai_always` guard:** The config panel automatically forces `ai_always` to `false` when no model is selected, preventing an invalid heuristics-only config from being saved with `ai_always: true`.
-* **Ollama discovery:** On panel open the extension fetches `http://localhost:11434/api/tags` and populates a `<datalist>` with installed model names. If Ollama is not running the field accepts free-text input instead.
+* **Ollama discovery:** On panel open the extension fetches `http://localhost:11434/api/tags` and populates a `<select>` with installed model names. If Ollama is not running the field accepts free-text input instead.
 
 ### Building the extension
 
@@ -340,7 +352,7 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 ---
 
-**Version:** 0.0.8.1
+**Version:** 0.0.8.2
 
 **Codename:** The Mastermind
 
