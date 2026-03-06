@@ -204,7 +204,7 @@ async def main() -> None:
         # Pass everything after 'scan' (plus any flags that appeared before it)
         scan_idx = args.index("scan")
         scan_args = [a for a in args[:scan_idx] if a.startswith("-")] + args[scan_idx + 1:]
-        scan_main(scan_args)
+        await scan_main(scan_args)
         return
 
     headless = "--headless" in args
