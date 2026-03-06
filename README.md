@@ -112,6 +112,9 @@ manul "1. NAVIGATE to https://example.com  2. Click the 'More' link  3. DONE."
 # Run multiple hunt files in parallel (4 concurrent browsers)
 manul my_tests/ --workers 4
 
+# Interactive debug mode — pause before every step, confirm in terminal
+manul --debug my_tests/smoke.hunt
+
 # Smart Page Scanner — scan a URL and generate a draft hunt file
 manul scan https://example.com                    # outputs to tests/draft.hunt (tests_home)
 manul scan https://example.com tests/my.hunt      # explicit output file
@@ -246,7 +249,8 @@ Create `manul_engine_configuration.json` in your project root — all settings a
   "controls_cache_dir": "cache",
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
-  "workers": 1
+  "workers": 1,
+  "tests_home": "tests"
 }
 ```
 
@@ -294,6 +298,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 | **Data Extraction** | `EXTRACT [Target] into {variable_name}` |
 | **Verification** | `VERIFY that [Text] is present/absent`, `VERIFY that [Element] is checked/disabled` |
 | **Page Scanner** | `SCAN PAGE`, `SCAN PAGE into {filename}` |
+| **Debug** | `DEBUG` / `PAUSE` — pause execution at that step (use with `--debug` or VS Code gutter breakpoints) |
 | **Flow Control** | `WAIT [seconds]`, `PRESS ENTER`, `SCROLL DOWN` |
 | **Finish** | `DONE.` |
 
@@ -304,7 +309,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 
 ## 🐾 Battle-Tested
 
-ManulEngine is verified against **1200+ synthetic DOM tests** covering:
+ManulEngine is verified against **1227+ synthetic DOM tests** covering:
 
 - Shadow DOM, invisible overlays, zero-pixel honeypots
 - Custom dropdowns, drag-and-drop, hover menus
@@ -314,4 +319,4 @@ ManulEngine is verified against **1200+ synthetic DOM tests** covering:
 
 ---
 
-**Version:** 0.0.8.1 · **Status:** Hunting...
+**Version:** 0.0.8.2 · **Status:** Hunting...

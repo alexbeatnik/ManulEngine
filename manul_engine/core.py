@@ -43,6 +43,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         browser:        "str | None"  = None,
         browser_args:   "list[str] | None" = None,
         ai_threshold:   "int | None"  = None,
+        debug_mode:     bool          = False,
+        break_steps:    "set[int] | None" = None,
         **_kwargs,
     ):
         # None model → heuristics-only mode (AI fully disabled)
@@ -65,8 +67,14 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         # get_threshold returns 0 when self.model is None → AI is disabled.
         self._threshold       = prompts.get_threshold(self.model, ai_threshold)
         self._executor_prompt = prompts.get_executor_prompt(self.model)
+        self.debug_mode = debug_mode
+        self._debug_continue = False   # set to True by 'Continue All' in debug session
+        self._user_break_steps: set[int] = set(break_steps) if break_steps else set()
+        self.break_steps: set[int] = set(self._user_break_steps)
         if self.model is None:
             print("    ℹ️  No model configured — running in heuristics-only mode (AI disabled).")
+        if self.debug_mode:
+            print("    🐛 Debug mode ON — engine will pause before each step.")
 
     # ── Persistent controls cache ─────────────────────────────────────
     # All cache methods live in engine/cache.py (_ControlsCacheMixin).
@@ -232,6 +240,109 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             await asyncio.sleep(0.4)
         except Exception:
             pass
+
+    async def _debug_highlight(self, page, loc_or_id, *, by_js_id: bool = False) -> None:
+        """Apply a high-visibility debug highlight (dashed red border + box-shadow)
+        and wait 500 ms so the tester can see which element Manul targeted.
+        The browser removes the highlight via JS setTimeout after 1.5 s.
+        """
+        try:
+            if by_js_id:
+                await page.evaluate(
+                    """
+                    (function(id) {
+                        var el = window.manulElements && window.manulElements[id];
+                        if (!el) return;
+                        var prevOutline   = el.style.outline;
+                        var prevShadow    = el.style.boxShadow;
+                        el.style.outline  = '3px dashed red';
+                        el.style.boxShadow = '0 0 0 3px red';
+                        setTimeout(function() {
+                            el.style.outline   = prevOutline;
+                            el.style.boxShadow = prevShadow;
+                        }, 1500);
+                    })
+                    """,
+                    loc_or_id,
+                )
+            else:
+                await loc_or_id.evaluate(
+                    """
+                    el => {
+                        const prevOutline   = el.style.outline;
+                        const prevShadow    = el.style.boxShadow;
+                        el.style.outline    = '3px dashed red';
+                        el.style.boxShadow  = '0 0 0 3px red';
+                        setTimeout(() => {
+                            el.style.outline   = prevOutline;
+                            el.style.boxShadow = prevShadow;
+                        }, 1500);
+                    }
+                    """
+                )
+            await asyncio.sleep(0.5)
+        except Exception:
+            pass
+
+    _DEBUG_PAUSE_MARKER = "\x00MANUL_DEBUG_PAUSE\x00"
+
+    async def _debug_prompt(self, page, step: str, idx: int) -> None:
+        """Interactive prompt used in debug mode.
+
+        Two operating modes, detected automatically:
+
+        1. **Extension protocol mode** (stdin is not a TTY, i.e. piped by the
+           VS Code extension): writes a JSON pause marker to stdout, then reads
+           a single line from stdin ('next' or 'continue').  The extension shows
+           VS Code notification buttons and writes the response.
+
+        2. **Terminal mode** (stdin is a TTY): prints a human-readable prompt and
+           waits for ENTER.  Typing 'pause' opens the Playwright Inspector;
+           typing 'c' / 'continue' disables future pauses for this session.
+
+        If _debug_continue is already True the method returns immediately.
+        """
+        import sys
+        if self._debug_continue:
+            return
+
+        if not sys.stdin.isatty():
+            # ── Extension protocol mode ───────────────────────────────────
+            marker = json.dumps({"step": step, "idx": idx})
+            sys.stdout.write(f"{self._DEBUG_PAUSE_MARKER}{marker}\n")
+            sys.stdout.flush()
+            try:
+                resp = await asyncio.to_thread(sys.stdin.readline)
+                resp = resp.strip().lower()
+                if resp == "continue":
+                    # Restore only the user-set breakpoints so execution resumes
+                    # until the next gutter breakpoint (or end if none remain).
+                    self.break_steps = set(self._user_break_steps)
+                else:
+                    # "next" — pause again at the immediately following step.
+                    self.break_steps.add(idx + 1)
+            except (EOFError, KeyboardInterrupt):
+                pass
+            return
+
+        # ── Terminal mode ─────────────────────────────────────────────────
+        sys.stdout.flush()
+        prompt_text = (
+            f"\n[DEBUG] Next step: {step}\n"
+            f"        ENTER = execute · 'pause' = Inspector · 'c' = continue all… "
+        )
+        try:
+            user_in = await asyncio.to_thread(input, prompt_text)
+            user_in = user_in.strip().lower()
+            if user_in == "pause":
+                print("    🔎 Opening Playwright Inspector…")
+                await page.pause()
+            elif user_in in ("c", "continue"):
+                self._debug_continue = True
+                print("    ▶ Continuing all steps without further pauses…")
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return
 
     # ── DOM snapshot ──────────────────────────
 
@@ -474,6 +585,23 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                     print(f"\n[🐾 STEP {i} @ {started_at.strftime('%H:%M:%S')}] {step}")
                     s_up = step.upper()
 
+                    if self.debug_mode:
+                        # debug_mode and break_steps are mutually exclusive:
+                        # --debug pauses before every step already, so honouring
+                        # break_steps on top would cause a double-pause.
+                        await self._debug_prompt(page, step, i)
+                    elif self.break_steps and i in self.break_steps:
+                        # In piped (extension) mode: use the same marker protocol so the
+                        # VS Code panel shows the breakpoint pause — no Playwright Inspector.
+                        # In terminal mode: fall back to page.pause() for Inspector.
+                        import sys as _sys
+                        if not _sys.stdin.isatty():
+                            print(f"    🔴 BREAKPOINT at step {i}")
+                            await self._debug_prompt(page, step, i)
+                        else:
+                            print(f"    🔴 BREAKPOINT at step {i} — opening Playwright Inspector…")
+                            await page.pause()
+
                     try:
                         if re.search(r'\bNAVIGATE\b', s_up):
                             if not await self._handle_navigate(page, step):
@@ -500,6 +628,22 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                         elif re.search(r'\bSCAN\s+PAGE\b', s_up):
                             if not await self._handle_scan_page(page, step):
                                 ok = False; break
+
+                        elif re.search(r'\b(?:DEBUG|PAUSE)\b', s_up):
+                            # In debug_mode the pre-step _debug_prompt() above already
+                            # paused execution; treat this step as a no-op to avoid a
+                            # double-pause for the same step.
+                            if not self.debug_mode:
+                                import sys as _sys
+                                if not _sys.stdin.isatty():
+                                    # Piped mode (VS Code extension): use the marker protocol
+                                    # so the panel can show the pause overlay.
+                                    print("    \U0001f50e DEBUG/PAUSE step")
+                                    await self._debug_prompt(page, step, i)
+                                else:
+                                    # Terminal mode: open the Playwright Inspector.
+                                    print("    \U0001f50e DEBUG/PAUSE step \u2014 opening Playwright Inspector\u2026")
+                                    await page.pause()
 
                         elif re.search(r'\bDONE\b', s_up):
                             print("    🏁 MISSION ACCOMPLISHED")

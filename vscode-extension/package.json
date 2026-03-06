@@ -2,7 +2,7 @@
   "name": "manul-engine",
   "displayName": "ManulEngine",
   "description": "Hunt file language support, test runner and configuration UI for ManulEngine browser automation",
-  "version": "0.0.81",
+  "version": "0.0.82",
   "publisher": "manul-engine",
   "icon": "images/icon128.png",
   "repository": {
@@ -29,6 +29,9 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "breakpoints": [
+      { "language": "hunt" }
+    ],
     "languages": [
       {
         "id": "hunt",
@@ -88,6 +91,11 @@
         "icon": "$(play)"
       },
       {
+        "command": "manul.debugHuntFile",
+        "title": "ManulEngine: Debug Hunt File",
+        "icon": "$(debug-alt)"
+      },
+      {
         "command": "manul.runHuntFileInTerminal",
         "title": "ManulEngine: Run Hunt File in Terminal",
         "icon": "$(terminal)"
@@ -126,7 +134,12 @@
         {
           "command": "manul.runHuntFile",
           "when": "resourceExtname == .hunt",
-          "group": "navigation"
+          "group": "navigation@1"
+        },
+        {
+          "command": "manul.debugHuntFile",
+          "when": "resourceExtname == .hunt",
+          "group": "navigation@2"
         }
       ],
       "explorer/context": [
@@ -136,9 +149,14 @@
           "group": "navigation@1"
         },
         {
-          "command": "manul.runHuntFileInTerminal",
+          "command": "manul.debugHuntFile",
           "when": "resourceExtname == .hunt",
           "group": "navigation@2"
+        },
+        {
+          "command": "manul.runHuntFileInTerminal",
+          "when": "resourceExtname == .hunt",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [

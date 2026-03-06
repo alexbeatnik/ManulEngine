@@ -21,7 +21,7 @@ Current operating mode in this repo is typically **mixed**:
 ```text
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.1
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.2
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
@@ -46,7 +46,7 @@ tests/
   rahul.hunt              integration: radios, autocomplete, hover
   wikipedia.hunt          integration: search, navigate, extract, verify, shadow-dom inputs
 vscode-extension/
-  package.json              Extension manifest (v0.0.81)
+  package.json              Extension manifest (v0.0.82)
   src:
     extension.ts            Activation, command registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
@@ -54,6 +54,7 @@ vscode-extension/
     configPanel.ts          Webview sidebar: config editor + Ollama model discovery
     cacheTreeProvider.ts    Sidebar tree: controls cache browser
     stepBuilderPanel.ts     Sidebar webview: step-insertion buttons + new hunt file (incl. Scan Page)
+    debugControlPanel.ts    Singleton QuickPick overlay for interactive debug stepping
   syntaxes/hunt.tmLanguage.json  Hunt file syntax grammar
 ```
 
@@ -105,6 +106,7 @@ Steps are numbered strings parsed by `run_mission()`. They must be atomic browse
 * `VERIFY that [target] is present` / `is NOT present` / `is DISABLED` / `is checked`
 * `SCAN PAGE` — scans the current page for interactive elements and prints a draft `.hunt` to the console.
 * `SCAN PAGE into {filename}` — same, but also writes the draft to `{filename}`. Default output dir is `tests_home` from config.
+* `DEBUG` / `PAUSE` — pauses execution at that step. In interactive terminal mode (`--debug`), draws a dashed red border around the resolved element and prompts the user; when run via VS Code extension, emits the debug pause protocol marker (see below).
 * `DONE.`
 
 Everything else goes through `_execute_step` (mode detection → resolve → action).
@@ -178,6 +180,8 @@ Variables extracted using `EXTRACT` can be substituted in downstream steps.
 * `helpers.py` provides `env_bool(name, default)` for parsing boolean env vars; used by `prompts.py`.
 * **Null model = heuristics-only:** When `model` is `None`, `_llm_json()` returns `None` immediately. `get_threshold(None)` returns `0`. No Ollama calls are made.
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
+* **Debug mode:** `ManulEngine(debug_mode=True, break_steps={N,...})`. `debug_mode=True` (from `--debug`) highlights the resolved element and pauses before every step using `input()` in TTY or Playwright's `page.pause()`. `break_steps` (from `--break-lines`) pauses only at listed step indices using the stdout/stdin panel protocol when stdout is not a TTY. The two are mutually exclusive in practice — the extension only ever sets `break_steps` via `--break-lines`.
+* **Element highlight in debug mode:** Before every action when `debug_mode=True`, the engine injects JS to draw a dashed red border on the target element for 500 ms so the tester can visually confirm which element was picked.
 
 ## Running tests
 
@@ -195,6 +199,13 @@ manul tests/                     # run all *.hunt files in tests/
 manul tests/wikipedia.hunt       # single hunt
 manul --headless tests/          # headless mode
 manul --browser firefox tests/   # run in Firefox instead of Chromium
+
+# Interactive debug mode (terminal) — pauses before every step, prompts ENTER
+manul --debug tests/saucedemo.hunt
+
+# Gutter breakpoint mode (used by VS Code extension debug runner)
+# Pause at steps whose file line numbers match; emits stdin/stdout debug protocol
+manul --break-lines 5,10,15 tests/saucedemo.hunt
 
 # Smart Page Scanner
 manul scan https://example.com                   # scan → tests/draft.hunt (tests_home default)
@@ -270,7 +281,7 @@ Suggested config for heuristics-only (no Ollama needed):
 
 ## Resolution fallback chain
 
-The engine does not use a single fixed “chain constant”; it sums many heuristic signals in [engine/scoring.py](../engine/scoring.py). The *highest-signal* boosts (and the cutoffs used in [engine/core.py](../engine/core.py)) are:
+The engine does not use a single fixed “chain constant”; it sums many heuristic signals in [engine/scoring.py](../manul_engine/scoring.py). The *highest-signal* boosts (and the cutoffs used in [manul_engine/core.py](../manul_engine/core.py)) are:
 
 1. Semantic cache reuse: +20_000 (and `core.py` short-circuits at score ≥ 20_000)
 2. Blind/context reuse (same xpath as last step): +10_000 (and `core.py` short-circuits at score ≥ 10_000)
@@ -297,12 +308,17 @@ Each element dict returned by `SNAPSHOT_JS` contains:
 
 ## VS Code extension (`vscode-extension/`)
 
-A companion extension that provides hunt file language support, Test Explorer integration, a config sidebar, and a cache browser.
+A companion extension that provides hunt file language support, Test Explorer integration, a config sidebar, cache browser, and an interactive debug runner.
 
 **Key rules when editing extension code:**
 
 * `huntRunner.ts` — `runHunt()` spawns `manul` with `cwd` set to the **VS Code workspace folder root** (resolved via `vscode.workspace.getWorkspaceFolder()`), not `path.dirname(huntFile)`. This ensures `manul_engine_configuration.json` and relative `controls_cache_dir` paths are always resolved from the project root, matching CLI behaviour.
 * `huntRunner.ts` — `findManulExecutable()` probes local venv folders in order: `.venv`, `venv`, `env`, `.env` (both `bin/manul` on Unix and `Scripts\manul.exe` on Windows) before falling back to user-level install paths and a login-shell lookup. When adding new candidate paths, keep this order and always guard Windows/macOS-only paths with `isWin` / `process.platform` checks.
+* `huntRunner.ts` — `runHuntFileDebugPanel(manulExe, huntFile, onData, token?, breakLines?, onPause?)` spawns with `--workers 1` and optionally `--break-lines N,M,...`. **Never pass `--debug`** — `--debug` pauses before every step including step 1 (NAVIGATE), which hangs before the browser has loaded anything. Only `--break-lines` + the stdin/stdout protocol is used for the panel runner.
+* **Debug protocol:** Python (`core.py`) detects it is not a TTY (piped stdout) and emits `\x00MANUL_DEBUG_PAUSE\x00{"step":"...","idx":N}\n` on stdout when pausing. The TS side line-buffers stdout, detects the marker, calls `onPause(step, idx)` and writes `"next\n"` or `"continue\n"` to stdin.
+* **Break-step semantics:** `ManulEngine.__init__` accepts `break_steps: set[int] | None`. `_user_break_steps` stores the original user-defined set; `break_steps` is the mutable active set. When the user picks **Next Step**: `break_steps.add(idx + 1)`. When the user picks **Continue All**: `break_steps = set(_user_break_steps)` (resets to original gutter breakpoints). This ensures "Next" advances exactly one step and "Continue" runs to the next gutter breakpoint or end.
+* `debugControlPanel.ts` — singleton `DebugControlPanel.getInstance(ctx)`. `showPause(step, idx)` uses `vscode.window.createQuickPick()` (low-level API, not `showQuickPick`) so the picker can be hidden programmatically. `ignoreFocusOut: true` keeps it visible while Playwright runs. `abort()` calls `_activeQp.hide()`, which triggers `onDidHide` → resolves the promise with `"next"` so Python's `stdin.readline()` always unblocks. `dispose()` also calls `hide()` and resets the singleton. `tryRaiseWindow(idx, stepText)` (Linux only): spawns `xdotool search --onlyvisible --class "Code" windowactivate` (X11 focus), falls back to `wmctrl -a "Visual Studio Code"`, then fires `notify-send -u normal -t 5000` (5-second system notification, disappears automatically — do NOT use `-u critical` which ignores `-t` on GNOME/KDE).
+* `huntTestController.ts` — has a **Debug run profile** in addition to the normal run profile. It calls `runHuntFileDebugPanel` with `onPause: (step, idx) => panel.showPause(step, idx)` and runs sequentially (no concurrency). **Stop button wiring:** `token.onCancellationRequested(() => panel.abort())` — this is essential; without it the QuickPick stays open after Stop is pressed and Python hangs. The disposable is stored and `.dispose()`d after the loop. Debug profile also calls `workbench.view.testing.focus` (in addition to `workbench.panel.testResults.view.focus`) to show the Test Explorer tree with per-step spinning/pass/fail indicators.
 * `configPanel.ts` — `doSave()` forces `ai_always: false` whenever `model` is empty/null (`modelVal !== '' && g('ai_always').checked`). Do not remove this guard — saving `ai_always: true` with no model would produce an invalid config that causes runtime errors. The `syncAiAlways()` function also disables and unchecks the `ai_always` checkbox in the UI when the model field is cleared.
 * Config panel reads/writes `manul_engine_configuration.json` at the workspace root using `_configPath()`. The config file name is user-configurable via the `manulEngine.configFile` VS Code setting.
 * Ollama model discovery: the panel fetches `http://localhost:11434/api/tags` on open and populates a `<select>` dropdown with installed model names (replaced legacy `<datalist>` + `<input>` to fix rendering offset in Electron webview). First option is always `null (heuristics-only)`. The stored model is always preserved as an option even when Ollama is offline.

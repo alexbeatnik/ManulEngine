@@ -22,7 +22,7 @@ ManulEngine changes the economics of test automation. You don't write controls �
 
 ## VS Code Extension Features
 
-> Hunt file language support, one-click test runner, step builder, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) browser automation.
+> Hunt file language support, one-click test runner, interactive debug runner with gutter breakpoints, step builder, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) browser automation.
 
 ## Features
 
@@ -43,8 +43,24 @@ Three ways to run a `.hunt` file:
 
 Output streams live into a dedicated **ManulEngine** output channel. ✅ / ❌ status is appended on completion.
 
+### 🐛 Debug Mode
+Place breakpoints by clicking the editor gutter next to any step number in a `.hunt` file. Then run the **Debug** profile in Test Explorer (or use `ManulEngine: Debug Hunt File` from the Command Palette / editor title).
+
+- Execution pauses at each breakpointed step with a floating **QuickPick overlay** — no modal dialogs, no Cancel button
+- **⏭ Next Step** — advance exactly one step and pause again
+- **▶ Continue All** — run until the next gutter breakpoint or end of hunt
+- **Stop button** — clicking Stop in Test Explorer dismisses the QuickPick and terminates the run cleanly; Python never hangs
+- **Linux:** VS Code window is raised via `xdotool`/`wmctrl` and a 5-second system notification appears via `notify-send` when execution pauses
+- Visual element highlighting — a dashed red border is drawn around the resolved element for 500 ms before action
+- Debug output streams live into the **ManulEngine Debug** output channel
+- Uses `--break-lines` protocol (piped stdio): Python emits a marker on stdout; extension responds on stdin — browser opens and navigates normally on step 1
+
 ### 🧪 Test Explorer Integration
-Hunt files appear in the **VS Code Test Explorer** as top-level test items (one per file). When a hunt is run via Test Explorer:
+Hunt files appear in the **VS Code Test Explorer** as top-level test items (one per file). Two run profiles are available:
+- **Run** (default) — runs the hunt normally using the output panel
+- **Debug** — runs with gutter breakpoints and the floating QuickPick pause overlay (see Debug Mode above)
+
+For both profiles:
 - Each numbered step is shown as a child item with pass/fail status
 - Failed steps display the engine output as the failure message
 - Steps that were never reached are marked as skipped
@@ -79,7 +95,7 @@ The **Cache** sidebar tree shows per-site cache entries created by ManulEngine's
 A sidebar panel that lets you insert hunt steps with a single click — no typing required.
 
 - **＋ New Hunt File** button — prompts for a name, creates a `.hunt` file with a starter template in the `tests_home` directory (configured via `tests_home` in `manul_engine_configuration.json`, defaults to `tests/`), and opens it
-- **Step buttons** — one button per step type: Navigate, Fill field, Click, Double Click, Select, Check, Radio, Hover, Drag & Drop, Extract, Verify present/absent/state, Press Enter, Wait, Scroll Down, **Scan Page**, Done
+- **Step buttons** — one button per step type: Navigate, Fill field, Click, Double Click, Select, Check, Radio, Hover, Drag & Drop, Extract, Verify present/absent/state, Press Enter, Wait, Scroll Down, **Scan Page**, **Debug / Pause**, Done
 - **Scan Page** — inserts `SCAN PAGE into draft.hunt`; when the engine executes this step it scans the current browser page for interactive elements and writes a ready-to-run draft hunt file to `tests_home/draft.hunt`
 - Each click appends the next numbered step to the currently open `.hunt` file and positions the cursor inside the first `''` pair for immediate editing
 - Works even when the sidebar has focus (the editor is not the active panel)
@@ -167,6 +183,15 @@ See the [ManulEngine README](https://github.com/alexbeatnik/ManulEngine) for the
 ---
 
 ## Release Notes
+
+### 0.0.82
+- **Interactive Debug Mode** — place gutter breakpoints (red dots) next to steps in any `.hunt` file; run the new **Debug** profile in Test Explorer or invoke `ManulEngine: Debug Hunt File` to step through a hunt interactively
+- **Floating QuickPick pause overlay** — when execution pauses at a breakpoint, a floating overlay appears with **⏭ Next Step** (advance one step) and **▶ Continue All** (run to next gutter breakpoint or end); no Cancel button, no modal tab
+- **`--debug` CLI flag** — interactive terminal debug mode: engine pauses before every step and prompts ENTER; draws a dashed red border around the resolved element for 500 ms
+- **`--break-lines` CLI flag** — gutter breakpoint mode used by the extension; pauses at steps matching file line numbers via stdout/stdin JSON protocol; never blocks the NAVIGATE step
+- **`DEBUG` / `PAUSE` step keyword** — inserts an explicit pause at that point in any hunt run
+- **Debug run profile** added to Test Explorer alongside the normal run profile
+- **Visual element highlighting** — dashed red border injected via JS on the resolved element for 500 ms before each action (active in `--debug` mode)
 
 ### 0.0.81
 - **Bug fix** — `manul scan <URL> test.hunt` (bare filename as positional arg) now correctly saves to `tests_home/test.hunt` instead of CWD/test.hunt
