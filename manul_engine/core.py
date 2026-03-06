@@ -497,6 +497,10 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                         elif re.search(r'\bPRESS\s+ENTER\b', s_up):
                             await self._handle_press_enter(page)
 
+                        elif re.search(r'\bSCAN\s+PAGE\b', s_up):
+                            if not await self._handle_scan_page(page, step):
+                                ok = False; break
+
                         elif re.search(r'\bDONE\b', s_up):
                             print("    🏁 MISSION ACCOMPLISHED")
                             done = True

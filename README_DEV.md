@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.0.7 — The Mastermind
+# 😼 ManulEngine v0.0.8 — The Mastermind
 
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 
@@ -20,19 +20,20 @@ Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristi
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.7
+├── pyproject.toml                    Build config — package: manul-engine 0.0.8
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
-│   ├── cli.py                        Installed CLI entry point (`manul` command)
+│   ├── cli.py                        Installed CLI entry point (`manul` command + `manul scan` subcommand)
 │   ├── _test_runner.py               Dev-only synthetic test runner (not in public CLI)
 │   ├── prompts.py                    JSON config loader, thresholds, LLM prompts
 │   ├── helpers.py                    Pure utility functions, env helpers, timing constants
-│   ├── js_scripts.py                 All JavaScript injected into the browser
+│   ├── js_scripts.py                 All JavaScript injected into the browser (incl. SCAN_JS)
 │   ├── scoring.py                    Heuristic element-scoring algorithm (20+ rules)
+│   ├── scanner.py                    Smart Page Scanner: scan_page(), build_hunt(), scan_main()
 │   ├── core.py                       ManulEngine class (LLM, resolution, mission runner)
 │   ├── cache.py                      Persistent per-site controls cache mixin
-│   ├── actions.py                    Action execution mixin (click, type, select, hover, drag)
+│   ├── actions.py                    Action execution mixin (click, type, select, hover, drag, scan_page)
 │   └── test/
 │       ├── test_00_engine.py         Engine micro-suite (synthetic DOM via local HTML)
 │       ├── test_01_ecommerce.py      Scenario pack: ecommerce
@@ -52,13 +53,14 @@ ManulEngine/
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 └── vscode-extension/                 VS Code extension (language support + UI)
-    ├── package.json                  Extension manifest (v0.0.7)
+    ├── package.json                  Extension manifest (v0.0.80)
     ├── src/
     │   ├── extension.ts              Activation, command registration
     │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
     │   ├── huntTestController.ts     VS Code Test Explorer integration
     │   ├── configPanel.ts            Webview sidebar: config editor + Ollama discovery
-    │   └── cacheTreeProvider.ts      Sidebar tree: controls cache browser
+    │   ├── cacheTreeProvider.ts      Sidebar tree: controls cache browser
+    │   └── stepBuilderPanel.ts       Step Builder sidebar (incl. Scan Page button)
     └── syntaxes/hunt.tmLanguage.json Hunt file syntax grammar
 ```
 
@@ -201,6 +203,12 @@ manul --browser firefox tests/     # run in Firefox
 manul tests/ --workers 4           # run 4 hunt files in parallel
 manul .                            # all *.hunt in current directory
 
+# Smart Page Scanner
+manul scan https://example.com                  # scan → tests/draft.hunt (tests_home from config)
+manul scan https://example.com tests/my.hunt    # explicit output file
+manul scan https://example.com --headless       # headless scan
+manul scan https://example.com --browser firefox
+
 # Dev launcher (from repo root, no install needed)
 python manul.py test               # run synthetic DOM laboratory tests
 python manul.py tests/             # run integration hunts
@@ -243,6 +251,7 @@ manul tests/mission.hunt
 | **Mouse Action** | `HOVER over [Element]`, `Drag [Element] and drop it into [Target]` |
 | **Data Extraction** | `EXTRACT [Target] into {variable_name}` |
 | **Verification** | `VERIFY that [Text] is present/absent`, `VERIFY that [Element] is checked/disabled` |
+| **Page Scanner** | `SCAN PAGE`, `SCAN PAGE into {filename}` |
 | **Flow Control** | `WAIT [seconds]`, `PRESS ENTER`, `SCROLL DOWN` |
 | **Finish** | `DONE.` |
 
@@ -331,7 +340,7 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 ---
 
-**Version:** 0.0.7
+**Version:** 0.0.8
 
 **Codename:** The Mastermind
 

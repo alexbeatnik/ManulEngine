@@ -21,17 +21,18 @@ Current operating mode in this repo is typically **mixed**:
 ```text
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.7
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.8
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
   cache.py                 _ControlsCacheMixin (persistent per-site controls cache)
-  actions.py               _ActionsMixin (navigate, scroll, extract, verify, drag, _execute_step)
+  actions.py               _ActionsMixin (navigate, scroll, extract, verify, drag, _execute_step, scan_page)
   prompts.py               JSON config loader, thresholds, LLM prompt templates
   scoring.py               score_elements() — pure function, 20+ heuristic rules
-  js_scripts.py            All JS injected into the browser
+  js_scripts.py            All JS injected into the browser (includes SCAN_JS)
+  scanner.py               Smart Page Scanner — scan_page(), build_hunt(), scan_main()
   helpers.py               substitute_memory(), extract_quoted(), env_bool(), timing constants
-  cli.py                   Public installed CLI entry point (manul command)
+  cli.py                   Public installed CLI entry point (manul command + manul scan subcommand)
   _test_runner.py          Dev-only synthetic test runner (not in public CLI)
   test/
     test_00_engine.py       synthetic DOM micro-suite (local HTML via Playwright)
@@ -45,14 +46,14 @@ tests/
   rahul.hunt              integration: radios, autocomplete, hover
   wikipedia.hunt          integration: search, navigate, extract, verify, shadow-dom inputs
 vscode-extension/
-  package.json              Extension manifest (v0.0.7)
+  package.json              Extension manifest (v0.0.80)
   src:
     extension.ts            Activation, command registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
     huntTestController.ts   VS Code Test Explorer integration (step-level reporting)
     configPanel.ts          Webview sidebar: config editor + Ollama model discovery
     cacheTreeProvider.ts    Sidebar tree: controls cache browser
-    stepBuilderPanel.ts     Sidebar webview: step-insertion buttons + new hunt file
+    stepBuilderPanel.ts     Sidebar webview: step-insertion buttons + new hunt file (incl. Scan Page)
   syntaxes/hunt.tmLanguage.json  Hunt file syntax grammar
 ```
 
@@ -98,9 +99,12 @@ Steps are numbered strings parsed by `run_mission()`. They must be atomic browse
 
 * `NAVIGATE to [url]`
 * `WAIT [seconds]`
+* `PRESS ENTER`
 * `SCROLL DOWN` or `SCROLL DOWN inside the list`
 * `EXTRACT [target] into {variable_name}`
 * `VERIFY that [target] is present` / `is NOT present` / `is DISABLED` / `is checked`
+* `SCAN PAGE` — scans the current page for interactive elements and prints a draft `.hunt` to the console.
+* `SCAN PAGE into {filename}` — same, but also writes the draft to `{filename}`. Default output dir is `tests_home` from config.
 * `DONE.`
 
 Everything else goes through `_execute_step` (mode detection → resolve → action).
@@ -135,6 +139,8 @@ These keywords are detected via word-boundary regex, bypass heuristics, and are 
 * `SCROLL DOWN` — Scrolls the main page down by one viewport height. `SCROLL DOWN inside the list` — scrolls the first dropdown-style scroll container (e.g., `#dropdown` or any element whose class name contains `dropdown`) all the way to the bottom (by setting `scrollTop = scrollHeight`). Phrases like `SCROLL DOWN to the very bottom` are accepted but currently behave the same as a single `SCROLL DOWN` on the main page (they do not auto-scroll the page all the way to the bottom).
 * `EXTRACT [target] into {variable_name}` — Extracts text data into memory.
 * `VERIFY that [target] is present` (or `is NOT present`, `is DISABLED`, `is checked`)
+* `SCAN PAGE` — Runs `SCAN_JS` on the current page, maps results to hunt steps, prints a draft to console.
+* `SCAN PAGE into {filename}` — Same, but also writes the draft to `{filename}`. Output defaults to `{tests_home}/draft.hunt` (reads `tests_home` from `manul_engine_configuration.json`, defaults to `tests/`).
 * `DONE.` — Explicitly ends the mission.
 
 ### 6. Interaction Actions (Parsed Modes)
@@ -167,9 +173,11 @@ Variables extracted using `EXTRACT` can be substituted in downstream steps.
 * `cache.py` is a **mixin** (`_ControlsCacheMixin`) inherited by `ManulEngine` in `core.py`. It owns all persistent per-site controls-cache logic.
 * `ManulEngine` MRO: `class ManulEngine(_ControlsCacheMixin, _ActionsMixin)` in `core.py`.
 * `prompts.py` loads config from `manul_engine_configuration.json` (CWD first, then package root fallback). No dotenv dependency.
-* `js_scripts.py` owns **all** JavaScript constants injected into the browser — no inline JS in Python files.
+* `js_scripts.py` owns **all** JavaScript constants injected into the browser — no inline JS in Python files. This includes `SCAN_JS` (Smart Page Scanner).
+* `scanner.py` owns the standalone scan logic: `SCAN_JS` is imported from `js_scripts.py`; `build_hunt()` maps raw element dicts to hunt steps; `scan_page()` is the async Playwright runner; `scan_main()` is the async CLI entry called by `cli.py`. `_default_output()` reads `tests_home` from the config to derive the default output path.
 * `helpers.py` provides `env_bool(name, default)` for parsing boolean env vars; used by `prompts.py`.
 * **Null model = heuristics-only:** When `model` is `None`, `_llm_json()` returns `None` immediately. `get_threshold(None)` returns `0`. No Ollama calls are made.
+* **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
 
 ## Running tests
 
@@ -187,6 +195,11 @@ manul tests/                     # run all *.hunt files in tests/
 manul tests/wikipedia.hunt       # single hunt
 manul --headless tests/          # headless mode
 manul --browser firefox tests/   # run in Firefox instead of Chromium
+
+# Smart Page Scanner
+manul scan https://example.com                   # scan → tests/draft.hunt (tests_home default)
+manul scan https://example.com tests/my.hunt     # scan → explicit output file
+manul scan https://example.com --headless        # headless scan
 ```
 
 Ollama is optional, but required for:
@@ -219,7 +232,7 @@ Environment variables (`MANUL_*`) always override JSON values.
 | `log_thought_maxlen` | `0` | If > 0, truncates LLM “thought” strings in logs |
 | `timeout` | `5000` | Default action timeout (ms) |
 | `nav_timeout` | `30000` | Navigation timeout (ms) |
-
+| `tests_home` | `"tests"` | Default directory for new hunt files and `SCAN PAGE` / `manul scan` output |
 Threshold auto-calculation by model size: `<1b → 500`, `1-4b → 750`, `5-9b → 1000`, `10-19b → 1500`, `20b+ → 2000`, `null → 0`.
 
 Suggested config for mixed mode:
@@ -292,5 +305,5 @@ A companion extension that provides hunt file language support, Test Explorer in
 * `huntRunner.ts` — `findManulExecutable()` probes local venv folders in order: `.venv`, `venv`, `env`, `.env` (both `bin/manul` on Unix and `Scripts\manul.exe` on Windows) before falling back to user-level install paths and a login-shell lookup. When adding new candidate paths, keep this order and always guard Windows/macOS-only paths with `isWin` / `process.platform` checks.
 * `configPanel.ts` — `doSave()` forces `ai_always: false` whenever `model` is empty/null (`modelVal !== '' && g('ai_always').checked`). Do not remove this guard — saving `ai_always: true` with no model would produce an invalid config that causes runtime errors. The `syncAiAlways()` function also disables and unchecks the `ai_always` checkbox in the UI when the model field is cleared.
 * Config panel reads/writes `manul_engine_configuration.json` at the workspace root using `_configPath()`. The config file name is user-configurable via the `manulEngine.configFile` VS Code setting.
-* Ollama model discovery: the panel fetches `http://localhost:11434/api/tags` on open and populates a `<datalist>` for the model input. Gracefully degrades to free-text input if Ollama is not running.
+* Ollama model discovery: the panel fetches `http://localhost:11434/api/tags` on open and populates a `<select>` dropdown with installed model names (replaced legacy `<datalist>` + `<input>` to fix rendering offset in Electron webview). First option is always `null (heuristics-only)`. The stored model is always preserved as an option even when Ollama is offline.
 * Build: `cd vscode-extension && npm install && npm run compile`. Use `npx vsce package` to produce a `.vsix`. Press F5 in VS Code with the extension folder open to launch a dev Extension Host.

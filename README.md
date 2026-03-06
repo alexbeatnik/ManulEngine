@@ -111,6 +111,11 @@ manul "1. NAVIGATE to https://example.com  2. Click the 'More' link  3. DONE."
 
 # Run multiple hunt files in parallel (4 concurrent browsers)
 manul my_tests/ --workers 4
+
+# Smart Page Scanner — scan a URL and generate a draft hunt file
+manul scan https://example.com                    # outputs to tests/draft.hunt (tests_home)
+manul scan https://example.com tests/my.hunt      # explicit output file
+manul scan https://example.com --headless         # headless scan
 ```
 
 ### 3. Python API
@@ -162,6 +167,8 @@ Lines starting with `#` are ignored.
 | `VERIFY that [target] is NOT present` | Assert absence |
 | `VERIFY that [target] is DISABLED` | Assert element state |
 | `VERIFY that [target] is checked` | Assert checkbox state |
+| `SCAN PAGE` | Scan the current page for interactive elements and print a draft `.hunt` to the console |
+| `SCAN PAGE into {filename}` | Same, and also write the draft to `{filename}` (default: `tests_home/draft.hunt`) |
 | `DONE.` | End the mission |
 
 ### Interaction Steps
@@ -271,6 +278,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 | `log_name_maxlen` | `0` | Truncate element names in logs (0 = no limit) |
 | `log_thought_maxlen` | `0` | Truncate LLM thoughts in logs (0 = no limit) |
 | `workers` | `1` | Number of hunt files to run concurrently (each gets its own browser) |
+| `tests_home` | `"tests"` | Default directory for new hunt files and `SCAN PAGE` / `manul scan` output |
 
 ---
 
@@ -285,6 +293,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 | **Mouse Action** | `HOVER over [Element]`, `Drag [Element] and drop it into [Target]` |
 | **Data Extraction** | `EXTRACT [Target] into {variable_name}` |
 | **Verification** | `VERIFY that [Text] is present/absent`, `VERIFY that [Element] is checked/disabled` |
+| **Page Scanner** | `SCAN PAGE`, `SCAN PAGE into {filename}` |
 | **Flow Control** | `WAIT [seconds]`, `PRESS ENTER`, `SCROLL DOWN` |
 | **Finish** | `DONE.` |
 
@@ -305,4 +314,4 @@ ManulEngine is verified against **1200+ synthetic DOM tests** covering:
 
 ---
 
-**Version:** 0.0.7 · **Status:** Hunting...
+**Version:** 0.0.8 · **Status:** Hunting...

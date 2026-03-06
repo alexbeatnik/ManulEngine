@@ -10,8 +10,8 @@
 7. NAVIGATE to https://www.saucedemo.com/cart.html
 8. VERIFY that 'Sauce Labs Fleece Jacket' is present
 9. Click 'Checkout' button
-10. Fill 'First Name' with 'Олексій'
-11. Fill 'Last Name' with 'Манул'
+10. Fill 'First Name' with 'FirstName'
+11. Fill 'Last Name' with 'LastName'
 12. Fill 'Zip/Postal Code' with '49000'
 13. Click 'Continue' button
 14. Click 'Finish' button

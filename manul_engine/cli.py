@@ -24,11 +24,15 @@ Usage:
   manul .                    — run all *.hunt files in the current directory
   manul path/to/folder/      — run all *.hunt files in that folder
   manul path/to/file.hunt    — run a single hunt file
+  manul scan <URL>           — scan a URL and generate a draft .hunt file
 
 Flags:
   --headless                 — run browser in headless mode
   --browser <name>           — browser to use: chromium (default), firefox, webkit
   --workers <n>              — max hunt files to run in parallel (default: 1)
+
+Scan-specific flags (only with `manul scan`):
+  --output <file>            — output file for the draft (default: draft.hunt)
 
 Examples:
   manul .
@@ -39,6 +43,8 @@ Examples:
   manul --browser firefox tests/
   manul --headless --browser webkit tests/hunt_example.hunt
   manul --workers 4 tests/
+  manul scan https://example.com
+  manul scan https://example.com --output tests/example.hunt --headless
 
 Notes:
   Any file with the .hunt extension is accepted.
@@ -183,6 +189,23 @@ async def main() -> None:
     if not args or any(a in args for a in ("--help", "-h")):
         print(_USAGE)
         sys.exit(0)
+
+    # ── `manul scan <URL>` subcommand ─────────────────────────────────────────
+    # Strip leading flags (--headless / --browser) before checking for "scan"
+    # so that `manul --headless scan https://…` also works.
+    _non_flag_args = [
+        a for i, a in enumerate(args)
+        if a not in ("--headless",)
+        and not (i > 0 and args[i - 1] in ("--browser", "--workers", "--output"))
+        and a not in ("--browser", "--workers", "--output")
+    ]
+    if _non_flag_args and _non_flag_args[0] == "scan":
+        from manul_engine.scanner import scan_main
+        # Pass everything before and after 'scan' (flags and their values).
+        scan_idx = args.index("scan")
+        scan_args = args[:scan_idx] + args[scan_idx + 1:]
+        await scan_main(scan_args)
+        return
 
     headless = "--headless" in args
     args = [a for a in args if a != "--headless"]

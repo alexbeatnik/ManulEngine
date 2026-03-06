@@ -180,10 +180,6 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       background: var(--vscode-editorWarning-background, #3a3000);
       border-left: 3px solid var(--vscode-editorWarning-foreground, #cca700);
       font-size: 0.92em; }
-    #model-wrap { position: relative; }
-    #model { width: 100%; box-sizing: border-box; padding: 4px 6px;
-      background: var(--vscode-input-background); color: var(--vscode-input-foreground);
-      border: 1px solid var(--vscode-input-border, #444); border-radius: 3px; font-size: 1em; }
     #ollama-status { display: flex; align-items: center; gap: 5px; margin-top: 3px; font-size: 0.85em;
       color: var(--vscode-descriptionForeground); }
     .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
@@ -202,14 +198,13 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
   </div>
 
   <div id="form">
-    <label>model</label>
-    <div id="model-wrap">
-      <input id="model" list="ollama-models" autocomplete="off"
-             placeholder="empty = heuristics-only (null)"/>
-      <datalist id="ollama-models"></datalist>
-    </div>
+    <label>model
+      <select id="model">
+        <option value="">null (heuristics-only)</option>
+      </select>
+    </label>
     <div id="ollama-status"><span class="dot spin" id="ollama-dot"></span><span id="ollama-label">Checking Ollama…</span></div>
-    <div class="hint">Select from installed Ollama models, or type any model name. Leave empty to disable AI.</div>
+    <div class="hint">Select from installed Ollama models. Leave empty to disable AI.</div>
 
     <div class="checkbox-row">
       <input type="checkbox" id="headless"/>
@@ -338,7 +333,17 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
 
     function doLoad(config, exists) {
       g('no-config').style.display = exists ? 'none' : 'block';
-      g('model').value         = config.model ?? '';
+      const modelVal = config.model ?? '';
+      // Ensure the stored model is available as an option (Ollama may not be running)
+      const sel = g('model');
+      const hasOpt = Array.from(sel.options).some(function(o) { return o.value === modelVal; });
+      if (modelVal && !hasOpt) {
+        var customOpt = document.createElement('option');
+        customOpt.value = modelVal;
+        customOpt.textContent = modelVal;
+        sel.appendChild(customOpt);
+      }
+      sel.value = modelVal;
       g('headless').checked    = !!config.headless;
       const _validBrowsers = ['chromium', 'firefox', 'webkit'];
       g('browser').value       = _validBrowsers.includes(config.browser) ? config.browser : 'chromium';
@@ -372,7 +377,6 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
         ? '' : 'var(--vscode-editorWarning-foreground, #cca700)';
       if (!hasModel) { g('ai_always').checked = false; }
     }
-    g('model').addEventListener('input', syncAiAlways);
     g('model').addEventListener('change', syncAiAlways);
 
     function syncPromptsBtn(exists) {
@@ -395,34 +399,43 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
     (function fetchOllamaModels() {
       const dot   = g('ollama-dot');
       const label = g('ollama-label');
-      const dl    = g('ollama-models');
+      const sel   = g('model');
 
-      function buildDatalist(models) {
-        dl.textContent = ''; // safe DOM clear (no innerHTML)
+      function buildSelect(models) {
+        const current = sel.value;
+        sel.textContent = '';
         var nullOpt = document.createElement('option');
         nullOpt.value = '';
         nullOpt.textContent = 'null (heuristics-only)';
-        dl.appendChild(nullOpt);
+        sel.appendChild(nullOpt);
         models.forEach(function(n) {
           var opt = document.createElement('option');
           opt.value = String(n);
           opt.textContent = String(n);
-          dl.appendChild(opt);
+          sel.appendChild(opt);
         });
+        // If current value is not in the list, add it so it isn't lost
+        if (current && !models.includes(current)) {
+          var customOpt = document.createElement('option');
+          customOpt.value = current;
+          customOpt.textContent = current;
+          sel.appendChild(customOpt);
+        }
+        if (current !== undefined) { sel.value = current; }
       }
 
       fetch('http://localhost:11434/api/tags', { signal: AbortSignal.timeout(3000) })
         .then(function(r) { return r.json(); })
         .then(function(data) {
           const models = (data.models || []).map(function(m) { return m.name; });
-          buildDatalist(models);
+          buildSelect(models);
           dot.className = 'dot ok';
           label.textContent = 'Ollama connected — ' + models.length + ' model' + (models.length !== 1 ? 's' : '') + ' available';
         })
         .catch(function() {
-          buildDatalist([]);
+          buildSelect([]);
           dot.className = 'dot off';
-          label.textContent = 'Ollama not available — type model name manually or leave empty';
+          label.textContent = 'Ollama not available — leave empty for heuristics-only';
         });
     })();
 
