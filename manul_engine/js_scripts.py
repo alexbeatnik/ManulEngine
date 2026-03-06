@@ -768,3 +768,88 @@ STATE_CHECK_JS = """(args) => {
     }
     return null;
 }"""
+
+# ── Smart Page Scanner ────────────────────────────────────────────────────────
+SCAN_JS = """() => {
+    // ── Helpers ─────────────────────────────────────────────────────────────
+
+    /** Return true if the element is visually hidden / off-screen. */
+    function isHidden(el) {
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) return true;
+        try {
+            const st = window.getComputedStyle(el);
+            if (st.display === 'none' || st.visibility === 'hidden' || parseFloat(st.opacity) === 0) return true;
+        } catch (_) {}
+        return false;
+    }
+
+    /** Best human-readable label for an element (order: text, aria-label, placeholder, title, name, id). */
+    function bestLabel(el) {
+        const text = (el.innerText || el.textContent || '').replace(/\\s+/g, ' ').trim();
+        if (text && text.length <= 80) return text;
+        const aria = el.getAttribute('aria-label') || '';
+        if (aria.trim()) return aria.trim();
+        const ph = el.getAttribute('placeholder') || '';
+        if (ph.trim()) return ph.trim();
+        const title = el.getAttribute('title') || '';
+        if (title.trim()) return title.trim();
+        const name = el.getAttribute('name') || '';
+        if (name.trim()) return name.trim();
+        const id = el.getAttribute('id') || '';
+        if (id.trim()) return id.trim();
+        return '';
+    }
+
+    /** Classify an element into one of our semantic types or null to skip. */
+    function classify(el) {
+        const tag = el.tagName ? el.tagName.toUpperCase() : '';
+        const type = (el.getAttribute('type') || '').toLowerCase();
+        const role = (el.getAttribute('role') || '').toLowerCase();
+
+        if (tag === 'SELECT') return 'select';
+        if (tag === 'INPUT' && type === 'checkbox') return 'checkbox';
+        if (tag === 'INPUT' && type === 'radio') return 'radio';
+        if (tag === 'INPUT' && !['submit', 'reset', 'image', 'hidden', 'button'].includes(type)) return 'input';
+        if (tag === 'TEXTAREA') return 'input';
+        if (tag === 'BUTTON') return 'button';
+        if (tag === 'A' && el.getAttribute('href') !== null) return 'link';
+        if (role === 'button') return 'button';
+        if (role === 'link') return 'link';
+        if (role === 'checkbox') return 'checkbox';
+        if (role === 'radio') return 'radio';
+        if (tag === 'INPUT' && type === 'submit') return 'button';
+        if (tag === 'INPUT' && type === 'button') return 'button';
+        return null;
+    }
+
+    /** Collect results from a DOM root (document or shadowRoot). */
+    function scanRoot(root, results, seen) {
+        const candidates = root.querySelectorAll(
+            'button, a[href], input, select, textarea, ' +
+            '[role="button"], [role="link"], [role="checkbox"], [role="radio"], ' +
+            '[role="combobox"], [role="switch"]'
+        );
+        for (const el of candidates) {
+            if (seen.has(el)) continue;
+            seen.add(el);
+
+            if (isHidden(el)) continue;
+            const kind = classify(el);
+            if (!kind) continue;
+            const label = bestLabel(el);
+            if (!label) continue;
+
+            results.push({ type: kind, identifier: label });
+        }
+        // Recurse into shadow roots
+        for (const el of root.querySelectorAll('*')) {
+            if (el.shadowRoot) scanRoot(el.shadowRoot, results, seen);
+        }
+    }
+
+    const results = [];
+    const seen = new WeakSet();
+    scanRoot(document, results, seen);
+    return JSON.stringify(results);
+}"""
