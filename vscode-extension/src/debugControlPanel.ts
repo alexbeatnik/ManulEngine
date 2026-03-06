@@ -10,7 +10,7 @@
  * Window raising (Linux): spawns xdotool / wmctrl + notify-send (both silent-fail).
  */
 import * as vscode from "vscode";
-import { exec } from "child_process";
+import { exec, execFile } from "child_process";
 
 export type PauseChoice = "next" | "continue";
 
@@ -26,10 +26,13 @@ function tryRaiseWindow(stepIdx: number, stepText: string): void {
     () => { /* ignore errors */ }
   );
   // OS notification flashes taskbar on both X11 and Wayland.
-  const safe = stepText.replace(/'/g, "'").slice(0, 80);
-  exec(
-    `notify-send -u normal -t 5000 '🐛 ManulEngine Debug — Step ${stepIdx}' '${safe}' 2>/dev/null || true`,
-    () => { /* ignore errors */ }
+  // Use execFile (argv array) instead of exec() to avoid shell-injection from
+  // crafted .hunt step text that could break out of the notify-send quotes.
+  const safeText = stepText.slice(0, 80);
+  execFile(
+    "notify-send",
+    ["-u", "normal", "-t", "5000", `🐛 ManulEngine Debug — Step ${stepIdx}`, safeText],
+    () => { /* ignore errors — notify-send may not be installed */ }
   );
 }
 

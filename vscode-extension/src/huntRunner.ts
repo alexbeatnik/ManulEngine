@@ -211,8 +211,8 @@ export function runHunt(
 }
 
 /**
- * Run hunt file in the output-panel (piped) with --debug, implementing the
- * ManulEngine pause-protocol over stdout/stdin.
+ * Run hunt file in the output-panel (piped) using the ManulEngine
+ * pause-protocol over stdout/stdin (without passing the CLI --debug flag).
  *
  * When Python writes  \x00MANUL_DEBUG_PAUSE\x00{"step":"…","idx":N}\n
  * `onPause(step, idx)` is called (the VS Code Webview panel or any custom UI).
@@ -294,14 +294,26 @@ export function runHuntFileDebugPanel(
                     choice === "▶ Continue All" ? "continue" : "next"
                   );
               })();
-          pausePromise.then((choice: "next" | "continue") => {
-            proc.stdin?.write(choice + "\n");
-          });
+          pausePromise.then(
+            (choice: "next" | "continue") => {
+              // Guard against writing to stdin after the process has already
+              // exited or the stream has been closed/destroyed (e.g. user
+              // pressed Stop while the QuickPick was open).
+              if (proc.exitCode === null && proc.stdin && !proc.stdin.destroyed) {
+                proc.stdin.write(choice + "\n");
+              }
+            },
+            () => { /* swallow QuickPick errors to avoid unhandled rejections */ }
+          );
         } else {
           onData(line + "\n");
         }
       }
     });
+
+    // Prevent "write after end" / EPIPE crashes from propagating to the
+    // extension host when stdin closes while a response is in flight.
+    proc.stdin?.on("error", () => { /* ignore stdin errors */ });
 
     proc.stderr?.on("data", (d: Buffer) => onData(d.toString()));
     proc.on("close", (code) => resolve(code ?? 1));

@@ -163,7 +163,10 @@ async function _runItem(
   }
 
   try {
-    const breakLines = item.uri ? getHuntBreakpointLines(item.uri.fsPath) : [];
+    // Do NOT pass breakLines to the default runHunt (normal Run profile): runHunt
+    // would spawn manul with --break-lines, which emits the pause marker and then
+    // blocks on stdin.readline() — but the normal runner never writes a response,
+    // causing a hang.  The debug profile's debugRunFn captures break lines itself.
     const exitCode = await runFn(
       manulExe,
       item.uri!.fsPath,
@@ -194,8 +197,7 @@ async function _runItem(
           }
         }
       },
-      token,
-      breakLines
+      token
     );
 
     if (currentStepNum > 0 && !currentStepDone) {
@@ -375,8 +377,10 @@ export function createHuntTestController(
       // Wire Stop button → abort the active QuickPick so Python unblocks.
       const abortDisposable = token.onCancellationRequested(() => panel.abort());
 
-      const debugRunFn: HuntRunFn = (exe, file, onData, tok, brk) =>
-        runHuntFileDebugPanel(exe, file, onData, tok, brk,
+      // Collect break lines inside the closure so they are never passed
+      // through _runItem (which would also forward them to the normal runner).
+      const debugRunFn: HuntRunFn = (exe, file, onData, tok) =>
+        runHuntFileDebugPanel(exe, file, onData, tok, getHuntBreakpointLines(file),
           (step, idx) => panel.showPause(step, idx));
 
       for (const item of toRun) {

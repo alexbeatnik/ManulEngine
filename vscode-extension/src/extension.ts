@@ -78,16 +78,19 @@ export function activate(context: vscode.ExtensionContext): void {
       debugOutputChannel.show(true);
       debugOutputChannel.appendLine(`🐾 ManulEngine Debug — ${path.basename(target.fsPath)}`);
       const panel = DebugControlPanel.getInstance(context);
-      await runHuntFileDebugPanel(
-        manulExe,
-        target.fsPath,
-        (chunk) => debugOutputChannel.append(chunk),
-        undefined,
-        breakLines,
-        (step, idx) => panel.showPause(step, idx)
-      );
-      panel.dispose();
-      debugOutputChannel.appendLine("\n✅ Debug run complete.");
+      try {
+        await runHuntFileDebugPanel(
+          manulExe,
+          target.fsPath,
+          (chunk) => debugOutputChannel.append(chunk),
+          undefined,
+          breakLines,
+          (step, idx) => panel.showPause(step, idx)
+        );
+        debugOutputChannel.appendLine("\n✅ Debug run complete.");
+      } finally {
+        panel.dispose();
+      }
     }),
 
     vscode.commands.registerCommand(

@@ -220,7 +220,7 @@ async def main() -> None:
     # so that `manul --headless scan https://…` also works.
     _non_flag_args = [
         a for i, a in enumerate(args)
-        if a not in ("--headless",)
+        if a not in ("--headless", "--debug")
         and not (i > 0 and args[i - 1] in ("--browser", "--workers", "--output", "--break-lines"))
         and a not in ("--browser", "--workers", "--output", "--break-lines")
     ]
@@ -235,6 +235,7 @@ async def main() -> None:
     headless = "--headless" in args
     debug = "--debug" in args
     args = [a for a in args if a not in ("--headless", "--debug")]
+
     # Extract --break-lines <n,n,...> flag (gutter breakpoints from VS Code).
     break_lines: set[int] = set()
     if "--break-lines" in args:
@@ -295,6 +296,17 @@ async def main() -> None:
             print(f"Error: --workers value must be an integer, got '{args[idx + 1]}'.", file=sys.stderr)
             sys.exit(1)
         args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+    # --debug and --break-lines require interactive stdio and must run sequentially.
+    # Passing them to parallel subprocess workers would cause stdin hangs; enforce
+    # workers=1 automatically and warn the user if they requested more.
+    if (debug or break_lines) and workers > 1:
+        print(
+            f"⚠️  --debug / --break-lines require sequential execution; forcing --workers 1"
+            f" (was {workers}).",
+            file=sys.stderr,
+        )
+        workers = 1
+
     if not args:
         print(_USAGE)
         sys.exit(0)
@@ -347,10 +359,9 @@ async def main() -> None:
                 flags: list[str] = ["--workers", "1"]
                 if headless:
                     flags.append("--headless")
-                if debug:
-                    flags.append("--debug")
-                if break_lines:
-                    flags += ["--break-lines", ",".join(str(l) for l in sorted(break_lines))]
+                # --debug and --break-lines require interactive stdio and must not
+                # be forwarded to parallel subprocesses — workers is already forced
+                # to 1 when either flag is set (see validation below).
                 if browser:
                     flags += ["--browser", browser]
                 cmd = base + flags + [path]

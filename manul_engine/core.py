@@ -586,9 +586,11 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                     s_up = step.upper()
 
                     if self.debug_mode:
+                        # debug_mode and break_steps are mutually exclusive:
+                        # --debug pauses before every step already, so honouring
+                        # break_steps on top would cause a double-pause.
                         await self._debug_prompt(page, step, i)
-
-                    if self.break_steps and i in self.break_steps:
+                    elif self.break_steps and i in self.break_steps:
                         # In piped (extension) mode: use the same marker protocol so the
                         # VS Code panel shows the breakpoint pause — no Playwright Inspector.
                         # In terminal mode: fall back to page.pause() for Inspector.
@@ -628,8 +630,16 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                 ok = False; break
 
                         elif re.search(r'\b(?:DEBUG|PAUSE)\b', s_up):
-                            print("    🔎 DEBUG/PAUSE step — opening Playwright Inspector…")
-                            await page.pause()
+                            import sys as _sys
+                            if not _sys.stdin.isatty():
+                                # Piped mode (VS Code extension): use the marker protocol
+                                # so the panel can show the pause overlay.
+                                print("    🔎 DEBUG/PAUSE step")
+                                await self._debug_prompt(page, step, i)
+                            else:
+                                # Terminal mode: open the Playwright Inspector.
+                                print("    🔎 DEBUG/PAUSE step — opening Playwright Inspector…")
+                                await page.pause()
 
                         elif re.search(r'\bDONE\b', s_up):
                             print("    🏁 MISSION ACCOMPLISHED")
