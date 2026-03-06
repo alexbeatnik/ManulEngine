@@ -240,12 +240,14 @@ async def main() -> None:
     break_lines: set[int] = set()
     if "--break-lines" in args:
         idx = args.index("--break-lines")
-        if idx + 1 < len(args):
-            try:
-                break_lines = {int(x.strip()) for x in args[idx + 1].split(",") if x.strip()}
-            except ValueError:
-                print("Error: --break-lines values must be integers.", file=sys.stderr)
-                sys.exit(1)
+        if idx + 1 >= len(args):
+            print("Error: --break-lines requires a value (comma-separated line numbers).", file=sys.stderr)
+            sys.exit(1)
+        try:
+            break_lines = {int(x.strip()) for x in args[idx + 1].split(",") if x.strip()}
+        except ValueError:
+            print("Error: --break-lines values must be integers.", file=sys.stderr)
+            sys.exit(1)
         args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
     # Extract --browser <name> flag
     _VALID_BROWSERS = {"chromium", "firefox", "webkit"}

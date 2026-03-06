@@ -630,16 +630,20 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                 ok = False; break
 
                         elif re.search(r'\b(?:DEBUG|PAUSE)\b', s_up):
-                            import sys as _sys
-                            if not _sys.stdin.isatty():
-                                # Piped mode (VS Code extension): use the marker protocol
-                                # so the panel can show the pause overlay.
-                                print("    🔎 DEBUG/PAUSE step")
-                                await self._debug_prompt(page, step, i)
-                            else:
-                                # Terminal mode: open the Playwright Inspector.
-                                print("    🔎 DEBUG/PAUSE step — opening Playwright Inspector…")
-                                await page.pause()
+                            # In debug_mode the pre-step _debug_prompt() above already
+                            # paused execution; treat this step as a no-op to avoid a
+                            # double-pause for the same step.
+                            if not self.debug_mode:
+                                import sys as _sys
+                                if not _sys.stdin.isatty():
+                                    # Piped mode (VS Code extension): use the marker protocol
+                                    # so the panel can show the pause overlay.
+                                    print("    \U0001f50e DEBUG/PAUSE step")
+                                    await self._debug_prompt(page, step, i)
+                                else:
+                                    # Terminal mode: open the Playwright Inspector.
+                                    print("    \U0001f50e DEBUG/PAUSE step \u2014 opening Playwright Inspector\u2026")
+                                    await page.pause()
 
                         elif re.search(r'\bDONE\b', s_up):
                             print("    🏁 MISSION ACCOMPLISHED")

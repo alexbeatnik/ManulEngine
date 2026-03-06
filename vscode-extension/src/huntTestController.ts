@@ -383,15 +383,17 @@ export function createHuntTestController(
         runHuntFileDebugPanel(exe, file, onData, tok, getHuntBreakpointLines(file),
           (step, idx) => panel.showPause(step, idx));
 
-      for (const item of toRun) {
-        if (token.isCancellationRequested) { run.skipped(item); continue; }
-        await _runItem(ctrl, run, item, token, debugRunFn);
+      try {
+        for (const item of toRun) {
+          if (token.isCancellationRequested) { run.skipped(item); continue; }
+          await _runItem(ctrl, run, item, token, debugRunFn);
+        }
+      } finally {
+        abortDisposable.dispose();
+        panel.dispose();
+        run.end();
+        toRun.forEach((item) => item.children.replace([]));
       }
-      abortDisposable.dispose();
-      panel.dispose();
-
-      run.end();
-      toRun.forEach((item) => item.children.replace([]));
     },
     false
   );
