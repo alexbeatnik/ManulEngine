@@ -168,7 +168,7 @@ See the [ManulEngine README](https://github.com/alexbeatnik/ManulEngine) for the
 
 ## Release Notes
 
-### 0.0.70 / 0.0.71
+### 0.0.80
 - **Smart Page Scanner** — new `manul scan <URL>` CLI command opens a browser, scans the page for interactive elements (including Shadow DOM), and generates a draft `.hunt` file in the `tests_home` directory
 - **`SCAN PAGE into {filename}`** step keyword — same scanner available as an in-test step; use it mid-hunt to capture a page's elements and save a draft for later refinement
 - **Scan Page** button added to the Step Builder sidebar
