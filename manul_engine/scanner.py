@@ -179,12 +179,9 @@ async def scan_page(
     print(f"{'─'*60}\n")
 
 
-# ── Synchronous wrapper for CLI ───────────────────────────────────────────────
+async def scan_main(args: list[str]) -> None:
+    """Async entry point called by cli.main() when first real arg is 'scan'."""
 
-def scan_main(args: list[str]) -> None:
-    """Entry point called by cli.main() when first real arg is 'scan'."""
-
-    # ── Parse args ────────────────────────────────────────────────────────────
     headless = "--headless" in args
     args = [a for a in args if a != "--headless"]
 
@@ -210,11 +207,16 @@ def scan_main(args: list[str]) -> None:
 
     if not args:
         print(
-            "Usage: manul scan <URL> [--output draft.hunt] [--headless] [--browser chromium|firefox|webkit]",
+            "Usage: manul scan <URL> [output.hunt] [--output output.hunt] [--headless] [--browser chromium|firefox|webkit]",
             file=sys.stderr,
         )
         sys.exit(1)
 
     url = args[0]
 
-    asyncio.run(scan_page(url, output_file=output_file, headless=headless, browser=browser))
+    # Second positional arg ending in .hunt is treated as --output:
+    #   manul scan facebook.com tests/test.hunt
+    if len(args) >= 2 and args[1].endswith(".hunt"):
+        output_file = args[1]
+
+    await scan_page(url, output_file=output_file, headless=headless, browser=browser)
