@@ -2,7 +2,7 @@
 import asyncio
 import re
 from .helpers import extract_quoted, compact_log_field, SCROLL_WAIT, ACTION_WAIT, NAV_WAIT
-from .js_scripts import VISIBLE_TEXT_JS, EXTRACT_DATA_JS, DEEP_TEXT_JS, STATE_CHECK_JS
+from .js_scripts import VISIBLE_TEXT_JS, EXTRACT_DATA_JS, DEEP_TEXT_JS, STATE_CHECK_JS, SCAN_JS
 from . import prompts
 
 class _ActionsMixin:
@@ -410,3 +410,47 @@ class _ActionsMixin:
                 await asyncio.sleep(1)
 
         return False
+
+    # ── SCAN PAGE ─────────────────────────────────────────────────────────────
+
+    async def _handle_scan_page(self, page, step: str) -> bool:
+        """
+        Handle:  SCAN PAGE                   → print draft steps to console
+                 SCAN PAGE into {filename}   → also write to file
+        """
+        import json, os
+        from .scanner import build_hunt
+
+        # Detect optional output filename: "into {filename}" or "into 'filename'"
+        m = re.search(r'\binto\s+[\{\'"]?([\w./\\-]+\.hunt)[\}\'"]?', step, re.IGNORECASE)
+        output_file = m.group(1) if m else None
+
+        print("    🔍 SCAN PAGE: collecting interactive elements …")
+        try:
+            raw = await page.evaluate(SCAN_JS)
+            elements = json.loads(raw)
+        except Exception as exc:
+            print(f"    ❌ SCAN PAGE: JS evaluation failed: {exc}")
+            return False
+
+        print(f"    📊 SCAN PAGE: found {len(elements)} element(s) before filter/dedup")
+
+        url = page.url
+        hunt_text = build_hunt(url, elements)
+
+        # Always print to console
+        print("\n" + "─" * 60)
+        print(hunt_text)
+        print("─" * 60)
+
+        if output_file:
+            output_abs = os.path.abspath(output_file)
+            try:
+                os.makedirs(os.path.dirname(output_abs) or ".", exist_ok=True)
+                with open(output_abs, "w", encoding="utf-8") as fh:
+                    fh.write(hunt_text)
+                print(f"    ✅ SCAN PAGE: draft saved → {output_abs}")
+            except OSError as exc:
+                print(f"    ⚠️  SCAN PAGE: could not write '{output_abs}': {exc}")
+
+        return True
