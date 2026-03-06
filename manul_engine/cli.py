@@ -201,9 +201,9 @@ async def main() -> None:
     ]
     if _non_flag_args and _non_flag_args[0] == "scan":
         from manul_engine.scanner import scan_main
-        # Pass everything after 'scan' (plus any flags that appeared before it)
+        # Pass everything before and after 'scan' (flags and their values).
         scan_idx = args.index("scan")
-        scan_args = [a for a in args[:scan_idx] if a.startswith("-")] + args[scan_idx + 1:]
+        scan_args = args[:scan_idx] + args[scan_idx + 1:]
         await scan_main(scan_args)
         return
 

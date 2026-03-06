@@ -444,7 +444,12 @@ class _ActionsMixin:
         print("─" * 60)
 
         if output_file:
-            output_abs = os.path.abspath(output_file)
+            from .scanner import _default_output
+            # Bare filename → resolve via tests_home from config; path with dir → resolve from CWD.
+            if os.path.dirname(output_file):
+                output_abs = os.path.abspath(output_file)
+            else:
+                output_abs = _default_output(output_file)
             try:
                 os.makedirs(os.path.dirname(output_abs) or ".", exist_ok=True)
                 with open(output_abs, "w", encoding="utf-8") as fh:

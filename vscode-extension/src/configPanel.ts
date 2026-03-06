@@ -204,7 +204,7 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       </select>
     </label>
     <div id="ollama-status"><span class="dot spin" id="ollama-dot"></span><span id="ollama-label">Checking Ollama…</span></div>
-    <div class="hint">Select from installed Ollama models, or type any model name. Leave empty to disable AI.</div>
+    <div class="hint">Select from installed Ollama models. Leave empty to disable AI.</div>
 
     <div class="checkbox-row">
       <input type="checkbox" id="headless"/>

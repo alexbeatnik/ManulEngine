@@ -818,6 +818,8 @@ SCAN_JS = """() => {
         if (role === 'link') return 'link';
         if (role === 'checkbox') return 'checkbox';
         if (role === 'radio') return 'radio';
+        if (role === 'combobox') return 'select';
+        if (role === 'switch') return 'checkbox';
         if (tag === 'INPUT' && type === 'submit') return 'button';
         if (tag === 'INPUT' && type === 'button') return 'button';
         return null;

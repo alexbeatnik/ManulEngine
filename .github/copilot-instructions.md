@@ -231,7 +231,8 @@ Environment variables (`MANUL_*`) always override JSON values.
 | `log_name_maxlen` | `0` | If > 0, truncates element names in logs |
 | `log_thought_maxlen` | `0` | If > 0, truncates LLM “thought” strings in logs |
 | `timeout` | `5000` | Default action timeout (ms) |
-| `nav_timeout` | `30000` | Navigation timeout (ms) || `tests_home` | `"tests"` | Default directory for new hunt files and `SCAN PAGE` / `manul scan` output |
+| `nav_timeout` | `30000` | Navigation timeout (ms) |
+| `tests_home` | `"tests"` | Default directory for new hunt files and `SCAN PAGE` / `manul scan` output |
 Threshold auto-calculation by model size: `<1b → 500`, `1-4b → 750`, `5-9b → 1000`, `10-19b → 1500`, `20b+ → 2000`, `null → 0`.
 
 Suggested config for mixed mode:
