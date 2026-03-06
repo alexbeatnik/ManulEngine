@@ -446,7 +446,8 @@ class _ActionsMixin:
         if output_file:
             from .scanner import _default_output
             # Bare filename → resolve via tests_home from config; path with dir → resolve from CWD.
-            if os.path.dirname(output_file):
+            # Check both / and \ so Windows-style paths work on POSIX too.
+            if "/" in output_file or "\\" in output_file:
                 output_abs = os.path.abspath(output_file)
             else:
                 output_abs = _default_output(output_file)
