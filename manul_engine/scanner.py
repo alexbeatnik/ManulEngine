@@ -79,7 +79,7 @@ def build_hunt(url: str, elements: list[dict]) -> str:
     ]
 
     step = 3
-    seen_labels: set[str] = set()
+    seen_labels: set[tuple[str, str]] = set()
 
     for el in elements:
         kind = el.get("type", "")
@@ -170,6 +170,7 @@ async def scan_page(
     hunt_text = build_hunt(url, elements)
 
     output_abs = os.path.abspath(output_file)
+    os.makedirs(os.path.dirname(output_abs) or ".", exist_ok=True)
     with open(output_abs, "w", encoding="utf-8") as fh:
         fh.write(hunt_text)
 
@@ -214,6 +215,9 @@ async def scan_main(args: list[str]) -> None:
                 print(f"Error: unsupported browser '{args[idx+1]}'.", file=sys.stderr)
                 sys.exit(1)
             args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+        else:
+            print("Error: --browser requires a value (chromium|firefox|webkit).", file=sys.stderr)
+            sys.exit(1)
 
     output_file = _default_output()
     if "--output" in args:
@@ -221,6 +225,9 @@ async def scan_main(args: list[str]) -> None:
         if idx + 1 < len(args):
             output_file = args[idx + 1]
             args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+        else:
+            print("Error: --output requires a value.", file=sys.stderr)
+            sys.exit(1)
 
     if not args:
         print(
