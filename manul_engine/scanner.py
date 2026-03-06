@@ -239,8 +239,13 @@ async def scan_main(args: list[str]) -> None:
     url = args[0]
 
     # Second positional arg ending in .hunt is treated as --output:
-    #   manul scan facebook.com tests/test.hunt
+    #   manul scan facebook.com tests/test.hunt  (explicit path → use as-is)
+    #   manul scan facebook.com test.hunt         (bare name → tests_home/test.hunt)
     if len(args) >= 2 and args[1].endswith(".hunt"):
-        output_file = args[1]
+        raw = args[1]
+        if os.path.dirname(raw):
+            output_file = raw
+        else:
+            output_file = _default_output(raw)
 
     await scan_page(url, output_file=output_file, headless=headless, browser=browser)
