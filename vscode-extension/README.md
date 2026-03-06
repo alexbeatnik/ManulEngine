@@ -79,7 +79,8 @@ The **Cache** sidebar tree shows per-site cache entries created by ManulEngine's
 A sidebar panel that lets you insert hunt steps with a single click — no typing required.
 
 - **＋ New Hunt File** button — prompts for a name, creates a `.hunt` file with a starter template in the `tests_home` directory (configured via `tests_home` in `manul_engine_configuration.json`, defaults to `tests/`), and opens it
-- **Step buttons** — one button per step type: Navigate, Fill field, Click, Double Click, Select, Check, Radio, Hover, Drag & Drop, Extract, Verify present/absent/state, Press Enter, Wait, Scroll Down, Done
+- **Step buttons** — one button per step type: Navigate, Fill field, Click, Double Click, Select, Check, Radio, Hover, Drag & Drop, Extract, Verify present/absent/state, Press Enter, Wait, Scroll Down, **Scan Page**, Done
+- **Scan Page** — inserts `SCAN PAGE into draft.hunt`; when the engine executes this step it scans the current browser page for interactive elements and writes a ready-to-run draft hunt file to `tests_home/draft.hunt`
 - Each click appends the next numbered step to the currently open `.hunt` file and positions the cursor inside the first `''` pair for immediate editing
 - Works even when the sidebar has focus (the editor is not the active panel)
 
@@ -166,6 +167,12 @@ See the [ManulEngine README](https://github.com/alexbeatnik/ManulEngine) for the
 ---
 
 ## Release Notes
+
+### 0.0.70 / 0.0.71
+- **Smart Page Scanner** — new `manul scan <URL>` CLI command opens a browser, scans the page for interactive elements (including Shadow DOM), and generates a draft `.hunt` file in the `tests_home` directory
+- **`SCAN PAGE into {filename}`** step keyword — same scanner available as an in-test step; use it mid-hunt to capture a page's elements and save a draft for later refinement
+- **Scan Page** button added to the Step Builder sidebar
+- **Model dropdown fix** — replaced `<input list="datalist">` (rendered offset in VS Code Electron webview) with a plain `<select>` populated from Ollama API; first option is always `null (heuristics-only)`
 
 ### 0.0.7
 - Fix step-insertion buttons in Step Builder sidebar — inline `onclick` handlers were blocked by VS Code webview CSP; replaced with `data-template` attributes and `addEventListener`
