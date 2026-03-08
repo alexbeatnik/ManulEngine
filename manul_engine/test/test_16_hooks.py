@@ -25,7 +25,6 @@ from pathlib import Path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from manul_engine.hooks import (
-    HookResult,
     execute_hook_line,
     extract_hook_blocks,
     run_hooks,

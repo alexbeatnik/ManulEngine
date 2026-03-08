@@ -28,7 +28,6 @@ from __future__ import annotations
 import importlib
 import importlib.util
 import re
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
@@ -186,18 +185,27 @@ def execute_hook_line(
     # ── Load the module ───────────────────────────────────────────────────────
     try:
         module = _resolve_module(module_path, hunt_dir=hunt_dir)
-    except ModuleNotFoundError:
-        hint = (
-            f"'{module_path}.py'" if "." not in module_path
-            else f"'{module_path}' package"
-        )
+    except ModuleNotFoundError as exc:
+        # Only treat as "module not found" when the missing name is the
+        # requested module itself. If exc.name differs, the error comes from
+        # inside an already-found helper (e.g. a missing dependency), so
+        # surface the original exception details instead.
+        if getattr(exc, "name", None) == module_path:
+            hint = (
+                f"'{module_path}.py'" if "." not in module_path
+                else f"'{module_path}' package"
+            )
+            return HookResult(
+                success=False,
+                message=(
+                    f"ManulEngine Error: Module '{module_path}' not found.\n"
+                    f"  Searched in: hunt file directory, CWD, and sys.path.\n"
+                    f"  Make sure {hint} exists or is installed and importable."
+                ),
+            )
         return HookResult(
             success=False,
-            message=(
-                f"ManulEngine Error: Module '{module_path}' not found.\n"
-                f"  Searched in: hunt file directory, CWD, and sys.path.\n"
-                f"  Make sure {hint} exists or is installed and importable."
-            ),
+            message=f"ManulEngine Error: Failed to import '{module_path}': {exc}",
         )
     except ImportError as exc:
         return HookResult(

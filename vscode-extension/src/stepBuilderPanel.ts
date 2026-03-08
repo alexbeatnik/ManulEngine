@@ -295,29 +295,42 @@ async function insertStep(template: string, lastHuntUri?: vscode.Uri): Promise<v
 // ── Hook commands ────────────────────────────────────────────────────────────
 
 /**
- * Shared helper: ensures there is an active .hunt editor, then calls *action*
+ * Shared helper: ensures there is a .hunt editor available, then calls *action*
  * with a live editor reference so that `editor.edit()` works correctly.
+ *
+ * Prefers the active text editor if it is a .hunt file. When the sidebar
+ * webview has focus (activeTextEditor is undefined or non-hunt), falls back
+ * to any visible .hunt editor so hook buttons work from the sidebar too.
  *
  * Returns `undefined` (with a warning) if no .hunt editor is found.
  */
 async function _withHuntEditor(
   action: (editor: vscode.TextEditor) => Promise<void>
 ): Promise<void> {
-  const editor = vscode.window.activeTextEditor;
-  if (!editor || !editor.document.fileName.endsWith(".hunt")) {
+  let target: vscode.TextEditor | undefined;
+  const active = vscode.window.activeTextEditor;
+  if (active && active.document.fileName.endsWith(".hunt")) {
+    target = active;
+  } else {
+    target = vscode.window.visibleTextEditors.find((ed) =>
+      ed.document.fileName.endsWith(".hunt")
+    );
+  }
+  if (!target) {
     vscode.window.showWarningMessage("Please open a .hunt file first.");
     return;
   }
-  await action(editor);
+  await action(target);
 }
 
 /**
- * Insert a `[SETUP]` scaffold at the current cursor position.
- * If a `[SETUP]` block already exists in the document, show a warning instead.
+ * Insert a `[SETUP]` scaffold at the start of the cursor's line.
+ * If an uncommented `[SETUP]` block already exists, show a warning instead.
+ * Commented-out scaffolds (lines starting with #) are intentionally ignored.
  */
 export async function insertSetupCommand(): Promise<void> {
   await _withHuntEditor(async (editor) => {
-    if (editor.document.getText().includes("[SETUP]")) {
+    if (/^\s*\[SETUP\]\s*$/m.test(editor.document.getText())) {
       vscode.window.showWarningMessage("A [SETUP] block already exists in this file.");
       return;
     }
@@ -334,12 +347,13 @@ export async function insertSetupCommand(): Promise<void> {
 }
 
 /**
- * Insert a `[TEARDOWN]` scaffold at the current cursor position.
- * If a `[TEARDOWN]` block already exists in the document, show a warning instead.
+ * Insert a `[TEARDOWN]` scaffold at the start of the cursor's line.
+ * If an uncommented `[TEARDOWN]` block already exists, show a warning instead.
+ * Commented-out scaffolds (lines starting with #) are intentionally ignored.
  */
 export async function insertTeardownCommand(): Promise<void> {
   await _withHuntEditor(async (editor) => {
-    if (editor.document.getText().includes("[TEARDOWN]")) {
+    if (/^\s*\[TEARDOWN\]\s*$/m.test(editor.document.getText())) {
       vscode.window.showWarningMessage("A [TEARDOWN] block already exists in this file.");
       return;
     }
@@ -356,10 +370,6 @@ export async function insertTeardownCommand(): Promise<void> {
 }
 
 /**
- * Insert a complete demo `.hunt` test at the current cursor position.
- * The demo includes a [SETUP] block, three representative steps, and a [TEARDOWN] block.
- */
-/**
  * Insert a numbered `CALL PYTHON module_name.function_name` step at the end
  * of the active .hunt file (same behaviour as the Step Builder buttons).
  * Registered as `manul.insertInlinePythonCall`.
@@ -368,6 +378,11 @@ export async function insertInlinePythonCallCommand(): Promise<void> {
   await insertStep("CALL PYTHON module_name.function_name", undefined);
 }
 
+/**
+ * Insert a demo `.hunt` scaffold at the start of the cursor's line.
+ * The [SETUP] and [TEARDOWN] blocks are commented out by default — create
+ * `demo_helpers.py` next to the hunt file and uncomment to activate them.
+ */
 export async function generateDemoTestCommand(): Promise<void> {
   await _withHuntEditor(async (editor) => {
     const cursor = editor.selection.active;
