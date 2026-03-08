@@ -29,6 +29,7 @@ except Exception:  # pragma: no cover
 
 from . import prompts
 from .helpers import substitute_memory, compact_log_field
+from .hooks import execute_hook_line
 from .js_scripts import SNAPSHOT_JS
 from .scoring import score_elements
 from .actions import _ActionsMixin
@@ -543,7 +544,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
     # ── Mission runner ────────────────────────
 
-    async def run_mission(self, task: str, strategic_context: str = "") -> bool:
+    async def run_mission(self, task: str, strategic_context: str = "", hunt_dir: str | None = None) -> bool:
         """
         Execute a full browser automation mission.
 
@@ -628,6 +629,23 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                         elif re.search(r'\bSCAN\s+PAGE\b', s_up):
                             if not await self._handle_scan_page(page, step):
                                 ok = False; break
+
+                        elif re.search(r'\bCALL\s+PYTHON\b', s_up):
+                            # Strip any leading step number, then re-check from
+                            # the start to avoid false positives on button labels
+                            # that happen to contain the words "CALL PYTHON".
+                            instruction = re.sub(r'^\s*\d+\.\s*', '', step).strip()
+                            if re.match(r'CALL\s+PYTHON\b', instruction.upper()):
+                                result = execute_hook_line(instruction, hunt_dir=hunt_dir)
+                                print(f"     {result.message}")
+                                if not result.success:
+                                    ok = False; break
+                            else:
+                                # "CALL PYTHON" appears mid-sentence (e.g. a button
+                                # label) — route through the normal action executor.
+                                if not await self._execute_step(page, step, strategic_context):
+                                    print("    ❌ ACTION FAILED")
+                                    ok = False; break
 
                         elif re.search(r'\b(?:DEBUG|PAUSE)\b', s_up):
                             # In debug_mode the pre-step _debug_prompt() above already

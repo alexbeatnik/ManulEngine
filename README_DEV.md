@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.0.8.2 — The Mastermind
+# 😼 ManulEngine v0.0.8.3 — The Mastermind
 
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 
@@ -20,11 +20,12 @@ Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristi
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.8.2
+├── pyproject.toml                    Build config — package: manul-engine 0.0.8.3
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
 │   ├── cli.py                        Installed CLI entry point (`manul` command + `manul scan` subcommand)
+│   ├── hooks.py                      [SETUP] / [TEARDOWN] hook parser and executor
 │   ├── _test_runner.py               Dev-only synthetic test runner (not in public CLI)
 │   ├── prompts.py                    JSON config loader, thresholds, LLM prompts
 │   ├── helpers.py                    Pure utility functions, env helpers, timing constants
@@ -41,7 +42,8 @@ ManulEngine/
 │       ├── test_12_ai_modes.py       Unit: Always-AI/strict/rejection
 │       ├── test_13_controls_cache.py Unit: persistent controls cache
 │       ├── test_14_qa_classics.py    Unit: legacy HTML patterns, tables, fieldsets
-│       └── test_15_facebook_final_boss.py
+        ├── test_15_facebook_final_boss.py
+        └── test_16_hooks.py          Unit: [SETUP]/[TEARDOWN] hooks (no browser)
 ├── tests/                            Integration hunt tests (real websites)
 │   ├── demoqa.hunt
 │   ├── mega.hunt
@@ -53,7 +55,7 @@ ManulEngine/
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 └── vscode-extension/                 VS Code extension (language support + UI)
-    ├── package.json                  Extension manifest (v0.0.82)
+    ├── package.json                  Extension manifest (v0.0.83)
     ├── src/
     │   ├── extension.ts              Activation, command registration
     │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
@@ -75,11 +77,59 @@ ManulEngine/
 
 When the LLM picker is used, Manul passes the heuristic `score` as a **prior** (hint) by default (`MANUL_AI_POLICY=prior`) — the model can override the ranking only with a clear, disqualifying reason.
 
+### 🧹 [SETUP] / [TEARDOWN] Hooks and Inline `CALL PYTHON` Steps
+
+Version 0.0.8.3 introduces a pre/post hook mechanism powered by `manul_engine/hooks.py`. Hooks allow arbitrary synchronous Python to run before and after the browser mission. Version 0.0.8.3 also extends this capability to **inline steps**: `CALL PYTHON <module>.<func>` can now appear as a regular numbered step anywhere in the main mission body.
+
+**Execution lifecycle:**
+
+```
+[SETUP] block         → runs before browser launches
+  browser mission     → numbered hunt steps (may include CALL PYTHON steps)
+[TEARDOWN] block      → runs in finally{}, always after setup succeeds
+```
+
+**Architecture:** The main step executor in `core.py` (`run_mission()`) reuses `execute_hook_line()` from `hooks.py` directly — no duplicated module-resolution logic. The `hunt_dir` parameter is passed through `run_mission(hunt_dir=...)` so inline calls resolve modules relative to the `.hunt` file's directory, exactly as `[SETUP]`/`[TEARDOWN]` do. `cli.py` passes `hunt_dir` to `run_mission` alongside the mission text.
+
+**Module resolution order** (per `CALL PYTHON` instruction — identical for hooks and inline steps):
+
+1. Directory of the `.hunt` file — local project helpers.
+2. `Path.cwd()` — project root.
+3. Standard `importlib.import_module` — installed packages / PYTHONPATH.
+
+**State isolation:** Modules found via steps 1 and 2 are executed with `spec.loader.exec_module(mod)` into a fresh `ModuleType` object that is **never inserted into `sys.modules`**. This rule applies equally to hook blocks and inline `CALL PYTHON` steps — no `sys.modules` pollution regardless of where in the file the call appears.
+
+**Async rejection:** `asyncio.iscoroutinefunction()` is checked before invoking the callable. Async functions are explicitly rejected with a descriptive error message and a concrete workaround (`asyncio.run()` inside the helper). This applies to both hooks and inline calls.
+
+**Error taxonomy and messages:**
+
+| Error condition | User-facing message prefix |
+|---|---|
+| Unrecognised instruction | `"Unrecognised hook instruction: '...'"` |
+| Missing `.` separator | `"requires '<module>.<function>'"` |
+| Module not found | `"Module 'x' not found. Searched in: ..."` |
+| Function not found | `"Could not find function 'f' in module 'x.py'. Available: [...]"` |
+| Attribute not callable | `"'f' in 'x.py' is not callable (found <type>)"` |
+| Async callable | `"'f' is async. Hook functions must be synchronous..."` |
+| Function raises | `"'x.f()' raised ExcType: message"` |
+
+**Key APIs in `hooks.py`:**
+
+```python
+extract_hook_blocks(raw_text)  → (setup_lines, teardown_lines, mission_body)
+execute_hook_line(line, hunt_dir)  → HookResult(success, message)
+run_hooks(lines, label, hunt_dir)  → bool
+```
+
+`parse_hunt_file()` in `cli.py` returns a 6-tuple including `setup_lines` and `teardown_lines`. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
+
+The full hook unit test suite (`41 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
+
 ### 🛡️ Unbreakable JS Fallbacks
 
 Modern websites love to hide elements behind invisible overlays, custom dropdowns, and zero-pixel traps. Manul primarily uses Playwright interactions with `force=True` plus retries/self-healing; for Shadow DOM elements it falls back to direct JS helpers (`window.manulClick`, `window.manulType`) to keep execution moving.
 
-### 🌑 Shadow DOM Awareness
+### 🪝 Shadow DOM Awareness
 
 The DOM snapshotter recursively inspects shadow roots and can interact with elements in the shadow tree.
 
@@ -268,9 +318,9 @@ manul tests/mission.hunt
 
 ---
 
-## 🐾 Chaos Chamber Verified (1227+ Tests)
+## 🐾 Chaos Chamber Verified (1268+ Tests)
 
-The engine is battle-tested with **1227+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
+The engine is battle-tested with **1268+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).
@@ -352,7 +402,7 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 ---
 
-**Version:** 0.0.8.2
+**Version:** 0.0.8.3
 
 **Codename:** The Mastermind
 

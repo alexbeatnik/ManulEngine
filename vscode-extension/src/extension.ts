@@ -9,7 +9,7 @@ import {
 import { findManulExecutable, runHuntFileDebugPanel, getHuntBreakpointLines } from "./huntRunner";
 import { DebugControlPanel } from "./debugControlPanel";
 import { ConfigPanelProvider, generateConfigCommand } from "./configPanel";
-import { StepBuilderProvider, newHuntFileCommand } from "./stepBuilderPanel";
+import { StepBuilderProvider, newHuntFileCommand, insertSetupCommand, insertTeardownCommand, generateDemoTestCommand, insertInlinePythonCallCommand } from "./stepBuilderPanel";
 import {
   CacheTreeProvider,
   CacheItem,
@@ -100,6 +100,22 @@ export function activate(context: vscode.ExtensionContext): void {
 
     vscode.commands.registerCommand("manul.newHuntFile", () =>
       newHuntFileCommand(context)
+    ),
+
+    vscode.commands.registerCommand("manul.insertSetup", () =>
+      insertSetupCommand()
+    ),
+
+    vscode.commands.registerCommand("manul.insertTeardown", () =>
+      insertTeardownCommand()
+    ),
+
+    vscode.commands.registerCommand("manul.generateDemoTest", () =>
+      generateDemoTestCommand()
+    ),
+
+    vscode.commands.registerCommand("manul.insertInlinePythonCall", () =>
+      insertInlinePythonCallCommand()
     ),
 
     vscode.commands.registerCommand("manul.generateConfig", () =>

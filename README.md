@@ -54,6 +54,52 @@ Successful element resolutions are stored per-site and reused on subsequent runs
 
 ---
 
+## ⚡ Lightning-Fast Preconditions with Python Hooks
+
+Stop wasting hours on brittle UI-based preconditions. With `[SETUP]` and `[TEARDOWN]` hooks you can inject test data directly into your database or call an API in pure Python — keeping your `.hunt` files crystal clear and your test runs **dramatically faster**.
+
+```text
+[SETUP]
+CALL PYTHON db_helpers.seed_admin_user
+[END SETUP]
+
+1. NAVIGATE to https://myapp.com/login
+2. Fill 'Email' field with 'admin@example.com'
+3. Fill 'Password' field with 'secret'
+4. Click the 'Sign In' button
+5. VERIFY that 'Dashboard' is present.
+
+[TEARDOWN]
+CALL PYTHON db_helpers.clean_database
+[END TEARDOWN]
+```
+
+Hooks run **outside the browser**: `[SETUP]` fires before the browser opens; `[TEARDOWN]` fires in a `finally` block — always — regardless of whether the test passed or failed. If setup fails, the mission is skipped and teardown is not called (there's nothing to clean up).
+
+| Block | When it runs | Abort behaviour |
+|---|---|---|
+| `[SETUP]` | Before the browser launches | Failure skips mission + teardown |
+| `[TEARDOWN]` | After the mission (pass or fail) | Failure is logged, does not override mission result |
+
+The helper module is resolved relative to the `.hunt` file's directory first, then the CWD, then standard `sys.path` — no configuration needed.
+
+### 🐍 Inline Python Calls
+
+Need to fetch an OTP from the database mid-test? Or trigger a backend job before clicking "Refresh"? You can now call Python functions **directly as standard numbered steps** — right in the middle of your UI flow.
+
+```text
+1. FILL 'Email' field with 'test@manul.com'
+2. CLICK the 'Send OTP' button
+3. CALL PYTHON api_helpers.fetch_and_set_otp
+4. Fill 'OTP' field with '{otp}'
+5. CLICK the 'Login' button
+6. VERIFY that 'Dashboard' is present.
+```
+
+The same module resolution rules apply as for `[SETUP]`/`[TEARDOWN]`: hunt file directory → CWD → `sys.path`. Functions must be synchronous. If the call fails, the mission stops immediately — just like any other failed step. No special syntax or block wrapping required.
+
+---
+
 ## 🛠️ Installation
 
 ```bash
@@ -173,6 +219,31 @@ Lines starting with `#` are ignored.
 | `SCAN PAGE` | Scan the current page for interactive elements and print a draft `.hunt` to the console |
 | `SCAN PAGE into {filename}` | Same, and also write the draft to `{filename}` (default: `tests_home/draft.hunt`) |
 | `DONE.` | End the mission |
+
+### Python Hooks & Inline Python Calls
+
+Optional `[SETUP]`/`[TEARDOWN]` blocks (placed at the top/bottom of the file) and inline `CALL PYTHON` steps (used anywhere in the numbered sequence) all share the same execution model.
+
+```text
+[SETUP]
+# Lines starting with # are ignored.
+CALL PYTHON <module_path>.<function_name>
+[END SETUP]
+
+1. NAVIGATE to https://myapp.com
+2. CALL PYTHON api_helpers.fetch_and_set_otp
+3. VERIFY that 'Dashboard' is present.
+
+[TEARDOWN]
+CALL PYTHON <module_path>.<function_name>
+[END TEARDOWN]
+```
+
+Rules:
+- Functions must be **synchronous** (async functions are explicitly rejected).
+- A single `[SETUP]`/`[TEARDOWN]` block may contain multiple `CALL PYTHON` lines; they run sequentially — first failure stops the block.
+- An inline `CALL PYTHON` step that fails stops the mission immediately, just like any other failed step.
+- The module is searched in: hunt file directory → CWD → `sys.path`. No import configuration needed.
 
 ### Interaction Steps
 
@@ -309,7 +380,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 
 ## 🐾 Battle-Tested
 
-ManulEngine is verified against **1227+ synthetic DOM tests** covering:
+ManulEngine is verified against **1268+ synthetic DOM tests** covering:
 
 - Shadow DOM, invisible overlays, zero-pixel honeypots
 - Custom dropdowns, drag-and-drop, hover menus
@@ -319,4 +390,4 @@ ManulEngine is verified against **1227+ synthetic DOM tests** covering:
 
 ---
 
-**Version:** 0.0.8.2 · **Status:** Hunting...
+**Version:** 0.0.8.3 · **Status:** Hunting...
