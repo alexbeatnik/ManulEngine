@@ -12,6 +12,32 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 
+// ── Hook scaffold constants ──────────────────────────────────────────────────
+
+const SETUP_SCAFFOLD = `[SETUP]
+CALL PYTHON module_name.function_name
+[END SETUP]`;
+
+const TEARDOWN_SCAFFOLD = `[TEARDOWN]
+CALL PYTHON module_name.function_name
+[END TEARDOWN]`;
+
+const DEMO_TEST_SCAFFOLD = `@context: E2E Login Flow with Hooks
+
+# To enable hooks: create demo_helpers.py next to this file with
+# inject_test_session() and clean_database() functions, then uncomment below.
+# [SETUP]
+# CALL PYTHON demo_helpers.inject_test_session
+# [END SETUP]
+
+1. NAVIGATE to "https://example.com"
+2. Click "More information..." link
+3. VERIFY that "IANA" is present
+
+# [TEARDOWN]
+# CALL PYTHON demo_helpers.clean_database
+# [END TEARDOWN]`;
+
 // ── Step templates ────────────────────────────────────────────────────────────
 
 interface StepTemplate {
@@ -86,6 +112,12 @@ export class StepBuilderProvider implements vscode.WebviewViewProvider {
         await insertStep(msg.template, this._lastHuntUri);
       } else if (msg.command === "newHuntFile") {
         await newHuntFileCommand(this._context);
+      } else if (msg.command === "insertSetup") {
+        await vscode.commands.executeCommand("manul.insertSetup");
+      } else if (msg.command === "insertTeardown") {
+        await vscode.commands.executeCommand("manul.insertTeardown");
+      } else if (msg.command === "generateDemoTest") {
+        await vscode.commands.executeCommand("manul.generateDemoTest");
       }
     });
   }
@@ -138,6 +170,10 @@ export class StepBuilderProvider implements vscode.WebviewViewProvider {
 </head>
 <body>
   <button class="new-btn" id="btn-new-file">＋ New Hunt File</button>
+  <h3>Hooks</h3>
+  <button class="step-btn" id="btn-insert-setup">🔧 Insert [SETUP] block</button>
+  <button class="step-btn" id="btn-insert-teardown">🧹 Insert [TEARDOWN] block</button>
+  <button class="step-btn" id="btn-generate-demo">🎯 Generate Demo Test</button>
   <h3>Insert Step</h3>
   ${buttons}
   <script nonce="${nonce}">
@@ -145,9 +181,20 @@ export class StepBuilderProvider implements vscode.WebviewViewProvider {
     document.getElementById('btn-new-file').addEventListener('click', function() {
       vsc.postMessage({ command: 'newHuntFile' });
     });
+    document.getElementById('btn-insert-setup').addEventListener('click', function() {
+      vsc.postMessage({ command: 'insertSetup' });
+    });
+    document.getElementById('btn-insert-teardown').addEventListener('click', function() {
+      vsc.postMessage({ command: 'insertTeardown' });
+    });
+    document.getElementById('btn-generate-demo').addEventListener('click', function() {
+      vsc.postMessage({ command: 'generateDemoTest' });
+    });
     document.querySelectorAll('.step-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
-        vsc.postMessage({ command: 'insertStep', template: btn.dataset.template });
+        if (btn.dataset.template !== undefined) {
+          vsc.postMessage({ command: 'insertStep', template: btn.dataset.template });
+        }
       });
     });
   </script>
@@ -242,6 +289,87 @@ async function insertStep(template: string, lastHuntUri?: vscode.Uri): Promise<v
     editor.selection = new vscode.Selection(pos, pos);
     editor.revealRange(new vscode.Range(pos, pos));
   }
+}
+
+// ── Hook commands ────────────────────────────────────────────────────────────
+
+/**
+ * Shared helper: ensures there is an active .hunt editor, then calls *action*
+ * with a live editor reference so that `editor.edit()` works correctly.
+ *
+ * Returns `undefined` (with a warning) if no .hunt editor is found.
+ */
+async function _withHuntEditor(
+  action: (editor: vscode.TextEditor) => Promise<void>
+): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor || !editor.document.fileName.endsWith(".hunt")) {
+    vscode.window.showWarningMessage("Please open a .hunt file first.");
+    return;
+  }
+  await action(editor);
+}
+
+/**
+ * Insert a `[SETUP]` scaffold at the current cursor position.
+ * If a `[SETUP]` block already exists in the document, show a warning instead.
+ */
+export async function insertSetupCommand(): Promise<void> {
+  await _withHuntEditor(async (editor) => {
+    if (editor.document.getText().includes("[SETUP]")) {
+      vscode.window.showWarningMessage("A [SETUP] block already exists in this file.");
+      return;
+    }
+    const cursor = editor.selection.active;
+    const lineStart = new vscode.Position(cursor.line, 0);
+    const prefix = cursor.line > 0 ? "\n" : "";
+    const ok = await editor.edit((eb) => {
+      eb.insert(lineStart, `${prefix}${SETUP_SCAFFOLD}\n`);
+    });
+    if (!ok) {
+      vscode.window.showWarningMessage("Could not insert [SETUP] block — document may be read-only.");
+    }
+  });
+}
+
+/**
+ * Insert a `[TEARDOWN]` scaffold at the current cursor position.
+ * If a `[TEARDOWN]` block already exists in the document, show a warning instead.
+ */
+export async function insertTeardownCommand(): Promise<void> {
+  await _withHuntEditor(async (editor) => {
+    if (editor.document.getText().includes("[TEARDOWN]")) {
+      vscode.window.showWarningMessage("A [TEARDOWN] block already exists in this file.");
+      return;
+    }
+    const cursor = editor.selection.active;
+    const lineStart = new vscode.Position(cursor.line, 0);
+    const prefix = cursor.line > 0 ? "\n" : "";
+    const ok = await editor.edit((eb) => {
+      eb.insert(lineStart, `${prefix}${TEARDOWN_SCAFFOLD}\n`);
+    });
+    if (!ok) {
+      vscode.window.showWarningMessage("Could not insert [TEARDOWN] block — document may be read-only.");
+    }
+  });
+}
+
+/**
+ * Insert a complete demo `.hunt` test at the current cursor position.
+ * The demo includes a [SETUP] block, three representative steps, and a [TEARDOWN] block.
+ */
+export async function generateDemoTestCommand(): Promise<void> {
+  await _withHuntEditor(async (editor) => {
+    const cursor = editor.selection.active;
+    const lineStart = new vscode.Position(cursor.line, 0);
+    const prefix = cursor.line > 0 ? "\n" : "";
+    const ok = await editor.edit((eb) => {
+      eb.insert(lineStart, `${prefix}${DEMO_TEST_SCAFFOLD}\n`);
+    });
+    if (!ok) {
+      vscode.window.showWarningMessage("Could not insert demo test — document may be read-only.");
+    }
+  });
 }
 
 /**

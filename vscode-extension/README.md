@@ -96,6 +96,7 @@ A sidebar panel that lets you insert hunt steps with a single click — no typin
 
 - **＋ New Hunt File** button — prompts for a name, creates a `.hunt` file with a starter template in the `tests_home` directory (configured via `tests_home` in `manul_engine_configuration.json`, defaults to `tests/`), and opens it
 - **Step buttons** — one button per step type: Navigate, Fill field, Click, Double Click, Select, Check, Radio, Hover, Drag & Drop, Extract, Verify present/absent/state, Press Enter, Wait, Scroll Down, **Scan Page**, **Debug / Pause**, Done
+- **Hooks buttons** — **🔧 Insert [SETUP]** and **🧹 Insert [TEARDOWN]** insert pre-filled hook blocks with `CALL PYTHON module.function` placeholders; **🎯 Generate Demo Test** scaffolds a complete hunt file with setup, UI steps, and teardown in one click
 - **Scan Page** — inserts `SCAN PAGE into draft.hunt`; when the engine executes this step it scans the current browser page for interactive elements and writes a ready-to-run draft hunt file to `tests_home/draft.hunt`
 - Each click appends the next numbered step to the currently open `.hunt` file and positions the cursor inside the first `''` pair for immediate editing
 - Works even when the sidebar has focus (the editor is not the active panel)
@@ -183,6 +184,11 @@ See the [ManulEngine README](https://github.com/alexbeatnik/ManulEngine) for the
 ---
 
 ## Release Notes
+
+### 0.0.83
+- **Python Hooks** — `[SETUP]` / `[TEARDOWN]` blocks in `.hunt` files now invoke synchronous Python functions before/after the browser mission via `CALL PYTHON module.function`; setup failure skips mission + teardown; teardown always runs in a `finally` block
+- **Hooks buttons in Step Builder** — **🔧 Insert [SETUP]**, **🧹 Insert [TEARDOWN]**, and **🎯 Generate Demo Test** buttons added to the Step Builder sidebar
+- **`ManulEngine: Insert [SETUP] Block`**, **`ManulEngine: Insert [TEARDOWN] Block`**, **`ManulEngine: Generate Demo Test`** commands available in the Command Palette
 
 ### 0.0.82
 - **Interactive Debug Mode** — place gutter breakpoints (red dots) next to steps in any `.hunt` file; run the new **Debug** profile in Test Explorer or invoke `ManulEngine: Debug Hunt File` to step through a hunt interactively

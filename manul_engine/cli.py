@@ -80,21 +80,60 @@ class _Tee:
 
 
 # ── Parse .hunt file ─────────────────────────────────────────────────────────
-def parse_hunt_file(filepath: str) -> tuple[str, str, str, list[int]]:
-    """Return (mission_body, context, blueprint, step_file_lines) from a .hunt file.
+def parse_hunt_file(
+    filepath: str,
+) -> tuple[str, str, str, list[int], list[str], list[str]]:
+    """Return ``(mission_body, context, blueprint, step_file_lines, setup_lines, teardown_lines)``.
 
-    step_file_lines[i] is the 1-based file line number of the (i+1)-th numbered
-    step, in order of appearance.  Used to map editor gutter breakpoints to step
-    indices that ManulEngine should pause before.
+    *step_file_lines[i]* is the 1-based file line number of the *(i+1)*-th
+    numbered step, in order of appearance.  Used to map editor gutter
+    breakpoints to step indices that ManulEngine should pause before.
+    Line numbers always refer to the **original** file, even when hook blocks
+    are present — hook block lines are skipped transparently.
+
+    *setup_lines* / *teardown_lines* contain the instruction strings extracted
+    from ``[SETUP]`` / ``[TEARDOWN]`` blocks respectively, ready for
+    execution by :func:`manul_engine.hooks.run_hooks`.
     """
+    from .hooks import RE_SETUP, RE_END_SETUP, RE_TEARDOWN, RE_END_TEARDOWN
+
     context = ""
     blueprint = ""
-    mission_lines: list[str] = []
+    mission_lines:  list[str] = []
     step_file_lines: list[int] = []
+    setup_lines:    list[str] = []
+    teardown_lines: list[str] = []
+    in_setup    = False
+    in_teardown = False
 
     with open(filepath, "r", encoding="utf-8") as fh:
         for lineno, line in enumerate(fh, 1):
             stripped = line.strip()
+
+            # ── Hook block markers ─────────────────────────────────────────────
+            if RE_SETUP.match(stripped):
+                in_setup = True
+                continue
+            if RE_END_SETUP.match(stripped):
+                in_setup = False
+                continue
+            if RE_TEARDOWN.match(stripped):
+                in_teardown = True
+                continue
+            if RE_END_TEARDOWN.match(stripped):
+                in_teardown = False
+                continue
+
+            if in_setup:
+                if stripped and not stripped.startswith("#"):
+                    setup_lines.append(stripped)
+                continue
+            if in_teardown:
+                if stripped and not stripped.startswith("#"):
+                    teardown_lines.append(stripped)
+                continue
+
+            # ── Normal mission line ────────────────────────────────────────────
             if stripped.startswith("@context:"):
                 context = stripped.split(":", 1)[1].strip()
             elif stripped.startswith("@blueprint:"):
@@ -104,7 +143,14 @@ def parse_hunt_file(filepath: str) -> tuple[str, str, str, list[int]]:
                 if re.match(r'^\d+\.', stripped):
                     step_file_lines.append(lineno)
 
-    return "".join(mission_lines).strip(), context, blueprint, step_file_lines
+    return (
+        "".join(mission_lines).strip(),
+        context,
+        blueprint,
+        step_file_lines,
+        setup_lines,
+        teardown_lines,
+    )
 
 
 # ── Find the current manul executable ───────────────────────────────────────
@@ -137,7 +183,9 @@ async def _run_hunt_file(
     print(f"📜 EXECUTING MANUL HUNT: {filename}")
     print(f"{'='*60}")
 
-    mission, context, blueprint, step_file_lines = parse_hunt_file(path)
+    mission, context, blueprint, step_file_lines, setup_lines, teardown_lines = (
+        parse_hunt_file(path)
+    )
 
     # Map file line numbers (from editor gutter breakpoints) to step indices.
     _break_lines = break_lines or set()
@@ -158,7 +206,19 @@ async def _run_hunt_file(
         context = f"[{blueprint}] {context}"
 
     from manul_engine import ManulEngine
+    from manul_engine.hooks import run_hooks
+
+    hunt_dir = os.path.dirname(os.path.abspath(path))
+
+    # ── [SETUP] ───────────────────────────────────────────────────────────────
+    # If setup fails, we skip the mission and teardown entirely — there is
+    # nothing to clean up because setup never completed.
+    if not run_hooks(setup_lines, label="SETUP", hunt_dir=hunt_dir):
+        print(f"\n❌ SETUP failed — skipping mission and teardown for {filename}")
+        return False
+
     manul = ManulEngine(headless=headless, browser=browser, debug_mode=debug, break_steps=break_steps)
+    result = False
     try:
         result = await manul.run_mission(mission, strategic_context=context)
         return bool(result)
@@ -167,6 +227,11 @@ async def _run_hunt_file(
         import traceback
         traceback.print_exc(file=sys.stdout)
         return False
+    finally:
+        # ── [TEARDOWN] ────────────────────────────────────────────────────────
+        # Always runs after setup succeeds, regardless of mission outcome.
+        # Teardown failures are logged but do not override the mission result.
+        run_hooks(teardown_lines, label="TEARDOWN", hunt_dir=hunt_dir)
 
 
 # ── Collect .hunt files from a path ──────────────────────────────────────────

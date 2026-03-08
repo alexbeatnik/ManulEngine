@@ -1,0 +1,15 @@
+@context: E2E Login Flow with Hooks
+
+# To enable hooks: create demo_helpers.py next to this file with
+# inject_test_session() and clean_database() functions, then uncomment below.
+# [SETUP]
+# CALL PYTHON demo_helpers.inject_test_session
+# [END SETUP]
+
+1. NAVIGATE to "https://example.com"
+2. Click "More information..." link
+3. VERIFY that "IANA" is present
+
+# [TEARDOWN]
+# CALL PYTHON demo_helpers.clean_database
+# [END TEARDOWN]

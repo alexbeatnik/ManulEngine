@@ -2,7 +2,7 @@
   "name": "manul-engine",
   "displayName": "ManulEngine",
   "description": "Hunt file language support, test runner and configuration UI for ManulEngine browser automation",
-  "version": "0.0.82",
+  "version": "0.0.83",
   "publisher": "manul-engine",
   "icon": "images/icon128.png",
   "repository": {
@@ -104,6 +104,18 @@
         "command": "manul.newHuntFile",
         "title": "ManulEngine: New Hunt File",
         "icon": "$(new-file)"
+      },
+      {
+        "command": "manul.insertSetup",
+        "title": "ManulEngine: Insert [SETUP] Block"
+      },
+      {
+        "command": "manul.insertTeardown",
+        "title": "ManulEngine: Insert [TEARDOWN] Block"
+      },
+      {
+        "command": "manul.generateDemoTest",
+        "title": "ManulEngine: Generate Demo Test"
       },
       {
         "command": "manul.generateConfig",

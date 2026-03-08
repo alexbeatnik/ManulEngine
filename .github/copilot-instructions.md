@@ -33,12 +33,14 @@ manul_engine/
   scanner.py               Smart Page Scanner — scan_page(), build_hunt(), scan_main()
   helpers.py               substitute_memory(), extract_quoted(), env_bool(), timing constants
   cli.py                   Public installed CLI entry point (manul command + manul scan subcommand)
+  hooks.py                 [SETUP] / [TEARDOWN] hook parser and executor
   _test_runner.py          Dev-only synthetic test runner (not in public CLI)
   test/
     test_00_engine.py       synthetic DOM micro-suite (local HTML via Playwright)
     test_01_ecommerce.py    synthetic DOM scenario pack
     ...
     test_15_facebook_final_boss.py
+    test_16_hooks.py        [SETUP]/[TEARDOWN] unit tests (41 assertions, no browser)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables
   expandtesting.hunt      integration: login, inputs, dynamic tables
@@ -46,7 +48,7 @@ tests/
   rahul.hunt              integration: radios, autocomplete, hover
   wikipedia.hunt          integration: search, navigate, extract, verify, shadow-dom inputs
 vscode-extension/
-  package.json              Extension manifest (v0.0.82)
+  package.json              Extension manifest (v0.0.83)
   src:
     extension.ts            Activation, command registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
@@ -144,6 +146,9 @@ These keywords are detected via word-boundary regex, bypass heuristics, and are 
 * `SCAN PAGE` — Runs `SCAN_JS` on the current page, maps results to hunt steps, prints a draft to console.
 * `SCAN PAGE into {filename}` — Same, but also writes the draft to `{filename}`. Output defaults to `{tests_home}/draft.hunt` (reads `tests_home` from `manul_engine_configuration.json`, defaults to `tests/`).
 * `DONE.` — Explicitly ends the mission.
+* `[SETUP]` / `[END SETUP]` — Block wrapping `CALL PYTHON <module>.<function>` lines. Runs **before** the browser launches. If any line fails, the mission is skipped and teardown is not called.
+* `[TEARDOWN]` / `[END TEARDOWN]` — Cleanup block. Runs in a `finally` block **after** the mission (pass or fail). Only executed if `[SETUP]` succeeded. Failure is logged but does not override the mission result.
+* Inside hook blocks, each non-blank non-comment line must have the form: `CALL PYTHON <module>.<function>`. The module is resolved in this order: the `.hunt` file's directory → `CWD` → standard `importlib.import_module`. Target functions must be **synchronous**.
 
 ### 6. Interaction Actions (Parsed Modes)
 If not a System Keyword, the engine detects the interaction mode based on verbs:
@@ -166,6 +171,13 @@ Variables extracted using `EXTRACT` can be substituted in downstream steps.
 * **Verify After Actions:** Always use a `VERIFY` step after taking a significant action (e.g., login, form submit) before assuming the new page state.
 * **Implicit Context:** The engine reuses context if you refer to previous elements implicitly, e.g., `Type "Password" into that field`.
 
+### 9. Python Hooks (`[SETUP]` / `[TEARDOWN]`)
+Hook blocks run synchronous Python functions **outside the browser** — the primary use case is injecting database state or calling an API before the mission starts.
+* When generating `.hunt` tests that require specific initial data (users, records, session tokens), **ALWAYS** use `[SETUP]` with `CALL PYTHON`. Never use brittle UI steps (e.g., "Click Create User") as test preconditions.
+* `[TEARDOWN]` cleanup runs whether the mission passed or failed. Use it to delete test records and reset state.
+* Target functions **must be synchronous**. Async callables are explicitly rejected with a descriptive error.
+* Module resolution order: hunt file's directory → `CWD` → `sys.path`. Modules from the first two scopes are executed in isolation — never inserted into `sys.modules` — preventing cross-test contamination.
+
 ## Code patterns to follow
 
 * Import: `from manul_engine import ManulEngine` (never `engine` or `framework`).
@@ -182,6 +194,7 @@ Variables extracted using `EXTRACT` can be substituted in downstream steps.
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
 * **Debug mode:** `ManulEngine(debug_mode=True, break_steps={N,...})`. `debug_mode=True` (from `--debug`) highlights the resolved element and pauses before every step using `input()` in TTY or Playwright's `page.pause()`. `break_steps` (from `--break-lines`) pauses only at listed step indices using the stdout/stdin panel protocol when stdout is not a TTY. The two are mutually exclusive in practice — the extension only ever sets `break_steps` via `--break-lines`.
 * **Element highlight in debug mode:** Before every action when `debug_mode=True`, the engine injects JS to draw a dashed red border on the target element for 500 ms so the tester can visually confirm which element was picked.
+* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). `parse_hunt_file()` in `cli.py` returns a **6-tuple** `(mission, context, blueprint, step_file_lines, setup_lines, teardown_lines)`. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
 
 ## Running tests
 
