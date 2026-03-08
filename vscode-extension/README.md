@@ -96,7 +96,7 @@ A sidebar panel that lets you insert hunt steps with a single click — no typin
 
 - **＋ New Hunt File** button — prompts for a name, creates a `.hunt` file with a starter template in the `tests_home` directory (configured via `tests_home` in `manul_engine_configuration.json`, defaults to `tests/`), and opens it
 - **Step buttons** — one button per step type: Navigate, Fill field, Click, Double Click, Select, Check, Radio, Hover, Drag & Drop, Extract, Verify present/absent/state, Press Enter, Wait, Scroll Down, **Scan Page**, **🐍 Call Python**, **Debug / Pause**, Done
-- **🐍 Call Python** — inserts a numbered `CALL PYTHON module_name.function_name` step at the current cursor position with a single click; rename the placeholders and your Python function runs inline as part of the test — no block wrappers needed
+- **🐍 Call Python** — appends a numbered `CALL PYTHON module_name.function_name` step to the end of the current `.hunt` file with a single click; rename the placeholders and your Python function runs inline as part of the test — no block wrappers needed
 - **Hooks buttons** — **🔧 Insert [SETUP]** and **🧹 Insert [TEARDOWN]** insert pre-filled hook blocks with `CALL PYTHON module.function` placeholders; **🎯 Generate Demo Test** scaffolds a complete hunt file with setup, UI steps, and teardown in one click
 - **Scan Page** — inserts `SCAN PAGE into draft.hunt`; when the engine executes this step it scans the current browser page for interactive elements and writes a ready-to-run draft hunt file to `tests_home/draft.hunt`
 - Each click appends the next numbered step to the currently open `.hunt` file and positions the cursor inside the first `''` pair for immediate editing

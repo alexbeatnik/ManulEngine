@@ -295,32 +295,35 @@ async function insertStep(template: string, lastHuntUri?: vscode.Uri): Promise<v
 // ── Hook commands ────────────────────────────────────────────────────────────
 
 /**
- * Shared helper: ensures there is a .hunt editor available, then calls *action*
- * with a live editor reference so that `editor.edit()` works correctly.
+ * Shared helper for hook/demo commands: resolves the best available .hunt
+ * document, brings it to the foreground via `openTextDocument` +
+ * `showTextDocument` (same pattern as `insertStep`), then calls *action* with
+ * a live, freshly-focused editor reference so that `editor.edit()` never
+ * operates on a stale reference.
  *
- * Prefers the active text editor if it is a .hunt file. When the sidebar
- * webview has focus (activeTextEditor is undefined or non-hunt), falls back
- * to any visible .hunt editor so hook buttons work from the sidebar too.
+ * URI resolution priority (mirrors `insertStep`):
+ *   1. Active editor if it is a .hunt file
+ *   2. Any open (non-closed) .hunt document in the workspace
  *
- * Returns `undefined` (with a warning) if no .hunt editor is found.
+ * Returns `undefined` (with a warning) if no .hunt document is found.
  */
 async function _withHuntEditor(
   action: (editor: vscode.TextEditor) => Promise<void>
 ): Promise<void> {
-  let target: vscode.TextEditor | undefined;
-  const active = vscode.window.activeTextEditor;
-  if (active && active.document.fileName.endsWith(".hunt")) {
-    target = active;
-  } else {
-    target = vscode.window.visibleTextEditors.find((ed) =>
-      ed.document.fileName.endsWith(".hunt")
-    );
-  }
-  if (!target) {
+  const activeUri = vscode.window.activeTextEditor?.document.fileName.endsWith(".hunt")
+    ? vscode.window.activeTextEditor.document.uri
+    : undefined;
+  const anyOpenHunt = vscode.workspace.textDocuments.find(
+    (d) => d.fileName.endsWith(".hunt") && !d.isClosed
+  )?.uri;
+  const uri = activeUri ?? anyOpenHunt;
+  if (!uri) {
     vscode.window.showWarningMessage("Please open a .hunt file first.");
     return;
   }
-  await action(target);
+  const doc = await vscode.workspace.openTextDocument(uri);
+  const editor = await vscode.window.showTextDocument(doc, { preview: false, preserveFocus: false });
+  await action(editor);
 }
 
 /**

@@ -631,11 +631,21 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                 ok = False; break
 
                         elif re.search(r'\bCALL\s+PYTHON\b', s_up):
-                            raw_line = re.sub(r'^\d+\.\s*', '', step).strip()
-                            result = execute_hook_line(raw_line, hunt_dir=hunt_dir)
-                            print(f"     {result.message}")
-                            if not result.success:
-                                ok = False; break
+                            # Strip any leading step number, then re-check from
+                            # the start to avoid false positives on button labels
+                            # that happen to contain the words "CALL PYTHON".
+                            instruction = re.sub(r'^\s*\d+\.\s*', '', step).strip()
+                            if re.match(r'CALL\s+PYTHON\b', instruction.upper()):
+                                result = execute_hook_line(instruction, hunt_dir=hunt_dir)
+                                print(f"     {result.message}")
+                                if not result.success:
+                                    ok = False; break
+                            else:
+                                # "CALL PYTHON" appears mid-sentence (e.g. a button
+                                # label) — route through the normal action executor.
+                                if not await self._execute_step(page, step, strategic_context):
+                                    print("    ❌ ACTION FAILED")
+                                    ok = False; break
 
                         elif re.search(r'\b(?:DEBUG|PAUSE)\b', s_up):
                             # In debug_mode the pre-step _debug_prompt() above already
