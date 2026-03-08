@@ -83,6 +83,21 @@ Hooks run **outside the browser**: `[SETUP]` fires before the browser opens; `[T
 
 The helper module is resolved relative to the `.hunt` file's directory first, then the CWD, then standard `sys.path` — no configuration needed.
 
+### 🐍 Inline Python Calls
+
+Need to fetch an OTP from the database mid-test? Or trigger a backend job before clicking "Refresh"? You can now call Python functions **directly as standard numbered steps** — right in the middle of your UI flow.
+
+```text
+1. FILL 'Email' field with 'test@manul.com'
+2. CLICK the 'Send OTP' button
+3. CALL PYTHON api_helpers.fetch_and_set_otp
+4. Fill 'OTP' field with '{otp}'
+5. CLICK the 'Login' button
+6. VERIFY that 'Dashboard' is present.
+```
+
+The same module resolution rules apply as for `[SETUP]`/`[TEARDOWN]`: hunt file directory → CWD → `sys.path`. Functions must be synchronous. If the call fails, the mission stops immediately — just like any other failed step. No special syntax or block wrapping required.
+
 ---
 
 ## 🛠️ Installation
@@ -205,15 +220,19 @@ Lines starting with `#` are ignored.
 | `SCAN PAGE into {filename}` | Same, and also write the draft to `{filename}` (default: `tests_home/draft.hunt`) |
 | `DONE.` | End the mission |
 
-### Python Hooks
+### Python Hooks & Inline Python Calls
 
-Optional blocks placed anywhere in the file (typically top and bottom).
+Optional `[SETUP]`/`[TEARDOWN]` blocks (placed at the top/bottom of the file) and inline `CALL PYTHON` steps (used anywhere in the numbered sequence) all share the same execution model.
 
 ```text
 [SETUP]
 # Lines starting with # are ignored.
 CALL PYTHON <module_path>.<function_name>
 [END SETUP]
+
+1. NAVIGATE to https://myapp.com
+2. CALL PYTHON api_helpers.fetch_and_set_otp
+3. VERIFY that 'Dashboard' is present.
 
 [TEARDOWN]
 CALL PYTHON <module_path>.<function_name>
@@ -222,9 +241,9 @@ CALL PYTHON <module_path>.<function_name>
 
 Rules:
 - Functions must be **synchronous** (async functions are explicitly rejected).
-- A single block may contain multiple `CALL PYTHON` lines; they run sequentially — first failure stops the block.
+- A single `[SETUP]`/`[TEARDOWN]` block may contain multiple `CALL PYTHON` lines; they run sequentially — first failure stops the block.
+- An inline `CALL PYTHON` step that fails stops the mission immediately, just like any other failed step.
 - The module is searched in: hunt file directory → CWD → `sys.path`. No import configuration needed.
-- Multiple calls per block are supported; they execute in order.
 
 ### Interaction Steps
 

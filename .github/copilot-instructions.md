@@ -149,6 +149,7 @@ These keywords are detected via word-boundary regex, bypass heuristics, and are 
 * `[SETUP]` / `[END SETUP]` — Block wrapping `CALL PYTHON <module>.<function>` lines. Runs **before** the browser launches. If any line fails, the mission is skipped and teardown is not called.
 * `[TEARDOWN]` / `[END TEARDOWN]` — Cleanup block. Runs in a `finally` block **after** the mission (pass or fail). Only executed if `[SETUP]` succeeded. Failure is logged but does not override the mission result.
 * Inside hook blocks, each non-blank non-comment line must have the form: `CALL PYTHON <module>.<function>`. The module is resolved in this order: the `.hunt` file's directory → `CWD` → standard `importlib.import_module`. Target functions must be **synchronous**.
+* **Inline `CALL PYTHON` steps** — `CALL PYTHON <module>.<function>` is also valid as a standard numbered step anywhere in the main mission body (outside hook blocks). It uses the identical module resolution, state isolation, and sync-only rules as hook blocks. A failure stops the mission immediately.
 
 ### 6. Interaction Actions (Parsed Modes)
 If not a System Keyword, the engine detects the interaction mode based on verbs:
@@ -171,9 +172,15 @@ Variables extracted using `EXTRACT` can be substituted in downstream steps.
 * **Verify After Actions:** Always use a `VERIFY` step after taking a significant action (e.g., login, form submit) before assuming the new page state.
 * **Implicit Context:** The engine reuses context if you refer to previous elements implicitly, e.g., `Type "Password" into that field`.
 
-### 9. Python Hooks (`[SETUP]` / `[TEARDOWN]`)
-Hook blocks run synchronous Python functions **outside the browser** — the primary use case is injecting database state or calling an API before the mission starts.
+### 9. Python Hooks (`[SETUP]` / `[TEARDOWN]`) and Inline `CALL PYTHON` Steps
+Hook blocks run synchronous Python functions **outside the browser** — the primary use case is injecting database state or calling an API before the mission starts. Inline `CALL PYTHON` steps run **inside the mission** as numbered steps, with identical safety guarantees.
 * When generating `.hunt` tests that require specific initial data (users, records, session tokens), **ALWAYS** use `[SETUP]` with `CALL PYTHON`. Never use brittle UI steps (e.g., "Click Create User") as test preconditions.
+* **CRITICAL — Inline Python for mid-test backend interaction:** When a step requires interacting with a backend, database, or API mid-test — such as fetching an OTP, a magic link, a confirmation token, or triggering a backend job before a UI action — **DO NOT simulate it via the UI**. Use an inline `CALL PYTHON <module>.<func>` step directly in the numbered sequence. This is faster, more reliable, and immune to UI timing issues.
+  ```text
+  2. CLICK the 'Send OTP' button
+  3. CALL PYTHON api_helpers.fetch_and_set_otp
+  4. Fill 'OTP' field with '{otp}'
+  ```
 * `[TEARDOWN]` cleanup runs whether the mission passed or failed. Use it to delete test records and reset state.
 * Target functions **must be synchronous**. Async callables are explicitly rejected with a descriptive error.
 * Module resolution order: hunt file's directory → `CWD` → `sys.path`. Modules from the first two scopes are executed in isolation — never inserted into `sys.modules` — preventing cross-test contamination.

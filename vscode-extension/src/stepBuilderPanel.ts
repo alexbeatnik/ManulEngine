@@ -64,6 +64,7 @@ const STEP_TEMPLATES: StepTemplate[] = [
   { label: "Wait",          icon: "⏸️",  template: "WAIT 2" },
   { label: "Scroll Down",   icon: "⬇️",  template: "SCROLL DOWN" },
   { label: "Scan Page",     icon: "🔍", template: "SCAN PAGE into draft.hunt" },
+  { label: "Call Python",   icon: "🐍", template: "CALL PYTHON module_name.function_name" },
   { label: "Debug / Pause", icon: "🐛", template: "DEBUG" },
   { label: "Done",          icon: "🏁", template: "DONE." },
 ];
@@ -358,6 +359,15 @@ export async function insertTeardownCommand(): Promise<void> {
  * Insert a complete demo `.hunt` test at the current cursor position.
  * The demo includes a [SETUP] block, three representative steps, and a [TEARDOWN] block.
  */
+/**
+ * Insert a numbered `CALL PYTHON module_name.function_name` step at the end
+ * of the active .hunt file (same behaviour as the Step Builder buttons).
+ * Registered as `manul.insertInlinePythonCall`.
+ */
+export async function insertInlinePythonCallCommand(): Promise<void> {
+  await insertStep("CALL PYTHON module_name.function_name", undefined);
+}
+
 export async function generateDemoTestCommand(): Promise<void> {
   await _withHuntEditor(async (editor) => {
     const cursor = editor.selection.active;

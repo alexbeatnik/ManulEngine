@@ -29,6 +29,7 @@ except Exception:  # pragma: no cover
 
 from . import prompts
 from .helpers import substitute_memory, compact_log_field
+from .hooks import execute_hook_line
 from .js_scripts import SNAPSHOT_JS
 from .scoring import score_elements
 from .actions import _ActionsMixin
@@ -543,7 +544,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
     # ── Mission runner ────────────────────────
 
-    async def run_mission(self, task: str, strategic_context: str = "") -> bool:
+    async def run_mission(self, task: str, strategic_context: str = "", hunt_dir: str | None = None) -> bool:
         """
         Execute a full browser automation mission.
 
@@ -627,6 +628,13 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
                         elif re.search(r'\bSCAN\s+PAGE\b', s_up):
                             if not await self._handle_scan_page(page, step):
+                                ok = False; break
+
+                        elif re.search(r'\bCALL\s+PYTHON\b', s_up):
+                            raw_line = re.sub(r'^\d+\.\s*', '', step).strip()
+                            result = execute_hook_line(raw_line, hunt_dir=hunt_dir)
+                            print(f"     {result.message}")
+                            if not result.success:
                                 ok = False; break
 
                         elif re.search(r'\b(?:DEBUG|PAUSE)\b', s_up):

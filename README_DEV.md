@@ -77,27 +77,29 @@ ManulEngine/
 
 When the LLM picker is used, Manul passes the heuristic `score` as a **prior** (hint) by default (`MANUL_AI_POLICY=prior`) — the model can override the ranking only with a clear, disqualifying reason.
 
-### 🧹 [SETUP] / [TEARDOWN] Hook System
+### 🧹 [SETUP] / [TEARDOWN] Hooks and Inline `CALL PYTHON` Steps
 
-Version 0.0.8.3 introduces a pre/post hook mechanism powered by `manul_engine/hooks.py`. Hooks allow arbitrary synchronous Python to run before and after the browser mission — the primary use-case is fast, direct database or API state injection without brittle UI automation.
+Version 0.0.8.3 introduces a pre/post hook mechanism powered by `manul_engine/hooks.py`. Hooks allow arbitrary synchronous Python to run before and after the browser mission. Version 0.0.8.3 also extends this capability to **inline steps**: `CALL PYTHON <module>.<func>` can now appear as a regular numbered step anywhere in the main mission body.
 
 **Execution lifecycle:**
 
 ```
 [SETUP] block         → runs before browser launches
-  browser mission     → numbered hunt steps
+  browser mission     → numbered hunt steps (may include CALL PYTHON steps)
 [TEARDOWN] block      → runs in finally{}, always after setup succeeds
 ```
 
-**Module resolution order** (per `CALL PYTHON` instruction):
+**Architecture:** The main step executor in `core.py` (`run_mission()`) reuses `execute_hook_line()` from `hooks.py` directly — no duplicated module-resolution logic. The `hunt_dir` parameter is passed through `run_mission(hunt_dir=...)` so inline calls resolve modules relative to the `.hunt` file's directory, exactly as `[SETUP]`/`[TEARDOWN]` do. `cli.py` passes `hunt_dir` to `run_mission` alongside the mission text.
+
+**Module resolution order** (per `CALL PYTHON` instruction — identical for hooks and inline steps):
 
 1. Directory of the `.hunt` file — local project helpers.
 2. `Path.cwd()` — project root.
 3. Standard `importlib.import_module` — installed packages / PYTHONPATH.
 
-**State isolation:** Modules found via steps 1 and 2 are executed with `spec.loader.exec_module(mod)` into a fresh `ModuleType` object that is **never inserted into `sys.modules`**. This guarantees strict state isolation between test runs — no leaked globals, no cross-test counter contamination.
+**State isolation:** Modules found via steps 1 and 2 are executed with `spec.loader.exec_module(mod)` into a fresh `ModuleType` object that is **never inserted into `sys.modules`**. This rule applies equally to hook blocks and inline `CALL PYTHON` steps — no `sys.modules` pollution regardless of where in the file the call appears.
 
-**Async rejection:** `asyncio.iscoroutinefunction()` is checked before invoking the callable. Async functions are explicitly rejected with a descriptive error message and a concrete workaround (`asyncio.run()` inside the helper). This prevents dangling coroutine objects.
+**Async rejection:** `asyncio.iscoroutinefunction()` is checked before invoking the callable. Async functions are explicitly rejected with a descriptive error message and a concrete workaround (`asyncio.run()` inside the helper). This applies to both hooks and inline calls.
 
 **Error taxonomy and messages:**
 
@@ -119,7 +121,7 @@ execute_hook_line(line, hunt_dir)  → HookResult(success, message)
 run_hooks(lines, label, hunt_dir)  → bool
 ```
 
-`parse_hunt_file()` in `cli.py` now returns a 6-tuple including `setup_lines` and `teardown_lines`. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics.
+`parse_hunt_file()` in `cli.py` returns a 6-tuple including `setup_lines` and `teardown_lines`. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
 
 The full hook unit test suite (`41 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
 

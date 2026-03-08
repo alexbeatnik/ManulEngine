@@ -220,7 +220,7 @@ async def _run_hunt_file(
     manul = ManulEngine(headless=headless, browser=browser, debug_mode=debug, break_steps=break_steps)
     result = False
     try:
-        result = await manul.run_mission(mission, strategic_context=context)
+        result = await manul.run_mission(mission, strategic_context=context, hunt_dir=hunt_dir)
         return bool(result)
     except Exception as exc:
         print(f"\n💥 CRASH: {exc}")

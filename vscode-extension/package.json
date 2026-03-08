@@ -118,6 +118,10 @@
         "title": "ManulEngine: Generate Demo Test"
       },
       {
+        "command": "manul.insertInlinePythonCall",
+        "title": "ManulEngine: Insert Inline CALL PYTHON Step"
+      },
+      {
         "command": "manul.generateConfig",
         "title": "ManulEngine: Generate Default Config"
       },
