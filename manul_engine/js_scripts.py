@@ -231,7 +231,6 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             name = 'dropdown [' + Array.from(el.options).map(o => o.text.trim()).join(' | ') + ']';
         } else {
             const rawText = el.innerText ? el.innerText.trim() : '';
-            // Відновлений універсальний порядок (placeholder повернуто для TEXTAREA)
             name = rawText || ariaLabel || altText || ph || nameAttr || el.getAttribute('value') || htmlId || el.className || 'item';
             name = name.trim();
         }
@@ -242,7 +241,6 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         if (ctx)      name = `${ctx} -> ${name}`;
         if (inShadow) name += ' [SHADOW_DOM]';
 
-        // Виявляємо пастки з прихованими елементами, але НЕ видаляємо їх, а маркуємо
         let isOffscreen = false;
         if (el.getAttribute('aria-hidden') === 'true') isOffscreen = true;
         const rect = el.getBoundingClientRect();
