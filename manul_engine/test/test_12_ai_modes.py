@@ -33,7 +33,7 @@ async def run_suite() -> bool:
 
     try:
         # ── 1) STRICT vs PRIOR override behavior (unit-level, no browser) ──
-        manul = ManulEngine(headless=True)
+        manul = ManulEngine(headless=True, disable_cache=True)
 
         async def _fake_llm_json(_system: str, _user: str) -> dict:
             return {"id": 2, "thought": "pick lower-score candidate"}
@@ -84,7 +84,7 @@ async def run_suite() -> bool:
             page = await ctx.new_page()
             await page.set_content(AI_MODES_DOM)
 
-            manul2 = ManulEngine(headless=True)
+            manul2 = ManulEngine(headless=True, disable_cache=True)
             manul2.model = "mock"  # satisfy AI_ALWAYS guard; real LLM is mocked below
             called = {"n": 0}
 

@@ -46,6 +46,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         ai_threshold:   "int | None"  = None,
         debug_mode:     bool          = False,
         break_steps:    "set[int] | None" = None,
+        disable_cache:  bool          = False,  # 👈 Додали параметр
         **_kwargs,
     ):
         # None model → heuristics-only mode (AI fully disabled)
@@ -58,7 +59,12 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         self.memory:          dict = {}
         self.last_xpath:      "str | None" = None
         self.learned_elements: dict = {}        # semantic cache: cache_key → {name, tag}
-        self._controls_cache_enabled = bool(getattr(prompts, "CONTROLS_CACHE_ENABLED", True))
+        
+        if disable_cache:
+            self._controls_cache_enabled = False
+        else:
+            self._controls_cache_enabled = bool(getattr(prompts, "CONTROLS_CACHE_ENABLED", True))
+            
         self._controls_cache_root = Path(str(getattr(prompts, "CONTROLS_CACHE_DIR", str(Path(__file__).resolve().parents[1] / "cache"))))
         self._controls_cache_site: str | None = None
         self._controls_cache_url: str | None = None
@@ -77,6 +83,11 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         if self.debug_mode:
             print("    🐛 Debug mode ON — engine will pause before each step.")
 
+    def reset_session_state(self) -> None:
+        """Clear in-memory caches and variables. Useful for synthetic stateless tests."""
+        self.memory.clear()
+        self.learned_elements.clear()
+        self.last_xpath = None
     # ── Persistent controls cache ─────────────────────────────────────
     # All cache methods live in engine/cache.py (_ControlsCacheMixin).
 
@@ -493,12 +504,13 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
             return ai_choice
 
-        if best_score >= 20_000:
+        if best_score >= 200_000:
             print(f"    🧠 SEMANTIC CACHE: Reusing learned element (score {best_score})")
             return top[0]
 
         if best_score >= 10_000:
-            print(f"    ⚡ CONTEXT MEMORY: Reusing last element (score {best_score})")
+            label = "High confidence" if best_score >= 20_000 else "Context reuse"
+            print(f"    ⚙️  DOM HEURISTICS: {label} match (score {best_score})")
             return top[0]
 
         if best_score >= self._threshold:

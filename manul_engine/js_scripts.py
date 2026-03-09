@@ -88,54 +88,60 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
     const seen    = new Set();
     const results = [];
 
-    const collect = (root, inShadow=false) => {
-        root.querySelectorAll(INTERACTIVE).forEach(el => {
-            if (seen.has(el)) return;
-            seen.add(el);
+    // Helper to process and filter elements
+    const processElement = (el, inShadow) => {
+        if (seen.has(el)) return;
+        seen.add(el);
 
-            const r  = el.getBoundingClientRect();
-            const elRole = (el.getAttribute('role') || '').toLowerCase();
-            
-            const st = window.getComputedStyle(el);
-            const isHidden = st.display === 'none' || st.visibility === 'hidden' || st.opacity === '0';
-            
-            if (isHidden) {
-                if (el.tagName !== 'INPUT' || (el.type !== 'file' && el.type !== 'checkbox' && el.type !== 'radio')) {
-                    return; 
-                }
+        const r  = el.getBoundingClientRect();
+        const elRole = (el.getAttribute('role') || '').toLowerCase();
+        const st = window.getComputedStyle(el);
+        const isHidden = st.display === 'none' || st.visibility === 'hidden' || parseFloat(st.opacity) === 0;
+        
+        if (isHidden) {
+            if (el.tagName !== 'INPUT' || (el.type !== 'file' && el.type !== 'checkbox' && el.type !== 'radio')) {
+                return; 
             }
-            
-            if (r.width < 2 || r.height < 2) {
-                if (elRole !== 'switch' && el.tagName !== 'INPUT') return;
-            }
+        }
+        
+        if (r.width < 2 || r.height < 2) {
+            if (elRole !== 'switch' && el.tagName !== 'INPUT') return;
+        }
 
-            if (el.tagName === 'LABEL') {
-                const linked = el.htmlFor
-                    ? document.getElementById(el.htmlFor)
-                    : el.querySelector('input');
-                if (linked) {
-                    if (linked.type === 'file') {
-                        // Keep this label — don't skip it
-                    } else {
-                        const lr = linked.getBoundingClientRect();
-                        if (lr.width > 2 && lr.height > 2 && window.getComputedStyle(linked).display !== 'none') {
-                            return;
-                        }
+        if (el.tagName === 'LABEL') {
+            const linked = el.htmlFor
+                ? document.getElementById(el.htmlFor)
+                : el.querySelector('input');
+            if (linked) {
+                if (linked.type === 'file') {
+                    // Keep this label — don't skip it
+                } else {
+                    const lr = linked.getBoundingClientRect();
+                    if (lr.width > 2 && lr.height > 2 && window.getComputedStyle(linked).display !== 'none') {
+                        return;
                     }
                 }
             }
+        }
 
-            if (!el.dataset.manulId) {
-                const id = window.manulIdCounter++;
-                el.dataset.manulId  = id;
-                window.manulElements[id] = el;
-            }
-            results.push({el, inShadow});
-        });
+        if (!el.dataset.manulId) {
+            const id = window.manulIdCounter++;
+            el.dataset.manulId  = id;
+            window.manulElements[id] = el;
+        }
+        results.push({el, inShadow});
+    };
+
+    const collect = (root, inShadow=false) => {
+        root.querySelectorAll(INTERACTIVE).forEach(el => processElement(el, inShadow));
+        
         root.querySelectorAll('*').forEach(el => {
+            if (el.tagName.includes('-')) processElement(el, inShadow);
+            if (el.tagName === 'IMG' && el.getAttribute('alt')) processElement(el, inShadow);
             if(el.shadowRoot) collect(el.shadowRoot, true);
         });
     };
+    
     collect(document);
 
     results.sort((a,b) => a.el.getBoundingClientRect().top - b.el.getBoundingClientRect().top);
@@ -177,7 +183,6 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
                 if (leg) return leg.innerText.trim();
             }
 
-            // NEW: Fallback for bad HTML where label is near input but without 'for' attr
             const wrapper = el.closest('.form-group, .row, div[class*="wrapper"]');
             if (wrapper) {
                 const wrapLbl = wrapper.querySelector('label');
@@ -213,6 +218,12 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             }
         }
         
+        let altText = '';
+        if (['IMG', 'SVG', 'AREA'].includes(el.tagName)) {
+            altText = el.getAttribute('alt') || '';
+        }
+
+        const nameAttr = el.getAttribute('name') || '';
         const ph = (el.placeholder || el.getAttribute('data-placeholder') || el.getAttribute('aria-placeholder') || '').toLowerCase();
 
         if (el.tagName === 'SELECT') {
@@ -220,7 +231,8 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             name = 'dropdown [' + Array.from(el.options).map(o => o.text.trim()).join(' | ') + ']';
         } else {
             const rawText = el.innerText ? el.innerText.trim() : '';
-            name = rawText || ariaLabel || ph || el.getAttribute('value') || htmlId || el.name || el.className || 'item';
+            // Відновлений універсальний порядок (placeholder повернуто для TEXTAREA)
+            name = rawText || ariaLabel || altText || ph || nameAttr || el.getAttribute('value') || htmlId || el.className || 'item';
             name = name.trim();
         }
 
@@ -229,6 +241,14 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         const ctx = labelFor(el);
         if (ctx)      name = `${ctx} -> ${name}`;
         if (inShadow) name += ' [SHADOW_DOM]';
+
+        // Виявляємо пастки з прихованими елементами, але НЕ видаляємо їх, а маркуємо
+        let isOffscreen = false;
+        if (el.getAttribute('aria-hidden') === 'true') isOffscreen = true;
+        const rect = el.getBoundingClientRect();
+        if (rect.left < -999 || rect.top < -999) isOffscreen = true;
+        
+        if (isOffscreen) name += ' [HIDDEN]';
 
         const isEditable = el.isContentEditable || el.getAttribute('contenteditable') === 'true';
 
@@ -253,7 +273,6 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         };
     });
 }"""
-
 
 # ── Data extraction (used by _handle_extract) ────────────────────────────────
 
@@ -775,6 +794,7 @@ SCAN_JS = """() => {
 
     /** Return true if the element is visually hidden / off-screen. */
     function isHidden(el) {
+        if (el.getAttribute('aria-hidden') === 'true') return true;
         const r = el.getBoundingClientRect();
         if (r.width === 0 && r.height === 0) return true;
         try {
@@ -844,7 +864,6 @@ SCAN_JS = """() => {
 
             results.push({ type: kind, identifier: label });
         }
-        // Recurse into shadow roots
         for (const el of root.querySelectorAll('*')) {
             if (el.shadowRoot) scanRoot(el.shadowRoot, results, seen);
         }

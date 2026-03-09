@@ -254,7 +254,7 @@ async def run_suite():
     print("🛡️  CYBERSECURITY & DEVSECOPS HELL: 100 COMMAND LINE TRAPS")
     print(f"{'=' * 70}")
 
-    manul = ManulEngine(headless=True)
+    manul = ManulEngine(headless=True, disable_cache=True)
 
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -268,7 +268,7 @@ async def run_suite():
             print(f"\n🧬 {t['n']}")
             print(f"   🐾 Step : {t['step']}")
 
-            manul.last_xpath = None
+            manul.reset_session_state()
 
             if t.get("ex"):
                 manul.memory.clear()

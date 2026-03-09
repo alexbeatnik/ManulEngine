@@ -19,10 +19,11 @@ class _ActionsMixin:
         target_field: str | None,
         element: dict,
     ) -> None:
-        self.learned_elements[cache_key] = {
-            "name": str(element.get("name", "")),
-            "tag": str(element.get("tag_name", "")),
-        }
+        if getattr(self, '_controls_cache_enabled', True):
+            self.learned_elements[cache_key] = {
+                "name": str(element.get("name", "")),
+                "tag": str(element.get("tag_name", "")),
+            }
         persist = getattr(self, "_persist_control_cache_entry", None)
         if callable(persist):
             try:
