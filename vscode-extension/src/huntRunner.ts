@@ -229,7 +229,7 @@ export function runHuntFileDebugPanel(
   onData: (chunk: string) => void,
   token?: vscode.CancellationToken,
   breakLines?: number[],
-  onPause?: (step: string, idx: number) => Promise<"next" | "continue">
+  onPause?: (step: string, idx: number) => Promise<"next" | "continue" | "highlight">
 ): Promise<number> {
   const PAUSE_MARKER = "\x00MANUL_DEBUG_PAUSE\x00";
   return new Promise((resolve, reject) => {
@@ -279,7 +279,7 @@ export function runHuntFileDebugPanel(
           // Show the Webview panel (if onPause provided) or fall back to
           // a notification.  Either way write the response to stdin so the
           // blocked Python readline() unblocks.
-          const pausePromise: Thenable<"next" | "continue"> = onPause
+          const pausePromise: Thenable<"next" | "continue" | "highlight"> = onPause
             ? onPause(step, idx)
             : (() => {
                 const shortStep = step.length > 100 ? step.substring(0, 100) + "…" : step;
@@ -295,7 +295,7 @@ export function runHuntFileDebugPanel(
                   );
               })();
           pausePromise.then(
-            (choice: "next" | "continue") => {
+            (choice: "next" | "continue" | "highlight") => {
               // Guard against writing to stdin after the process has already
               // exited or the stream has been closed/destroyed (e.g. user
               // pressed Stop while the QuickPick was open).

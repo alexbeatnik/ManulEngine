@@ -47,6 +47,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         debug_mode:     bool          = False,
         break_steps:    "set[int] | None" = None,
         disable_cache:  bool          = False,  # 👈 Додали параметр
+        semantic_cache: "bool | None" = None,     # None → read from config/env
         **_kwargs,
     ):
         # None model → heuristics-only mode (AI fully disabled)
@@ -64,6 +65,11 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             self._controls_cache_enabled = False
         else:
             self._controls_cache_enabled = bool(getattr(prompts, "CONTROLS_CACHE_ENABLED", True))
+
+        if semantic_cache is not None:
+            self._semantic_cache_enabled = semantic_cache
+        else:
+            self._semantic_cache_enabled = bool(getattr(prompts, "SEMANTIC_CACHE_ENABLED", True))
             
         self._controls_cache_root = Path(str(getattr(prompts, "CONTROLS_CACHE_DIR", str(Path(__file__).resolve().parents[1] / "cache"))))
         self._controls_cache_site: str | None = None
@@ -254,45 +260,66 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             pass
 
     async def _debug_highlight(self, page, loc_or_id, *, by_js_id: bool = False) -> None:
-        """Apply a high-visibility debug highlight (dashed red border + box-shadow)
-        and wait 500 ms so the tester can see which element Manul targeted.
-        The browser removes the highlight via JS setTimeout after 1.5 s.
+        """Apply a persistent magenta highlight on the target element.
+        The highlight stays until _clear_debug_highlight() is called.
+        Uses a <style id="manul-debug-style"> tag + data-manul-debug-highlight attribute
+        so it is safely removable without disturbing any inline styles.
         """
+        _STYLE_ID  = "manul-debug-style"
+        _STYLE_CSS = ("[data-manul-debug-highlight='true']{"
+                      "outline:4px solid #ff00ff !important;"
+                      "box-shadow:0 0 15px #ff00ff !important;"
+                      "background:rgba(255,0,255,.12) !important;"
+                      "z-index:999999 !important;}")
         try:
             if by_js_id:
                 await page.evaluate(
-                    """
-                    (function(id) {
-                        var el = window.manulElements && window.manulElements[id];
+                    f"""
+                    (id) => {{
+                        const el = window.manulElements && window.manulElements[id];
                         if (!el) return;
-                        var prevOutline   = el.style.outline;
-                        var prevShadow    = el.style.boxShadow;
-                        el.style.outline  = '3px dashed red';
-                        el.style.boxShadow = '0 0 0 3px red';
-                        setTimeout(function() {
-                            el.style.outline   = prevOutline;
-                            el.style.boxShadow = prevShadow;
-                        }, 1500);
-                    })
+                        if (!document.getElementById('{_STYLE_ID}')) {{
+                            const s = document.createElement('style');
+                            s.id = '{_STYLE_ID}';
+                            s.textContent = `{_STYLE_CSS}`;
+                            document.head.appendChild(s);
+                        }}
+                        el.setAttribute('data-manul-debug-highlight', 'true');
+                        el.scrollIntoView({{behavior:'smooth',block:'center'}});
+                    }}
                     """,
                     loc_or_id,
                 )
             else:
                 await loc_or_id.evaluate(
-                    """
-                    el => {
-                        const prevOutline   = el.style.outline;
-                        const prevShadow    = el.style.boxShadow;
-                        el.style.outline    = '3px dashed red';
-                        el.style.boxShadow  = '0 0 0 3px red';
-                        setTimeout(() => {
-                            el.style.outline   = prevOutline;
-                            el.style.boxShadow = prevShadow;
-                        }, 1500);
-                    }
+                    f"""
+                    el => {{
+                        if (!document.getElementById('{_STYLE_ID}')) {{
+                            const s = document.createElement('style');
+                            s.id = '{_STYLE_ID}';
+                            s.textContent = `{_STYLE_CSS}`;
+                            document.head.appendChild(s);
+                        }}
+                        el.setAttribute('data-manul-debug-highlight', 'true');
+                        el.scrollIntoView({{behavior:'smooth',block:'center'}});
+                    }}
                     """
                 )
-            await asyncio.sleep(0.5)
+        except Exception:
+            pass
+
+    async def _clear_debug_highlight(self, page) -> None:
+        """Remove the persistent debug highlight from all elements and remove the <style> tag."""
+        try:
+            await page.evaluate("""
+                () => {
+                    document.querySelectorAll('[data-manul-debug-highlight]').forEach(
+                        el => el.removeAttribute('data-manul-debug-highlight')
+                    );
+                    const s = document.getElementById('manul-debug-style');
+                    if (s) s.remove();
+                }
+            """)
         except Exception:
             pass
 
@@ -305,12 +332,15 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
         1. **Extension protocol mode** (stdin is not a TTY, i.e. piped by the
            VS Code extension): writes a JSON pause marker to stdout, then reads
-           a single line from stdin ('next' or 'continue').  The extension shows
-           VS Code notification buttons and writes the response.
+           tokens from stdin in a loop.  Accepted tokens:
+             - 'highlight' : re-scroll to the currently highlighted element, re-emit marker
+             - 'continue'  : reset to original gutter breakpoints, proceed
+             - 'next'      : also pause at the immediately following step
 
         2. **Terminal mode** (stdin is a TTY): prints a human-readable prompt and
-           waits for ENTER.  Typing 'pause' opens the Playwright Inspector;
-           typing 'c' / 'continue' disables future pauses for this session.
+           waits for input.  Typing 'h' re-scrolls to the highlighted element;
+           'pause' opens the Playwright Inspector; 'c' / 'continue' disables
+           future pauses for this session.
 
         If _debug_continue is already True the method returns immediately.
         """
@@ -321,32 +351,59 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         if not sys.stdin.isatty():
             # ── Extension protocol mode ───────────────────────────────────
             marker = json.dumps({"step": step, "idx": idx})
-            sys.stdout.write(f"{self._DEBUG_PAUSE_MARKER}{marker}\n")
-            sys.stdout.flush()
-            try:
-                resp = await asyncio.to_thread(sys.stdin.readline)
-                resp = resp.strip().lower()
-                if resp == "continue":
+            while True:
+                sys.stdout.write(f"{self._DEBUG_PAUSE_MARKER}{marker}\n")
+                sys.stdout.flush()
+                try:
+                    resp = await asyncio.to_thread(sys.stdin.readline)
+                    resp = resp.strip().lower()
+                except (EOFError, KeyboardInterrupt):
+                    return
+                if resp == "highlight":
+                    # Re-scroll to the persistently highlighted element, then
+                    # re-emit the pause marker so the QuickPick shows again.
+                    try:
+                        await page.evaluate("""
+                            () => {
+                                const el = document.querySelector('[data-manul-debug-highlight="true"]');
+                                if (el) el.scrollIntoView({behavior:'smooth',block:'center'});
+                            }
+                        """)
+                    except Exception:
+                        pass
+                    continue  # loop: re-emit the marker
+                elif resp == "continue":
                     # Restore only the user-set breakpoints so execution resumes
                     # until the next gutter breakpoint (or end if none remain).
                     self.break_steps = set(self._user_break_steps)
-                else:
-                    # "next" — pause again at the immediately following step.
+                    break
+                else:  # "next" (or any unrecognised token)
+                    # Pause again at the immediately following step.
                     self.break_steps.add(idx + 1)
-            except (EOFError, KeyboardInterrupt):
-                pass
+                    break
             return
 
         # ── Terminal mode ─────────────────────────────────────────────────
         sys.stdout.flush()
         prompt_text = (
             f"\n[DEBUG] Next step: {step}\n"
-            f"        ENTER = execute · 'pause' = Inspector · 'c' = continue all… "
+            f"        ENTER/n = execute · h = re-highlight · pause = Inspector · c = continue all… "
         )
         try:
             user_in = await asyncio.to_thread(input, prompt_text)
             user_in = user_in.strip().lower()
-            if user_in == "pause":
+            if user_in == "h":
+                try:
+                    await page.evaluate("""
+                        () => {
+                            const el = document.querySelector('[data-manul-debug-highlight="true"]');
+                            if (el) el.scrollIntoView({behavior:'smooth',block:'center'});
+                        }
+                    """)
+                    print("    👁️  Scrolled to highlighted element.")
+                except Exception:
+                    pass
+            elif user_in == "pause":
                 print("    🔎 Opening Playwright Inspector…")
                 await page.pause()
             elif user_in in ("c", "continue"):
@@ -383,7 +440,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         """Score and rank elements using heuristics from scoring.py."""
         return score_elements(
             els, step, mode, search_texts, target_field, is_blind,
-            learned_elements=self.learned_elements,
+            learned_elements=self.learned_elements if self._semantic_cache_enabled else {},
             last_xpath=self.last_xpath,
         )
 
@@ -598,15 +655,19 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                     print(f"\n[🐾 STEP {i} @ {started_at.strftime('%H:%M:%S')}] {step}")
                     s_up = step.upper()
 
-                    if self.debug_mode:
-                        # debug_mode and break_steps are mutually exclusive:
-                        # --debug pauses before every step already, so honouring
-                        # break_steps on top would cause a double-pause.
+                    # Determine whether this step is a system step (NAVIGATE, SCROLL,
+                    # etc.) or an action step (click, fill, select, hover…).
+                    # For action steps, the debug pause fires INSIDE _execute_step
+                    # after element resolution so the tester sees the highlighted
+                    # element before deciding to proceed.
+                    _is_system_step = bool(re.search(
+                        r'\b(?:NAVIGATE|WAIT|SCROLL|EXTRACT|VERIFY|PRESS\s+ENTER|SCAN\s+PAGE|CALL\s+PYTHON|DEBUG|PAUSE|DONE)\b',
+                        s_up
+                    ))
+
+                    if self.debug_mode and _is_system_step:
                         await self._debug_prompt(page, step, i)
-                    elif self.break_steps and i in self.break_steps:
-                        # In piped (extension) mode: use the same marker protocol so the
-                        # VS Code panel shows the breakpoint pause — no Playwright Inspector.
-                        # In terminal mode: fall back to page.pause() for Inspector.
+                    elif not self.debug_mode and self.break_steps and i in self.break_steps and _is_system_step:
                         import sys as _sys
                         if not _sys.stdin.isatty():
                             print(f"    🔴 BREAKPOINT at step {i}")
@@ -655,7 +716,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             else:
                                 # "CALL PYTHON" appears mid-sentence (e.g. a button
                                 # label) — route through the normal action executor.
-                                if not await self._execute_step(page, step, strategic_context):
+                                if not await self._execute_step(page, step, strategic_context, step_idx=i):
                                     print("    ❌ ACTION FAILED")
                                     ok = False; break
 
@@ -681,7 +742,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             break
 
                         else:
-                            if not await self._execute_step(page, step, strategic_context):
+                            if not await self._execute_step(page, step, strategic_context, step_idx=i):
                                 print("    ❌ ACTION FAILED")
                                 ok = False; break
                     finally:

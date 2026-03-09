@@ -12,10 +12,11 @@
 import * as vscode from "vscode";
 import { exec, execFile } from "child_process";
 
-export type PauseChoice = "next" | "continue";
+export type PauseChoice = "next" | "continue" | "highlight";
 
-const NEXT_LABEL = "⏭  Next Step";
-const CONT_LABEL = "▶  Continue All";
+const NEXT_LABEL  = "⏭  Next Step";
+const CONT_LABEL  = "▶  Continue All";
+const HIGH_LABEL  = "👁  Highlight Element";
 
 /** Best-effort: raise the VS Code window above other apps on Linux. */
 function tryRaiseWindow(stepIdx: number, stepText: string): void {
@@ -69,7 +70,11 @@ export class DebugControlPanel {
 
       qp.title = `🐛 ManulEngine Debug — Step ${idx}`;
       qp.placeholder = step.length > 120 ? step.slice(0, 120) + "…" : step;
-      qp.items = [{ label: NEXT_LABEL }, { label: CONT_LABEL }];
+      qp.items = [
+        { label: NEXT_LABEL },
+        { label: CONT_LABEL },
+        { label: HIGH_LABEL, description: "Scroll the browser to the highlighted element" },
+      ];
       qp.ignoreFocusOut = true;
 
       let resolved = false;
@@ -83,7 +88,16 @@ export class DebugControlPanel {
 
       qp.onDidAccept(() => {
         const label = qp.selectedItems[0]?.label;
-        done(label === CONT_LABEL ? "continue" : "next");
+        if (label === HIGH_LABEL) {
+          // "Highlight" must NOT close the QuickPick — just send the token.
+          // Python will re-scroll and re-emit the pause marker; TypeScript's
+          // stdout listener will call onPause again, creating a new QuickPick.
+          // So we resolve immediately with "highlight" so the caller writes it
+          // to stdin, and the current QP is disposed.
+          done("highlight");
+        } else {
+          done(label === CONT_LABEL ? "continue" : "next");
+        }
       });
 
       // ESC or programmatic hide → treat as "next" so Python readline() unblocks.

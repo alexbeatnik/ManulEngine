@@ -43,6 +43,7 @@ _KEY_MAP: dict[str, str] = {
     "ai_policy":              "MANUL_AI_POLICY",
     "controls_cache_enabled": "MANUL_CONTROLS_CACHE_ENABLED",
     "controls_cache_dir":     "MANUL_CONTROLS_CACHE_DIR",
+    "semantic_cache_enabled": "MANUL_SEMANTIC_CACHE_ENABLED",
     "log_name_maxlen":        "MANUL_LOG_NAME_MAXLEN",
     "log_thought_maxlen":     "MANUL_LOG_THOUGHT_MAXLEN",
     "workers":                "MANUL_WORKERS",
@@ -101,6 +102,11 @@ _cache_dir_path = Path(_cache_dir_raw)
 if not _cache_dir_path.is_absolute():
     _cache_dir_path = Path.cwd() / _cache_dir_path
 CONTROLS_CACHE_DIR = str(_cache_dir_path.resolve())
+
+# ── In-session semantic cache (learned_elements) ──────────────────────────────
+# Remembers resolved elements within a single run (+20,000 score boost).
+# Separate from the persistent controls cache — resets every time ManulEngine starts.
+SEMANTIC_CACHE_ENABLED = env_bool("MANUL_SEMANTIC_CACHE_ENABLED", "True")
 
 # ── AI control switches ──────────────────────────────────────────────────────
 # When enabled, ALL element resolution decisions go through the LLM picker.

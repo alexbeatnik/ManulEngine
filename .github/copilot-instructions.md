@@ -21,7 +21,7 @@ Current operating mode in this repo is typically **mixed**:
 ```text
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.2
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.4
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
@@ -48,7 +48,7 @@ tests/
   rahul.hunt              integration: radios, autocomplete, hover
   wikipedia.hunt          integration: search, navigate, extract, verify, shadow-dom inputs
 vscode-extension/
-  package.json              Extension manifest (v0.0.83)
+  package.json              Extension manifest (v0.0.84)
   src:
     extension.ts            Activation, command registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
@@ -200,7 +200,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * **Null model = heuristics-only:** When `model` is `None`, `_llm_json()` returns `None` immediately. `get_threshold(None)` returns `0`. No Ollama calls are made.
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
 * **Debug mode:** `ManulEngine(debug_mode=True, break_steps={N,...})`. `debug_mode=True` (from `--debug`) highlights the resolved element and pauses before every step using `input()` in TTY or Playwright's `page.pause()`. `break_steps` (from `--break-lines`) pauses only at listed step indices using the stdout/stdin panel protocol when stdout is not a TTY. The two are mutually exclusive in practice — the extension only ever sets `break_steps` via `--break-lines`.
-* **Element highlight in debug mode:** Before every action when `debug_mode=True`, the engine injects JS to draw a dashed red border on the target element for 500 ms so the tester can visually confirm which element was picked.
+* **Element highlight in debug mode:** When `debug_mode=True` (or a `break_steps` pause fires), the engine calls `highlight_element(page, locator)` which injects `<style id="manul-debug-style">` (once) and sets `data-manul-debug-highlight="true"` on the target element, producing a persistent 4px magenta outline + glow that stays until `clear_highlight(page)` is called just before the action executes. A separate `_highlight()` method draws a short 2-second flash (non-debug, `setTimeout` inside JS) for non-pausing visual feedback.
 * `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). `parse_hunt_file()` in `cli.py` returns a **6-tuple** `(mission, context, blueprint, step_file_lines, setup_lines, teardown_lines)`. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
 
 ## Running tests
@@ -257,8 +257,9 @@ Environment variables (`MANUL_*`) always override JSON values.
 | `ai_threshold` | auto | Score threshold before LLM fallback. `null` = auto-derive from model size |
 | `ai_always` | `false` | If `true`, always ask the LLM picker (bypasses heuristic short-circuits). Has no effect and is forced to `false` when `model` is `null` |
 | `ai_policy` | `"prior"` | How to treat heuristic score in LLM picker: `"prior"` (hint) or `"strict"` (force max-score) |
-| `controls_cache_enabled` | `true` | Enables persistent per-site controls cache |
+| `controls_cache_enabled` | `true` | Enables persistent per-site controls cache (file-based, survives between runs) |
 | `controls_cache_dir` | `"cache"` | Directory for cache files (relative to CWD or absolute) |
+| `semantic_cache_enabled` | `true` | Enables in-session semantic cache (`learned_elements`). Remembers resolved elements within a single run (+20,000 score boost). Resets on each new `ManulEngine` instance |
 | `log_name_maxlen` | `0` | If > 0, truncates element names in logs |
 | `log_thought_maxlen` | `0` | If > 0, truncates LLM “thought” strings in logs |
 | `timeout` | `5000` | Default action timeout (ms) |
@@ -340,6 +341,20 @@ A companion extension that provides hunt file language support, Test Explorer in
 * `debugControlPanel.ts` — singleton `DebugControlPanel.getInstance(ctx)`. `showPause(step, idx)` uses `vscode.window.createQuickPick()` (low-level API, not `showQuickPick`) so the picker can be hidden programmatically. `ignoreFocusOut: true` keeps it visible while Playwright runs. `abort()` calls `_activeQp.hide()`, which triggers `onDidHide` → resolves the promise with `"next"` so Python's `stdin.readline()` always unblocks. `dispose()` also calls `hide()` and resets the singleton. `tryRaiseWindow(idx, stepText)` (Linux only): spawns `xdotool search --onlyvisible --class "Code" windowactivate` (X11 focus), falls back to `wmctrl -a "Visual Studio Code"`, then fires `notify-send -u normal -t 5000` (5-second system notification, disappears automatically — do NOT use `-u critical` which ignores `-t` on GNOME/KDE).
 * `huntTestController.ts` — has a **Debug run profile** in addition to the normal run profile. It calls `runHuntFileDebugPanel` with `onPause: (step, idx) => panel.showPause(step, idx)` and runs sequentially (no concurrency). **Stop button wiring:** `token.onCancellationRequested(() => panel.abort())` — this is essential; without it the QuickPick stays open after Stop is pressed and Python hangs. The disposable is stored and `.dispose()`d after the loop. Debug profile also calls `workbench.view.testing.focus` (in addition to `workbench.panel.testResults.view.focus`) to show the Test Explorer tree with per-step spinning/pass/fail indicators.
 * `configPanel.ts` — `doSave()` forces `ai_always: false` whenever `model` is empty/null (`modelVal !== '' && g('ai_always').checked`). Do not remove this guard — saving `ai_always: true` with no model would produce an invalid config that causes runtime errors. The `syncAiAlways()` function also disables and unchecks the `ai_always` checkbox in the UI when the model field is cleared.
+* `configPanel.ts` — Two separate cache controls: `controls_cache_enabled` is labelled **"Persistent Controls Cache"** (file-based, per-site storage, survives between runs); `semantic_cache_enabled` is labelled **"Semantic Cache"** (in-session `learned_elements`, +20,000 score boost within a single run, resets when process ends). The `controls_cache_dir` field is labelled "controls_cache_dir". Both default to `true`. Do not merge these two settings.
 * Config panel reads/writes `manul_engine_configuration.json` at the workspace root using `_configPath()`. The config file name is user-configurable via the `manulEngine.configFile` VS Code setting.
 * Ollama model discovery: the panel fetches `http://localhost:11434/api/tags` on open and populates a `<select>` dropdown with installed model names (replaced legacy `<datalist>` + `<input>` to fix rendering offset in Electron webview). First option is always `null (heuristics-only)`. The stored model is always preserved as an option even when Ollama is offline.
 * Build: `cd vscode-extension && npm install && npm run compile`. Use `npx vsce package` to produce a `.vsix`. Press F5 in VS Code with the extension folder open to launch a dev Extension Host.
+
+## Version Bump Checklist
+
+When the version changes, **ALL** of the following files must be updated:
+
+| File | What to change |
+|------|----------------|
+| `pyproject.toml` | `version = "X.Y.Z"` under `[project]` |
+| `README.md` | `**Version:** X.Y.Z` in the footer |
+| `README_DEV.md` | Title `# 😼 ManulEngine vX.Y.Z`, pyproject.toml ref, extension manifest ref, VS Code extension version ref, footer `**Version:** X.Y.Z` |
+| `vscode-extension/package.json` | `"version": "X.Y.Z"` (uses 3-digit semver, e.g. `"0.0.84"`) |
+| `vscode-extension/README.md` | Add `### X.Y.Z` release notes section above the previous entry |
+| `.github/copilot-instructions.md` | Version in the repo layout section (this file) |

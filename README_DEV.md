@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.0.8.3 — The Mastermind
+# 😼 ManulEngine v0.0.8.4 — The Mastermind
 
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 
@@ -20,7 +20,7 @@ Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristi
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.8.3
+├── pyproject.toml                    Build config — package: manul-engine 0.0.8.4
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
@@ -55,7 +55,7 @@ ManulEngine/
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 └── vscode-extension/                 VS Code extension (language support + UI)
-    ├── package.json                  Extension manifest (v0.0.83)
+    ├── package.json                  Extension manifest (v0.0.84)
     ├── src/
     │   ├── extension.ts              Activation, command registration
     │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
@@ -125,7 +125,7 @@ run_hooks(lines, label, hunt_dir)  → bool
 
 The full hook unit test suite (`41 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
 
-### 🛡️ Unbreakable JS Fallbacks
+### 🛡️ Ironclad JS Fallbacks
 
 Modern websites love to hide elements behind invisible overlays, custom dropdowns, and zero-pixel traps. Manul primarily uses Playwright interactions with `force=True` plus retries/self-healing; for Shadow DOM elements it falls back to direct JS helpers (`window.manulClick`, `window.manulType`) to keep execution moving.
 
@@ -217,6 +217,7 @@ Environment variables (`MANUL_*`) always override JSON values — useful for CI/
 
   "controls_cache_enabled": true,
   "controls_cache_dir": "cache",
+  "semantic_cache_enabled": true,
 
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
@@ -318,9 +319,9 @@ manul tests/mission.hunt
 
 ---
 
-## 🐾 Chaos Chamber Verified (1268+ Tests)
+## 🐾 Chaos Chamber Verified (1296+ Tests)
 
-The engine is battle-tested with **1268+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
+The engine is battle-tested with **1296+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).
@@ -368,7 +369,7 @@ The `prompts/` directory contains ready-to-use LLM prompt templates that let you
 
 ## 🖱️ VS Code Extension
 
-The `vscode-extension/` directory contains a companion VS Code extension (v0.0.7) that provides:
+The `vscode-extension/` directory contains a companion VS Code extension (v0.0.84) that provides:
 
 | Feature | Details |
 | --- | --- |
@@ -402,7 +403,7 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 ---
 
-**Version:** 0.0.8.3
+**Version:** 0.0.8.4
 
 **Codename:** The Mastermind
 

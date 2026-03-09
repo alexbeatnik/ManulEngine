@@ -22,7 +22,7 @@ Manul combines the blazing speed of **Playwright**, powerful JavaScript DOM heur
 
 When the LLM picker is used, Manul passes the heuristic score as a **prior** (hint) by default — the model can override the ranking only with a clear, disqualifying reason.
 
-### 🛡️ Unbreakable JS Fallbacks
+### 🛡️ Ironclad JS Fallbacks
 
 Modern websites love to hide elements behind invisible overlays, custom dropdowns, and zero-pixel traps. Manul uses Playwright with `force=True` plus retries and self-healing; for Shadow DOM elements it falls back to direct JS helpers to keep execution moving.
 
@@ -158,8 +158,11 @@ manul "1. NAVIGATE to https://example.com  2. Click the 'More' link  3. DONE."
 # Run multiple hunt files in parallel (4 concurrent browsers)
 manul my_tests/ --workers 4
 
-# Interactive debug mode — pause before every step, confirm in terminal
+# Interactive debug mode (terminal) — pause before every step, confirm in terminal
 manul --debug my_tests/smoke.hunt
+
+# VS Code: place red-dot gutter breakpoints in any .hunt file, then run the Debug profile
+# in Test Explorer — ⏭ Next Step / ▶ Continue All / ■ Stop (Stop dismisses QuickPick cleanly)
 
 # Smart Page Scanner — scan a URL and generate a draft hunt file
 manul scan https://example.com                    # outputs to tests/draft.hunt (tests_home)
@@ -318,6 +321,7 @@ Create `manul_engine_configuration.json` in your project root — all settings a
   "ai_threshold": null,
   "controls_cache_enabled": true,
   "controls_cache_dir": "cache",
+  "semantic_cache_enabled": true,
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
   "workers": 1,
@@ -346,8 +350,9 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 | `ai_threshold` | auto | Score threshold before LLM fallback. `null` = auto by model size |
 | `ai_always` | `false` | Always use LLM picker, bypass heuristic short-circuits |
 | `ai_policy` | `"prior"` | `"prior"` (LLM may override score) or `"strict"` (enforce max-score) |
-| `controls_cache_enabled` | `true` | Persistent per-site controls cache |
+| `controls_cache_enabled` | `true` | Persistent per-site controls cache (file-based, survives between runs) |
 | `controls_cache_dir` | `"cache"` | Cache directory (relative to CWD or absolute) |
+| `semantic_cache_enabled` | `true` | In-session semantic cache; remembers resolved elements within a single run (+20,000 score boost) |
 | `timeout` | `5000` | Default action timeout (ms) |
 | `nav_timeout` | `30000` | Navigation timeout (ms) |
 | `log_name_maxlen` | `0` | Truncate element names in logs (0 = no limit) |
@@ -380,7 +385,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 
 ## 🐾 Battle-Tested
 
-ManulEngine is verified against **1268+ synthetic DOM tests** covering:
+ManulEngine is verified against **1296+ synthetic DOM tests** covering:
 
 - Shadow DOM, invisible overlays, zero-pixel honeypots
 - Custom dropdowns, drag-and-drop, hover menus
@@ -390,4 +395,4 @@ ManulEngine is verified against **1268+ synthetic DOM tests** covering:
 
 ---
 
-**Version:** 0.0.8.3 · **Status:** Hunting...
+**Version:** 0.0.8.4 · **Status:** Hunting...

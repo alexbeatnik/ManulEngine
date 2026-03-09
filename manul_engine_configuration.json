@@ -10,6 +10,7 @@
   "ai_threshold": null,
   "controls_cache_enabled": true,
   "controls_cache_dir": "cache",
+  "semantic_cache_enabled": true,
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
   "workers": 1,

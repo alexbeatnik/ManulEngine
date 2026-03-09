@@ -19,7 +19,7 @@ class _ActionsMixin:
         target_field: str | None,
         element: dict,
     ) -> None:
-        if getattr(self, '_controls_cache_enabled', True):
+        if getattr(self, '_semantic_cache_enabled', True):
             self.learned_elements[cache_key] = {
                 "name": str(element.get("name", "")),
                 "tag": str(element.get("tag_name", "")),
@@ -216,7 +216,7 @@ class _ActionsMixin:
         await asyncio.sleep(ACTION_WAIT)
         return True
 
-    async def _execute_step(self, page, step: str, strategic_context: str = "") -> bool:
+    async def _execute_step(self, page, step: str, strategic_context: str = "", step_idx: int = 0) -> bool:
         step_l = step.lower()
         words  = set(re.findall(r'\b[a-z]+\b', step_l))
 
@@ -293,18 +293,23 @@ class _ActionsMixin:
             if mode == "drag": return await self._do_drag(page, step, expected, el_id)
 
             loc = page.locator(f"xpath={xpath}").first
+            _in_debug = getattr(self, "debug_mode", False) or step_idx in getattr(self, "break_steps", set())
             try:
                 if not is_shad:
                     await loc.scroll_into_view_if_needed(timeout=2000)
                     await self._highlight(page, loc)
                 else:
                     await self._highlight(page, el_id, by_js_id=True)
-                if getattr(self, "debug_mode", False):
+                if _in_debug:
                     if not is_shad:
                         await self._debug_highlight(page, loc)
                     else:
                         await self._debug_highlight(page, el_id, by_js_id=True)
             except Exception: pass
+
+            if _in_debug:
+                await self._debug_prompt(page, step, step_idx)
+                await self._clear_debug_highlight(page)
 
             try:
                 if mode == "input":
