@@ -46,7 +46,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         ai_threshold:   "int | None"  = None,
         debug_mode:     bool          = False,
         break_steps:    "set[int] | None" = None,
-        disable_cache:  bool          = False,  # 👈 Додали параметр
+        disable_cache:  bool          = False,
         semantic_cache: "bool | None" = None,     # None → read from config/env
         **_kwargs,
     ):
