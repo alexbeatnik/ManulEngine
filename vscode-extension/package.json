@@ -164,7 +164,7 @@
         },
         {
           "command": "manul.debugHighlight",
-          "when": "resourceExtname == .hunt",
+          "when": "resourceExtname == .hunt && manulDebugSessionActive",
           "group": "navigation@3"
         }
       ],

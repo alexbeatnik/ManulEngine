@@ -316,10 +316,10 @@ export function runHuntFileDebugPanel(
                 }
                 setTimeout(() => { if (proc.exitCode === null) { proc.kill(); } }, 500);
               } else {
-                // For debug-stop, send the token to Python so it clears all breakpoints.
-                const token = choice === "debug-stop" ? "debug-stop" : choice;
+                // For debug-stop, send the payload to Python so it clears all breakpoints.
+                const stdinPayload = choice === "debug-stop" ? "debug-stop" : choice;
                 if (proc.exitCode === null && proc.stdin && !proc.stdin.destroyed) {
-                  proc.stdin.write(token + "\n");
+                  proc.stdin.write(stdinPayload + "\n");
                 }
               }
             },

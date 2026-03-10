@@ -754,23 +754,9 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         - Otherwise inserts a new line and increments _annotate_line_offset so that
           subsequent NAVIGATE steps in the same file compute correct positions.
         """
-        import os as _os
-
-        # ── Diagnostic header ──────────────────────────────────────────────────────────────────────────────────
-        print("    [AUTO-NAV DEBUG] -------- annotator entry --------")
-        print(f"    [AUTO-NAV DEBUG] MANUL_AUTO_ANNOTATE env = {_os.environ.get('MANUL_AUTO_ANNOTATE')!r}")
-        print(f"    [AUTO-NAV DEBUG] prompts.AUTO_ANNOTATE   = {prompts.AUTO_ANNOTATE!r}")
-        print(f"    [AUTO-NAV DEBUG] hunt_file               = {hunt_file!r}")
-        print(f"    [AUTO-NAV DEBUG] step_file_lines         = {step_file_lines!r}")
-        print(f"    [AUTO-NAV DEBUG] step_idx                = {step_idx!r}")
-        print(f"    [AUTO-NAV DEBUG] _annotate_line_offset   = {self._annotate_line_offset!r}")
-
         try:
             url = page.url
-            print(f"    [AUTO-NAV DEBUG] URL changed to: {url!r}")
-
             page_name = prompts.lookup_page_name(url)
-            print(f"    [AUTO-NAV DEBUG] Matched page name: {page_name!r}")
 
             # Use the mapped name when available; fall back to the full URL
             # when lookup returned an auto-generated placeholder.
@@ -778,42 +764,33 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             comment_line = f"# 📍 Auto-Nav: {display}\n"
 
             if step_idx - 1 >= len(step_file_lines):
-                print(f"    [AUTO-NAV DEBUG] ⚠️  step_idx-1 ({step_idx-1}) ≥ len(step_file_lines) ({len(step_file_lines)}) — aborting")
                 return
 
             # Original 1-based file line of this step, corrected for any lines
             # we have already inserted earlier in this same run.
             nav_line_no = step_file_lines[step_idx - 1] + self._annotate_line_offset
-            print(f"    [AUTO-NAV DEBUG] NAVIGATE step is at file line {nav_line_no} (raw {step_file_lines[step_idx-1]} + offset {self._annotate_line_offset})")
-            print(f"    [AUTO-NAV DEBUG] Attempting to edit file: {hunt_file!r}")
 
             try:
                 with open(hunt_file, 'r', encoding='utf-8') as _hf:
                     lines = _hf.readlines()
-                print(f"    [AUTO-NAV DEBUG] File read OK — {len(lines)} lines")
 
                 above_idx = nav_line_no - 2  # 0-based index of the line above the step
-                above_content = lines[above_idx].rstrip() if 0 <= above_idx < len(lines) else '<out of range>'
-                print(f"    [AUTO-NAV DEBUG] Line above index = {above_idx}, content = {above_content!r}")
 
                 if 0 <= above_idx < len(lines) and lines[above_idx].strip().startswith('# 📍 Auto-Nav:'):
-                    print('    [AUTO-NAV DEBUG] Existing Auto-Nav comment found — OVERWRITING in-situ')
                     lines[above_idx] = comment_line
                 else:
-                    print('    [AUTO-NAV DEBUG] No existing comment — INSERTING new line')
                     lines.insert(nav_line_no - 1, comment_line)
                     self._annotate_line_offset += 1
 
                 with open(hunt_file, 'w', encoding='utf-8') as _hf:
                     _hf.writelines(lines)
-                print('    [AUTO-NAV DEBUG] ✅ Successfully updated test script comment.')
-                print(f"    📍 Auto-Nav: {page_name}")
+                print(f"    📍 Auto-Nav: {display}")
 
             except Exception as _io_exc:
-                print(f"    [AUTO-NAV DEBUG] ❌ File I/O Error: {_io_exc}")
+                print(f"    ⚠️  Auto-Nav: file I/O error: {_io_exc}")
 
         except Exception as _ann_exc:
-            print(f"    [AUTO-NAV DEBUG] ❌ Outer error in annotator: {_ann_exc}")
+            print(f"    ⚠️  Auto-Nav: {_ann_exc}")
 
     async def run_mission(self, task: str, strategic_context: str = "", hunt_dir: str | None = None,
                           hunt_file: str | None = None, step_file_lines: "list[int] | None" = None) -> bool:

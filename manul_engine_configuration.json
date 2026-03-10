@@ -15,5 +15,5 @@
   "log_thought_maxlen": 0,
   "workers": 1,
   "tests_home": "tests",
-  "auto_annotate": true
+  "auto_annotate": false
 }

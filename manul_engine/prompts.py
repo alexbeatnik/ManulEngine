@@ -105,7 +105,7 @@ if not _cache_dir_path.is_absolute():
 CONTROLS_CACHE_DIR = str(_cache_dir_path.resolve())
 
 # ── In-session semantic cache (learned_elements) ──────────────────────────────
-# Remembers resolved elements within a single run (+20,000 score boost).
+# Remembers resolved elements within a single run (+200,000 score boost).
 # Separate from the persistent controls cache — resets every time ManulEngine starts.
 SEMANTIC_CACHE_ENABLED = env_bool("MANUL_SEMANTIC_CACHE_ENABLED", "True")
 

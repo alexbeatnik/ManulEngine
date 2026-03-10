@@ -50,7 +50,7 @@ Place breakpoints by clicking the editor gutter next to any step number in a `.h
 - **⏭ Next Step** — advance exactly one step and pause again
 - **▶ Continue All** — run until the next gutter breakpoint or end of hunt
 - **Stop button** — clicking Stop in Test Explorer dismisses the QuickPick and terminates the run cleanly; Python never hangs
-- **� Highlight Element** — a third QuickPick option that re-scrolls the browser to the persistently highlighted target element and re-shows the pause overlay without advancing the step
+- **👁 Highlight Element** — a third QuickPick option that re-scrolls the browser to the persistently highlighted target element and re-shows the pause overlay without advancing the step
 - **Linux:** VS Code window is raised via `xdotool`/`wmctrl` and a 5-second system notification appears via `notify-send` when execution pauses
 - **Persistent magenta highlight** — the resolved target element is outlined with a `4px solid #ff00ff` border + glow while execution is paused; the highlight is removed automatically just before the action executes
 - Debug output streams live into the **ManulEngine Debug** output channel
