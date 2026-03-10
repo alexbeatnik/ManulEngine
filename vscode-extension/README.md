@@ -110,6 +110,15 @@ A sidebar panel that lets you insert hunt steps with a single click — no typin
 
 ---
 
+## 💻 System Requirements
+
+| | Minimum | Recommended |
+|---|---|---|
+| **CPU** | any | modern laptop |
+| **RAM** | 4 GB | 8 GB |
+| **GPU** | none | none |
+| **Model** | — (heuristics-only) | `qwen2.5:0.5b` |
+
 ## Requirements
 
 - **ManulEngine** installed in the workspace or globally:
