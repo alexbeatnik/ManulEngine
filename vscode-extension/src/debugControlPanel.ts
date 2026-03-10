@@ -12,11 +12,13 @@
 import * as vscode from "vscode";
 import { exec, execFile } from "child_process";
 
-export type PauseChoice = "next" | "continue" | "highlight";
+export type PauseChoice = "next" | "continue" | "highlight" | "debug-stop" | "stop-test";
 
 const NEXT_LABEL  = "⏭  Next Step";
 const CONT_LABEL  = "▶  Continue All";
 const HIGH_LABEL  = "👁  Highlight Element";
+const DSTOP_LABEL = "⏹  Debug Stop";
+const SSTOP_LABEL = "🛑  Stop Test";
 
 /** Best-effort: raise the VS Code window above other apps on Linux. */
 function tryRaiseWindow(stepIdx: number, stepText: string): void {
@@ -73,7 +75,9 @@ export class DebugControlPanel {
       qp.items = [
         { label: NEXT_LABEL },
         { label: CONT_LABEL },
-        { label: HIGH_LABEL, description: "Scroll the browser to the highlighted element" },
+        { label: HIGH_LABEL,  description: "Scroll the browser to the highlighted element" },
+        { label: DSTOP_LABEL, description: "Skip all remaining breakpoints and run to end" },
+        { label: SSTOP_LABEL, description: "Abort the test immediately" },
       ];
       qp.ignoreFocusOut = true;
 
@@ -89,12 +93,11 @@ export class DebugControlPanel {
       qp.onDidAccept(() => {
         const label = qp.selectedItems[0]?.label;
         if (label === HIGH_LABEL) {
-          // "Highlight" must NOT close the QuickPick — just send the token.
-          // Python will re-scroll and re-emit the pause marker; TypeScript's
-          // stdout listener will call onPause again, creating a new QuickPick.
-          // So we resolve immediately with "highlight" so the caller writes it
-          // to stdin, and the current QP is disposed.
           done("highlight");
+        } else if (label === DSTOP_LABEL) {
+          done("debug-stop");
+        } else if (label === SSTOP_LABEL) {
+          done("stop-test");
         } else {
           done(label === CONT_LABEL ? "continue" : "next");
         }

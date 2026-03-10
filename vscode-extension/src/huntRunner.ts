@@ -184,6 +184,10 @@ export function runHunt(
         spawnArgs.push("--break-lines", breakLines.join(","));
       }
       spawnArgs.push(huntFile);
+      // Only inject MANUL_AUTO_ANNOTATE when it is explicitly ON in VS Code settings.
+      // When the setting is false/unset, do NOT inject the env var — this lets the
+      // project's manul_engine_configuration.json auto_annotate value take effect.
+      const _autoAnnotate = vscode.workspace.getConfiguration("manulEngine").get<boolean>("autoAnnotate", false);
       proc = spawn(manulExe, spawnArgs, {
         cwd,
         env: {
@@ -191,6 +195,7 @@ export function runHunt(
           // Force Python to flush stdout immediately — without this, output
           // is block-buffered when piped and steps appear only at the end.
           PYTHONUNBUFFERED: "1",
+          ...(_autoAnnotate ? { MANUL_AUTO_ANNOTATE: "true" } : {}),
         },
       });
     } catch (err) {
@@ -229,7 +234,7 @@ export function runHuntFileDebugPanel(
   onData: (chunk: string) => void,
   token?: vscode.CancellationToken,
   breakLines?: number[],
-  onPause?: (step: string, idx: number) => Promise<"next" | "continue" | "highlight">
+  onPause?: (step: string, idx: number) => Promise<"next" | "continue" | "highlight" | "debug-stop" | "stop-test">
 ): Promise<number> {
   const PAUSE_MARKER = "\x00MANUL_DEBUG_PAUSE\x00";
   return new Promise((resolve, reject) => {
@@ -246,10 +251,15 @@ export function runHuntFileDebugPanel(
 
     let proc: ChildProcess;
     try {
+      const _autoAnnotatePanel = vscode.workspace.getConfiguration("manulEngine").get<boolean>("autoAnnotate", false);
       proc = spawn(manulExe, spawnArgs, {
         cwd,
         stdio: ["pipe", "pipe", "pipe"],
-        env: { ...process.env, PYTHONUNBUFFERED: "1" },
+        env: {
+          ...process.env,
+          PYTHONUNBUFFERED: "1",
+          ...(_autoAnnotatePanel ? { MANUL_AUTO_ANNOTATE: "true" } : {}),
+        },
       });
     } catch (err) {
       reject(err);
@@ -279,7 +289,7 @@ export function runHuntFileDebugPanel(
           // Show the Webview panel (if onPause provided) or fall back to
           // a notification.  Either way write the response to stdin so the
           // blocked Python readline() unblocks.
-          const pausePromise: Thenable<"next" | "continue" | "highlight"> = onPause
+          const pausePromise: Thenable<"next" | "continue" | "highlight" | "debug-stop" | "stop-test"> = onPause
             ? onPause(step, idx)
             : (() => {
                 const shortStep = step.length > 100 ? step.substring(0, 100) + "…" : step;
@@ -295,12 +305,22 @@ export function runHuntFileDebugPanel(
                   );
               })();
           pausePromise.then(
-            (choice: "next" | "continue" | "highlight") => {
+            (choice: "next" | "continue" | "highlight" | "debug-stop" | "stop-test") => {
               // Guard against writing to stdin after the process has already
               // exited or the stream has been closed/destroyed (e.g. user
               // pressed Stop while the QuickPick was open).
-              if (proc.exitCode === null && proc.stdin && !proc.stdin.destroyed) {
-                proc.stdin.write(choice + "\n");
+              if (choice === "stop-test") {
+                // Send abort token so Python can clean up, then kill the process.
+                if (proc.exitCode === null && proc.stdin && !proc.stdin.destroyed) {
+                  proc.stdin.write("abort\n");
+                }
+                setTimeout(() => { if (proc.exitCode === null) { proc.kill(); } }, 500);
+              } else {
+                // For debug-stop, send the token to Python so it clears all breakpoints.
+                const token = choice === "debug-stop" ? "debug-stop" : choice;
+                if (proc.exitCode === null && proc.stdin && !proc.stdin.destroyed) {
+                  proc.stdin.write(token + "\n");
+                }
               }
             },
             () => { /* swallow QuickPick errors to avoid unhandled rejections */ }

@@ -164,7 +164,7 @@
         },
         {
           "command": "manul.debugHighlight",
-          "when": "resourceExtname == .hunt && manulDebugSessionActive",
+          "when": "resourceExtname == .hunt",
           "group": "navigation@3"
         }
       ],
@@ -227,6 +227,11 @@
           "type": "string",
           "default": "tests",
           "description": "Directory where new hunt files are created by the Step Builder. Relative to workspace root or absolute path. Overrides the `tests_home` key in manul_engine_configuration.json."
+        },
+        "manulEngine.autoAnnotate": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically annotate hunt output with page names when the browser navigates to a page matched by `page_registry` in manul_engine_configuration.json. Sets the MANUL_AUTO_ANNOTATE environment variable when running hunts."
         }
       }
     }

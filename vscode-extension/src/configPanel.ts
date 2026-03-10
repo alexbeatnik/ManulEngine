@@ -23,6 +23,7 @@ const DEFAULT_CONFIG = {
   log_thought_maxlen: 0,
   workers: 1,
   tests_home: "tests",
+  auto_annotate: false,
 };
 
 // ── WebviewViewProvider ───────────────────────────────────────────────────────
@@ -297,6 +298,12 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
     </label>
     <div class="hint">Directory where new hunt files are created by the Step Builder panel. Relative to workspace root or absolute path.</div>
 
+    <div class="checkbox-row">
+      <input type="checkbox" id="auto_annotate"/>
+      <label for="auto_annotate">Auto-Annotate Page Navigation</label>
+    </div>
+    <div class="hint">Automatically inserts <code># 📍 Auto-Nav:</code> comments into hunt files whenever the browser URL changes during a run.</div>
+
     <div class="btn-row">
       <button id="btn-save">💾 Save</button>
       <button id="btn-open" class="secondary">Open in Editor</button>
@@ -336,6 +343,7 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
         log_thought_maxlen: (v => isNaN(v) ? 0 : v)(parseInt(g('log_thought_maxlen').value, 10)),
         workers: parseInt(g('workers').value, 10) || 1,
         tests_home: g('tests_home').value.trim() || 'tests',
+        auto_annotate: g('auto_annotate').checked,
       };
       vsc.postMessage({ command: 'save', config: cfg });
     }
@@ -370,6 +378,7 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       const _w = Math.min(4, Math.max(1, parseInt(String(config.workers ?? 1), 10)));
       g('workers').value                  = String(isNaN(_w) ? 1 : _w);
       g('tests_home').value               = config.tests_home ?? 'tests';
+      g('auto_annotate').checked           = !!config.auto_annotate;
       syncAiAlways();
     }
 

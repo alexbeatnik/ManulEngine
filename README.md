@@ -359,6 +359,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 | `log_thought_maxlen` | `0` | Truncate LLM thoughts in logs (0 = no limit) |
 | `workers` | `1` | Number of hunt files to run concurrently (each gets its own browser) |
 | `tests_home` | `"tests"` | Default directory for new hunt files and `SCAN PAGE` / `manul scan` output |
+| `auto_annotate` | `false` | Automatically insert `# 📍 Auto-Nav:` comments in hunt files whenever the browser URL changes (not only on `NAVIGATE` steps). Page names are resolved from `pages.json`; unmapped URLs fall back to the full URL |
 
 ---
 
