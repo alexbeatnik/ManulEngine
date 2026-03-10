@@ -9,6 +9,10 @@ Forget brittle CSS/XPath locators that break on every UI update. Stop paying for
 
 > The Manul goes hunting and never returns without its prey.
 
+> **ManulEngine runs on a potato.**
+> No GPU. No cloud APIs. No $0.02 per click.
+> Just Playwright, heuristics, and optional tiny local models.
+
 ---
 
 ## 🤝 The Team Workflow (Why managers love it)

@@ -12,6 +12,10 @@ Manul combines the blazing speed of **Playwright**, powerful JavaScript DOM heur
 
 > The Manul goes hunting and never returns without its prey.
 
+> **ManulEngine runs on a potato.**
+> No GPU. No cloud APIs. No $0.02 per click.
+> Just Playwright, heuristics, and optional tiny local models.
+
 ---
 
 ## ✨ Key Features
