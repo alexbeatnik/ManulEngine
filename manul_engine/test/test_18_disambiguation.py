@@ -480,12 +480,14 @@ async def run_suite():
         await browser.close()
 
     print(f"\n{'=' * 70}")
-    print(f"RESULT: {passed}/{passed + failed} passed")
+    print(f"SCORE: {passed}/{passed + failed} passed")
     if failures:
         print("\nFAILURES:")
         for f in failures:
             print(f"  {f}")
     print(f"{'=' * 70}")
+
+    return passed == (passed + failed)
 
 
 if __name__ == "__main__":

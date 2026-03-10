@@ -111,7 +111,7 @@ def score_elements(
             if tl == aria or tl == ph: 
                 score += 50_000 
                 is_perfect_text_match = True
-            elif len(tl) > 2 and (aria.startswith(tl + " (") or aria.startswith(tl + " [")):
+            elif len(tl) > 2 and aria.startswith(tl + " "):
                 score += 3_000
                 
             t_dashed = tl.replace(" ", "-").replace("_", "-")
@@ -198,6 +198,8 @@ def score_elements(
         elif wants_radio:
             if is_real_radio: 
                 score += 50_000
+                if context_prefix and any(t.lower().strip() == context_prefix for t in search_texts if t.strip()):
+                    score += 5_000  # label text beats HTML name attribute
             elif re.search(r'\brad\b|-rad|rad-|radio', dev_names): 
                 score += 20_000
             else:
@@ -251,6 +253,9 @@ def score_elements(
         elif mode == "input":
             if is_real_checkbox or is_real_radio:
                 score -= 50_000
+        elif mode == "clickable":
+            if is_real_input and not is_native_button and wants_button:
+                score -= 200_000  # text input must never win over a button
         
         # 8. FILE UPLOADS
         if tag == "label":

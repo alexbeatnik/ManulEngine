@@ -187,6 +187,8 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             if (wrapper) {
                 const wrapLbl = wrapper.querySelector('label');
                 if (wrapLbl) return wrapLbl.innerText.trim();
+                const divLbl = wrapper.querySelector('div[class*="label"], span[class*="label"]');
+                if (divLbl) return divLbl.innerText.trim();
             }
 
             let curr = el;
