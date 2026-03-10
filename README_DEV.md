@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.0.8.3 — The Mastermind
+# 😼 ManulEngine v0.0.8.4 — The Mastermind
 
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 
@@ -12,6 +12,10 @@ Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristi
 
 > The Manul goes hunting and never returns without its prey.
 
+> **ManulEngine runs on a potato.**
+> No GPU. No cloud APIs. No $0.02 per click.
+> Just Playwright, heuristics, and optional tiny local models.
+
 ---
 
 ## 📁 Project Structure
@@ -20,7 +24,7 @@ Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristi
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.8.3
+├── pyproject.toml                    Build config — package: manul-engine 0.0.8.4
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
@@ -55,7 +59,7 @@ ManulEngine/
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 └── vscode-extension/                 VS Code extension (language support + UI)
-    ├── package.json                  Extension manifest (v0.0.83)
+    ├── package.json                  Extension manifest (v0.0.84)
     ├── src/
     │   ├── extension.ts              Activation, command registration
     │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
@@ -125,7 +129,7 @@ run_hooks(lines, label, hunt_dir)  → bool
 
 The full hook unit test suite (`41 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
 
-### 🛡️ Unbreakable JS Fallbacks
+### 🛡️ Ironclad JS Fallbacks
 
 Modern websites love to hide elements behind invisible overlays, custom dropdowns, and zero-pixel traps. Manul primarily uses Playwright interactions with `force=True` plus retries/self-healing; for Shadow DOM elements it falls back to direct JS helpers (`window.manulClick`, `window.manulType`) to keep execution moving.
 
@@ -168,6 +172,15 @@ Set `"model": null` in `manul_engine_configuration.json` (or omit the key entire
 This disables the LLM element-picker and planner completely (`threshold = 0`). No Ollama process needed. The engine relies entirely on deterministic heuristics — fastest, most reproducible mode.
 
 ---
+
+## 💻 System Requirements
+
+| | Minimum | Recommended |
+|---|---|---|
+| **CPU** | any | modern laptop |
+| **RAM** | 4 GB | 8 GB |
+| **GPU** | none | none |
+| **Model** | — (heuristics-only) | `qwen2.5:0.5b` |
 
 ## 🛠️ Installation
 
@@ -217,6 +230,7 @@ Environment variables (`MANUL_*`) always override JSON values — useful for CI/
 
   "controls_cache_enabled": true,
   "controls_cache_dir": "cache",
+  "semantic_cache_enabled": true,
 
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
@@ -318,9 +332,9 @@ manul tests/mission.hunt
 
 ---
 
-## 🐾 Chaos Chamber Verified (1268+ Tests)
+## 🐾 Chaos Chamber Verified (1296+ Tests)
 
-The engine is battle-tested with **1268+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
+The engine is battle-tested with **1296+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).
@@ -368,7 +382,7 @@ The `prompts/` directory contains ready-to-use LLM prompt templates that let you
 
 ## 🖱️ VS Code Extension
 
-The `vscode-extension/` directory contains a companion VS Code extension (v0.0.7) that provides:
+The `vscode-extension/` directory contains a companion VS Code extension (v0.0.84) that provides:
 
 | Feature | Details |
 | --- | --- |
@@ -384,7 +398,9 @@ The `vscode-extension/` directory contains a companion VS Code extension (v0.0.7
 ### Extension behaviour notes
 
 * **Working directory:** The extension spawns `manul` with `cwd` set to the **VS Code workspace folder root** (not the directory of the `.hunt` file). This ensures `manul_engine_configuration.json` and the cache directory are always resolved from the project root, matching what you get when running `manul` from the terminal.
-* **Debug protocol:** `runHuntFileDebugPanel` spawns `manul` with `--break-lines` (never `--debug`) and piped stdio. Python emits `\x00MANUL_DEBUG_PAUSE\x00{"step":"...","idx":N}\n` when pausing; TS responds with `"next\n"` or `"continue\n"`. "Next Step" adds `idx+1` to active break-steps; "Continue All" resets to original gutter breakpoints.
+* **Debug protocol:** `runHuntFileDebugPanel` spawns `manul` with `--break-lines` (never `--debug`) and piped stdio. Python emits `\x00MANUL_DEBUG_PAUSE\x00{"step":"...","idx":N}\n` when pausing; TS responds on stdin with one of: `"next\n"` (pause at idx+1), `"continue\n"` (restore original gutter breakpoints), `"debug-stop\n"` (clear all breakpoints, run to end), or `"abort\n"` (then kill the process after 500 ms). The QuickPick overlay exposes five actions: **⏭ Next Step**, **▶ Continue All**, **👁 Highlight Element**, **⏹ Debug Stop**, **🛑 Stop Test**.
+* **Auto-annotate:** When `auto_annotate` is enabled (via the Config Panel or `MANUL_AUTO_ANNOTATE` env var), the engine inserts/overwrites `# 📍 Auto-Nav:` comments above any step that follows a URL change — not only explicit `NAVIGATE` steps. URL tracking happens in `run_mission()`: `url_before` is captured before each step's `try` block; after the step's `finally`, if `page.url != url_before` and there is a next step, `_auto_annotate_navigate(page, hunt_file, step_file_lines, i+1)` is called. NAVIGATE steps annotate above themselves as before.
+* **`pages.json` format:** Nested two-level dict — `{ "site_root_url": { "Domain": "display name", "regex_or_exact_url": "Page Name", ... } }`. `lookup_page_name()` in `prompts.py` re-reads the file on every call, finds the longest-prefix matching site block, then tries exact URL → regex patterns → `"Domain"` fallback. Auto-generated placeholders are stored under `{ "Domain": "Auto: domain/path" }` for the detected site root. Unknown unmapped pages write back `"Auto: ..."` as the display name in the comment.
 * **`ai_always` guard:** The config panel automatically forces `ai_always` to `false` when no model is selected, preventing an invalid heuristics-only config from being saved with `ai_always: true`.
 * **Ollama discovery:** On panel open the extension fetches `http://localhost:11434/api/tags` and populates a `<select>` with installed model names. If Ollama is not running the field accepts free-text input instead.
 
@@ -402,7 +418,7 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 ---
 
-**Version:** 0.0.8.3
+**Version:** 0.0.8.4
 
 **Codename:** The Mastermind
 

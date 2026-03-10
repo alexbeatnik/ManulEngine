@@ -21,6 +21,32 @@ export function activate(context: vscode.ExtensionContext): void {
   // Output channel reused across debug runs from the editor button / context menu.
   const debugOutputChannel = vscode.window.createOutputChannel("ManulEngine Debug");
   context.subscriptions.push(debugOutputChannel);
+
+  // ── Debug terminal tracking & Highlight status bar item ─────────────────────
+  // Shows the "$(eye) Highlight Target" status bar button whenever a
+  // "ManulEngine Debug" terminal is open (i.e. --debug mode is active).
+  const highlightItem = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Left,
+    100
+  );
+  highlightItem.text = "$(eye) Highlight Target";
+  highlightItem.tooltip = "Scroll the browser to the engine's current target element";
+  highlightItem.command = "manul.debugHighlight";
+  context.subscriptions.push(highlightItem);
+
+  function _refreshDebugContext(): void {
+    const active = vscode.window.terminals.some(
+      (t) => t.name === "ManulEngine Debug"
+    );
+    vscode.commands.executeCommand("setContext", "manulDebugSessionActive", active);
+    active ? highlightItem.show() : highlightItem.hide();
+  }
+
+  context.subscriptions.push(
+    vscode.window.onDidOpenTerminal(() => _refreshDebugContext()),
+    vscode.window.onDidCloseTerminal(() => _refreshDebugContext()),
+  );
+  _refreshDebugContext(); // set initial state
   // ── Test Controller (Test Explorer) ────────────────────────────────────────
   const ctrl = createHuntTestController(context);
 
@@ -157,6 +183,25 @@ export function activate(context: vscode.ExtensionContext): void {
           "ManulEngine: failed to add default prompts. Check workspace permissions and try again."
         );
       }
+    }),
+
+    vscode.commands.registerCommand("manul.debugHighlight", () => {
+      // Prefer the dedicated debug terminal; fall back to "ManulEngine"
+      // (terminal-based normal run) and finally to whatever terminal is active.
+      const terminal =
+        vscode.window.terminals.find((t) => t.name === "ManulEngine Debug") ??
+        vscode.window.terminals.find((t) => t.name === "ManulEngine") ??
+        vscode.window.activeTerminal;
+      if (!terminal) {
+        vscode.window.showWarningMessage(
+          "ManulEngine: No active debug terminal found. Run a hunt file with --debug first."
+        );
+        return;
+      }
+      // Bring the terminal into focus (preservesFocus=true keeps text-editor focus)
+      // then send 'h' to the waiting Python debug prompt.
+      terminal.show(true);
+      terminal.sendText("h");
     }),
 
     vscode.commands.registerCommand("manul.refreshCache", () =>

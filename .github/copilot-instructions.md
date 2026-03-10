@@ -21,7 +21,8 @@ Current operating mode in this repo is typically **mixed**:
 ```text
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.2
+pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.4
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
@@ -48,7 +49,7 @@ tests/
   rahul.hunt              integration: radios, autocomplete, hover
   wikipedia.hunt          integration: search, navigate, extract, verify, shadow-dom inputs
 vscode-extension/
-  package.json              Extension manifest (v0.0.83)
+  package.json              Extension manifest (v0.0.84)
   src:
     extension.ts            Activation, command registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
@@ -64,7 +65,7 @@ vscode-extension/
 
 1. **Snapshot** — JS injects into the page and collects all interactive elements.
 2. **Exact-match pass** — quick filter by `name`, `aria-label`, `data-qa` substring.
-3. **Heuristic scoring** — `score_elements()` ranks candidates using many small-to-medium signals (exact text/aria/placeholder matches, `data_qa`/`html_id`, developer naming conventions, element-type alignment, context words, etc.). The biggest single boosts in the current implementation are semantic cache reuse (+20_000) and blind context reuse (+10_000).
+3. **Heuristic scoring** — `score_elements()` ranks candidates using many small-to-medium signals (exact text/aria/placeholder matches, `data_qa`/`html_id`, developer naming conventions, element-type alignment, context words, etc.). The biggest single boosts in the current implementation are semantic cache reuse (+200_000) and blind context reuse (+10_000).
 4. **LLM fallback** — if best score < threshold, ask the LLM to pick the element.
 5. **AI Rejection & Anti-phantom guard** — LLM can return `{"id": null}` if no plausible target is found. Engine handles `null` by blacklisting the current candidates and triggering self-healing.
 6. **Action** — type / click / select / hover / drag. Non-shadow interactions primarily use Playwright with `force=True` plus retries; Shadow DOM interactions use a **JS fallback** (`window.manulClick`, `window.manulType`) to bypass elements that Playwright cannot target.
@@ -200,8 +201,11 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * **Null model = heuristics-only:** When `model` is `None`, `_llm_json()` returns `None` immediately. `get_threshold(None)` returns `0`. No Ollama calls are made.
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
 * **Debug mode:** `ManulEngine(debug_mode=True, break_steps={N,...})`. `debug_mode=True` (from `--debug`) highlights the resolved element and pauses before every step using `input()` in TTY or Playwright's `page.pause()`. `break_steps` (from `--break-lines`) pauses only at listed step indices using the stdout/stdin panel protocol when stdout is not a TTY. The two are mutually exclusive in practice — the extension only ever sets `break_steps` via `--break-lines`.
-* **Element highlight in debug mode:** Before every action when `debug_mode=True`, the engine injects JS to draw a dashed red border on the target element for 500 ms so the tester can visually confirm which element was picked.
+* **Element highlight in debug mode:** When `debug_mode=True` (or a `break_steps` pause fires), the engine calls `highlight_element(page, locator)` which injects `<style id="manul-debug-style">` (once) and sets `data-manul-debug-highlight="true"` on the target element, producing a persistent 4px magenta outline + glow that stays until `clear_highlight(page)` is called just before the action executes. A separate `_highlight()` method draws a short 2-second flash (non-debug, `setTimeout` inside JS) for non-pausing visual feedback.
 * `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). `parse_hunt_file()` in `cli.py` returns a **6-tuple** `(mission, context, blueprint, step_file_lines, setup_lines, teardown_lines)`. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
+* **Auto-Nav annotation:** When `auto_annotate` is enabled, `run_mission()` captures `url_before = page.url` before every step. For `NAVIGATE` steps, the annotation is written above the step itself. For all other steps, `url_after` is checked in the `finally` block — if the URL changed, `_auto_annotate_navigate(page, hunt_file, step_file_lines, i+1)` is called to insert a comment above the *next* step line. The comment uses the mapped page name when found in `pages.json`, or the full URL when the lookup returns an `"Auto:"` placeholder.
+* **`pages.json` — nested per-site format:** `{ "<site_root_url>": { "Domain": "<display_name>", "<regex_or_exact_url>": "<page_name>" } }`. `lookup_page_name(url)` in `prompts.py` re-reads this file from disk on **every call** (live edits take effect immediately with no restart). Resolution order: exact URL key → regex/substring patterns (skipping `"Domain"` key) → `"Domain"` fallback. When no site block matches, a new nested entry is auto-generated. The longest-prefix site block wins when multiple blocks could match.
+* **`_debug_prompt()` `debug-stop` token:** When Python receives `"debug-stop"` on stdin from the VS Code extension (user pressed ⏹ Debug Stop), it clears **both** `self._user_break_steps = set()` and `self.break_steps = set()`, then breaks the pause loop. The test run continues to completion without any further pauses.
 
 ## Running tests
 
@@ -257,13 +261,15 @@ Environment variables (`MANUL_*`) always override JSON values.
 | `ai_threshold` | auto | Score threshold before LLM fallback. `null` = auto-derive from model size |
 | `ai_always` | `false` | If `true`, always ask the LLM picker (bypasses heuristic short-circuits). Has no effect and is forced to `false` when `model` is `null` |
 | `ai_policy` | `"prior"` | How to treat heuristic score in LLM picker: `"prior"` (hint) or `"strict"` (force max-score) |
-| `controls_cache_enabled` | `true` | Enables persistent per-site controls cache |
+| `controls_cache_enabled` | `true` | Enables persistent per-site controls cache (file-based, survives between runs) |
 | `controls_cache_dir` | `"cache"` | Directory for cache files (relative to CWD or absolute) |
+| `semantic_cache_enabled` | `true` | Enables in-session semantic cache (`learned_elements`). Remembers resolved elements within a single run (+200,000 score boost). Resets on each new `ManulEngine` instance |
 | `log_name_maxlen` | `0` | If > 0, truncates element names in logs |
 | `log_thought_maxlen` | `0` | If > 0, truncates LLM “thought” strings in logs |
 | `timeout` | `5000` | Default action timeout (ms) |
 | `nav_timeout` | `30000` | Navigation timeout (ms) |
 | `tests_home` | `"tests"` | Default directory for new hunt files and `SCAN PAGE` / `manul scan` output |
+| `auto_annotate` | `false` | If `true`, engine automatically inserts `# 📍 Auto-Nav: <name>` comments into `.hunt` files whenever the page URL changes during a run. Page names come from `pages.json`; falls back to full URL for unmapped pages. Overridable via `MANUL_AUTO_ANNOTATE` env var |
 Threshold auto-calculation by model size: `<1b → 500`, `1-4b → 750`, `5-9b → 1000`, `10-19b → 1500`, `20b+ → 2000`, `null → 0`.
 
 Suggested config for mixed mode:
@@ -303,7 +309,7 @@ Suggested config for heuristics-only (no Ollama needed):
 
 The engine does not use a single fixed “chain constant”; it sums many heuristic signals in [engine/scoring.py](../manul_engine/scoring.py). The *highest-signal* boosts (and the cutoffs used in [manul_engine/core.py](../manul_engine/core.py)) are:
 
-1. Semantic cache reuse: +20_000 (and `core.py` short-circuits at score ≥ 20_000)
+1. Semantic cache reuse: +200_000 (and `core.py` short-circuits at score ≥ 200_000)
 2. Blind/context reuse (same xpath as last step): +10_000 (and `core.py` short-circuits at score ≥ 10_000)
 3. Exact `data_qa` match: +10_000 (substring: +3_000)
 4. Exact `html_id` match to target/search text: +10_000 (exact to `target_field` can be +15_000)
@@ -335,11 +341,26 @@ A companion extension that provides hunt file language support, Test Explorer in
 * `huntRunner.ts` — `runHunt()` spawns `manul` with `cwd` set to the **VS Code workspace folder root** (resolved via `vscode.workspace.getWorkspaceFolder()`), not `path.dirname(huntFile)`. This ensures `manul_engine_configuration.json` and relative `controls_cache_dir` paths are always resolved from the project root, matching CLI behaviour.
 * `huntRunner.ts` — `findManulExecutable()` probes local venv folders in order: `.venv`, `venv`, `env`, `.env` (both `bin/manul` on Unix and `Scripts\manul.exe` on Windows) before falling back to user-level install paths and a login-shell lookup. When adding new candidate paths, keep this order and always guard Windows/macOS-only paths with `isWin` / `process.platform` checks.
 * `huntRunner.ts` — `runHuntFileDebugPanel(manulExe, huntFile, onData, token?, breakLines?, onPause?)` spawns with `--workers 1` and optionally `--break-lines N,M,...`. **Never pass `--debug`** — `--debug` pauses before every step including step 1 (NAVIGATE), which hangs before the browser has loaded anything. Only `--break-lines` + the stdin/stdout protocol is used for the panel runner.
-* **Debug protocol:** Python (`core.py`) detects it is not a TTY (piped stdout) and emits `\x00MANUL_DEBUG_PAUSE\x00{"step":"...","idx":N}\n` on stdout when pausing. The TS side line-buffers stdout, detects the marker, calls `onPause(step, idx)` and writes `"next\n"` or `"continue\n"` to stdin.
+* **Debug protocol:** Python (`core.py`) detects it is not a TTY (piped stdout) and emits `\x00MANUL_DEBUG_PAUSE\x00{"step":"...","idx":N}\n` on stdout when pausing. The TS side line-buffers stdout, detects the marker, calls `onPause(step, idx)` and writes `"next\n"`, `"continue\n"`, or `"debug-stop\n"` to stdin. The `onPause` return type is `Promise<"next" | "continue" | "highlight" | "debug-stop" | "stop-test">`. Sending `"abort\n"` + killing the process after 500 ms implements **Stop Test**; `"debug-stop\n"` implements **Debug Stop** (run to end, no more pauses).
 * **Break-step semantics:** `ManulEngine.__init__` accepts `break_steps: set[int] | None`. `_user_break_steps` stores the original user-defined set; `break_steps` is the mutable active set. When the user picks **Next Step**: `break_steps.add(idx + 1)`. When the user picks **Continue All**: `break_steps = set(_user_break_steps)` (resets to original gutter breakpoints). This ensures "Next" advances exactly one step and "Continue" runs to the next gutter breakpoint or end.
-* `debugControlPanel.ts` — singleton `DebugControlPanel.getInstance(ctx)`. `showPause(step, idx)` uses `vscode.window.createQuickPick()` (low-level API, not `showQuickPick`) so the picker can be hidden programmatically. `ignoreFocusOut: true` keeps it visible while Playwright runs. `abort()` calls `_activeQp.hide()`, which triggers `onDidHide` → resolves the promise with `"next"` so Python's `stdin.readline()` always unblocks. `dispose()` also calls `hide()` and resets the singleton. `tryRaiseWindow(idx, stepText)` (Linux only): spawns `xdotool search --onlyvisible --class "Code" windowactivate` (X11 focus), falls back to `wmctrl -a "Visual Studio Code"`, then fires `notify-send -u normal -t 5000` (5-second system notification, disappears automatically — do NOT use `-u critical` which ignores `-t` on GNOME/KDE).
+* `debugControlPanel.ts` — singleton `DebugControlPanel.getInstance(ctx)`. `showPause(step, idx)` uses `vscode.window.createQuickPick()` (low-level API, not `showQuickPick`) so the picker can be hidden programmatically. `ignoreFocusOut: true` keeps it visible while Playwright runs. `abort()` calls `_activeQp.hide()`, which triggers `onDidHide` → resolves the promise with `"next"` so Python's `stdin.readline()` always unblocks. `dispose()` also calls `hide()` and resets the singleton. `tryRaiseWindow(idx, stepText)` (Linux only): spawns `xdotool search --onlyvisible --class "Code" windowactivate` (X11 focus), falls back to `wmctrl -a "Visual Studio Code"`, then fires `notify-send -u normal -t 5000` (5-second system notification, disappears automatically — do NOT use `-u critical` which ignores `-t` on GNOME/KDE). The QuickPick has **5 items**: Next Step, Continue All, Highlight Element, **⏹ Debug Stop** (sends `"debug-stop"` — clears all breakpoints so the run completes without further pauses), **🛑 Stop Test** (sends `"abort"` + kills the process after 500 ms). `PauseChoice` type: `"next" | "continue" | "highlight" | "debug-stop" | "stop-test"`.
 * `huntTestController.ts` — has a **Debug run profile** in addition to the normal run profile. It calls `runHuntFileDebugPanel` with `onPause: (step, idx) => panel.showPause(step, idx)` and runs sequentially (no concurrency). **Stop button wiring:** `token.onCancellationRequested(() => panel.abort())` — this is essential; without it the QuickPick stays open after Stop is pressed and Python hangs. The disposable is stored and `.dispose()`d after the loop. Debug profile also calls `workbench.view.testing.focus` (in addition to `workbench.panel.testResults.view.focus`) to show the Test Explorer tree with per-step spinning/pass/fail indicators.
 * `configPanel.ts` — `doSave()` forces `ai_always: false` whenever `model` is empty/null (`modelVal !== '' && g('ai_always').checked`). Do not remove this guard — saving `ai_always: true` with no model would produce an invalid config that causes runtime errors. The `syncAiAlways()` function also disables and unchecks the `ai_always` checkbox in the UI when the model field is cleared.
+* `configPanel.ts` — Two separate cache controls: `controls_cache_enabled` is labelled **"Persistent Controls Cache"** (file-based, per-site storage, survives between runs); `semantic_cache_enabled` is labelled **"Semantic Cache"** (in-session `learned_elements`, +200,000 score boost within a single run, resets when process ends). The `controls_cache_dir` field is labelled "controls_cache_dir". Both default to `true`. Do not merge these two settings.
+* `configPanel.ts` — `auto_annotate` checkbox (default `false`): labelled **"Auto-Annotate Page Navigation"**. When enabled, the engine writes `# 📍 Auto-Nav: <name>` comments into `.hunt` files live whenever the URL changes. `doSave()` writes `auto_annotate: g('auto_annotate').checked`; `doLoad()` reads `g('auto_annotate').checked = !!config.auto_annotate`.
 * Config panel reads/writes `manul_engine_configuration.json` at the workspace root using `_configPath()`. The config file name is user-configurable via the `manulEngine.configFile` VS Code setting.
 * Ollama model discovery: the panel fetches `http://localhost:11434/api/tags` on open and populates a `<select>` dropdown with installed model names (replaced legacy `<datalist>` + `<input>` to fix rendering offset in Electron webview). First option is always `null (heuristics-only)`. The stored model is always preserved as an option even when Ollama is offline.
 * Build: `cd vscode-extension && npm install && npm run compile`. Use `npx vsce package` to produce a `.vsix`. Press F5 in VS Code with the extension folder open to launch a dev Extension Host.
+
+## Version Bump Checklist
+
+When the version changes, **ALL** of the following files must be updated:
+
+| File | What to change |
+|------|----------------|
+| `pyproject.toml` | `version = "X.Y.Z"` under `[project]` |
+| `README.md` | `**Version:** X.Y.Z` in the footer |
+| `README_DEV.md` | Title `# 😼 ManulEngine vX.Y.Z`, pyproject.toml ref, extension manifest ref, VS Code extension version ref, footer `**Version:** X.Y.Z` |
+| `vscode-extension/package.json` | `"version": "X.Y.Z"` (uses 3-digit semver, e.g. `"0.0.84"`) |
+| `vscode-extension/README.md` | Add `### X.Y.Z` release notes section above the previous entry |
+| `.github/copilot-instructions.md` | Version in the repo layout section (this file) |

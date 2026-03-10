@@ -9,6 +9,10 @@ Forget brittle CSS/XPath locators that break on every UI update. Stop paying for
 
 > The Manul goes hunting and never returns without its prey.
 
+> **ManulEngine runs on a potato.**
+> No GPU. No cloud APIs. No $0.02 per click.
+> Just Playwright, heuristics, and optional tiny local models.
+
 ---
 
 ## 🤝 The Team Workflow (Why managers love it)
@@ -50,8 +54,9 @@ Place breakpoints by clicking the editor gutter next to any step number in a `.h
 - **⏭ Next Step** — advance exactly one step and pause again
 - **▶ Continue All** — run until the next gutter breakpoint or end of hunt
 - **Stop button** — clicking Stop in Test Explorer dismisses the QuickPick and terminates the run cleanly; Python never hangs
+- **👁 Highlight Element** — a third QuickPick option that re-scrolls the browser to the persistently highlighted target element and re-shows the pause overlay without advancing the step
 - **Linux:** VS Code window is raised via `xdotool`/`wmctrl` and a 5-second system notification appears via `notify-send` when execution pauses
-- Visual element highlighting — a dashed red border is drawn around the resolved element for 500 ms before action
+- **Persistent magenta highlight** — the resolved target element is outlined with a `4px solid #ff00ff` border + glow while execution is paused; the highlight is removed automatically just before the action executes
 - Debug output streams live into the **ManulEngine Debug** output channel
 - Uses `--break-lines` protocol (piped stdio): Python emits a marker on stdout; extension responds on stdin — browser opens and navigates normally on step 1
 
@@ -77,7 +82,8 @@ An interactive sidebar panel for editing `manul_engine_configuration.json` witho
 - **Browser Args** — extra launch flags for the browser (comma-separated)
 - **Headless** — run browser headless
 - **Timeouts** — action and navigation timeouts in ms
-- **Controls Cache** — enable/disable and set the cache directory
+- **Persistent Controls Cache / Semantic Cache** — two separate cache toggles: **Persistent Controls Cache** (`controls_cache_enabled`) stores resolved locators on disk per site/page across runs; **Semantic Cache** (`semantic_cache_enabled`) remembers resolved elements within a single run (+200,000 score boost, resets when the process ends). Both default to enabled and can be toggled independently from the sidebar
+- **Auto-Annotate Page Navigation** — when enabled, the engine automatically inserts `# 📍 Auto-Nav:` comments in the hunt file whenever the browser URL changes during a run (after clicks, form submissions, etc.) — not just on explicit `NAVIGATE` steps. Page names are resolved from `pages.json`; if no mapping is found the full URL is used instead
 - **Log truncation** — max length for element names and LLM thoughts in logs
 - **Workers** — max number of hunt files to run concurrently in Test Explorer (1–4)
 - **Ollama status indicator** — live dot showing whether Ollama is reachable at `localhost:11434`, with model autocomplete from the running instance
@@ -103,6 +109,15 @@ A sidebar panel that lets you insert hunt steps with a single click — no typin
 - Works even when the sidebar has focus (the editor is not the active panel)
 
 ---
+
+## 💻 System Requirements
+
+| | Minimum | Recommended |
+|---|---|---|
+| **CPU** | any | modern laptop |
+| **RAM** | 4 GB | 8 GB |
+| **GPU** | none | none |
+| **Model** | — (heuristics-only) | `qwen2.5:0.5b` |
 
 ## Requirements
 
@@ -185,6 +200,15 @@ See the [ManulEngine README](https://github.com/alexbeatnik/ManulEngine) for the
 ---
 
 ## Release Notes
+
+### 0.0.84
+- **⏹ Debug Stop / 🛑 Stop Test buttons** — two new actions in the floating debug QuickPick overlay replace the old implicit close/abort behaviour: **Debug Stop** skips all remaining breakpoints (including user-set gutter ones) and runs the test to the end without further pauses; **Stop Test** sends a clean `abort` signal to Python, waits 500 ms for graceful shutdown, then kills the process
+- **Auto-Annotate Page Navigation** — new `auto_annotate` toggle in the Config Panel sidebar; when enabled, the engine inserts `# 📍 Auto-Nav:` comments in the hunt file whenever the browser URL changes, not only on explicit `NAVIGATE` steps (e.g. after a Login button click that redirects to the dashboard). Page names are resolved from `pages.json`; unmapped URLs fall back to the full URL
+- **`pages.json` nested format** — page registry now uses a two-level structure: top-level keys are site roots (URL prefix, e.g. `"https://www.saucedemo.com/"`), values are objects with a special `"Domain"` key (site display name) and regex/exact-URL keys for specific pages. Supports multiple sites in one file. Exact URL keys take priority over regex patterns; the `"Domain"` value is returned as a fallback when no page pattern matches but the URL belongs to the site
+- **`lookup_page_name` exact-match fix** — previously a root URL key like `"https://www.saucedemo.com/"` would match all its subpages via `re.search()`, overriding page-specific patterns. Exact keys are now checked first
+- **Persistent magenta highlight** — when the engine pauses at a debug step, the resolved target element is outlined with a persistent magenta border (`outline: 4px solid #ff00ff` + glow) that stays visible until the user proceeds; the highlight is injected via `<style id="manul-debug-style">` + `data-manul-debug-highlight` attribute and fully removed by `clear_highlight()` before the action executes
+- **👁 Highlight Element QuickPick button** — a QuickPick option that re-scrolls the browser to the persistently highlighted target element and re-displays the QuickPick without advancing the step
+- **Two separate cache controls in config panel** — `controls_cache_enabled` is now labelled **Persistent Controls Cache** (file-based, disk, per-site across runs) and `semantic_cache_enabled` is labelled **Semantic Cache** (in-session `learned_elements`, +200,000 score boost within a single run, resets when the process ends); both default to enabled and can be toggled independently
 
 ### 0.0.83
 - **Inline `CALL PYTHON` steps** — `CALL PYTHON module.function` now works as a standard numbered step anywhere in the mission body (not just in hook blocks); use it to fetch OTPs, trigger backend jobs, or seed data mid-test without leaving the `.hunt` file

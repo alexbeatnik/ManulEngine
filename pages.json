@@ -1,0 +1,10 @@
+{
+  "https://www.saucedemo.com/": {
+    "Domain": "Auto: www.saucedemo.com",
+    ".*/inventory": "Products Catalog",
+    ".*/cart": "Shopping Cart",
+    ".*/checkout-step-one": "Checkout: Your Info",
+    ".*/checkout-step-two": "Checkout: Overview",
+    ".*/checkout-complete": "Checkout: Complete"
+  }
+}

@@ -4,7 +4,7 @@
  * Uses vscode.window.createQuickPick() (low-level API) so the picker can be
  * dismissed programmatically via abort() when the user clicks Stop in Test Explorer.
  *
- * Buttons:  ⏭ Next Step  |  ▶ Continue All
+ * Buttons:  ⏭ Next Step  |  ▶ Continue All  |  👁 Highlight Element
  * ESC / Stop → abort() hides the picker → treated as "next" so Python unblocks.
  *
  * Window raising (Linux): spawns xdotool / wmctrl + notify-send (both silent-fail).
@@ -12,10 +12,13 @@
 import * as vscode from "vscode";
 import { exec, execFile } from "child_process";
 
-export type PauseChoice = "next" | "continue";
+export type PauseChoice = "next" | "continue" | "highlight" | "debug-stop" | "stop-test";
 
-const NEXT_LABEL = "⏭  Next Step";
-const CONT_LABEL = "▶  Continue All";
+const NEXT_LABEL  = "⏭  Next Step";
+const CONT_LABEL  = "▶  Continue All";
+const HIGH_LABEL  = "👁  Highlight Element";
+const DSTOP_LABEL = "⏹  Debug Stop";
+const SSTOP_LABEL = "🛑  Stop Test";
 
 /** Best-effort: raise the VS Code window above other apps on Linux. */
 function tryRaiseWindow(stepIdx: number, stepText: string): void {
@@ -69,7 +72,13 @@ export class DebugControlPanel {
 
       qp.title = `🐛 ManulEngine Debug — Step ${idx}`;
       qp.placeholder = step.length > 120 ? step.slice(0, 120) + "…" : step;
-      qp.items = [{ label: NEXT_LABEL }, { label: CONT_LABEL }];
+      qp.items = [
+        { label: NEXT_LABEL },
+        { label: CONT_LABEL },
+        { label: HIGH_LABEL,  description: "Scroll the browser to the highlighted element" },
+        { label: DSTOP_LABEL, description: "Skip all remaining breakpoints and run to end" },
+        { label: SSTOP_LABEL, description: "Abort the test immediately" },
+      ];
       qp.ignoreFocusOut = true;
 
       let resolved = false;
@@ -83,7 +92,15 @@ export class DebugControlPanel {
 
       qp.onDidAccept(() => {
         const label = qp.selectedItems[0]?.label;
-        done(label === CONT_LABEL ? "continue" : "next");
+        if (label === HIGH_LABEL) {
+          done("highlight");
+        } else if (label === DSTOP_LABEL) {
+          done("debug-stop");
+        } else if (label === SSTOP_LABEL) {
+          done("stop-test");
+        } else {
+          done(label === CONT_LABEL ? "continue" : "next");
+        }
       });
 
       // ESC or programmatic hide → treat as "next" so Python readline() unblocks.

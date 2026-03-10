@@ -46,6 +46,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         ai_threshold:   "int | None"  = None,
         debug_mode:     bool          = False,
         break_steps:    "set[int] | None" = None,
+        disable_cache:  bool          = False,
+        semantic_cache: "bool | None" = None,     # None → read from config/env
         **_kwargs,
     ):
         # None model → heuristics-only mode (AI fully disabled)
@@ -58,7 +60,19 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         self.memory:          dict = {}
         self.last_xpath:      "str | None" = None
         self.learned_elements: dict = {}        # semantic cache: cache_key → {name, tag}
-        self._controls_cache_enabled = bool(getattr(prompts, "CONTROLS_CACHE_ENABLED", True))
+        
+        if disable_cache:
+            self._controls_cache_enabled = False
+        else:
+            self._controls_cache_enabled = bool(getattr(prompts, "CONTROLS_CACHE_ENABLED", True))
+
+        if semantic_cache is not None:
+            self._semantic_cache_enabled = semantic_cache
+        elif disable_cache:
+            self._semantic_cache_enabled = False
+        else:
+            self._semantic_cache_enabled = bool(getattr(prompts, "SEMANTIC_CACHE_ENABLED", True))
+            
         self._controls_cache_root = Path(str(getattr(prompts, "CONTROLS_CACHE_DIR", str(Path(__file__).resolve().parents[1] / "cache"))))
         self._controls_cache_site: str | None = None
         self._controls_cache_url: str | None = None
@@ -72,11 +86,19 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         self._debug_continue = False   # set to True by 'Continue All' in debug session
         self._user_break_steps: set[int] = set(break_steps) if break_steps else set()
         self.break_steps: set[int] = set(self._user_break_steps)
+        # Tracks how many annotation lines have been inserted into the hunt file
+        # during this run, so subsequent NAVIGATE steps can offset their line numbers.
+        self._annotate_line_offset: int = 0
         if self.model is None:
             print("    ℹ️  No model configured — running in heuristics-only mode (AI disabled).")
         if self.debug_mode:
             print("    🐛 Debug mode ON — engine will pause before each step.")
 
+    def reset_session_state(self) -> None:
+        """Clear in-memory caches and variables. Useful for synthetic stateless tests."""
+        self.memory.clear()
+        self.learned_elements.clear()
+        self.last_xpath = None
     # ── Persistent controls cache ─────────────────────────────────────
     # All cache methods live in engine/cache.py (_ControlsCacheMixin).
 
@@ -243,49 +265,152 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             pass
 
     async def _debug_highlight(self, page, loc_or_id, *, by_js_id: bool = False) -> None:
-        """Apply a high-visibility debug highlight (dashed red border + box-shadow)
-        and wait 500 ms so the tester can see which element Manul targeted.
-        The browser removes the highlight via JS setTimeout after 1.5 s.
+        """Apply a persistent magenta highlight on the target element.
+        The highlight stays until _clear_debug_highlight() is called.
+        Uses a <style id="manul-debug-style"> tag + data-manul-debug-highlight attribute
+        so it is safely removable without disturbing any inline styles.
         """
+        _STYLE_ID  = "manul-debug-style"
+        _STYLE_CSS = ("[data-manul-debug-highlight='true']{"
+                      "outline:4px solid #ff00ff !important;"
+                      "box-shadow:0 0 15px #ff00ff !important;"
+                      "background:rgba(255,0,255,.12) !important;"
+                      "z-index:999999 !important;}")
         try:
             if by_js_id:
                 await page.evaluate(
-                    """
-                    (function(id) {
-                        var el = window.manulElements && window.manulElements[id];
+                    f"""
+                    (id) => {{
+                        const el = window.manulElements && window.manulElements[id];
                         if (!el) return;
-                        var prevOutline   = el.style.outline;
-                        var prevShadow    = el.style.boxShadow;
-                        el.style.outline  = '3px dashed red';
-                        el.style.boxShadow = '0 0 0 3px red';
-                        setTimeout(function() {
-                            el.style.outline   = prevOutline;
-                            el.style.boxShadow = prevShadow;
-                        }, 1500);
-                    })
+                        if (!document.getElementById('{_STYLE_ID}')) {{
+                            const s = document.createElement('style');
+                            s.id = '{_STYLE_ID}';
+                            s.textContent = `{_STYLE_CSS}`;
+                            document.head.appendChild(s);
+                        }}
+                        el.setAttribute('data-manul-debug-highlight', 'true');
+                        el.scrollIntoView({{behavior:'smooth',block:'center'}});
+                    }}
                     """,
                     loc_or_id,
                 )
             else:
                 await loc_or_id.evaluate(
-                    """
-                    el => {
-                        const prevOutline   = el.style.outline;
-                        const prevShadow    = el.style.boxShadow;
-                        el.style.outline    = '3px dashed red';
-                        el.style.boxShadow  = '0 0 0 3px red';
-                        setTimeout(() => {
-                            el.style.outline   = prevOutline;
-                            el.style.boxShadow = prevShadow;
-                        }, 1500);
-                    }
+                    f"""
+                    el => {{
+                        if (!document.getElementById('{_STYLE_ID}')) {{
+                            const s = document.createElement('style');
+                            s.id = '{_STYLE_ID}';
+                            s.textContent = `{_STYLE_CSS}`;
+                            document.head.appendChild(s);
+                        }}
+                        el.setAttribute('data-manul-debug-highlight', 'true');
+                        el.scrollIntoView({{behavior:'smooth',block:'center'}});
+                    }}
                     """
                 )
-            await asyncio.sleep(0.5)
+        except Exception:
+            pass
+
+    async def _clear_debug_highlight(self, page) -> None:
+        """Remove the persistent debug highlight from all elements and remove the <style> tag."""
+        try:
+            await page.evaluate("""
+                () => {
+                    document.querySelectorAll('[data-manul-debug-highlight]').forEach(
+                        el => el.removeAttribute('data-manul-debug-highlight')
+                    );
+                    const s = document.getElementById('manul-debug-style');
+                    if (s) s.remove();
+                }
+            """)
         except Exception:
             pass
 
     _DEBUG_PAUSE_MARKER = "\x00MANUL_DEBUG_PAUSE\x00"
+
+    # ── In-browser debug modal ────────────────────────────────────────────────
+    # A lightweight floating panel injected into the live page during debug pauses.
+    # Shows the step text and an ✕ Abort button that sets window.__manul_debug_action.
+    _MODAL_JS: str = """(stepText) => {
+        const old = document.getElementById('manul-debug-modal');
+        if (old) old.remove();
+        window.__manul_debug_action = null;
+
+        const modal = document.createElement('div');
+        modal.id = 'manul-debug-modal';
+        modal.style.cssText = [
+            'position:fixed', 'top:12px', 'right:12px', 'z-index:2147483647',
+            'background:#1e1e2e', 'color:#cdd6f4',
+            'border:2px solid #89b4fa', 'border-radius:8px',
+            'padding:14px 40px 14px 16px',
+            'font-family:monospace', 'font-size:13px',
+            'max-width:420px', 'word-break:break-all',
+            'box-shadow:0 4px 24px rgba(0,0,0,.55)',
+            'pointer-events:all', 'user-select:none',
+        ].join(';');
+
+        const label = document.createElement('div');
+        label.style.cssText = 'font-weight:bold;color:#89b4fa;margin-bottom:6px;font-size:11px;letter-spacing:.06em;';
+        label.textContent = '\uD83D\uDC3E MANUL DEBUG PAUSE';
+
+        const text = document.createElement('div');
+        text.style.cssText = 'line-height:1.5;';
+        text.textContent = stepText;
+
+        const btn = document.createElement('button');
+        btn.id = 'manul-debug-abort';
+        btn.textContent = '\u2715';
+        btn.title = 'Abort test run';
+        btn.style.cssText = [
+            'position:absolute', 'top:8px', 'right:8px',
+            'background:transparent', 'border:none',
+            'color:#a6adc8', 'font-size:16px', 'font-weight:bold',
+            'cursor:pointer', 'line-height:1', 'padding:2px 6px',
+            'border-radius:4px', 'transition:background .15s,color .15s',
+        ].join(';');
+        btn.onmouseover = () => { btn.style.background='#f38ba8'; btn.style.color='#1e1e2e'; };
+        btn.onmouseout  = () => { btn.style.background='transparent'; btn.style.color='#a6adc8'; };
+        btn.addEventListener('click', () => { window.__manul_debug_action = 'ABORT'; });
+
+        modal.appendChild(label);
+        modal.appendChild(text);
+        modal.appendChild(btn);
+        document.body.appendChild(modal);
+    }"""
+
+    _REMOVE_MODAL_JS: str = """() => {
+        const m = document.getElementById('manul-debug-modal');
+        if (m) m.remove();
+        window.__manul_debug_action = null;
+    }"""
+
+    async def _inject_debug_modal(self, page, step: str) -> None:
+        """Inject the floating debug panel with an Abort button into the browser."""
+        try:
+            await page.evaluate(self._MODAL_JS, step)
+        except Exception:
+            pass
+
+    async def _remove_debug_modal(self, page) -> None:
+        """Remove the debug modal and reset the abort signal."""
+        try:
+            await page.evaluate(self._REMOVE_MODAL_JS)
+        except Exception:
+            pass
+
+    async def _poll_for_abort(self, page, abort_event: asyncio.Event) -> None:
+        """Poll window.__manul_debug_action every 200 ms; set abort_event on ABORT."""
+        while not abort_event.is_set():
+            try:
+                action = await page.evaluate("() => window.__manul_debug_action || null")
+                if action == "ABORT":
+                    abort_event.set()
+                    return
+            except Exception:
+                pass
+            await asyncio.sleep(0.2)
 
     async def _debug_prompt(self, page, step: str, idx: int) -> None:
         """Interactive prompt used in debug mode.
@@ -294,12 +419,20 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
         1. **Extension protocol mode** (stdin is not a TTY, i.e. piped by the
            VS Code extension): writes a JSON pause marker to stdout, then reads
-           a single line from stdin ('next' or 'continue').  The extension shows
-           VS Code notification buttons and writes the response.
+           tokens from stdin in a loop.  Accepted tokens:
+             - 'highlight' : re-scroll to the currently highlighted element, re-emit marker
+             - 'continue'  : reset to original gutter breakpoints, proceed
+             - 'next'      : also pause at the immediately following step
+             - 'abort'     : abort the test immediately
 
         2. **Terminal mode** (stdin is a TTY): prints a human-readable prompt and
-           waits for ENTER.  Typing 'pause' opens the Playwright Inspector;
-           typing 'c' / 'continue' disables future pauses for this session.
+           waits for input.  Typing 'h' re-scrolls to the highlighted element;
+           'pause' opens the Playwright Inspector; 'c' / 'continue' disables
+           future pauses for this session.
+
+        In both modes the in-browser debug modal (with an ✕ Abort button) is
+        injected before waiting and removed afterwards.  Clicking ✕ raises an
+        exception that aborts the test immediately.
 
         If _debug_continue is already True the method returns immediately.
         """
@@ -307,43 +440,111 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         if self._debug_continue:
             return
 
-        if not sys.stdin.isatty():
-            # ── Extension protocol mode ───────────────────────────────────
-            marker = json.dumps({"step": step, "idx": idx})
-            sys.stdout.write(f"{self._DEBUG_PAUSE_MARKER}{marker}\n")
-            sys.stdout.flush()
-            try:
-                resp = await asyncio.to_thread(sys.stdin.readline)
-                resp = resp.strip().lower()
-                if resp == "continue":
-                    # Restore only the user-set breakpoints so execution resumes
-                    # until the next gutter breakpoint (or end if none remain).
-                    self.break_steps = set(self._user_break_steps)
-                else:
-                    # "next" — pause again at the immediately following step.
-                    self.break_steps.add(idx + 1)
-            except (EOFError, KeyboardInterrupt):
-                pass
-            return
+        await self._inject_debug_modal(page, step)
 
-        # ── Terminal mode ─────────────────────────────────────────────────
-        sys.stdout.flush()
-        prompt_text = (
-            f"\n[DEBUG] Next step: {step}\n"
-            f"        ENTER = execute · 'pause' = Inspector · 'c' = continue all… "
-        )
+        abort_event: asyncio.Event = asyncio.Event()
+        abort_poll_task = asyncio.create_task(self._poll_for_abort(page, abort_event))
+
         try:
-            user_in = await asyncio.to_thread(input, prompt_text)
-            user_in = user_in.strip().lower()
-            if user_in == "pause":
-                print("    🔎 Opening Playwright Inspector…")
-                await page.pause()
-            elif user_in in ("c", "continue"):
-                self._debug_continue = True
-                print("    ▶ Continuing all steps without further pauses…")
-        except (EOFError, KeyboardInterrupt):
-            print()
-            return
+            if not sys.stdin.isatty():
+                # ── Extension protocol mode ───────────────────────────────
+                marker = json.dumps({"step": step, "idx": idx})
+                while True:
+                    sys.stdout.write(f"{self._DEBUG_PAUSE_MARKER}{marker}\n")
+                    sys.stdout.flush()
+                    try:
+                        read_task = asyncio.create_task(asyncio.to_thread(sys.stdin.readline))
+                        abort_wait = asyncio.create_task(abort_event.wait())
+                        done, pending = await asyncio.wait(
+                            [read_task, abort_wait], return_when=asyncio.FIRST_COMPLETED
+                        )
+                        for t in pending:
+                            t.cancel()
+                        if abort_event.is_set():
+                            raise Exception("Test intentionally aborted by user via debug modal")
+                        resp = read_task.result().strip().lower()
+                    except (EOFError, KeyboardInterrupt):
+                        return
+                    if resp == "abort":
+                        raise Exception("Test intentionally aborted by user via debug modal")
+                    elif resp == "highlight":
+                        # Re-scroll to the persistently highlighted element, then
+                        # re-emit the pause marker so the QuickPick shows again.
+                        try:
+                            await page.evaluate("""
+                                () => {
+                                    const el = document.querySelector('[data-manul-debug-highlight="true"]');
+                                    if (el) el.scrollIntoView({behavior:'smooth',block:'center'});
+                                }
+                            """)
+                        except Exception:
+                            pass
+                        continue  # loop: re-emit the marker
+                    elif resp == "debug-stop":
+                        # Clear ALL breakpoints (including user-defined gutter ones)
+                        # so execution runs to the end without further pauses.
+                        self._user_break_steps = set()
+                        self.break_steps = set()
+                        break
+                    elif resp == "continue":
+                        # Restore only the user-set breakpoints so execution resumes
+                        # until the next gutter breakpoint (or end if none remain).
+                        self.break_steps = set(self._user_break_steps)
+                        break
+                    else:  # "next" (or any unrecognised token)
+                        # Pause again at the immediately following step.
+                        self.break_steps.add(idx + 1)
+                        break
+                return
+
+            # ── Terminal mode ─────────────────────────────────────────────
+            sys.stdout.flush()
+            prompt_text = (
+                f"\n[DEBUG] Next step: {step}\n"
+                f"        ENTER/n = execute · h = re-highlight · pause = Inspector · c = continue all… "
+            )
+            while True:
+                try:
+                    read_task   = asyncio.create_task(asyncio.to_thread(input, prompt_text))
+                    abort_wait  = asyncio.create_task(abort_event.wait())
+                    done, pending = await asyncio.wait(
+                        [read_task, abort_wait], return_when=asyncio.FIRST_COMPLETED
+                    )
+                    for t in pending:
+                        t.cancel()
+                    if abort_event.is_set():
+                        print()
+                        raise Exception("Test intentionally aborted by user via debug modal")
+                    user_in = read_task.result().strip().lower()
+                    if user_in == "h":
+                        try:
+                            await page.evaluate("""
+                                () => {
+                                    const el = document.querySelector('[data-manul-debug-highlight="true"]');
+                                    if (el) el.scrollIntoView({behavior:'smooth',block:'center'});
+                                }
+                            """)
+                            print("    👁️  Scrolled to highlighted element.")
+                        except Exception:
+                            pass
+                        continue  # re-show the prompt without advancing
+                    elif user_in == "pause":
+                        print("    🔎 Opening Playwright Inspector…")
+                        await page.pause()
+                        continue  # re-show the prompt after closing Inspector
+                    elif user_in in ("c", "continue"):
+                        self._debug_continue = True
+                        print("    ▶ Continuing all steps without further pauses…")
+                        break
+                    else:  # ENTER / n / anything else → execute the step
+                        break
+                except (EOFError, KeyboardInterrupt):
+                    print()
+                    break
+        finally:
+            abort_event.set()   # stop the poll task whether we return, break, or raise
+            abort_poll_task.cancel()
+            await self._remove_debug_modal(page)
 
     # ── DOM snapshot ──────────────────────────
 
@@ -372,7 +573,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         """Score and rank elements using heuristics from scoring.py."""
         return score_elements(
             els, step, mode, search_texts, target_field, is_blind,
-            learned_elements=self.learned_elements,
+            learned_elements=self.learned_elements if self._semantic_cache_enabled else {},
             last_xpath=self.last_xpath,
         )
 
@@ -493,12 +694,13 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
             return ai_choice
 
-        if best_score >= 20_000:
+        if best_score >= 200_000:
             print(f"    🧠 SEMANTIC CACHE: Reusing learned element (score {best_score})")
             return top[0]
 
         if best_score >= 10_000:
-            print(f"    ⚡ CONTEXT MEMORY: Reusing last element (score {best_score})")
+            label = "High confidence" if best_score >= 20_000 else "Context reuse"
+            print(f"    ⚙️  DOM HEURISTICS: {label} match (score {best_score})")
             return top[0]
 
         if best_score >= self._threshold:
@@ -544,7 +746,54 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
     # ── Mission runner ────────────────────────
 
-    async def run_mission(self, task: str, strategic_context: str = "", hunt_dir: str | None = None) -> bool:
+    async def _auto_annotate_navigate(self, page, hunt_file: str, step_file_lines: list[int], step_idx: int) -> None:
+        """Insert or overwrite a '# 📍 Auto-Nav:' comment above the NAVIGATE step.
+
+        Reads the hunt file, looks at the line immediately above the NAVIGATE step:
+        - If it already contains a '# 📍 Auto-Nav:' comment, replaces it in-situ.
+        - Otherwise inserts a new line and increments _annotate_line_offset so that
+          subsequent NAVIGATE steps in the same file compute correct positions.
+        """
+        try:
+            url = page.url
+            page_name = prompts.lookup_page_name(url)
+
+            # Use the mapped name when available; fall back to the full URL
+            # when lookup returned an auto-generated placeholder.
+            display = url if page_name.startswith("Auto:") else page_name
+            comment_line = f"# 📍 Auto-Nav: {display}\n"
+
+            if step_idx - 1 >= len(step_file_lines):
+                return
+
+            # Original 1-based file line of this step, corrected for any lines
+            # we have already inserted earlier in this same run.
+            nav_line_no = step_file_lines[step_idx - 1] + self._annotate_line_offset
+
+            try:
+                with open(hunt_file, 'r', encoding='utf-8') as _hf:
+                    lines = _hf.readlines()
+
+                above_idx = nav_line_no - 2  # 0-based index of the line above the step
+
+                if 0 <= above_idx < len(lines) and lines[above_idx].strip().startswith('# 📍 Auto-Nav:'):
+                    lines[above_idx] = comment_line
+                else:
+                    lines.insert(nav_line_no - 1, comment_line)
+                    self._annotate_line_offset += 1
+
+                with open(hunt_file, 'w', encoding='utf-8') as _hf:
+                    _hf.writelines(lines)
+                print(f"    📍 Auto-Nav: {display}")
+
+            except Exception as _io_exc:
+                print(f"    ⚠️  Auto-Nav: file I/O error: {_io_exc}")
+
+        except Exception as _ann_exc:
+            print(f"    ⚠️  Auto-Nav: {_ann_exc}")
+
+    async def run_mission(self, task: str, strategic_context: str = "", hunt_dir: str | None = None,
+                          hunt_file: str | None = None, step_file_lines: "list[int] | None" = None) -> bool:
         """
         Execute a full browser automation mission.
 
@@ -586,15 +835,19 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                     print(f"\n[🐾 STEP {i} @ {started_at.strftime('%H:%M:%S')}] {step}")
                     s_up = step.upper()
 
-                    if self.debug_mode:
-                        # debug_mode and break_steps are mutually exclusive:
-                        # --debug pauses before every step already, so honouring
-                        # break_steps on top would cause a double-pause.
+                    # Determine whether this step is a system step (NAVIGATE, SCROLL,
+                    # etc.) or an action step (click, fill, select, hover…).
+                    # For action steps, the debug pause fires INSIDE _execute_step
+                    # after element resolution so the tester sees the highlighted
+                    # element before deciding to proceed.
+                    _is_system_step = bool(re.search(
+                        r'\b(?:NAVIGATE|WAIT|SCROLL|EXTRACT|PRESS\s+ENTER|SCAN\s+PAGE|CALL\s+PYTHON|DEBUG|PAUSE|DONE)\b',
+                        s_up
+                    ))
+
+                    if self.debug_mode and _is_system_step:
                         await self._debug_prompt(page, step, i)
-                    elif self.break_steps and i in self.break_steps:
-                        # In piped (extension) mode: use the same marker protocol so the
-                        # VS Code panel shows the breakpoint pause — no Playwright Inspector.
-                        # In terminal mode: fall back to page.pause() for Inspector.
+                    elif not self.debug_mode and self.break_steps and i in self.break_steps and _is_system_step:
                         import sys as _sys
                         if not _sys.stdin.isatty():
                             print(f"    🔴 BREAKPOINT at step {i}")
@@ -603,10 +856,24 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             print(f"    🔴 BREAKPOINT at step {i} — opening Playwright Inspector…")
                             await page.pause()
 
+                    # Re-read AUTO_ANNOTATE at runtime so env vars injected after
+                    # import time (e.g. by the VS Code extension) are respected.
+                    import os as _os_nav
+                    _auto_annotate_live = (
+                        _os_nav.environ.get("MANUL_AUTO_ANNOTATE", "").strip().lower()
+                        in ("1", "true", "yes")
+                    ) or prompts.AUTO_ANNOTATE
+                    try:
+                        url_before = page.url
+                    except Exception:
+                        url_before = ""
+
                     try:
                         if re.search(r'\bNAVIGATE\b', s_up):
                             if not await self._handle_navigate(page, step):
                                 ok = False; break
+                            if _auto_annotate_live and hunt_file and step_file_lines:
+                                await self._auto_annotate_navigate(page, hunt_file, step_file_lines, i)
 
                         elif re.search(r'\bWAIT\b', s_up):
                             n = re.search(r'(\d+)', step)
@@ -620,7 +887,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                 ok = False; break
 
                         elif re.search(r'\bVERIFY\b', s_up):
-                            if not await self._handle_verify(page, step):
+                            if not await self._handle_verify(page, step, step_idx=i):
                                 ok = False; break
 
                         elif re.search(r'\bPRESS\s+ENTER\b', s_up):
@@ -643,7 +910,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             else:
                                 # "CALL PYTHON" appears mid-sentence (e.g. a button
                                 # label) — route through the normal action executor.
-                                if not await self._execute_step(page, step, strategic_context):
+                                if not await self._execute_step(page, step, strategic_context, step_idx=i):
                                     print("    ❌ ACTION FAILED")
                                     ok = False; break
 
@@ -669,7 +936,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             break
 
                         else:
-                            if not await self._execute_step(page, step, strategic_context):
+                            if not await self._execute_step(page, step, strategic_context, step_idx=i):
                                 print("    ❌ ACTION FAILED")
                                 ok = False; break
                     finally:
@@ -678,6 +945,18 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                         print(
                             f"    ⏱️  STEP END @ {ended_at.strftime('%H:%M:%S')} — duration {duration_s:.2f}s"
                         )
+                        # After non-NAVIGATE steps, check if the URL changed and
+                        # annotate the next step with the new landing URL.
+                        if _auto_annotate_live and hunt_file and step_file_lines \
+                                and not re.search(r'\bNAVIGATE\b', s_up):
+                            try:
+                                url_after = page.url
+                                if url_after != url_before and i < len(step_file_lines):
+                                    await self._auto_annotate_navigate(
+                                        page, hunt_file, step_file_lines, i + 1
+                                    )
+                            except Exception:
+                                pass
 
             finally:
                 await browser.close()

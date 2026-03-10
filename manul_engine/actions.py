@@ -19,10 +19,11 @@ class _ActionsMixin:
         target_field: str | None,
         element: dict,
     ) -> None:
-        self.learned_elements[cache_key] = {
-            "name": str(element.get("name", "")),
-            "tag": str(element.get("tag_name", "")),
-        }
+        if getattr(self, '_semantic_cache_enabled', True):
+            self.learned_elements[cache_key] = {
+                "name": str(element.get("name", "")),
+                "tag": str(element.get("tag_name", "")),
+            }
         persist = getattr(self, "_persist_control_cache_entry", None)
         if callable(persist):
             try:
@@ -107,18 +108,56 @@ class _ActionsMixin:
             return True
         return False
 
-    async def _handle_verify(self, page, step: str) -> bool:
+    async def _handle_verify(self, page, step: str, step_idx: int = 0) -> bool:
         expected = extract_quoted(step)
         step_no_quotes = re.sub(r"'[^']*'", "", step)
         is_negative = bool(re.search(r'\b(NOT|HIDDEN|ABSENT)\b', step_no_quotes.upper()))
         state_check = "disabled" if re.search(r'\bDISABLED\b', step.upper()) else "enabled" if re.search(r'\bENABLED\b', step.upper()) else None
         is_checked_verify = bool(re.search(r'\bchecked\b', step.lower()))
+        _in_debug = getattr(self, "debug_mode", False) or step_idx in getattr(self, "break_steps", set())
 
         msg = f"    ⚙️  DOM HEURISTICS: Scanning for {expected}"
         if is_negative: msg += " [MUST BE ABSENT]"
         if state_check: msg += f" [{state_check.upper()}]"
         if is_checked_verify: msg += " [CHECKED]"
         print(msg)
+
+        # ── Debug pause before verify ─────────────────────────────────────
+        # For is_checked_verify the highlight fires after element resolution
+        # (inside the retry loop on first find). For all other VERIFY variants
+        # we try to resolve the target element for highlighting; if none is
+        # found we still pause — just without a highlight.
+        if _in_debug and not is_checked_verify:
+            if expected:
+                if state_check:
+                    # Disabled/enabled check — resolve via interactive element snapshot
+                    raw_els = await self._snapshot(page, "clickable", [t.lower() for t in expected])
+                    scored  = self._score_elements(raw_els, step, "clickable", expected, None, False)
+                    if scored:
+                        best = scored[0]
+                        loc  = page.locator(f"xpath={best['xpath']}").first
+                        try:
+                            if not best.get("is_shadow"):
+                                await loc.scroll_into_view_if_needed(timeout=2000)
+                                await self._debug_highlight(page, loc)
+                            else:
+                                await self._debug_highlight(page, best["id"], by_js_id=True)
+                        except Exception:
+                            pass
+                else:
+                    # Text presence verify — target is often a non-interactive element
+                    # (h1, p, span) that SNAPSHOT_JS skips. Use get_by_text() instead.
+                    for t in expected:
+                        try:
+                            loc = page.get_by_text(t, exact=False).first
+                            await loc.scroll_into_view_if_needed(timeout=2000)
+                            await self._debug_highlight(page, loc)
+                            break
+                        except Exception:
+                            pass
+            await self._debug_prompt(page, step, step_idx)
+            await self._clear_debug_highlight(page)
+        _debug_paused = not is_checked_verify  # is_checked pauses after element resolves
 
         for retry in range(15):
             if is_checked_verify:
@@ -128,6 +167,18 @@ class _ActionsMixin:
                     best   = scored[0]
                     xpath  = best["xpath"]
                     loc    = page.locator(f"xpath={xpath}").first
+                    if _in_debug and not _debug_paused:
+                        try:
+                            if not best.get("is_shadow"):
+                                await loc.scroll_into_view_if_needed(timeout=2000)
+                                await self._debug_highlight(page, loc)
+                            else:
+                                await self._debug_highlight(page, best["id"], by_js_id=True)
+                        except Exception:
+                            pass
+                        await self._debug_prompt(page, step, step_idx)
+                        await self._clear_debug_highlight(page)
+                        _debug_paused = True
                     try: checked = await loc.is_checked(timeout=2000)
                     except Exception: checked = False
                     if is_negative:
@@ -215,7 +266,7 @@ class _ActionsMixin:
         await asyncio.sleep(ACTION_WAIT)
         return True
 
-    async def _execute_step(self, page, step: str, strategic_context: str = "") -> bool:
+    async def _execute_step(self, page, step: str, strategic_context: str = "", step_idx: int = 0) -> bool:
         step_l = step.lower()
         words  = set(re.findall(r'\b[a-z]+\b', step_l))
 
@@ -292,18 +343,23 @@ class _ActionsMixin:
             if mode == "drag": return await self._do_drag(page, step, expected, el_id)
 
             loc = page.locator(f"xpath={xpath}").first
+            _in_debug = getattr(self, "debug_mode", False) or step_idx in getattr(self, "break_steps", set())
             try:
                 if not is_shad:
                     await loc.scroll_into_view_if_needed(timeout=2000)
                     await self._highlight(page, loc)
                 else:
                     await self._highlight(page, el_id, by_js_id=True)
-                if getattr(self, "debug_mode", False):
+                if _in_debug:
                     if not is_shad:
                         await self._debug_highlight(page, loc)
                     else:
                         await self._debug_highlight(page, el_id, by_js_id=True)
             except Exception: pass
+
+            if _in_debug:
+                await self._debug_prompt(page, step, step_idx)
+                await self._clear_debug_highlight(page)
 
             try:
                 if mode == "input":

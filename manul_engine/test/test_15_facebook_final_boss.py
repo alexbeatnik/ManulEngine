@@ -103,7 +103,7 @@ async def run_suite() -> bool:
             page = await ctx.new_page()
             await page.set_content(FB_EXTREME_DOM)
 
-            manul = ManulEngine(headless=True)
+            manul = ManulEngine(headless=True, disable_cache=True)
             manul.model = "mock"  # satisfy AI_ALWAYS guard; real LLM is mocked below
             prompts.AI_ALWAYS = True 
 

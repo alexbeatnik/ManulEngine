@@ -43,9 +43,11 @@ _KEY_MAP: dict[str, str] = {
     "ai_policy":              "MANUL_AI_POLICY",
     "controls_cache_enabled": "MANUL_CONTROLS_CACHE_ENABLED",
     "controls_cache_dir":     "MANUL_CONTROLS_CACHE_DIR",
+    "semantic_cache_enabled": "MANUL_SEMANTIC_CACHE_ENABLED",
     "log_name_maxlen":        "MANUL_LOG_NAME_MAXLEN",
     "log_thought_maxlen":     "MANUL_LOG_THOUGHT_MAXLEN",
     "workers":                "MANUL_WORKERS",
+    "auto_annotate":          "MANUL_AUTO_ANNOTATE",
 }
 
 # browser_args is a list and cannot be round-tripped through a plain env string
@@ -101,6 +103,154 @@ _cache_dir_path = Path(_cache_dir_raw)
 if not _cache_dir_path.is_absolute():
     _cache_dir_path = Path.cwd() / _cache_dir_path
 CONTROLS_CACHE_DIR = str(_cache_dir_path.resolve())
+
+# ── In-session semantic cache (learned_elements) ──────────────────────────────
+# Remembers resolved elements within a single run (+200,000 score boost).
+# Separate from the persistent controls cache — resets every time ManulEngine starts.
+SEMANTIC_CACHE_ENABLED = env_bool("MANUL_SEMANTIC_CACHE_ENABLED", "True")
+
+# ── Page Tracker & Auto-Annotator ────────────────────────────────────────────
+# PAGE_REGISTRY maps URL patterns (regex strings) to human-readable page names.
+# Keys are matched via re.search() against the FULL URL (scheme + domain + path);
+# first match wins.  Unknown URLs are auto-added as "Auto: domain/path" placeholders.
+#
+# _PAGES_WRITE_PATH — always CWD/pages.json (the user's project root); all writes
+#   go here, and it is auto-created if absent so the user can start editing it.
+# _PAGES_READ_PATH  — CWD/pages.json when it exists, otherwise the package root
+#   (useful when running from the ManulEngine dev repo without a local copy).
+_PAGES_WRITE_PATH: Path = Path.cwd() / "pages.json"
+_PAGES_READ_PATH:  Path = (
+    _PAGES_WRITE_PATH if _PAGES_WRITE_PATH.exists() else _REPO_ROOT / "pages.json"
+)
+
+# PAGE_REGISTRY: nested dict — { site_root_url: { pattern_or_"Domain": name } }
+# Supports multiple sites.  The top-level key is the site root URL (prefix match).
+PAGE_REGISTRY: dict[str, dict[str, str]] = {}
+if _PAGES_READ_PATH.exists():
+    try:
+        with open(_PAGES_READ_PATH, encoding="utf-8") as _pf:
+            _pages_raw = json.load(_pf)
+        if isinstance(_pages_raw, dict):
+            for _site_key, _site_val in _pages_raw.items():
+                _site_key = str(_site_key).strip()
+                if not _site_key:
+                    continue
+                if isinstance(_site_val, dict):
+                    PAGE_REGISTRY[_site_key] = {str(k): str(v) for k, v in _site_val.items()}
+    except (json.JSONDecodeError, OSError) as _pages_err:
+        import warnings as _warnings
+        _warnings.warn(f"ManulEngine: could not load pages file '{_PAGES_READ_PATH}': {_pages_err}")
+
+# Auto-create pages.json in CWD if it doesn't exist anywhere, so the user has
+# a ready-made file to populate after the first run.
+if not _PAGES_WRITE_PATH.exists():
+    try:
+        _PAGES_WRITE_PATH.write_text("{}\n", encoding="utf-8")
+    except OSError:
+        pass
+
+AUTO_ANNOTATE: bool = env_bool("MANUL_AUTO_ANNOTATE")
+
+
+def lookup_page_name(url: str) -> str:
+    """Match *url* against PAGE_REGISTRY and return the mapped page name.
+
+    pages.json uses a nested format::
+
+        {
+          "https://example.com/": {
+            "Domain": "Example Site",
+            ".*/login": "Login Page",
+            "https://example.com/dashboard": "Dashboard"
+          }
+        }
+
+    Matching logic:
+    1. Re-read pages.json from disk on every call (picks up manual edits instantly).
+    2. Find the best-matching site block: the top-level key whose prefix is the
+       longest match against the URL (longest-prefix wins, so sub-domain entries
+       shadow more general ones).
+    3. Within the site block, match page patterns with priority:
+       a. Exact URL equality.
+       b. Regex via re.search() (invalid regex falls back to substring).
+       c. The special ``"Domain"`` key — returned when no page pattern matches
+          but the URL belongs to this site.
+    4. If no site block matches, auto-generate a placeholder, add it as a new
+       site entry, and write it back to pages.json.
+    """
+    import re as _re_lkp
+    from urllib.parse import urlparse as _urlparse
+
+    # ── 1. Reload registry from disk ─────────────────────────────────────────
+    _live_registry: dict[str, dict[str, str]] = PAGE_REGISTRY
+    if _PAGES_READ_PATH.exists():
+        try:
+            with open(_PAGES_READ_PATH, encoding="utf-8") as _rf:
+                _raw = json.load(_rf)
+            if isinstance(_raw, dict):
+                _parsed_reg: dict[str, dict[str, str]] = {}
+                for _sk, _sv in _raw.items():
+                    _sk = str(_sk).strip()
+                    if _sk and isinstance(_sv, dict):
+                        _parsed_reg[_sk] = {str(k): str(v) for k, v in _sv.items()}
+                PAGE_REGISTRY.clear()
+                PAGE_REGISTRY.update(_parsed_reg)
+                _live_registry = PAGE_REGISTRY
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    # ── 2. Find the best (longest-prefix) site block ──────────────────────────
+    best_site_key: str | None = None
+    for site_root in _live_registry:
+        if url.startswith(site_root):
+            if best_site_key is None or len(site_root) > len(best_site_key):
+                best_site_key = site_root
+
+    # ── 3. Match within the site block ───────────────────────────────────────
+    if best_site_key is not None:
+        pages = _live_registry[best_site_key]
+        domain_name: str | None = pages.get("Domain")
+
+        # a. Exact URL match.
+        if url in pages:
+            return pages[url]
+
+        # b. Regex / substring patterns (skip the "Domain" meta-key).
+        for pattern, name in pages.items():
+            if pattern == "Domain":
+                continue
+            try:
+                if _re_lkp.search(pattern, url):
+                    return name
+            except _re_lkp.error:
+                if pattern in url:
+                    return name
+
+        # c. Nothing matched — return the domain display name as fallback.
+        if domain_name:
+            return domain_name
+
+    # ── 4. No site block matched — auto-generate placeholder ─────────────────
+    _up = _urlparse(url)
+    netloc = _up.netloc
+    _slug = (netloc + _up.path).rstrip("/")
+    placeholder = f"Auto: {_slug}" if _slug else f"Auto: {url}"
+    # Build a site root from scheme + netloc + trailing slash.
+    site_root_auto = f"{_up.scheme}://{netloc}/" if netloc else url
+    if site_root_auto not in _live_registry:
+        _live_registry[site_root_auto] = {"Domain": placeholder}
+    else:
+        # Site exists but this specific page wasn't mapped — add it.
+        _live_registry[site_root_auto][url] = placeholder
+    PAGE_REGISTRY.clear()
+    PAGE_REGISTRY.update(_live_registry)
+    try:
+        with open(_PAGES_WRITE_PATH, "w", encoding="utf-8") as _wf:
+            json.dump(_live_registry, _wf, indent=2, ensure_ascii=False)
+            _wf.write("\n")
+    except OSError:
+        pass
+    return placeholder
 
 # ── AI control switches ──────────────────────────────────────────────────────
 # When enabled, ALL element resolution decisions go through the LLM picker.

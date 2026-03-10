@@ -18,10 +18,12 @@ const DEFAULT_CONFIG = {
   ai_threshold: null,
   controls_cache_enabled: true,
   controls_cache_dir: "cache",
+  semantic_cache_enabled: true,
   log_name_maxlen: 0,
   log_thought_maxlen: 0,
   workers: 1,
   tests_home: "tests",
+  auto_annotate: false,
 };
 
 // ── WebviewViewProvider ───────────────────────────────────────────────────────
@@ -256,13 +258,20 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
 
     <div class="checkbox-row">
       <input type="checkbox" id="controls_cache_enabled"/>
-      <label for="controls_cache_enabled">controls_cache_enabled</label>
+      <label for="controls_cache_enabled">Persistent Controls Cache</label>
     </div>
+    <div class="hint">Stores resolved element locators on disk per site and page. Reused across separate runs. Disable when your app's DOM has changed significantly.</div>
 
     <label>controls_cache_dir
       <input type="text" id="controls_cache_dir" placeholder="cache"/>
     </label>
-    <div class="hint">Directory for cache files (relative to CWD or absolute).</div>
+    <div class="hint">Directory for Controls Cache files (relative to workspace root or absolute).</div>
+
+    <div class="checkbox-row">
+      <input type="checkbox" id="semantic_cache_enabled"/>
+      <label for="semantic_cache_enabled">Semantic Cache</label>
+    </div>
+    <div class="hint">Remembers resolved elements within a single run (+200,000 score boost on reuse). Disable for fully fresh resolution on every step — useful when debugging flaky tests.</div>
 
     <label>log_name_maxlen
       <input type="number" id="log_name_maxlen" min="0"/>
@@ -288,6 +297,12 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       <input type="text" id="tests_home" placeholder="tests"/>
     </label>
     <div class="hint">Directory where new hunt files are created by the Step Builder panel. Relative to workspace root or absolute path.</div>
+
+    <div class="checkbox-row">
+      <input type="checkbox" id="auto_annotate"/>
+      <label for="auto_annotate">Auto-Annotate Page Navigation</label>
+    </div>
+    <div class="hint">Automatically inserts <code># 📍 Auto-Nav:</code> comments into hunt files whenever the browser URL changes during a run.</div>
 
     <div class="btn-row">
       <button id="btn-save">💾 Save</button>
@@ -323,10 +338,12 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
         ai_threshold: threshVal === '' ? null : parseInt(threshVal, 10),
         controls_cache_enabled: g('controls_cache_enabled').checked,
         controls_cache_dir: g('controls_cache_dir').value.trim() || 'cache',
+        semantic_cache_enabled: g('semantic_cache_enabled').checked,
         log_name_maxlen: (v => isNaN(v) ? 0 : v)(parseInt(g('log_name_maxlen').value, 10)),
         log_thought_maxlen: (v => isNaN(v) ? 0 : v)(parseInt(g('log_thought_maxlen').value, 10)),
         workers: parseInt(g('workers').value, 10) || 1,
         tests_home: g('tests_home').value.trim() || 'tests',
+        auto_annotate: g('auto_annotate').checked,
       };
       vsc.postMessage({ command: 'save', config: cfg });
     }
@@ -355,11 +372,13 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       g('ai_threshold').value  = config.ai_threshold ?? '';
       g('controls_cache_enabled').checked = config.controls_cache_enabled !== false;
       g('controls_cache_dir').value       = config.controls_cache_dir ?? 'cache';
+      g('semantic_cache_enabled').checked = config.semantic_cache_enabled !== false;
       g('log_name_maxlen').value          = config.log_name_maxlen ?? 0;
       g('log_thought_maxlen').value       = config.log_thought_maxlen ?? 0;
       const _w = Math.min(4, Math.max(1, parseInt(String(config.workers ?? 1), 10)));
       g('workers').value                  = String(isNaN(_w) ? 1 : _w);
       g('tests_home').value               = config.tests_home ?? 'tests';
+      g('auto_annotate').checked           = !!config.auto_annotate;
       syncAiAlways();
     }
 

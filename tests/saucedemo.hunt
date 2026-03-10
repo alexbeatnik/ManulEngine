@@ -1,19 +1,25 @@
 @context: E-commerce purchase flow on SauceDemo
 @blueprint: swag-labs-checkout
 
+# 📍 Auto-Nav: https://www.saucedemo.com/
 1. NAVIGATE to https://www.saucedemo.com/
 2. Fill 'Username' with 'standard_user'
 3. Fill 'Password' with 'secret_sauce'
 4. Click 'Login' button
+# 📍 Auto-Nav: Products Catalog
 5. VERIFY that 'Products' is present
 6. Click 'Add to cart' near 'Sauce Labs Fleece Jacket'
+# 📍 Auto-Nav: Shopping Cart
 7. NAVIGATE to https://www.saucedemo.com/cart.html
 8. VERIFY that 'Sauce Labs Fleece Jacket' is present
 9. Click 'Checkout' button
+# 📍 Auto-Nav: Checkout: Your Info
 10. Fill 'First Name' with 'FirstName'
 11. Fill 'Last Name' with 'LastName'
 12. Fill 'Zip/Postal Code' with '49000'
 13. Click 'Continue' button
+# 📍 Auto-Nav: Checkout: Overview
 14. Click 'Finish' button
+# 📍 Auto-Nav: Checkout: Complete
 15. VERIFY that 'Thank you for your order!' is present
 16. DONE.

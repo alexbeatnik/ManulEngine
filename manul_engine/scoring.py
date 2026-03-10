@@ -81,6 +81,13 @@ def score_elements(
 
         name_core = name.split(" -> ")[-1].strip() if " -> " in name else name
         context_prefix = name.split(" -> ")[0].strip().lower() if " -> " in name else ""
+        # Track [HIDDEN] suffix before stripping so off-screen elements can
+        # still text-match but lose to visible alternatives (see penalty below).
+        # [ABOVE] (scroll-above) is stripped for matching but not penalised.
+        _name_is_hidden = bool(re.search(r'\[hidden\]', name_core, re.IGNORECASE))
+        # Strip JS-injected visibility/DOM suffixes so "Save [ABOVE]" / "Save [HIDDEN]"
+        # still exact-matches search text "Save".
+        name_core = re.sub(r'(\s*\[(hidden|above|shadow_dom)\])+$', '', name_core).strip()
         name_core_clean = re.sub(r'\s+input\s+\w*$', '', name_core).strip()
         
         is_native_button = tag == "button" or (tag == "input" and itype in ("submit", "button", "image", "reset"))
@@ -104,7 +111,7 @@ def score_elements(
             if tl == aria or tl == ph: 
                 score += 50_000 
                 is_perfect_text_match = True
-            elif len(tl) > 2 and (aria.startswith(tl + " (") or aria.startswith(tl + " [")):
+            elif len(tl) > 2 and aria.startswith(tl + " "):
                 score += 3_000
                 
             t_dashed = tl.replace(" ", "-").replace("_", "-")
@@ -149,7 +156,13 @@ def score_elements(
         score += sum(15 for w in target_words if len(w) > 3 and w in html_id)
         score += sum(12 for w in target_words if len(w) > 3 and w in aria)
 
-        # 4. SHADOW DOM BONUS
+        # 4. OFF-SCREEN PENALTY — deprioritise [HIDDEN] elements so they lose to
+        # visible alternatives when text matching is otherwise equal, but can
+        # still be resolved when every candidate shares the same penalty.
+        if _name_is_hidden:
+            score -= 5_000
+
+        # 5. SHADOW DOM BONUS
         if "shadow" in step_l and el.get("is_shadow"):
             score += 50_000
 
@@ -173,7 +186,7 @@ def score_elements(
                 if itype in step_l or (target_field and itype in target_field): score += 5000
             if re.search(r'\binp\b|-inp|inp-|input|\btxt\b|-txt|txt-|field', dev_names): score += 1500
 
-        # 5. STRICT CHECKBOX/RADIO FILTERING
+        # 6. STRICT CHECKBOX/RADIO FILTERING
         if wants_checkbox:
             if is_real_checkbox: 
                 score += 50_000
@@ -185,6 +198,8 @@ def score_elements(
         elif wants_radio:
             if is_real_radio: 
                 score += 50_000
+                if context_prefix and any(t.lower().strip() == context_prefix for t in search_texts if t.strip()):
+                    score += 5_000  # label text beats HTML name attribute
             elif re.search(r'\brad\b|-rad|rad-|radio', dev_names): 
                 score += 20_000
             else:
@@ -204,7 +219,7 @@ def score_elements(
                     score += 60_000
                     break
                     
-        # 6. MODE SYNERGY
+        # 7. MODE SYNERGY
         if is_perfect_text_match:
             if mode in ("clickable", "hover") and (is_real_button or is_real_link or role in ("button", "link", "menuitem", "tab", "switch")):
                 score += 50_000
@@ -238,8 +253,11 @@ def score_elements(
         elif mode == "input":
             if is_real_checkbox or is_real_radio:
                 score -= 50_000
+        elif mode == "clickable":
+            if is_real_input and not is_native_button and wants_button:
+                score -= 200_000  # text input must never win over a button
         
-        # 7. FILE UPLOADS
+        # 8. FILE UPLOADS
         if tag == "label":
             linked_id = el.get("html_id", "")
             if linked_id:
@@ -249,7 +267,7 @@ def score_elements(
             has_label = any(str(e.get("tag_name")) == "label" and str(e.get("html_id")) == html_id for e in els)
             if has_label: score -= 3_000
 
-        # 8. BLIND ICON CLICKS
+        # 9. BLIND ICON CLICKS
         if is_blind and not search_texts:
             for w in target_words:
                 if len(w) > 3 and w in icons: score += 3_000
@@ -257,7 +275,7 @@ def score_elements(
                 if len(w) > 3 and w in aria: score += 1_500
 
         # =====================================================================
-        # 9. DOM PROXIMITY BONUS (Form Context Awareness)
+        # 10. DOM PROXIMITY BONUS (Form Context Awareness)
         # =====================================================================
         if last_xpath and el.get("xpath"):
             last_parts = last_xpath.split('/')
