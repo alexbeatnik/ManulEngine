@@ -108,18 +108,56 @@ class _ActionsMixin:
             return True
         return False
 
-    async def _handle_verify(self, page, step: str) -> bool:
+    async def _handle_verify(self, page, step: str, step_idx: int = 0) -> bool:
         expected = extract_quoted(step)
         step_no_quotes = re.sub(r"'[^']*'", "", step)
         is_negative = bool(re.search(r'\b(NOT|HIDDEN|ABSENT)\b', step_no_quotes.upper()))
         state_check = "disabled" if re.search(r'\bDISABLED\b', step.upper()) else "enabled" if re.search(r'\bENABLED\b', step.upper()) else None
         is_checked_verify = bool(re.search(r'\bchecked\b', step.lower()))
+        _in_debug = getattr(self, "debug_mode", False) or step_idx in getattr(self, "break_steps", set())
 
         msg = f"    ⚙️  DOM HEURISTICS: Scanning for {expected}"
         if is_negative: msg += " [MUST BE ABSENT]"
         if state_check: msg += f" [{state_check.upper()}]"
         if is_checked_verify: msg += " [CHECKED]"
         print(msg)
+
+        # ── Debug pause before verify ─────────────────────────────────────
+        # For is_checked_verify the highlight fires after element resolution
+        # (inside the retry loop on first find). For all other VERIFY variants
+        # we try to resolve the target element for highlighting; if none is
+        # found we still pause — just without a highlight.
+        if _in_debug and not is_checked_verify:
+            if expected:
+                if state_check:
+                    # Disabled/enabled check — resolve via interactive element snapshot
+                    raw_els = await self._snapshot(page, "clickable", [t.lower() for t in expected])
+                    scored  = self._score_elements(raw_els, step, "clickable", expected, None, False)
+                    if scored:
+                        best = scored[0]
+                        loc  = page.locator(f"xpath={best['xpath']}").first
+                        try:
+                            if not best.get("is_shadow"):
+                                await loc.scroll_into_view_if_needed(timeout=2000)
+                                await self._debug_highlight(page, loc)
+                            else:
+                                await self._debug_highlight(page, best["id"], by_js_id=True)
+                        except Exception:
+                            pass
+                else:
+                    # Text presence verify — target is often a non-interactive element
+                    # (h1, p, span) that SNAPSHOT_JS skips. Use get_by_text() instead.
+                    for t in expected:
+                        try:
+                            loc = page.get_by_text(t, exact=False).first
+                            await loc.scroll_into_view_if_needed(timeout=2000)
+                            await self._debug_highlight(page, loc)
+                            break
+                        except Exception:
+                            pass
+            await self._debug_prompt(page, step, step_idx)
+            await self._clear_debug_highlight(page)
+        _debug_paused = not is_checked_verify  # is_checked pauses after element resolves
 
         for retry in range(15):
             if is_checked_verify:
@@ -129,6 +167,18 @@ class _ActionsMixin:
                     best   = scored[0]
                     xpath  = best["xpath"]
                     loc    = page.locator(f"xpath={xpath}").first
+                    if _in_debug and not _debug_paused:
+                        try:
+                            if not best.get("is_shadow"):
+                                await loc.scroll_into_view_if_needed(timeout=2000)
+                                await self._debug_highlight(page, loc)
+                            else:
+                                await self._debug_highlight(page, best["id"], by_js_id=True)
+                        except Exception:
+                            pass
+                        await self._debug_prompt(page, step, step_idx)
+                        await self._clear_debug_highlight(page)
+                        _debug_paused = True
                     try: checked = await loc.is_checked(timeout=2000)
                     except Exception: checked = False
                     if is_negative:

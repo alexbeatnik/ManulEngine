@@ -270,7 +270,7 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       <input type="checkbox" id="semantic_cache_enabled"/>
       <label for="semantic_cache_enabled">Semantic Cache</label>
     </div>
-    <div class="hint">Remembers resolved elements within a single run (+20,000 score boost on reuse). Disable for fully fresh resolution on every step — useful when debugging flaky tests.</div>
+    <div class="hint">Remembers resolved elements within a single run (+200,000 score boost on reuse). Disable for fully fresh resolution on every step — useful when debugging flaky tests.</div>
 
     <label>log_name_maxlen
       <input type="number" id="log_name_maxlen" min="0"/>

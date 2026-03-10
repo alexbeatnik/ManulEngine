@@ -50,7 +50,7 @@ Place breakpoints by clicking the editor gutter next to any step number in a `.h
 - **⏭ Next Step** — advance exactly one step and pause again
 - **▶ Continue All** — run until the next gutter breakpoint or end of hunt
 - **Stop button** — clicking Stop in Test Explorer dismisses the QuickPick and terminates the run cleanly; Python never hangs
-- **🐙 Highlight Element** — a third QuickPick option that re-scrolls the browser to the persistently highlighted target element and re-shows the pause overlay without advancing the step
+- **� Highlight Element** — a third QuickPick option that re-scrolls the browser to the persistently highlighted target element and re-shows the pause overlay without advancing the step
 - **Linux:** VS Code window is raised via `xdotool`/`wmctrl` and a 5-second system notification appears via `notify-send` when execution pauses
 - **Persistent magenta highlight** — the resolved target element is outlined with a `4px solid #ff00ff` border + glow while execution is paused; the highlight is removed automatically just before the action executes
 - Debug output streams live into the **ManulEngine Debug** output channel
@@ -78,7 +78,7 @@ An interactive sidebar panel for editing `manul_engine_configuration.json` witho
 - **Browser Args** — extra launch flags for the browser (comma-separated)
 - **Headless** — run browser headless
 - **Timeouts** — action and navigation timeouts in ms
-- **Persistent Controls Cache / Semantic Cache** — two separate cache toggles: **Persistent Controls Cache** (`controls_cache_enabled`) stores resolved locators on disk per site/page across runs; **Semantic Cache** (`semantic_cache_enabled`) remembers resolved elements within a single run (+20,000 score boost, resets when the process ends). Both default to enabled and can be toggled independently from the sidebar
+- **Persistent Controls Cache / Semantic Cache** — two separate cache toggles: **Persistent Controls Cache** (`controls_cache_enabled`) stores resolved locators on disk per site/page across runs; **Semantic Cache** (`semantic_cache_enabled`) remembers resolved elements within a single run (+200,000 score boost, resets when the process ends). Both default to enabled and can be toggled independently from the sidebar
 - **Log truncation** — max length for element names and LLM thoughts in logs
 - **Workers** — max number of hunt files to run concurrently in Test Explorer (1–4)
 - **Ollama status indicator** — live dot showing whether Ollama is reachable at `localhost:11434`, with model autocomplete from the running instance
@@ -189,10 +189,10 @@ See the [ManulEngine README](https://github.com/alexbeatnik/ManulEngine) for the
 
 ### 0.0.84
 - **Persistent debug highlight** — when the engine pauses at a debug step, the resolved target element is outlined with a persistent magenta border (`outline: 4px solid #ff00ff` + glow) that stays visible until the user proceeds; the highlight is injected via `<style id="manul-debug-style">` + `data-manul-debug-highlight` attribute and fully removed by `clear_highlight()` before the action executes
-- **🐙 Highlight Element QuickPick button** — a third option appears in the floating pause overlay alongside ⏭ Next Step and ▶ Continue All; clicking it re-scrolls the browser to the persistently highlighted target element and re-displays the QuickPick without advancing the step
+- **� Highlight Element QuickPick button** — a third option appears in the floating pause overlay alongside ⏭ Next Step and ▶ Continue All; clicking it re-scrolls the browser to the persistently highlighted target element and re-displays the QuickPick without advancing the step
 - **`$(eye) Highlight Target` status bar button** — a new `ManulEngine: Highlight Target Element` command (`manul.debugHighlight`) appears in the editor title bar and the status bar whenever a `ManulEngine Debug` terminal is active; clicking it sends `h` to the waiting Python debug prompt, re-scrolling the browser to the highlighted element
-- **`[h] Re-highlight` in terminal debug loop** — typing `h` at the `🛑 DEBUG PAUSE` prompt scrolls the browser back to the current target element without advancing the step
-- **Two separate cache controls in config panel** — `controls_cache_enabled` is now labelled **Persistent Controls Cache** (file-based, disk, per-site across runs) and the new `semantic_cache_enabled` is labelled **Semantic Cache** (in-session `learned_elements`, +20,000 score boost within a single run, resets when the process ends); both default to enabled and can be toggled independently
+- **`[h] Re-highlight` in terminal debug loop** — typing `h` at the `🛑 DEBUG PAUSE` prompt scrolls the browser back to the current target element and re-shows the prompt without advancing the step
+- **Two separate cache controls in config panel** — `controls_cache_enabled` is now labelled **Persistent Controls Cache** (file-based, disk, per-site across runs) and the new `semantic_cache_enabled` is labelled **Semantic Cache** (in-session `learned_elements`, +200,000 score boost within a single run, resets when the process ends); both default to enabled and can be toggled independently
 
 ### 0.0.83
 - **Inline `CALL PYTHON` steps** — `CALL PYTHON module.function` now works as a standard numbered step anywhere in the mission body (not just in hook blocks); use it to fetch OTPs, trigger backend jobs, or seed data mid-test without leaving the `.hunt` file

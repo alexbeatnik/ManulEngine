@@ -241,12 +241,19 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         if (ctx)      name = `${ctx} -> ${name}`;
         if (inShadow) name += ' [SHADOW_DOM]';
 
-        let isOffscreen = false;
-        if (el.getAttribute('aria-hidden') === 'true') isOffscreen = true;
+        // Distinguish structural hiding (aria-hidden, off-screen LEFT via CSS)
+        // from scroll-above (element scrolled above the viewport).
+        // [HIDDEN] = intentionally hidden → scored with a penalty.
+        // [ABOVE]  = temporarily off-screen due to scroll → stripped for
+        //            text matching but not penalised (sort order breaks ties).
+        let isStructuralHidden = false;
+        if (el.getAttribute('aria-hidden') === 'true') isStructuralHidden = true;
         const rect = el.getBoundingClientRect();
-        if (rect.left < -999 || rect.top < -999) isOffscreen = true;
-        
-        if (isOffscreen) name += ' [HIDDEN]';
+        if (rect.left < -999) isStructuralHidden = true;
+        const isScrollAbove = rect.top < -999 && !isStructuralHidden;
+
+        if (isStructuralHidden) name += ' [HIDDEN]';
+        else if (isScrollAbove) name += ' [ABOVE]';
 
         const isEditable = el.isContentEditable || el.getAttribute('contenteditable') === 'true';
 

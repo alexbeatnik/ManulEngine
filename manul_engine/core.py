@@ -68,6 +68,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
         if semantic_cache is not None:
             self._semantic_cache_enabled = semantic_cache
+        elif disable_cache:
+            self._semantic_cache_enabled = False
         else:
             self._semantic_cache_enabled = bool(getattr(prompts, "SEMANTIC_CACHE_ENABLED", True))
             
@@ -389,28 +391,35 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             f"\n[DEBUG] Next step: {step}\n"
             f"        ENTER/n = execute · h = re-highlight · pause = Inspector · c = continue all… "
         )
-        try:
-            user_in = await asyncio.to_thread(input, prompt_text)
-            user_in = user_in.strip().lower()
-            if user_in == "h":
-                try:
-                    await page.evaluate("""
-                        () => {
-                            const el = document.querySelector('[data-manul-debug-highlight="true"]');
-                            if (el) el.scrollIntoView({behavior:'smooth',block:'center'});
-                        }
-                    """)
-                    print("    👁️  Scrolled to highlighted element.")
-                except Exception:
-                    pass
-            elif user_in == "pause":
-                print("    🔎 Opening Playwright Inspector…")
-                await page.pause()
-            elif user_in in ("c", "continue"):
-                self._debug_continue = True
-                print("    ▶ Continuing all steps without further pauses…")
-        except (EOFError, KeyboardInterrupt):
-            print()
+        while True:
+            try:
+                user_in = await asyncio.to_thread(input, prompt_text)
+                user_in = user_in.strip().lower()
+                if user_in == "h":
+                    try:
+                        await page.evaluate("""
+                            () => {
+                                const el = document.querySelector('[data-manul-debug-highlight="true"]');
+                                if (el) el.scrollIntoView({behavior:'smooth',block:'center'});
+                            }
+                        """)
+                        print("    👁️  Scrolled to highlighted element.")
+                    except Exception:
+                        pass
+                    continue  # re-show the prompt without advancing
+                elif user_in == "pause":
+                    print("    🔎 Opening Playwright Inspector…")
+                    await page.pause()
+                    continue  # re-show the prompt after closing Inspector
+                elif user_in in ("c", "continue"):
+                    self._debug_continue = True
+                    print("    ▶ Continuing all steps without further pauses…")
+                    break
+                else:  # ENTER / n / anything else → execute the step
+                    break
+            except (EOFError, KeyboardInterrupt):
+                print()
+                break
             return
 
     # ── DOM snapshot ──────────────────────────
@@ -661,7 +670,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                     # after element resolution so the tester sees the highlighted
                     # element before deciding to proceed.
                     _is_system_step = bool(re.search(
-                        r'\b(?:NAVIGATE|WAIT|SCROLL|EXTRACT|VERIFY|PRESS\s+ENTER|SCAN\s+PAGE|CALL\s+PYTHON|DEBUG|PAUSE|DONE)\b',
+                        r'\b(?:NAVIGATE|WAIT|SCROLL|EXTRACT|PRESS\s+ENTER|SCAN\s+PAGE|CALL\s+PYTHON|DEBUG|PAUSE|DONE)\b',
                         s_up
                     ))
 
@@ -693,7 +702,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                 ok = False; break
 
                         elif re.search(r'\bVERIFY\b', s_up):
-                            if not await self._handle_verify(page, step):
+                            if not await self._handle_verify(page, step, step_idx=i):
                                 ok = False; break
 
                         elif re.search(r'\bPRESS\s+ENTER\b', s_up):

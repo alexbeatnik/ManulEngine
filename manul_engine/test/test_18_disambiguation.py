@@ -269,7 +269,7 @@ DISAMBIGUATION_DOM = """
 """
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Test cases — 75 element-resolution steps
+# Test cases — 85 element-resolution steps
 # ─────────────────────────────────────────────────────────────────────────────
 TESTS = [
     # ── A. Yes / No antonym pairs ────────────────────────────────────────────
@@ -462,7 +462,7 @@ async def run_suite():
 
             try:
                 found = await manul._resolve_element(
-                    page, t["step"], mode, search_texts, target_field
+                    page, t["step"], mode, search_texts, target_field, ""
                 )
                 found_id = found.get("html_id", "") if found else None
             except Exception as exc:

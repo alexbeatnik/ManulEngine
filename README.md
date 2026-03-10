@@ -352,7 +352,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 | `ai_policy` | `"prior"` | `"prior"` (LLM may override score) or `"strict"` (enforce max-score) |
 | `controls_cache_enabled` | `true` | Persistent per-site controls cache (file-based, survives between runs) |
 | `controls_cache_dir` | `"cache"` | Cache directory (relative to CWD or absolute) |
-| `semantic_cache_enabled` | `true` | In-session semantic cache; remembers resolved elements within a single run (+20,000 score boost) |
+| `semantic_cache_enabled` | `true` | In-session semantic cache; remembers resolved elements within a single run (+200,000 score boost) |
 | `timeout` | `5000` | Default action timeout (ms) |
 | `nav_timeout` | `30000` | Navigation timeout (ms) |
 | `log_name_maxlen` | `0` | Truncate element names in logs (0 = no limit) |

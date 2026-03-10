@@ -4,7 +4,7 @@
  * Uses vscode.window.createQuickPick() (low-level API) so the picker can be
  * dismissed programmatically via abort() when the user clicks Stop in Test Explorer.
  *
- * Buttons:  ⏭ Next Step  |  ▶ Continue All
+ * Buttons:  ⏭ Next Step  |  ▶ Continue All  |  👁 Highlight Element
  * ESC / Stop → abort() hides the picker → treated as "next" so Python unblocks.
  *
  * Window raising (Linux): spawns xdotool / wmctrl + notify-send (both silent-fail).
