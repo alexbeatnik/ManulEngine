@@ -104,7 +104,7 @@ The same module resolution rules apply as for `[SETUP]`/`[TEARDOWN]`: hunt file 
 
 ---
 
-## � System Requirements
+## 💻 System Requirements
 
 | | Minimum | Recommended |
 |---|---|---|
@@ -113,7 +113,7 @@ The same module resolution rules apply as for `[SETUP]`/`[TEARDOWN]`: hunt file 
 | **GPU** | none | none |
 | **Model** | — (heuristics-only) | `qwen2.5:0.5b` |
 
-## �🛠️ Installation
+## 🛠️ Installation
 
 ```bash
 pip install manul-engine

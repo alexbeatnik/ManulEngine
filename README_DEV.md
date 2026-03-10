@@ -173,7 +173,7 @@ This disables the LLM element-picker and planner completely (`threshold = 0`). N
 
 ---
 
-## � System Requirements
+## 💻 System Requirements
 
 | | Minimum | Recommended |
 |---|---|---|
@@ -182,7 +182,7 @@ This disables the LLM element-picker and planner completely (`threshold = 0`). N
 | **GPU** | none | none |
 | **Model** | — (heuristics-only) | `qwen2.5:0.5b` |
 
-## �🛠️ Installation
+## 🛠️ Installation
 
 ### From source (dev mode)
 
