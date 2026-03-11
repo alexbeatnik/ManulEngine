@@ -31,6 +31,7 @@ Flags:
   --headless                 — run browser in headless mode
   --browser <name>           — browser to use: chromium (default), firefox, webkit
   --workers <n>              — max hunt files to run in parallel (default: 1)
+  --tags <tag1,tag2,...>     — only run hunt files whose @tags: header contains at least one matching tag
   --debug                    — interactive step-by-step mode with visual element highlighting
   --break-lines <n,n,...>    — pause before steps whose line numbers match (set by clicking the editor gutter)
 
@@ -46,6 +47,8 @@ Examples:
   manul --browser firefox tests/
   manul --headless --browser webkit tests/hunt_example.hunt
   manul --workers 4 tests/
+  manul --tags smoke tests/
+  manul --tags smoke,regression tests/
   manul scan https://example.com
   manul scan https://example.com --output tests/example.hunt --headless
 
@@ -82,8 +85,8 @@ class _Tee:
 # ── Parse .hunt file ─────────────────────────────────────────────────────────
 def parse_hunt_file(
     filepath: str,
-) -> tuple[str, str, str, list[int], list[str], list[str]]:
-    """Return ``(mission_body, context, blueprint, step_file_lines, setup_lines, teardown_lines)``.
+) -> tuple[str, str, str, list[int], list[str], list[str], dict[str, str], list[str]]:
+    """Return ``(mission_body, context, blueprint, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags)``.
 
     *step_file_lines[i]* is the 1-based file line number of the *(i+1)*-th
     numbered step, in order of appearance.  Used to map editor gutter
@@ -94,11 +97,22 @@ def parse_hunt_file(
     *setup_lines* / *teardown_lines* contain the instruction strings extracted
     from ``[SETUP]`` / ``[TEARDOWN]`` blocks respectively, ready for
     execution by :func:`manul_engine.hooks.run_hooks`.
+
+    *parsed_vars* contains key/value pairs declared with ``@var: {key} = value``
+    at the top of the file.  Keys are stored without the surrounding ``{}``
+    braces and are pre-populated into the engine's runtime memory before any
+    step runs, enabling interpolation like ``Fill 'Email' with '{email}'``.
+
+    *tags* contains the list of tag strings declared with ``@tags: tag1, tag2``
+    at the top of the file.  If no ``@tags:`` line is present, returns ``[]``.
+    Used by the CLI ``--tags`` flag to filter which hunt files are executed.
     """
     from .hooks import RE_SETUP, RE_END_SETUP, RE_TEARDOWN, RE_END_TEARDOWN
 
     context = ""
     blueprint = ""
+    parsed_vars: dict[str, str] = {}
+    tags: list[str] = []
     mission_lines:  list[str] = []
     step_file_lines: list[int] = []
     setup_lines:    list[str] = []
@@ -138,6 +152,14 @@ def parse_hunt_file(
                 context = stripped.split(":", 1)[1].strip()
             elif stripped.startswith("@blueprint:"):
                 blueprint = stripped.split(":", 1)[1].strip()
+            elif stripped.startswith("@tags:"):
+                raw_tags = stripped.split(":", 1)[1]
+                tags = [t.strip() for t in raw_tags.split(",") if t.strip()]
+            elif stripped.startswith("@var:"):
+                var_part = stripped[5:].strip()
+                m = re.match(r"\{?([^}=\s]+)\}?\s*=\s*(.*)", var_part)
+                if m:
+                    parsed_vars[m.group(1).strip()] = m.group(2).strip()
             elif not stripped.startswith("#") and stripped:
                 mission_lines.append(line)
                 if re.match(r'^\d+\.', stripped):
@@ -150,7 +172,27 @@ def parse_hunt_file(
         step_file_lines,
         setup_lines,
         teardown_lines,
+        parsed_vars,
+        tags,
     )
+
+
+# ── Fast tag reader (header-only scan, no full parse) ────────────────────────
+def _read_tags(path: str) -> list[str]:
+    """Scan only the header lines of a .hunt file and return its @tags: values.
+
+    Stops at the first numbered step line to avoid reading the whole file.
+    Returns an empty list when no ``@tags:`` header is found.
+    """
+    with open(path, "r", encoding="utf-8") as fh:
+        for line in fh:
+            stripped = line.strip()
+            if stripped.startswith("@tags:"):
+                raw = stripped.split(":", 1)[1]
+                return [t.strip() for t in raw.split(",") if t.strip()]
+            if re.match(r'^\d+\.', stripped):
+                break
+    return []
 
 
 # ── Find the current manul executable ───────────────────────────────────────
@@ -183,7 +225,7 @@ async def _run_hunt_file(
     print(f"📜 EXECUTING MANUL HUNT: {filename}")
     print(f"{'='*60}")
 
-    mission, context, blueprint, step_file_lines, setup_lines, teardown_lines = (
+    mission, context, blueprint, step_file_lines, setup_lines, teardown_lines, parsed_vars, _ = (
         parse_hunt_file(path)
     )
 
@@ -226,6 +268,7 @@ async def _run_hunt_file(
             hunt_dir=hunt_dir,
             hunt_file=path,
             step_file_lines=step_file_lines,
+            initial_vars=parsed_vars,
         )
         return bool(result)
     except Exception as exc:
@@ -292,8 +335,8 @@ async def main() -> None:
     _non_flag_args = [
         a for i, a in enumerate(args)
         if a not in ("--headless", "--debug")
-        and not (i > 0 and args[i - 1] in ("--browser", "--workers", "--output", "--break-lines"))
-        and a not in ("--browser", "--workers", "--output", "--break-lines")
+        and not (i > 0 and args[i - 1] in ("--browser", "--workers", "--output", "--break-lines", "--tags"))
+        and a not in ("--browser", "--workers", "--output", "--break-lines", "--tags")
     ]
     if _non_flag_args and _non_flag_args[0] == "scan":
         from manul_engine.scanner import scan_main
@@ -380,6 +423,16 @@ async def main() -> None:
         )
         workers = 1
 
+    # Extract --tags <tag1,tag2,...> filter
+    filter_tags: set[str] = set()
+    if "--tags" in args:
+        idx = args.index("--tags")
+        if idx + 1 >= len(args):
+            print("Error: --tags requires a value (comma-separated tag names).", file=sys.stderr)
+            sys.exit(1)
+        filter_tags = {t.strip() for t in args[idx + 1].split(",") if t.strip()}
+        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+
     if not args:
         print(_USAGE)
         sys.exit(0)
@@ -396,6 +449,17 @@ async def main() -> None:
         if not files:
             print(f"📭 No .hunt files found in: {target}")
             return
+
+        # ── Tag filtering ─────────────────────────────────────────────────────
+        if filter_tags:
+            before = len(files)
+            files = [f for f in files if filter_tags & set(_read_tags(f))]
+            skipped = before - len(files)
+            tag_str = ",".join(sorted(filter_tags))
+            print(f"🏷️  --tags '{tag_str}': {skipped} file(s) skipped, {len(files)} matched.")
+            if not files:
+                print(f"📭 No .hunt files matched tags: {tag_str}")
+                return
 
         print(f"😼 Manul: found {len(files)} hunt file(s) in {os.path.abspath(target)}")
 

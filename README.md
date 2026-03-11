@@ -128,7 +128,16 @@ Need to fetch an OTP from the database mid-test? Or trigger a backend job before
 ```
 
 The same module resolution rules apply as for `[SETUP]`/`[TEARDOWN]`: hunt file directory → CWD → `sys.path`. Functions must be synchronous. If the call fails, the mission stops immediately — just like any other failed step. No special syntax or block wrapping required.
+#### Capturing return values with `into {var}`
 
+Append `into {var_name}` (or `to {var_name}`) to bind the function’s return value directly into an in-mission variable:
+
+```text
+2. CALL PYTHON api_helpers.fetch_otp into {dynamic_otp}
+3. Fill 'Security Code' field with '{dynamic_otp}'
+```
+
+The raw return value is converted to a string (`str(return_value)`) and stored under the variable name. It is then available for `{placeholder}` substitution in every subsequent step, exactly like variables populated by `EXTRACT` or `@var:`.
 ---
 
 ## 💻 System Requirements
@@ -198,6 +207,12 @@ manul "1. NAVIGATE to https://example.com  2. Click the 'More' link  3. DONE."
 # Run multiple hunt files in parallel (4 concurrent browsers)
 manul my_tests/ --workers 4
 
+# Run only files tagged 'smoke'
+manul my_tests/ --tags smoke
+
+# Run only files tagged 'smoke' OR 'critical'
+manul my_tests/ --tags smoke,critical
+
 # Interactive debug mode (terminal) — pause before every step, confirm in terminal
 manul --debug my_tests/smoke.hunt
 
@@ -242,7 +257,10 @@ Hunt files are plain-text test scenarios with a `.hunt` extension.
 ```text
 @context: Strategic context passed to the LLM planner
 @blueprint: short-tag
+@tags: smoke, auth, regression
 ```
+
+`@tags:` declares a comma-separated list of arbitrary tag names.  Use `manul --tags smoke tests/` to run only files whose `@tags:` header contains at least one matching tag.  Untagged files are excluded when `--tags` is active.
 
 ### Comments
 
@@ -276,8 +294,9 @@ CALL PYTHON <module_path>.<function_name>
 [END SETUP]
 
 1. NAVIGATE to https://myapp.com
-2. CALL PYTHON api_helpers.fetch_and_set_otp
-3. VERIFY that 'Dashboard' is present.
+2. CALL PYTHON api_helpers.fetch_otp into {dynamic_otp}
+3. Fill 'Security Code' with '{dynamic_otp}'
+4. VERIFY that 'Dashboard' is present.
 
 [TEARDOWN]
 CALL PYTHON <module_path>.<function_name>
@@ -288,6 +307,7 @@ Rules:
 - Functions must be **synchronous** (async functions are explicitly rejected).
 - A single `[SETUP]`/`[TEARDOWN]` block may contain multiple `CALL PYTHON` lines; they run sequentially — first failure stops the block.
 - An inline `CALL PYTHON` step that fails stops the mission immediately, just like any other failed step.
+- Append `into {var_name}` (or `to {var_name}`) to a `CALL PYTHON` step to bind the function’s return value into a variable: `CALL PYTHON api.fetch_otp into {otp}`. The value is converted to a string and available for `{placeholder}` substitution in all subsequent steps.
 - The module is searched in: hunt file directory → CWD → `sys.path`. No import configuration needed.
 
 ### Interaction Steps
@@ -323,6 +343,22 @@ Click 'Close Ad' if exists
 EXTRACT the price of 'Laptop' into {price}
 VERIFY that '{price}' is present.
 ```
+
+### Variable Declaration
+
+Declare static test data at the top of the file using `@var:`. These values are pre-populated into the runtime memory before any step runs and can be interpolated anywhere a variable placeholder `{name}` is accepted.
+
+```text
+@var: {email}    = admin@example.com
+@var: {password} = secret123
+
+1. NAVIGATE to https://myapp.com/login
+2. Fill 'Email' with '{email}'
+3. Fill 'Password' with '{password}'
+4. Click the 'Login' button
+```
+
+The surrounding `{}` braces in the declaration are optional — `@var: email = ...` and `@var: {email} = ...` are equivalent. Values are stripped of leading/trailing whitespace. Declared variables behave exactly like variables populated by `EXTRACT` and can be used interchangeably with them in downstream steps.
 
 ---
 
@@ -439,4 +475,4 @@ ManulEngine is verified against **1296+ synthetic DOM tests** covering:
 
 ---
 
-**Version:** 0.0.8.5 · **Status:** Hunting...
+**Version:** 0.0.8.6 · **Status:** Hunting...

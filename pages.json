@@ -1,10 +1,14 @@
 {
-  "https://www.saucedemo.com/": {
-    "Domain": "Auto: www.saucedemo.com",
-    ".*/inventory": "Products Catalog",
-    ".*/cart": "Shopping Cart",
-    ".*/checkout-step-one": "Checkout: Your Info",
-    ".*/checkout-step-two": "Checkout: Overview",
-    ".*/checkout-complete": "Checkout: Complete"
-  }
+    "https://www.saucedemo.com/": {
+        "Domain": "Auto: www.saucedemo.com",
+        ".*/inventory": "Products Catalog",
+        ".*/cart": "Shopping Cart",
+        ".*/checkout-step-one": "Checkout: Your Info",
+        ".*/checkout-step-two": "Checkout: Overview",
+        ".*/checkout-complete": "Checkout: Complete"
+    },
+    "https://example.com/": {
+        "Domain": "Auto: example.com",
+        "https://example.com/login": "Example.com Login"
+    }
 }

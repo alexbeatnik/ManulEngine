@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.0.8.5 — The Mastermind
+# 😼 ManulEngine v0.0.8.6 — The Mastermind
 
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 
@@ -24,7 +24,7 @@ Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristi
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.8.5
+├── pyproject.toml                    Build config — package: manul-engine 0.0.8.6
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
@@ -49,7 +49,8 @@ ManulEngine/
 │       ├── test_14_qa_classics.py    Unit: legacy HTML patterns, tables, fieldsets
         ├── test_15_facebook_final_boss.py
         ├── test_16_hooks.py          Unit: [SETUP]/[TEARDOWN] hooks (no browser)
-        └── test_19_custom_controls.py Unit: Custom Controls registry + engine interception (19 assertions, no browser)
+        ├── test_19_custom_controls.py Unit: Custom Controls registry + engine interception (19 assertions, no browser)
+        └── test_20_variables.py      Unit: @var: static variable declaration + initial_vars interpolation (17 assertions, no browser)
 ├── controls/                         User-owned custom Python handlers (auto-loaded at engine startup)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
@@ -64,7 +65,7 @@ ManulEngine/
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 └── vscode-extension/                 VS Code extension (language support + UI)
-    ├── package.json                  Extension manifest (v0.0.85)
+    ├── package.json                  Extension manifest (v0.0.86)
     ├── src/
     │   ├── extension.ts              Activation, command registration
     │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
@@ -126,13 +127,67 @@ Version 0.0.8.3 introduces a pre/post hook mechanism powered by `manul_engine/ho
 
 ```python
 extract_hook_blocks(raw_text)  → (setup_lines, teardown_lines, mission_body)
-execute_hook_line(line, hunt_dir)  → HookResult(success, message)
+execute_hook_line(line, hunt_dir)  → HookResult(success, message, return_value, var_name)
 run_hooks(lines, label, hunt_dir)  → bool
 ```
 
-`parse_hunt_file()` in `cli.py` returns a 6-tuple including `setup_lines` and `teardown_lines`. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
+**`HookResult` fields:** `success: bool`, `message: str`, `return_value: str | None`, `var_name: str | None`. The last two fields are populated when the step used the `into {var}` / `to {var}` capture syntax (see *Dynamic Variables* below); they are `None` for plain `CALL PYTHON` steps. When `into/to` is present, `return_value` is **always** set to `str(ret)` — even when the function returns `None` (yielding the string `"None"`). This guarantees that `{var}` is always bound after a capture step.
+
+**Dynamic Variables via `CALL PYTHON ... into {var}`:** Inline `CALL PYTHON` steps may optionally bind their return value to a mission variable:
+
+```text
+1. CALL PYTHON api_helpers.fetch_otp into {dynamic_otp}
+2. Fill 'Security Code' with '{dynamic_otp}'
+```
+
+`execute_hook_line` captures the return value from `func()`, converts it to a string, and stores it in `HookResult.return_value`. `run_mission` then writes it to `self.memory[var_name]`, making it available for `{placeholder}` substitution in every subsequent step — exactly like `EXTRACT` or `@var:` variables. Both `into` and `to` are accepted as the keyword. Dynamic-variable unit tests live in `manul_engine/test/test_21_dynamic_vars.py`.
+
+`parse_hunt_file()` in `cli.py` returns an **8-tuple** `(mission, context, blueprint, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags)`. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
 
 The full hook unit test suite (`41 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
+
+### 📋 Static Variable Declaration (`@var:`)
+
+Version 0.0.8.6 adds static test-data declaration at the top of `.hunt` files:
+
+```text
+@var: {user_email} = admin@example.com
+@var: {password}   = secret123
+
+1. Fill 'Email' with '{user_email}'
+2. Fill 'Password' with '{password}'
+```
+
+**How it works:** `parse_hunt_file()` scans for `@var: {key} = value` header lines and returns them as `parsed_vars` (the 7th element of the 8-tuple). `_run_hunt_file()` passes `parsed_vars` to `run_mission(initial_vars=...)`, which pre-populates `self.memory` before the step loop starts. Both brace and bare-key forms are accepted (`@var: {key} = val` and `@var: key = val` are equivalent). Values are stripped of leading/trailing whitespace. Malformed `@var:` lines (no `=`) are silently skipped.
+
+**Design rule:** When generating or suggesting `.hunt` test files, **never** hardcode test data (emails, passwords, usernames, search queries, IDs, etc.) directly into `Fill` or `Type` steps. Always declare them at the top via `@var:` and reference them via `{placeholder}`. This keeps test logic separate from test data.
+
+Unit tests: `manul_engine/test/test_20_variables.py` (17 assertions, no browser).
+
+### 🏷️ Arbitrary Tags (`@tags:`) and `--tags` CLI Filter
+
+Version 0.0.8.6 adds a tagging system that lets users run subsets of `.hunt` files without changing directory layout or file names.
+
+**Hunt file header:**
+```text
+@context: Login flow
+@tags: smoke, auth, regression
+
+1. NAVIGATE to https://example.com/login
+2. DONE.
+```
+
+**CLI usage:**
+```bash
+manul tests/ --tags smoke               # run only files tagged 'smoke'
+manul tests/ --tags smoke,critical      # OR logic — run files with either tag
+```
+
+**Intersection rule:** A file is included in the run if its `@tags:` list shares at least one tag with the `--tags` argument.  Files with no `@tags:` header are **always excluded** when `--tags` is active.
+
+**How it works:** `parse_hunt_file()` now extracts `@tags:` into the **8th element** of the tuple (`tags: list[str]`).  The CLI also exposes `_read_tags(path)` — a fast header-only scanner that stops at the first numbered step — used to pre-filter files in `main()` without running the full parse twice.  Tag filtering prints a one-line summary (`🏷️ --tags '...': N skipped, M matched.`) before the run starts.
+
+Unit tests: `manul_engine/test/test_22_tags.py` (20 assertions, no browser).
 
 ### 🎛️ Custom Controls & Page Object Model
 
@@ -398,15 +453,16 @@ manul tests/mission.hunt
 
 ---
 
-## 🐾 Chaos Chamber Verified (1296+ Tests)
+## 🐾 Chaos Chamber Verified (1427+ Tests)
 
-The engine is battle-tested with **1296+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
+The engine is battle-tested with **1427+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).
 * **AI modes regression suite:** `manul_engine/test/test_12_ai_modes.py` (Always-AI, strict override, AI rejection).
 * **QA Classics regression suite:** `manul_engine/test/test_14_qa_classics.py` (legacy HTML patterns, tables, fieldsets).
 * **Custom Controls unit suite:** `manul_engine/test/test_19_custom_controls.py` (registry correctness + engine interception, 19 assertions, no browser).
+* **Static Variables unit suite:** `manul_engine/test/test_20_variables.py` (parser correctness, `initial_vars` interpolation, 17 assertions, no browser).
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
 Run the synthetic suite:
@@ -449,7 +505,7 @@ The `prompts/` directory contains ready-to-use LLM prompt templates that let you
 
 ## 🖱️ VS Code Extension
 
-The `vscode-extension/` directory contains a companion VS Code extension (v0.0.85) that provides:
+The `vscode-extension/` directory contains a companion VS Code extension (v0.0.86) that provides:
 
 | Feature | Details |
 | --- | --- |
@@ -459,7 +515,7 @@ The `vscode-extension/` directory contains a companion VS Code extension (v0.0.8
 | **Cache browser** | Tree-view sidebar showing the controls cache hierarchy (`site → page → controls.json`) |
 | **Run commands** | `ManulEngine: Run Hunt File` (output panel) and `ManulEngine: Run Hunt File in Terminal` (raw CLI) |
 | **Debug run profile** | Test Explorer exposes a **Debug** run profile alongside the normal one; places gutter breakpoints (red dots) in `.hunt` files, pauses at each with a floating QuickPick overlay — **⏭ Next Step** / **▶ Continue All**. The Test Explorer **Stop** button aborts the run cleanly (no hanging QuickPick). On Linux, a system notification appears via `notify-send` when execution pauses. |
-| **Step Builder** | Sidebar buttons for every step type including **Debug / Pause** (inserts `DEBUG` step); **🔍 Live Page Scanner** — URL input + Run Scan button that invokes `manul scan <URL>` directly and opens the result in the editor |
+| **Step Builder** | Sidebar buttons for every step type including **Debug / Pause** (inserts `DEBUG` step); **🐍 Call Python → Var** (inserts `CALL PYTHON module.function into {variable_name}` and captures the return value as a mission variable); **🔍 Live Page Scanner** — URL input + Run Scan button that invokes `manul scan <URL>` directly and opens the result in the editor |
 | **Bounded concurrency** | Test Explorer respects `workers` config or `manulEngine.workers` VS Code setting (default: 1) |
 
 ### Extension behaviour notes
@@ -485,7 +541,7 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 ---
 
-**Version:** 0.0.8.5
+**Version:** 0.0.8.6
 
 **Codename:** The Mastermind
 

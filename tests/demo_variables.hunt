@@ -1,0 +1,21 @@
+@context: Demonstrates @var: static variables and CALL PYTHON ... into {var} dynamic variables
+@blueprint: demo-vars
+
+# ── Static variables ──────────────────────────────────────────────────────────
+# Declare test data once at the top; reference via {placeholder} anywhere below.
+@var: {search_query} = autonomous browser testing
+@var: {expected_text} = autonomous
+
+1. NAVIGATE to https://duckduckgo.com
+2. Fill 'Search' field with '{search_query}'
+3. PRESS ENTER
+4. VERIFY that '{expected_text}' is present.
+
+# ── Dynamic variables ─────────────────────────────────────────────────────────
+# CALL PYTHON ... into {var} captures the function's return value at runtime.
+# The helper below lives in tests/helpers/demo_api.py and returns a fixed OTP.
+5. CALL PYTHON helpers.demo_api.get_demo_otp into {otp}
+# {otp} is now available for substitution in any subsequent step, e.g.:
+# 6. Fill 'OTP Code' field with '{otp}'
+
+6. DONE.

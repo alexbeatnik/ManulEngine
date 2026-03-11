@@ -797,7 +797,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             print(f"    ⚠️  Auto-Nav: {_ann_exc}")
 
     async def run_mission(self, task: str, strategic_context: str = "", hunt_dir: str | None = None,
-                          hunt_file: str | None = None, step_file_lines: "list[int] | None" = None) -> bool:
+                          hunt_file: str | None = None, step_file_lines: "list[int] | None" = None,
+                          initial_vars: "dict | None" = None) -> bool:
         """
         Execute a full browser automation mission.
 
@@ -831,6 +832,10 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
             ok = True
             done = False
+            # Pre-populate runtime memory with static variables declared via
+            # @var: {key} = value in the hunt file (or passed programmatically).
+            if initial_vars:
+                self.memory.update(initial_vars)
             # Cache lookup_page_name() results within this mission.
             # The cache is invalidated when pages.json is modified on disk so live
             # edits made during a long run are still reflected within one step.
@@ -912,10 +917,17 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             # that happen to contain the words "CALL PYTHON".
                             instruction = re.sub(r'^\s*\d+\.\s*', '', step).strip()
                             if re.match(r'CALL\s+PYTHON\b', instruction.upper()):
-                                result = execute_hook_line(instruction, hunt_dir=hunt_dir)
+                                # Always execute from the raw (unsubstituted) instruction
+                                # so that 'into {var}' is preserved for parsing even when
+                                # {var} already exists in memory and would have been
+                                # replaced by substitute_memory() before this point.
+                                raw_instr = re.sub(r'^\s*\d+\.\s*', '', raw_step).strip()
+                                result = execute_hook_line(raw_instr, hunt_dir=hunt_dir)
                                 print(f"     {result.message}")
                                 if not result.success:
                                     ok = False; break
+                                if result.var_name and result.return_value is not None:
+                                    self.memory[result.var_name] = result.return_value
                             else:
                                 # "CALL PYTHON" appears mid-sentence (e.g. a button
                                 # label) — route through the normal action executor.

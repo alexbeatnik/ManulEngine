@@ -38,7 +38,10 @@ RE_END_SETUP    = re.compile(r"^\[END\s+SETUP\]$",    re.IGNORECASE)
 RE_TEARDOWN     = re.compile(r"^\[TEARDOWN\]$",       re.IGNORECASE)
 RE_END_TEARDOWN = re.compile(r"^\[END\s+TEARDOWN\]$", re.IGNORECASE)
 
-_RE_CALL_PYTHON = re.compile(r"^CALL\s+PYTHON\s+([\w.]+)\s*$", re.IGNORECASE)
+_RE_CALL_PYTHON = re.compile(
+    r"^CALL\s+PYTHON\s+([\w.]+)(?:\s+(?:into|to)\s+\{(\w+)\})?\s*$",
+    re.IGNORECASE,
+)
 
 
 # ── Result type ───────────────────────────────────────────────────────────────
@@ -49,6 +52,12 @@ class HookResult:
 
     success: bool
     message: str = ""
+    #: Populated when the step used ``CALL PYTHON ... into {var}`` syntax and
+    #: the function returned a non-``None`` value.  ``None`` means no variable
+    #: binding was requested (or the function returned ``None``).
+    return_value: str | None = None
+    #: The variable name extracted from the ``into {var}`` / ``to {var}`` clause.
+    var_name: str | None = None
 
 
 # ── Block extraction ──────────────────────────────────────────────────────────
@@ -165,11 +174,13 @@ def execute_hook_line(
             success=False,
             message=(
                 f"ManulEngine Error: Unrecognised hook instruction: '{line}'\n"
-                f"  Supported syntax:  CALL PYTHON <module>.<function>"
+                f"  Supported syntax:  CALL PYTHON <module>.<function>\n"
+                f"  With capture:      CALL PYTHON <module>.<function> into {{var_name}}"
             ),
         )
 
     dotted = m.group(1)
+    var_name: str | None = m.group(2) or None  # None when no 'into {var}' clause
     if "." not in dotted:
         return HookResult(
             success=False,
@@ -256,8 +267,19 @@ def execute_hook_line(
 
     # ── Execute ───────────────────────────────────────────────────────────────
     try:
-        func()
-        return HookResult(success=True, message=f"✔  {dotted}()")
+        ret = func()
+        ret_str: str | None = None
+        if var_name is not None:
+            # Always stringify — even None → "None" — so that a variable binding
+            # is guaranteed when 'into {var}' / 'to {var}' was explicitly requested.
+            ret_str = str(ret)
+        suffix = f" → {{{var_name}}} = {ret_str!r}" if var_name and ret_str is not None else ""
+        return HookResult(
+            success=True,
+            message=f"✔  {dotted}(){suffix}",
+            return_value=ret_str,
+            var_name=var_name,
+        )
     except Exception as exc:
         return HookResult(
             success=False,
