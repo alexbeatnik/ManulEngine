@@ -1,0 +1,38 @@
+@context: Checkout flow with a React Datepicker custom control. Demonstrates that complex UI widgets can be driven by a Python handler registered via @custom_control, while the .hunt file stays readable plain English.
+@blueprint: demo_custom_controls
+
+# --------------------------------------------------------------------------
+# PREREQUISITE: pages.json must map the checkout URL to "Checkout Page".
+#
+# Example pages.json entry:
+#   {
+#     "https://example-shop.com/": {
+#       "Domain": "Example Shop",
+#       "https://example-shop.com/checkout": "Checkout Page"
+#     }
+#   }
+#
+# The custom handler for "React Datepicker" lives in:
+#   controls/demo_custom.py
+#
+# The engine loads that file at startup via load_custom_controls(CWD).
+# --------------------------------------------------------------------------
+
+1. NAVIGATE to https://example-shop.com/checkout
+
+# The engine resolves the current page name as "Checkout Page" via pages.json.
+# When it sees 'React Datepicker' as the target, get_custom_control() returns
+# our Python handler from controls/demo_custom.py.
+# Standard DOM heuristics and AI resolution are bypassed entirely.
+
+2. Fill 'React Datepicker' with '2026-12-25'
+
+# The rest of the steps use normal heuristic/AI resolution — no custom controls
+# needed for standard HTML form elements.
+
+3. Fill 'Email' field with 'ghost@manul.ai'
+4. Fill 'Full Name' field with 'Ghost Manul'
+5. Select 'Express Shipping' from the 'Shipping Method' dropdown
+6. Click the 'Place Order' button
+7. VERIFY that 'Order confirmed' is present.
+8. DONE.

@@ -16,9 +16,11 @@ drag-and-drop, click/type/select/hover via _execute_step).
 
 import asyncio
 import datetime
+import inspect
 import json
 import re
 import time
+import traceback
 from pathlib import Path
 from playwright.async_api import async_playwright
 
@@ -28,12 +30,13 @@ except Exception:  # pragma: no cover
     ollama = None
 
 from . import prompts
-from .helpers import substitute_memory, compact_log_field
+from .helpers import substitute_memory, compact_log_field, extract_quoted
 from .hooks import execute_hook_line
 from .js_scripts import SNAPSHOT_JS
 from .scoring import score_elements
 from .actions import _ActionsMixin
 from .cache import _ControlsCacheMixin
+from .controls import load_custom_controls, get_custom_control
 
 
 class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
@@ -93,6 +96,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             print("    ℹ️  No model configured — running in heuristics-only mode (AI disabled).")
         if self.debug_mode:
             print("    🐛 Debug mode ON — engine will pause before each step.")
+        load_custom_controls(str(Path.cwd()))  # idempotent — skips if already loaded for this path
 
     def reset_session_state(self) -> None:
         """Clear in-memory caches and variables. Useful for synthetic stateless tests."""
@@ -827,6 +831,11 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
             ok = True
             done = False
+            # Cache lookup_page_name() results within this mission.
+            # The cache is invalidated when pages.json is modified on disk so live
+            # edits made during a long run are still reflected within one step.
+            _cc_page_cache: dict[str, str] = {}
+            _cc_pages_mtime: float = 0.0
             try:
                 for i, raw_step in enumerate(plan, 1):
                     step = substitute_memory(raw_step, self.memory)
@@ -936,7 +945,61 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             break
 
                         else:
-                            if not await self._execute_step(page, step, strategic_context, step_idx=i):
+                            # ── Custom controls interception ───────────────────────────────
+                            _cc_step_l = step.lower()
+                            _cc_words = set(re.findall(r'\b[a-z]+\b', _cc_step_l))
+                            if "drag" in _cc_words and "drop" in _cc_words:
+                                _cc_mode = "drag"
+                            elif "select" in _cc_words or "choose" in _cc_words:
+                                _cc_mode = "select"
+                            elif any(w in _cc_words for w in ("type", "fill", "enter")):
+                                _cc_mode = "input"
+                            elif any(w in _cc_words for w in ("click", "double", "check", "uncheck")):
+                                _cc_mode = "clickable"
+                            elif "hover" in _cc_words:
+                                _cc_mode = "hover"
+                            else:
+                                _cc_mode = "locate"
+                            _cc_quoted = extract_quoted(step, preserve_case=True)
+                            if _cc_mode == "input" and len(_cc_quoted) >= 2:
+                                # target = field/control name, value = text to type
+                                _cc_target, _cc_value = _cc_quoted[0], _cc_quoted[-1]
+                            elif _cc_mode == "select" and len(_cc_quoted) >= 2:
+                                # target = dropdown/control name (last quoted), value = option (first quoted)
+                                # e.g. Select 'Express' from the 'Shipping Method' dropdown
+                                _cc_target, _cc_value = _cc_quoted[-1], _cc_quoted[0]
+                            elif _cc_mode == "drag" and len(_cc_quoted) >= 2:
+                                # target = drag source, value = drop destination
+                                _cc_target, _cc_value = _cc_quoted[0], _cc_quoted[-1]
+                            elif _cc_quoted:
+                                # click/hover/locate: first quoted token is the target, no value
+                                _cc_target, _cc_value = _cc_quoted[0], None
+                            else:
+                                _cc_target, _cc_value = "", None
+                            _cc_handler = None
+                            if _cc_target:
+                                _mt = prompts.pages_registry_mtime()
+                                if _mt != _cc_pages_mtime:
+                                    _cc_page_cache.clear()
+                                    _cc_pages_mtime = _mt
+                                _cc_page = _cc_page_cache.get(page.url) or prompts.lookup_page_name(page.url)
+                                _cc_page_cache[page.url] = _cc_page
+                                _cc_handler = get_custom_control(_cc_page, _cc_target)
+                            if _cc_handler is not None:
+                                print(f"    🎛️  [CUSTOM CONTROL] Routed '{_cc_target}' on '{_cc_page}' to custom handler.")
+                                try:
+                                    _cc_result = _cc_handler(page, _cc_mode, _cc_value)
+                                    if inspect.isawaitable(_cc_result):
+                                        await _cc_result
+                                except Exception as _cc_exc:
+                                    print(
+                                        f"    ❌ Custom control error on "
+                                        f"'{_cc_target}' (page='{_cc_page}'): {_cc_exc}\n"
+                                        + traceback.format_exc()
+                                    )
+                                    ok = False; break
+                            # ── End custom controls interception ──────────────────────────
+                            elif not await self._execute_step(page, step, strategic_context, step_idx=i):
                                 print("    ❌ ACTION FAILED")
                                 ok = False; break
                     finally:

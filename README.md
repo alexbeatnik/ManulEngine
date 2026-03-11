@@ -58,6 +58,33 @@ Successful element resolutions are stored per-site and reused on subsequent runs
 
 ---
 
+## 🎛️ Custom Controls — Escape Hatch for Complex UI
+
+Some UI elements defeat general-purpose heuristics entirely: React virtual tables, canvas-based date-pickers, WebGL widgets, drag-to-sort lists. **Custom Controls** let you write plain English in the hunt file while an SDET handles the underlying Playwright logic in Python.
+
+* **For Manual QA / Testers:** Keep writing plain English steps. If a step targets a Custom Control, the engine routes it to a Python handler automatically. The `.hunt` file stays readable and unchanged.
+* **For SDETs / Developers:** Register a handler with a one-line decorator tied to a page name from `pages.json`. Use any Playwright API inside — no heuristics, no AI involvement.
+
+```python
+# controls/booking.py
+from manul_engine import custom_control
+
+@custom_control(page="Checkout Page", target="React Datepicker")
+async def handle_datepicker(page, action_type, value):
+    await page.locator(".react-datepicker__input-container input").fill(value or "")
+```
+
+```text
+# tests/checkout.hunt  — no change needed for the QA author
+2. Fill 'React Datepicker' with '2026-12-25'
+```
+
+The engine loads every `.py` file in `controls/` at startup. No configuration required.
+
+> **See it in action:** `controls/demo_custom.py` is a fully-working reference handler for a React Datepicker (with month navigation). `tests/demo_controls.hunt` is the companion hunt file — run it as-is to see the routing in action.
+
+---
+
 ## ⚡ Lightning-Fast Preconditions with Python Hooks
 
 Stop wasting hours on brittle UI-based preconditions. With `[SETUP]` and `[TEARDOWN]` hooks you can inject test data directly into your database or call an API in pure Python — keeping your `.hunt` files crystal clear and your test runs **dramatically faster**.
@@ -182,6 +209,8 @@ manul scan https://example.com                    # outputs to tests/draft.hunt 
 manul scan https://example.com tests/my.hunt      # explicit output file
 manul scan https://example.com --headless         # headless scan
 ```
+
+> **VS Code:** The Step Builder sidebar includes a **Live Page Scanner** — paste a URL and click **🔍 Run Scan** to invoke the scanner without opening a terminal. The generated `draft.hunt` opens automatically in the editor.
 
 ### 3. Python API
 
@@ -338,7 +367,8 @@ Create `manul_engine_configuration.json` in your project root — all settings a
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
   "workers": 1,
-  "tests_home": "tests"
+  "tests_home": "tests",
+  "auto_annotate": false
 }
 ```
 
@@ -409,4 +439,4 @@ ManulEngine is verified against **1296+ synthetic DOM tests** covering:
 
 ---
 
-**Version:** 0.0.8.4 · **Status:** Hunting...
+**Version:** 0.0.8.5 · **Status:** Hunting...

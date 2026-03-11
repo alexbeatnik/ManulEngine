@@ -22,7 +22,7 @@ Current operating mode in this repo is typically **mixed**:
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.4
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.5
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
@@ -49,7 +49,7 @@ tests/
   rahul.hunt              integration: radios, autocomplete, hover
   wikipedia.hunt          integration: search, navigate, extract, verify, shadow-dom inputs
 vscode-extension/
-  package.json              Extension manifest (v0.0.84)
+  package.json              Extension manifest (v0.0.85)
   src:
     extension.ts            Activation, command registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
@@ -293,6 +293,52 @@ Suggested config for heuristics-only (no Ollama needed):
   "controls_cache_enabled": true
 }
 ```
+
+## Custom Controls
+
+`manul_engine/controls.py` owns the Custom Controls registry:
+
+* `_CUSTOM_CONTROLS` — module-level `dict[tuple[str, str], Callable]` keyed by `(page_name_lower, target_name_lower)`.
+* `@custom_control(page, target)` — decorator; both sync and async handlers accepted.
+* `get_custom_control(page_name, target_name) -> Callable | None` — case-insensitive lookup.
+* `load_custom_controls(workspace_dir)` — auto-imports all `*.py` files (not starting with `_`) from `controls/` in the workspace root, executing each in an isolated `ModuleType` (same sandboxing as hooks). Called from `ManulEngine.__init__` via `load_custom_controls(str(Path.cwd()))`.
+
+**Interception point in `core.py`:** the `else` branch of the step loop (action steps) checks `get_custom_control(lookup_page_name(page.url), first_quoted_token)` before any DOM snapshot. If a handler is found, it is called with `(page, mode, value)` and `_execute_step` is skipped entirely via `elif not await self._execute_step(...)` on the else path.
+
+**Decorator rule for AI assistants — MANDATORY:**
+When asked to automate a **complex or custom UI element** (virtual table, canvas-based widget, custom dropdown built with divs, WebGL control, multi-step datepicker, etc.), do NOT attempt to force complex `.hunt` step sequences or try to abuse standard heuristics. INSTEAD:
+1. Write a Python function in `controls/<descriptive_name>.py` using the `@custom_control(page='...', target='...')` decorator.
+2. Use the standard Playwright `page` object and its full API inside the function.
+3. Write a single plain-English step in the `.hunt` file to trigger it (e.g. `Fill 'React Datepicker' with '2026-12-25'`).
+
+Example — CORRECT:
+```python
+# controls/checkout.py
+from manul_engine import custom_control
+
+@custom_control(page="Checkout Page", target="React Datepicker")
+async def handle_datepicker(page, action_type: str, value: str | None) -> None:
+    loc = page.locator(".react-datepicker__input-container input").first
+    if action_type == "input" and value:
+        await loc.click()
+        await loc.fill(value)
+```
+```text
+# tests/checkout.hunt
+2. Fill 'React Datepicker' with '2026-12-25'
+```
+
+Example — WRONG (do not do this):
+```text
+# tests/checkout.hunt
+2. Click the '.react-datepicker__input-container input' element
+3. Fill the first input inside the calendar widget with '2026-12-25'
+4. Click on day cell number 25 in the calendar grid
+```
+
+The page name in `@custom_control(page=...)` must match the value returned by `lookup_page_name(page.url)`, i.e. what is mapped in `pages.json` for the target URL.
+
+---
 
 ## Common pitfalls & Advanced Learnings
 

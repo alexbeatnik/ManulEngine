@@ -20,8 +20,16 @@ Usage:
 
     manul = ManulEngine()
     await manul.run_mission("1. Navigate to ...")
+
+Custom controls:
+    from manul_engine import ManulEngine, custom_control
+
+    @custom_control(page="Login Page", target="Username")
+    async def handle_username(page, action_type, value):
+        await page.locator("#user").fill(value or "")
 """
 
 from .core import ManulEngine
+from .controls import custom_control
 
-__all__ = ["ManulEngine"]
+__all__ = ["ManulEngine", "custom_control"]
