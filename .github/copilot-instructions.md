@@ -22,7 +22,7 @@ Current operating mode in this repo is typically **mixed**:
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.5
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.6
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
@@ -167,6 +167,27 @@ Variables extracted using `EXTRACT` can be substituted in downstream steps.
 * *Extract:* `EXTRACT the Price of 'Laptop' into {laptop_price}`
 * *Reuse:* `VERIFY that '{laptop_price}' is present.`
 
+### 7a. Static Variable Declaration (`@var:`)
+Declare static test data at the top of the file using `@var: {key} = value`. These values are pre-populated into the engine's runtime memory before any step runs and can be interpolated exactly like `EXTRACT` variables.
+* Both brace and bare-key forms are accepted: `@var: {email} = ...` and `@var: email = ...` are equivalent. Keys are stored without braces.
+* Values may contain spaces and are stripped of leading/trailing whitespace.
+* **MANDATORY rule for AI-generated hunt files:** When generating or suggesting `.hunt` test files, **NEVER hardcode test data** (emails, passwords, usernames, search queries, IDs, etc.) directly inside `Fill`, `Type`, or `Select` steps. **ALWAYS** declare them at the top using `@var:` and reference them via `{placeholder}` in the steps.
+
+Correct:
+```text
+@var: {user_email} = admin@example.com
+@var: {password}   = secret123
+
+1. Fill 'Email' with '{user_email}'
+2. Fill 'Password' with '{password}'
+```
+
+Wrong (do not do this):
+```text
+1. Fill 'Email' with 'admin@example.com'
+2. Fill 'Password' with 'secret123'
+```
+
 ### 8. Best Practices
 * **Specify Element Type:** Include words like `button`, `field`, `link`, `dropdown`, `checkbox`, `radio` outside quotes. This acts as a strong heuristic signal.
 * **Exact Text Matching:** Put target texts in quotes (`'Save'`) to yield a high heuristic score.
@@ -202,7 +223,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
 * **Debug mode:** `ManulEngine(debug_mode=True, break_steps={N,...})`. `debug_mode=True` (from `--debug`) highlights the resolved element and pauses before every step using `input()` in TTY or Playwright's `page.pause()`. `break_steps` (from `--break-lines`) pauses only at listed step indices using the stdout/stdin panel protocol when stdout is not a TTY. The two are mutually exclusive in practice — the extension only ever sets `break_steps` via `--break-lines`.
 * **Element highlight in debug mode:** When `debug_mode=True` (or a `break_steps` pause fires), the engine calls `highlight_element(page, locator)` which injects `<style id="manul-debug-style">` (once) and sets `data-manul-debug-highlight="true"` on the target element, producing a persistent 4px magenta outline + glow that stays until `clear_highlight(page)` is called just before the action executes. A separate `_highlight()` method draws a short 2-second flash (non-debug, `setTimeout` inside JS) for non-pausing visual feedback.
-* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). `parse_hunt_file()` in `cli.py` returns a **6-tuple** `(mission, context, blueprint, step_file_lines, setup_lines, teardown_lines)`. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
+* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). `parse_hunt_file()` in `cli.py` returns a **7-tuple** `(mission, context, blueprint, step_file_lines, setup_lines, teardown_lines, parsed_vars)`. `parsed_vars` is a `dict[str, str]` populated from `@var: {key} = value` header lines. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
 * **Auto-Nav annotation:** When `auto_annotate` is enabled, `run_mission()` captures `url_before = page.url` before every step. For `NAVIGATE` steps, the annotation is written above the step itself. For all other steps, `url_after` is checked in the `finally` block — if the URL changed, `_auto_annotate_navigate(page, hunt_file, step_file_lines, i+1)` is called to insert a comment above the *next* step line. The comment uses the mapped page name when found in `pages.json`, or the full URL when the lookup returns an `"Auto:"` placeholder.
 * **`pages.json` — nested per-site format:** `{ "<site_root_url>": { "Domain": "<display_name>", "<regex_or_exact_url>": "<page_name>" } }`. `lookup_page_name(url)` in `prompts.py` re-reads this file from disk on **every call** (live edits take effect immediately with no restart). Resolution order: exact URL key → regex/substring patterns (skipping `"Domain"` key) → `"Domain"` fallback. When no site block matches, a new nested entry is auto-generated. The longest-prefix site block wins when multiple blocks could match.
 * **`_debug_prompt()` `debug-stop` token:** When Python receives `"debug-stop"` on stdin from the VS Code extension (user pressed ⏹ Debug Stop), it clears **both** `self._user_break_steps = set()` and `self.break_steps = set()`, then breaks the pause loop. The test run continues to completion without any further pauses.

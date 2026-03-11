@@ -1,0 +1,12 @@
+@context: Demonstrates @var: static variable declaration in hunt files
+@blueprint: demo-vars
+
+# Static variables declared here — change test data in one place, not inside steps
+@var: {search_query} = autonomous browser testing
+@var: {expected_text} = autonomous
+
+1. NAVIGATE to https://duckduckgo.com
+2. Fill 'Search' field with '{search_query}'
+3. PRESS ENTER
+4. VERIFY that '{expected_text}' is present.
+5. DONE.

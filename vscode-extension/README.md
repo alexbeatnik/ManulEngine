@@ -230,6 +230,9 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 
 ## Release Notes
 
+### 0.0.86
+- **📌 Static Variable Declaration** — declare test data at the top of any `.hunt` file using `@var: {key} = value`; values are pre-populated into the engine's runtime memory before any step runs and can be interpolated anywhere a `{placeholder}` is accepted (e.g. `Fill 'Email' with '{user_email}'`). Both brace and bare-key forms accepted (`@var: {key} = val` and `@var: key = val` are equivalent). Core engine bump to **0.0.8.6**
+
 ### 0.0.85
 - **🎛️ Custom Controls** — decorator-based Python handler registry (`@custom_control(page, target)`) for complex UI elements (React virtual tables, canvas widgets, WebGL, multi-step datepickers); handlers in `controls/` are auto-loaded at engine startup; `controls/demo_custom.py` and `tests/demo_controls.hunt` ship as a reference implementation
 - **🔍 Live Page Scanner in Step Builder** — new URL input + **Run Scan** button in the Step Builder sidebar; invokes `manul scan <URL>` as a child process with a progress notification and automatically opens the generated `tests_home/draft.hunt` in the editor — no terminal required

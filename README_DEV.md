@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.0.8.5 — The Mastermind
+# 😼 ManulEngine v0.0.8.6 — The Mastermind
 
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 
@@ -24,7 +24,7 @@ Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristi
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.8.5
+├── pyproject.toml                    Build config — package: manul-engine 0.0.8.6
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
@@ -49,7 +49,8 @@ ManulEngine/
 │       ├── test_14_qa_classics.py    Unit: legacy HTML patterns, tables, fieldsets
         ├── test_15_facebook_final_boss.py
         ├── test_16_hooks.py          Unit: [SETUP]/[TEARDOWN] hooks (no browser)
-        └── test_19_custom_controls.py Unit: Custom Controls registry + engine interception (19 assertions, no browser)
+        ├── test_19_custom_controls.py Unit: Custom Controls registry + engine interception (19 assertions, no browser)
+        └── test_20_variables.py      Unit: @var: static variable declaration + initial_vars interpolation (17 assertions, no browser)
 ├── controls/                         User-owned custom Python handlers (auto-loaded at engine startup)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
@@ -64,7 +65,7 @@ ManulEngine/
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 └── vscode-extension/                 VS Code extension (language support + UI)
-    ├── package.json                  Extension manifest (v0.0.85)
+    ├── package.json                  Extension manifest (v0.0.86)
     ├── src/
     │   ├── extension.ts              Activation, command registration
     │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
@@ -130,9 +131,27 @@ execute_hook_line(line, hunt_dir)  → HookResult(success, message)
 run_hooks(lines, label, hunt_dir)  → bool
 ```
 
-`parse_hunt_file()` in `cli.py` returns a 6-tuple including `setup_lines` and `teardown_lines`. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
+`parse_hunt_file()` in `cli.py` returns a **7-tuple** `(mission, context, blueprint, step_file_lines, setup_lines, teardown_lines, parsed_vars)`. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
 
 The full hook unit test suite (`41 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
+
+### 📋 Static Variable Declaration (`@var:`)
+
+Version 0.0.8.6 adds static test-data declaration at the top of `.hunt` files:
+
+```text
+@var: {user_email} = admin@example.com
+@var: {password}   = secret123
+
+1. Fill 'Email' with '{user_email}'
+2. Fill 'Password' with '{password}'
+```
+
+**How it works:** `parse_hunt_file()` scans for `@var: {key} = value` header lines and returns them as `parsed_vars` (the 7th element of the tuple). `_run_hunt_file()` passes `parsed_vars` to `run_mission(initial_vars=...)`, which pre-populates `self.memory` before the step loop starts. Both brace and bare-key forms are accepted (`@var: {key} = val` and `@var: key = val` are equivalent). Values are stripped of leading/trailing whitespace. Malformed `@var:` lines (no `=`) are silently skipped.
+
+**Design rule:** When generating or suggesting `.hunt` test files, **never** hardcode test data (emails, passwords, usernames, search queries, IDs, etc.) directly into `Fill` or `Type` steps. Always declare them at the top via `@var:` and reference them via `{placeholder}`. This keeps test logic separate from test data.
+
+Unit tests: `manul_engine/test/test_20_variables.py` (17 assertions, no browser).
 
 ### 🎛️ Custom Controls & Page Object Model
 
@@ -398,15 +417,16 @@ manul tests/mission.hunt
 
 ---
 
-## 🐾 Chaos Chamber Verified (1296+ Tests)
+## 🐾 Chaos Chamber Verified (1427+ Tests)
 
-The engine is battle-tested with **1296+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
+The engine is battle-tested with **1427+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).
 * **AI modes regression suite:** `manul_engine/test/test_12_ai_modes.py` (Always-AI, strict override, AI rejection).
 * **QA Classics regression suite:** `manul_engine/test/test_14_qa_classics.py` (legacy HTML patterns, tables, fieldsets).
 * **Custom Controls unit suite:** `manul_engine/test/test_19_custom_controls.py` (registry correctness + engine interception, 19 assertions, no browser).
+* **Static Variables unit suite:** `manul_engine/test/test_20_variables.py` (parser correctness, `initial_vars` interpolation, 17 assertions, no browser).
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
 Run the synthetic suite:
@@ -449,7 +469,7 @@ The `prompts/` directory contains ready-to-use LLM prompt templates that let you
 
 ## 🖱️ VS Code Extension
 
-The `vscode-extension/` directory contains a companion VS Code extension (v0.0.85) that provides:
+The `vscode-extension/` directory contains a companion VS Code extension (v0.0.86) that provides:
 
 | Feature | Details |
 | --- | --- |
@@ -485,7 +505,7 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 ---
 
-**Version:** 0.0.8.5
+**Version:** 0.0.8.6
 
 **Codename:** The Mastermind
 
