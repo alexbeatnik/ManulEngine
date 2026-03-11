@@ -21,7 +21,9 @@ export const DEBUG_TERMINAL_NAME = "ManulEngine Debug";
  * falling back to the default.
  */
 export function getConfigFileName(): string {
-  return vscode.workspace
+  const raw = vscode.workspace
     .getConfiguration("manulEngine")
-    .get<string>("configFile", DEFAULT_CONFIG_FILENAME);
+    .get<string | undefined>("configFile");
+  const trimmed = (raw ?? "").trim();
+  return trimmed === "" ? DEFAULT_CONFIG_FILENAME : trimmed;
 }

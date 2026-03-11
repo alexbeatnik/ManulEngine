@@ -74,12 +74,18 @@ class _ActionsMixin:
         # Strip leading step number
         clean = re.sub(r'^\s*\d+\.\s*', '', step).strip()
         # Remove the keyword PRESS (case-insensitive)
-        after_press = re.sub(r'^PRESS\s+', '', clean, flags=re.IGNORECASE).strip()
+        after_press = re.sub(r'^PRESS\s*', '', clean, flags=re.IGNORECASE).strip()
+        if not after_press:
+            print("    ❌ PRESS: no key specified")
+            return False
 
         # Check for targeted form: "Key on 'Target'"
         m_on = re.search(r'^(.+?)\s+on\s+(.+)$', after_press, re.IGNORECASE)
         if m_on:
             key_combo = m_on.group(1).strip()
+            if not key_combo:
+                print("    ❌ PRESS: no key specified before 'on'")
+                return False
             # Target is in the remainder — resolve element then press on it
             el = await self._resolve_element(
                 page, step, "locate",

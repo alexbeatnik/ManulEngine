@@ -351,6 +351,17 @@ async def _test_handle_upload_wrong_element_type() -> None:
             _assert(not ok, "UPLOAD on non-file-input element returns False")
 
 
+async def _test_handle_press_empty_key() -> None:
+    print("\n  ── _handle_press — empty key ─────────────────────────")
+    engine = _make_engine()
+    page = _mock_page()
+
+    ok = await engine._handle_press(page, "1. PRESS ")
+    _assert(not ok, "PRESS with no key returns False")
+    page.keyboard.press.assert_not_awaited()
+    _assert(True, "page.keyboard.press not called")
+
+
 # ── Suite runner ──────────────────────────────────────────────────────────────
 
 async def run_suite() -> bool:
@@ -378,6 +389,7 @@ async def run_suite() -> bool:
     await _test_handle_upload_hunt_dir_resolution()
     await _test_handle_upload_file_not_found()
     await _test_handle_upload_wrong_element_type()
+    await _test_handle_press_empty_key()
 
     print(f"\n  ── RESULT: {_PASS} passed, {_FAIL} failed ──")
     total = _PASS + _FAIL

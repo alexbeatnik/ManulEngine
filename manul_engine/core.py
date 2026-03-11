@@ -861,10 +861,10 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                     # For action steps, the debug pause fires INSIDE _execute_step
                     # after element resolution so the tester sees the highlighted
                     # element before deciding to proceed.
-                    # PRESS, RIGHT CLICK, and UPLOAD also resolve DOM elements,
-                    # so they are treated like action steps (pause after resolve).
-                    _resolving_kinds = {"action", "press", "right_click", "upload"}
-                    _is_system_step = step_kind not in _resolving_kinds
+                    # PRESS, RIGHT CLICK, and UPLOAD use dedicated handlers
+                    # outside _execute_step, so they are treated as system steps
+                    # and use the pre-step pause logic.
+                    _is_system_step = step_kind != "action"
 
                     if self.debug_mode and _is_system_step:
                         await self._debug_prompt(page, step, i)
@@ -894,6 +894,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                     try:
                         if step_kind == "navigate":
                             if not await self._handle_navigate(page, step):
+                                _step_error = "Navigation failed"
                                 _step_ok = False; ok = False; break
                             if _auto_annotate_live and hunt_file and step_file_lines:
                                 await self._auto_annotate_navigate(page, hunt_file, step_file_lines, i)
@@ -907,10 +908,12 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
                         elif step_kind == "extract":
                             if not await self._handle_extract(page, step):
+                                _step_error = "Extract failed"
                                 _step_ok = False; ok = False; break
 
                         elif step_kind == "verify":
                             if not await self._handle_verify(page, step, step_idx=i):
+                                _step_error = "Verification failed"
                                 _step_ok = False; ok = False; break
 
                         elif step_kind == "press_enter":
@@ -918,18 +921,22 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
                         elif step_kind == "press":
                             if not await self._handle_press(page, step, strategic_context, step_idx=i):
+                                _step_error = "PRESS command failed"
                                 _step_ok = False; ok = False; break
 
                         elif step_kind == "right_click":
                             if not await self._handle_right_click(page, step, strategic_context, step_idx=i):
+                                _step_error = "RIGHT CLICK command failed"
                                 _step_ok = False; ok = False; break
 
                         elif step_kind == "upload":
                             if not await self._handle_upload(page, step, strategic_context, step_idx=i, hunt_dir=hunt_dir):
+                                _step_error = "UPLOAD command failed"
                                 _step_ok = False; ok = False; break
 
                         elif step_kind == "scan_page":
                             if not await self._handle_scan_page(page, step):
+                                _step_error = "SCAN PAGE failed"
                                 _step_ok = False; ok = False; break
 
                         elif step_kind == "call_python":
@@ -946,6 +953,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                 result = execute_hook_line(raw_instr, hunt_dir=hunt_dir)
                                 print(f"     {result.message}")
                                 if not result.success:
+                                    _step_error = result.message
                                     _step_ok = False; ok = False; break
                                 if result.var_name and result.return_value is not None:
                                     self.memory[result.var_name] = result.return_value
@@ -953,6 +961,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                 # "CALL PYTHON" appears mid-sentence (e.g. a button
                                 # label) — route through the normal action executor.
                                 if not await self._execute_step(page, step, strategic_context, step_idx=i):
+                                    _step_error = "Action failed"
                                     print("    ❌ ACTION FAILED")
                                     _step_ok = False; ok = False; break
 
@@ -1018,15 +1027,22 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                         f"'{_cc_target}' (page='{_cc_page}'): {_cc_exc}\n"
                                         + traceback.format_exc()
                                     )
+                                    _step_error = f"Custom control error on '{_cc_target}'"
                                     _step_ok = False; ok = False; break
                             # ── End custom controls interception ──────────────────────────
                             elif not await self._execute_step(page, step, strategic_context, step_idx=i):
+                                _step_error = "Action failed"
                                 print("    ❌ ACTION FAILED")
                                 _step_ok = False; ok = False; break
                     except Exception as _step_exc:
                         _step_ok = False
+                        ok = False
                         _step_error = traceback.format_exc()
-                        raise
+                        print(
+                            "    ❌ STEP ERROR — unexpected exception:\n"
+                            f"{_step_error}"
+                        )
+                        break
                     finally:
                         ended_at = datetime.datetime.now()
                         duration_s = time.perf_counter() - started_perf

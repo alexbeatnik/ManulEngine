@@ -164,7 +164,7 @@ The extension probes the following locations in order (platform-aware):
 | `manulEngine.workers` | `null` | Max concurrent hunt files in Test Explorer. Overrides `workers` in config. Leave empty to use the config value (default: 1). |
 | `manulEngine.htmlReport` | `false` | Generate a self-contained HTML report after each run (saved to `reports/manul_report.html`). |
 | `manulEngine.retries` | `0` | Number of times to retry a failed hunt file before marking it as failed (0–10). |
-| `manulEngine.screenshotMode` | `"none"` | Screenshot capture mode: `none`, `on-fail` (failed steps only), `always` (every step). |
+| `manulEngine.screenshotMode` | `"on-fail"` | Screenshot capture mode: `none`, `on-fail` (failed steps only), `always` (every step). |
 
 ---
 
@@ -238,24 +238,24 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 
 ## Release Notes
 
-### 0.0.88
+### 0.0.87
 - **📊 HTML Reports** — new `manulEngine.htmlReport` toggle in Config Panel (“📊 Reporting & Retries” section); generates a self-contained dark-themed HTML report with dashboard stats, per-step accordion, and inline base64 screenshots after each run. Report is saved to `reports/manul_report.html` in the workspace root
 - **🔄 Automatic Retries** — new `manulEngine.retries` setting (0–10) in Config Panel; retries each failed hunt the specified number of times before marking it as failed. Each retry is a full fresh browser run
 - **📷 Screenshot Capture** — new `manulEngine.screenshotMode` selector (`none` / `on-fail` / `always`) in Config Panel; screenshots are embedded as base64 in the HTML report
 - All three settings are auto-injected as CLI flags (`--html-report`, `--retries`, `--screenshot`) when running hunts via the extension — no manual CLI arguments needed
 - All artifacts (logs, reports) are now saved to the `reports/` directory — workspace stays clean
 
-### 0.0.87
+### 0.0.86
 - **📌 Static Variable Declaration (`@var:`)** — declare test data at the top of any `.hunt` file using `@var: {key} = value`; values are pre-populated into the engine's runtime memory before step 1 runs and can be interpolated anywhere a `{placeholder}` is accepted (e.g. `Fill 'Email' with '{user_email}'`). Both brace and bare-key forms are accepted. Keeps test data separate from test logic — no more hardcoded credentials scattered across steps
 - **🐍 Dynamic Variable Capture (`CALL PYTHON ... into {var}`)** — `CALL PYTHON module.function into {variable_name}` (or `to {var}`) captures the return value of any synchronous Python function and stores it as a string in runtime memory; use immediately in subsequent steps via `{variable_name}`. Enables mid-test backend calls (OTP retrieval, magic links, DB tokens) without hardcoding values
 - **🐍 "Call Python → Var" button in Step Builder** — one-click insertion of `CALL PYTHON module_name.function_name into {variable_name}` scaffold directly into the active `.hunt` file
 - **🏷️ Arbitrary Tags (`@tags:`) and `--tags` CLI filter** — declare comma-separated tags at the top of any `.hunt` file with `@tags: smoke, auth, regression`; run `manul tests/ --tags smoke` to execute only matching files (OR logic: file must contain at least one requested tag; untagged files are excluded when `--tags` is active)
 - Core engine bump to **0.0.8.7**
 
-### 0.0.86
+### 0.0.85
 - Core engine bump to **0.0.8.6** — internal improvements and bug fixes
 
-### 0.0.85
+### 0.0.84
 - **🎛️ Custom Controls** — decorator-based Python handler registry (`@custom_control(page, target)`) for complex UI elements (React virtual tables, canvas widgets, WebGL, multi-step datepickers); handlers in `controls/` are auto-loaded at engine startup; `controls/demo_custom.py` and `tests/demo_controls.hunt` ship as a reference implementation
 - **🔍 Live Page Scanner in Step Builder** — new URL input + **Run Scan** button in the Step Builder sidebar; invokes `manul scan <URL>` as a child process with a progress notification and automatically opens the generated `tests_home/draft.hunt` in the editor — no terminal required
 

@@ -618,13 +618,19 @@ async def main() -> None:
             # Print each hunt's buffered output in original submission order
             for name, status, elapsed, output in subprocess_results:
                 print(output, end="")
+                # Detect flaky status: child prints "marked FLAKY" when
+                # a hunt passes on retry. Exit code is still 0 (pass).
+                if status == "PASS" and "marked FLAKY" in output:
+                    _child_status = "flaky"
+                else:
+                    _child_status = "pass" if status == "PASS" else "fail"
                 _mr = MissionResult(
                     file="", name=name,
-                    status="pass" if status == "PASS" else "fail",
+                    status=_child_status,
                     duration_ms=elapsed * 1000,
                 )
                 run_summary.missions.append(_mr)
-                results.append((name, status, elapsed))
+                results.append((name, _child_status.upper(), elapsed))
 
         total = time.perf_counter() - total_start
         run_summary.ended_at = _dt.datetime.now().isoformat()
