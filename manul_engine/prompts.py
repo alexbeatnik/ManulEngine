@@ -210,6 +210,19 @@ def _auto_populate_registry(url: str) -> str:
     return placeholder
 
 
+def pages_registry_mtime() -> float:
+    """Return the last-modified time of the active pages.json file.
+
+    Returns 0.0 if the file does not exist or cannot be stat-ed (e.g. a
+    permission error), so callers can safely compare against their cached
+    value without any try/except of their own.
+    """
+    try:
+        return _PAGES_WRITE_PATH.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
 def lookup_page_name(url: str) -> str:
     """Match *url* against PAGE_REGISTRY and return the mapped page name.
 
@@ -248,7 +261,10 @@ def lookup_page_name(url: str) -> str:
     # produced by the auto-create block at module load time is treated as absent
     # so the richer package/repo copy stays in effect until the user (or
     # _auto_populate_registry) writes actual entries.
-    _cwd_populated = _PAGES_WRITE_PATH.exists() and _PAGES_WRITE_PATH.stat().st_size > 4
+    try:
+        _cwd_populated = _PAGES_WRITE_PATH.stat().st_size > 4
+    except OSError:
+        _cwd_populated = False
     _effective_read_path = _PAGES_WRITE_PATH if _cwd_populated else _PAGES_READ_PATH
     if _effective_read_path.exists():
         try:

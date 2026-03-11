@@ -16,6 +16,7 @@ drag-and-drop, click/type/select/hover via _execute_step).
 
 import asyncio
 import datetime
+import inspect
 import json
 import re
 import time
@@ -977,10 +978,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                 _cc_target, _cc_value = "", None
                             _cc_handler = None
                             if _cc_target:
-                                try:
-                                    _mt = prompts._PAGES_WRITE_PATH.stat().st_mtime
-                                except OSError:
-                                    _mt = 0.0
+                                _mt = prompts.pages_registry_mtime()
                                 if _mt != _cc_pages_mtime:
                                     _cc_page_cache.clear()
                                     _cc_pages_mtime = _mt
@@ -990,10 +988,9 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             if _cc_handler is not None:
                                 print(f"    🎛️  [CUSTOM CONTROL] Routed '{_cc_target}' on '{_cc_page}' to custom handler.")
                                 try:
-                                    if asyncio.iscoroutinefunction(_cc_handler):
-                                        await _cc_handler(page, _cc_mode, _cc_value)
-                                    else:
-                                        _cc_handler(page, _cc_mode, _cc_value)
+                                    _cc_result = _cc_handler(page, _cc_mode, _cc_value)
+                                    if inspect.isawaitable(_cc_result):
+                                        await _cc_result
                                 except Exception as _cc_exc:
                                     print(
                                         f"    ❌ Custom control error on "

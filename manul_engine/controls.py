@@ -22,8 +22,10 @@ The function receives:
   - ``page``        — the live Playwright ``Page`` object.
   - ``action_type`` — the detected mode string: ``"input"``, ``"clickable"``,
     ``"select"``, ``"hover"``, ``"drag"``, or ``"locate"``.
-  - ``value``       — for ``input`` steps, the text to type (last quoted arg);
-    ``None`` for all other modes.
+  - ``value``       — for ``"input"`` steps, the text to type (last quoted
+    arg); for ``"select"`` steps, the option being selected (first quoted
+    arg); for ``"drag"`` steps, the drop destination label (last quoted arg);
+    ``None`` for ``"clickable"``, ``"hover"``, and ``"locate"`` modes.
 
 Both sync and async handlers are supported.
 """

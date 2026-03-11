@@ -27,7 +27,9 @@ HANDLER SIGNATURE
     action_type   Detected mode string: "input", "clickable", "select",
                   "hover", "drag", or "locate"
     value         For "input" steps: the text to type (last quoted arg).
-                  None for all other modes.
+                  For "select" steps: the option being selected (first quoted arg).
+                  For "drag" steps: the drop destination label (last quoted arg).
+                  For "clickable", "hover", and "locate" steps: None.
 
 Both sync and async handlers are supported; the engine awaits async ones.
 """
