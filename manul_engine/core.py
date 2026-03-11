@@ -921,6 +921,9 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                 print(f"     {result.message}")
                                 if not result.success:
                                     ok = False; break
+                                # Bind return value to memory when 'into {var}' was used.
+                                if result.var_name and result.return_value is not None:
+                                    self.memory[result.var_name] = result.return_value
                             else:
                                 # "CALL PYTHON" appears mid-sentence (e.g. a button
                                 # label) — route through the normal action executor.

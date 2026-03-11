@@ -128,7 +128,16 @@ Need to fetch an OTP from the database mid-test? Or trigger a backend job before
 ```
 
 The same module resolution rules apply as for `[SETUP]`/`[TEARDOWN]`: hunt file directory → CWD → `sys.path`. Functions must be synchronous. If the call fails, the mission stops immediately — just like any other failed step. No special syntax or block wrapping required.
+#### Capturing return values with `into {var}`
 
+Append `into {var_name}` (or `to {var_name}`) to bind the function’s return value directly into an in-mission variable:
+
+```text
+2. CALL PYTHON api_helpers.fetch_otp into {dynamic_otp}
+3. Fill 'Security Code' field with '{dynamic_otp}'
+```
+
+The raw return value is converted to a string (`str(return_value)`) and stored under the variable name. It is then available for `{placeholder}` substitution in every subsequent step, exactly like variables populated by `EXTRACT` or `@var:`.
 ---
 
 ## 💻 System Requirements
@@ -276,8 +285,9 @@ CALL PYTHON <module_path>.<function_name>
 [END SETUP]
 
 1. NAVIGATE to https://myapp.com
-2. CALL PYTHON api_helpers.fetch_and_set_otp
-3. VERIFY that 'Dashboard' is present.
+2. CALL PYTHON api_helpers.fetch_otp into {dynamic_otp}
+3. Fill 'Security Code' with '{dynamic_otp}'
+4. VERIFY that 'Dashboard' is present.
 
 [TEARDOWN]
 CALL PYTHON <module_path>.<function_name>
@@ -288,6 +298,7 @@ Rules:
 - Functions must be **synchronous** (async functions are explicitly rejected).
 - A single `[SETUP]`/`[TEARDOWN]` block may contain multiple `CALL PYTHON` lines; they run sequentially — first failure stops the block.
 - An inline `CALL PYTHON` step that fails stops the mission immediately, just like any other failed step.
+- Append `into {var_name}` (or `to {var_name}`) to a `CALL PYTHON` step to bind the function’s return value into a variable: `CALL PYTHON api.fetch_otp into {otp}`. The value is converted to a string and available for `{placeholder}` substitution in all subsequent steps.
 - The module is searched in: hunt file directory → CWD → `sys.path`. No import configuration needed.
 
 ### Interaction Steps
