@@ -211,14 +211,22 @@ def _auto_populate_registry(url: str) -> str:
 
 
 def pages_registry_mtime() -> float:
-    """Return the last-modified time of the active pages.json file.
+    """Return the last-modified time of the *active* pages.json file.
 
-    Returns 0.0 if the file does not exist or cannot be stat-ed (e.g. a
-    permission error), so callers can safely compare against their cached
-    value without any try/except of their own.
+    Mirrors the effective-path selection used by ``lookup_page_name()``:
+    if CWD/pages.json is absent or contains only the empty placeholder
+    written by auto-create (≤ 4 bytes), the package-root copy is the
+    active registry and its mtime is returned instead.
+
+    Returns 0.0 if the active file cannot be stat-ed (missing, permission
+    error, etc.), so callers can safely compare without a try/except.
     """
     try:
-        return _PAGES_WRITE_PATH.stat().st_mtime
+        effective = _PAGES_WRITE_PATH if _PAGES_WRITE_PATH.stat().st_size > 4 else _PAGES_READ_PATH
+    except OSError:
+        effective = _PAGES_READ_PATH
+    try:
+        return effective.stat().st_mtime
     except OSError:
         return 0.0
 
