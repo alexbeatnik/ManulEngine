@@ -20,7 +20,6 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-import types
 from unittest.mock import AsyncMock, MagicMock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
@@ -268,7 +267,7 @@ async def _test_interception() -> None:
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
-async def run_suite() -> None:
+async def run_suite() -> bool:
     global _PASS, _FAIL
     _PASS = 0
     _FAIL = 0

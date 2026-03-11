@@ -236,10 +236,14 @@ def lookup_page_name(url: str) -> str:
     from urllib.parse import urlparse as _urlparse
 
     # ── 1. Reload registry from disk ─────────────────────────────────────────
+    # Always prefer _PAGES_WRITE_PATH (CWD) when it exists — it accumulates all
+    # auto-populated entries from previous lookups.  Fall back to the package-root
+    # copy only when CWD has no file at all (fresh checkout without a local copy).
     _live_registry: dict[str, dict[str, str]] = PAGE_REGISTRY
-    if _PAGES_READ_PATH.exists():
+    _effective_read_path = _PAGES_WRITE_PATH if _PAGES_WRITE_PATH.exists() else _PAGES_READ_PATH
+    if _effective_read_path.exists():
         try:
-            with open(_PAGES_READ_PATH, encoding="utf-8") as _rf:
+            with open(_effective_read_path, encoding="utf-8") as _rf:
                 _raw = json.load(_rf)
             if isinstance(_raw, dict):
                 _parsed_reg: dict[str, dict[str, str]] = {}

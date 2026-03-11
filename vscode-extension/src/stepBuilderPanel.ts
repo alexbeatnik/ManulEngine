@@ -11,7 +11,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
-import { execFile } from "child_process";
+import { execFile, spawn } from "child_process";
 import { findManulExecutable } from "./huntRunner";
 
 // ── Hook scaffold constants ──────────────────────────────────────────────────
@@ -496,7 +496,8 @@ export async function newHuntFileCommand(
 
 /**
  * Run `manul scan <url> <outputFile>` and open the generated draft hunt file.
- * Uses execFile (argv array) so the URL is never interpreted by a shell.
+ * Uses spawn (argv array) so the URL is never interpreted by a shell, and large
+ * page output does not hit Node's execFile maxBuffer limit.
  */
 async function runLiveScanCommand(rawUrl: string): Promise<void> {
   // Validate: must be a full http(s) URL.
@@ -523,10 +524,15 @@ async function runLiveScanCommand(rawUrl: string): Promise<void> {
   }
   const workspaceRoot = folders[0].uri.fsPath;
 
-  // Read tests_home from manul_engine_configuration.json (mirrors newHuntFileCommand).
+  // Read tests_home from the configured config file (respects the manulEngine.configFile
+  // setting, matching the behaviour of configPanel.ts and huntTestController.ts).
   let testsHome = "tests";
   try {
-    const cfgPath = path.join(workspaceRoot, "manul_engine_configuration.json");
+    const manulConfig = vscode.workspace.getConfiguration("manulEngine");
+    const configFile =
+      (manulConfig.get<string>("configFile") || "manul_engine_configuration.json").trim() ||
+      "manul_engine_configuration.json";
+    const cfgPath = path.join(workspaceRoot, configFile);
     const cfg = JSON.parse(fs.readFileSync(cfgPath, "utf8"));
     if (typeof cfg.tests_home === "string" && cfg.tests_home.trim()) {
       testsHome = cfg.tests_home.trim();
@@ -548,22 +554,26 @@ async function runLiveScanCommand(rawUrl: string): Promise<void> {
     async () => {
       const manulExe = await findManulExecutable(workspaceRoot);
       await new Promise<void>((resolve) => {
-        // Passing args as an array prevents shell injection — safe even if the URL
-        // contains special characters.
-        execFile(
-          manulExe,
-          ["scan", rawUrl, outputFile],
-          { cwd: workspaceRoot, timeout: 60_000 },
-          (err, _stdout, stderr) => {
-            if (err) {
-              const detail = stderr.trim() || err.message;
-              vscode.window.showErrorMessage(`ManulEngine: Scan failed — ${detail}`);
-            } else {
-              scanSucceeded = true;
-            }
-            resolve();
+        // `manul scan` writes the hunt file to disk and may print a large page
+        // snapshot to stdout.  Using spawn (instead of execFile) avoids the
+        // 1 MB maxBuffer limit; we discard stdout since the result is on disk.
+        const proc = spawn(manulExe, ["scan", rawUrl, outputFile], {
+          cwd: workspaceRoot,
+          stdio: ["ignore", "ignore", "pipe"],
+        });
+        let stderrBuf = "";
+        proc.stderr.on("data", (chunk: Buffer) => { stderrBuf += chunk.toString(); });
+        const killTimer = setTimeout(() => { proc.kill(); }, 90_000);
+        proc.on("close", (code) => {
+          clearTimeout(killTimer);
+          if (code !== 0) {
+            const detail = stderrBuf.trim() || `process exited with code ${code}`;
+            vscode.window.showErrorMessage(`ManulEngine: Scan failed — ${detail}`);
+          } else {
+            scanSucceeded = true;
           }
-        );
+          resolve();
+        });
       });
     }
   );

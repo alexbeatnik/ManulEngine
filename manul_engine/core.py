@@ -19,6 +19,7 @@ import datetime
 import json
 import re
 import time
+import traceback
 from pathlib import Path
 from playwright.async_api import async_playwright
 
@@ -34,7 +35,7 @@ from .js_scripts import SNAPSHOT_JS
 from .scoring import score_elements
 from .actions import _ActionsMixin
 from .cache import _ControlsCacheMixin
-from .controls import load_custom_controls, get_custom_control
+from .controls import load_custom_controls, get_custom_control, _CUSTOM_CONTROLS
 
 
 class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
@@ -94,7 +95,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             print("    ℹ️  No model configured — running in heuristics-only mode (AI disabled).")
         if self.debug_mode:
             print("    🐛 Debug mode ON — engine will pause before each step.")
-        load_custom_controls(str(Path.cwd()))
+        load_custom_controls(str(Path.cwd()))  # idempotent — skips if already loaded for this path
 
     def reset_session_state(self) -> None:
         """Clear in-memory caches and variables. Useful for synthetic stateless tests."""
@@ -829,6 +830,10 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
             ok = True
             done = False
+            # Cache lookup_page_name() results for the duration of this mission.
+            # Avoids repeated file I/O (and auto-populate side-effects) when many
+            # action steps hit the same URL.
+            _cc_page_cache: dict[str, str] = {}
             try:
                 for i, raw_step in enumerate(plan, 1):
                     step = substitute_memory(raw_step, self.memory)
@@ -961,8 +966,9 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             else:
                                 _cc_target, _cc_value = "", None
                             _cc_handler = None
-                            if _cc_target:
-                                _cc_page = prompts.lookup_page_name(page.url)
+                            if _cc_target and _CUSTOM_CONTROLS:
+                                _cc_page = _cc_page_cache.get(page.url) or prompts.lookup_page_name(page.url)
+                                _cc_page_cache[page.url] = _cc_page
                                 _cc_handler = get_custom_control(_cc_page, _cc_target)
                             if _cc_handler is not None:
                                 print(f"    🎛️  [CUSTOM CONTROL] Routed '{_cc_target}' on '{_cc_page}' to custom handler.")
@@ -972,7 +978,11 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                     else:
                                         _cc_handler(page, _cc_mode, _cc_value)
                                 except Exception as _cc_exc:
-                                    print(f"    ❌ Custom control error: {_cc_exc}")
+                                    print(
+                                        f"    ❌ Custom control error on "
+                                        f"'{_cc_target}' (page='{_cc_page}'): {_cc_exc}\n"
+                                        + traceback.format_exc()
+                                    )
                                     ok = False; break
                             # ── End custom controls interception ──────────────────────────
                             elif not await self._execute_step(page, step, strategic_context, step_idx=i):

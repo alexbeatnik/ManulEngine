@@ -31,13 +31,17 @@ Both sync and async handlers are supported.
 from __future__ import annotations
 
 import importlib.util
-import types
 from pathlib import Path
 from typing import Callable
 
 # ── Global registry ───────────────────────────────────────────────────────────
 # key: (page_name_lower, target_name_lower) → handler callable
 _CUSTOM_CONTROLS: dict[tuple[str, str], Callable] = {}
+
+# Tracks which workspace dirs have already been loaded to prevent re-execution
+# of control module top-level code when multiple ManulEngine instances are
+# created in the same process (e.g. synthetic test suite).
+_LOADED_DIRS: set[str] = set()
 
 
 def custom_control(page: str, target: str) -> Callable:
@@ -71,6 +75,11 @@ def get_custom_control(page_name: str, target_name: str) -> Callable | None:
 def load_custom_controls(workspace_dir: str) -> None:
     """Dynamically import all ``.py`` files in ``<workspace_dir>/controls/``.
 
+    Idempotent: if *workspace_dir* has already been loaded in this process,
+    the call is a no-op.  This prevents repeated execution of module-level code
+    (e.g. print statements, expensive imports) when multiple ``ManulEngine``
+    instances are created in the same process.
+
     Each file is executed in an isolated module so that ``@custom_control``
     decorators register into the global ``_CUSTOM_CONTROLS`` dict.
     Files whose names start with ``_`` (e.g. ``__init__.py``) are skipped.
@@ -79,7 +88,12 @@ def load_custom_controls(workspace_dir: str) -> None:
     Args:
         workspace_dir: Absolute path to the user's project root (typically CWD).
     """
-    controls_dir = Path(workspace_dir) / "controls"
+    resolved = str(Path(workspace_dir).resolve())
+    if resolved in _LOADED_DIRS:
+        return
+    _LOADED_DIRS.add(resolved)
+
+    controls_dir = Path(resolved) / "controls"
     if not controls_dir.is_dir():
         return
 
@@ -91,7 +105,7 @@ def load_custom_controls(workspace_dir: str) -> None:
             spec = importlib.util.spec_from_file_location(mod_name, py_file)
             if spec is None or spec.loader is None:
                 continue
-            fresh_module = types.ModuleType(mod_name)
+            fresh_module = importlib.util.module_from_spec(spec)
             fresh_module.__file__ = str(py_file)
             spec.loader.exec_module(fresh_module)  # type: ignore[union-attr]
             print(f"    🎛️  Custom controls loaded: {py_file.name}")
