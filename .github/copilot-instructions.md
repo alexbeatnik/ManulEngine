@@ -27,7 +27,7 @@ manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
   cache.py                 _ControlsCacheMixin (persistent per-site controls cache)
-  actions.py               _ActionsMixin (navigate, scroll, extract, verify, drag, _execute_step, scan_page)
+  actions.py               _ActionsMixin (navigate, scroll, extract, verify, drag, press, right_click, upload, _execute_step, scan_page)
   prompts.py               JSON config loader, thresholds, LLM prompt templates
   scoring.py               score_elements() — pure function, 20+ heuristic rules
   js_scripts.py            All JS injected into the browser (includes SCAN_JS)
@@ -49,6 +49,7 @@ manul_engine/
     test_20_variables.py       @var: static variable declaration (17 assertions, no browser)
     test_21_dynamic_vars.py    CALL PYTHON ... into {var} dynamic variable capture
     test_22_tags.py            @tags: / --tags CLI filter (20 assertions, no browser)
+    test_23_advanced_interactions.py  PRESS/RIGHT CLICK/UPLOAD commands (39 assertions, no browser)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
@@ -115,6 +116,10 @@ Steps are numbered strings parsed by `run_mission()`. They must be atomic browse
 * `NAVIGATE to [url]`
 * `WAIT [seconds]`
 * `PRESS ENTER`
+* `PRESS [Key]` — Presses any key or combination globally (e.g. `PRESS Escape`, `PRESS Control+A`).
+* `PRESS [Key] on [Target]` — Presses a key on a specific resolved element (e.g. `PRESS ArrowDown on 'Search Input'`).
+* `RIGHT CLICK [Target]` — Right-clicks a resolved element to open a context menu.
+* `UPLOAD [File] to [Target]` — Uploads a file to a file-input element. Path is resolved relative to the `.hunt` file's directory, then CWD.
 * `SCROLL DOWN` or `SCROLL DOWN inside the list`
 * `EXTRACT [target] into {variable_name}`
 * `VERIFY that [target] is present` / `is NOT present` / `is DISABLED` / `is checked`
@@ -153,6 +158,10 @@ These keywords are detected via word-boundary regex, bypass heuristics, and are 
 * `NAVIGATE to [url]` — Loads a URL and waits for DOM settlement.
 * `WAIT [seconds]` — Hard sleep (e.g., `WAIT 2`).
 * `PRESS ENTER` — Presses the Enter key on the currently focused element (useful to submit forms after filling a field).
+* `PRESS [Key]` — Presses any key or combination globally (e.g. `PRESS Escape`, `PRESS Control+A`). Mapped to `page.keyboard.press(key)`.
+* `PRESS [Key] on [Target]` — Presses a key on a specific element resolved via heuristics (e.g. `PRESS ArrowDown on 'Search Input'`). Mapped to `locator.press(key)`.
+* `RIGHT CLICK [Target]` — Right-clicks a resolved element (e.g. `RIGHT CLICK 'Context Menu Area'`). Mapped to `locator.click(button='right')`. Shadow DOM elements dispatch a JS `contextmenu` event.
+* `UPLOAD [File] to [Target]` — Uploads a file to a file-input element (e.g. `UPLOAD 'avatar.png' to 'Profile Picture'`). File path is resolved relative to the `.hunt` file's directory first, then CWD. Mapped to `locator.set_input_files(path)`.
 * `SCROLL DOWN` — Scrolls the main page down by one viewport height. `SCROLL DOWN inside the list` — scrolls the first dropdown-style scroll container (e.g., `#dropdown` or any element whose class name contains `dropdown`) all the way to the bottom (by setting `scrollTop = scrollHeight`). Phrases like `SCROLL DOWN to the very bottom` are accepted but currently behave the same as a single `SCROLL DOWN` on the main page (they do not auto-scroll the page all the way to the bottom).
 * `EXTRACT [target] into {variable_name}` — Extracts text data into memory.
 * `VERIFY that [target] is present` (or `is NOT present`, `is DISABLED`, `is checked`)
@@ -246,7 +255,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * `prompts.py` loads config from `manul_engine_configuration.json` (CWD first, then package root fallback). No dotenv dependency.
 * `js_scripts.py` owns **all** JavaScript constants injected into the browser — no inline JS in Python files. This includes `SCAN_JS` (Smart Page Scanner).
 * `scanner.py` owns the standalone scan logic: `SCAN_JS` is imported from `js_scripts.py`; `build_hunt()` maps raw element dicts to hunt steps; `scan_page()` is the async Playwright runner; `scan_main()` is the async CLI entry called by `cli.py`. `_default_output()` reads `tests_home` from the config to derive the default output path.
-* `helpers.py` provides `env_bool(name, default)` for parsing boolean env vars; `detect_mode(step)` returns the interaction mode string (`"input"`, `"clickable"`, `"select"`, `"hover"`, `"drag"`, `"locate"`); `classify_step(step)` returns a step kind string (`"navigate"`, `"wait"`, `"scroll"`, `"extract"`, `"verify"`, `"press_enter"`, `"scan_page"`, `"call_python"`, `"debug"`, `"done"`, or `"action"`) — used by `run_mission()` and `_execute_step()` to avoid duplicated regex dispatches.
+* `helpers.py` provides `env_bool(name, default)` for parsing boolean env vars; `detect_mode(step)` returns the interaction mode string (`"input"`, `"clickable"`, `"select"`, `"hover"`, `"drag"`, `"locate"`); `classify_step(step)` returns a step kind string (`"navigate"`, `"wait"`, `"scroll"`, `"extract"`, `"verify"`, `"press_enter"`, `"press"`, `"right_click"`, `"upload"`, `"scan_page"`, `"call_python"`, `"debug"`, `"done"`, or `"action"`) — used by `run_mission()` and `_execute_step()` to avoid duplicated regex dispatches.
 * **Null model = heuristics-only:** When `model` is `None`, `_llm_json()` returns `None` immediately. `get_threshold(None)` returns `0`. No Ollama calls are made.
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
 * **Debug mode:** `ManulEngine(debug_mode=True, break_steps={N,...})`. `debug_mode=True` (from `--debug`) highlights the resolved element and pauses before every step using `input()` in TTY or Playwright's `page.pause()`. `break_steps` (from `--break-lines`) pauses only at listed step indices using the stdout/stdin panel protocol when stdout is not a TTY. The two are mutually exclusive in practice — the extension only ever sets `break_steps` via `--break-lines`.

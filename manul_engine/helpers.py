@@ -44,6 +44,9 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
     ("extract",     re.compile(r'\bEXTRACT\b')),
     ("verify",      re.compile(r'\bVERIFY\b')),
     ("press_enter", re.compile(r'\bPRESS\s+ENTER\b')),
+    ("press",       re.compile(r'\bPRESS\b')),
+    ("right_click", re.compile(r'\bRIGHT\s+CLICK\b')),
+    ("upload",      re.compile(r'\bUPLOAD\b')),
     ("scan_page",   re.compile(r'\bSCAN\s+PAGE\b')),
     ("call_python", re.compile(r'\bCALL\s+PYTHON\b')),
     ("debug",       re.compile(r'\b(?:DEBUG|PAUSE)\b')),
@@ -53,7 +56,7 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
 # Pre-compiled pattern used by run_mission to detect system steps for debug
 # pause ordering (system steps pause before, action steps pause after resolve).
 RE_SYSTEM_STEP = re.compile(
-    r'\b(?:NAVIGATE|WAIT|SCROLL|EXTRACT|PRESS\s+ENTER|SCAN\s+PAGE|CALL\s+PYTHON|DEBUG|PAUSE|DONE)\b'
+    r'\b(?:NAVIGATE|WAIT|SCROLL|EXTRACT|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|DEBUG|PAUSE|DONE)\b'
 )
 
 
@@ -61,7 +64,8 @@ def classify_step(step: str) -> str:
     """Return the system keyword type of a step, or ``"action"`` for DOM steps.
 
     The returned string is one of: ``"navigate"``, ``"wait"``, ``"scroll"``,
-    ``"extract"``, ``"verify"``, ``"press_enter"``, ``"scan_page"``,
+    ``"extract"``, ``"verify"``, ``"press_enter"``, ``"press"``,
+    ``"right_click"``, ``"upload"``, ``"scan_page"``,
     ``"call_python"``, ``"debug"``, ``"done"``, or ``"action"``.
     """
     s_up = step.upper()

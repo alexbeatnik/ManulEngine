@@ -318,6 +318,10 @@ Lines starting with `#` are ignored.
 | `NAVIGATE to [URL]` | Load a URL and wait for DOM settlement |
 | `WAIT [seconds]` | Hard sleep |
 | `PRESS ENTER` | Press Enter on the currently focused element (submit forms after filling a field) |
+| `PRESS [Key]` | Press any key or combination globally (e.g. `PRESS Escape`, `PRESS Control+A`) |
+| `PRESS [Key] on [Target]` | Press a key on a specific element (e.g. `PRESS ArrowDown on 'Search Input'`) |
+| `RIGHT CLICK [Target]` | Right-click an element to open a context menu |
+| `UPLOAD [File] to [Target]` | Upload a file to a file input element (path relative to `.hunt` file or CWD) |
 | `SCROLL DOWN` | Scroll the main page down one viewport |
 | `EXTRACT [target] into {var}` | Extract text into a memory variable |
 | `VERIFY that [target] is present` | Assert text/element is visible |
@@ -493,14 +497,16 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 |---|---|
 | **Navigation** | `NAVIGATE to [URL]` |
 | **Input** | `Fill [Field] with [Text]`, `Type [Text] into [Field]` |
-| **Click** | `Click [Element]`, `DOUBLE CLICK [Element]` |
+| **Click** | `Click [Element]`, `DOUBLE CLICK [Element]`, `RIGHT CLICK [Element]` |
 | **Selection** | `Select [Option] from [Dropdown]`, `Check [Checkbox]`, `Uncheck [Checkbox]` |
 | **Mouse Action** | `HOVER over [Element]`, `Drag [Element] and drop it into [Target]` |
 | **Data Extraction** | `EXTRACT [Target] into {variable_name}` |
 | **Verification** | `VERIFY that [Text] is present/absent`, `VERIFY that [Element] is checked/disabled` |
 | **Page Scanner** | `SCAN PAGE`, `SCAN PAGE into {filename}` |
 | **Debug** | `DEBUG` / `PAUSE` — pause execution at that step (use with `--debug` or VS Code gutter breakpoints) |
-| **Flow Control** | `WAIT [seconds]`, `PRESS ENTER`, `SCROLL DOWN` |
+| **Keyboard** | `PRESS ENTER`, `PRESS [Key]`, `PRESS [Key] on [Element]` |
+| **File Upload** | `UPLOAD [File] to [Element]` |
+| **Flow Control** | `WAIT [seconds]`, `SCROLL DOWN` |
 | **Finish** | `DONE.` |
 
 > Append `if exists` or `optional` to any step (outside quoted text) to make it non-blocking,

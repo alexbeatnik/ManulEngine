@@ -904,6 +904,18 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                         elif step_kind == "press_enter":
                             await self._handle_press_enter(page)
 
+                        elif step_kind == "press":
+                            if not await self._handle_press(page, step, strategic_context, step_idx=i):
+                                ok = False; break
+
+                        elif step_kind == "right_click":
+                            if not await self._handle_right_click(page, step, strategic_context, step_idx=i):
+                                ok = False; break
+
+                        elif step_kind == "upload":
+                            if not await self._handle_upload(page, step, strategic_context, step_idx=i, hunt_dir=hunt_dir):
+                                ok = False; break
+
                         elif step_kind == "scan_page":
                             if not await self._handle_scan_page(page, step):
                                 ok = False; break

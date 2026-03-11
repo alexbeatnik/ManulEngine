@@ -132,13 +132,17 @@ jq -Rs '{model: "qwen2.5:7b", prompt: ., stream: false}' prompts/html_to_hunt.md
 - `NAVIGATE to <url>`
 - `WAIT <seconds>`
 - `PRESS ENTER`
+- `PRESS [Key]` (e.g. `PRESS Escape`, `PRESS Control+A`)
+- `PRESS [Key] on [Element]` (e.g. `PRESS ArrowDown on 'Search Input'`)
+- `RIGHT CLICK [Element]`
+- `UPLOAD [File] to [Element]`
 - `SCROLL DOWN`
 - `EXTRACT the '<target>' into {var}`
 - `VERIFY that '<target>' is present / is NOT present / is DISABLED / is checked`
 - `DONE.`
 
 ### Interaction verbs
-`Fill … with` · `Click` · `DOUBLE CLICK` · `Select … from` · `Check/Uncheck the checkbox for` · `Click the radio button for` · `HOVER over` · `Drag … and drop it into`
+`Fill … with` · `Click` · `DOUBLE CLICK` · `RIGHT CLICK` · `Select … from` · `Check/Uncheck the checkbox for` · `Click the radio button for` · `HOVER over` · `Drag … and drop it into` · `UPLOAD … to`
 
 Element type goes **outside** quotes, label goes **inside** quotes:
 ```

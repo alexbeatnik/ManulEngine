@@ -65,6 +65,121 @@ class _ActionsMixin:
         print("    ↩️  Pressed Enter")
         return True
 
+    async def _handle_press(self, page, step: str, strategic_context: str = "", step_idx: int = 0) -> bool:
+        """Handle PRESS [Key] and PRESS [Key] on 'Target'.
+
+        Global form: `PRESS Escape`, `PRESS Control+A`
+        Targeted form: `PRESS ArrowDown on 'Search Input'`
+        """
+        # Strip leading step number
+        clean = re.sub(r'^\s*\d+\.\s*', '', step).strip()
+        # Remove the keyword PRESS (case-insensitive)
+        after_press = re.sub(r'^PRESS\s+', '', clean, flags=re.IGNORECASE).strip()
+
+        # Check for targeted form: "Key on 'Target'"
+        m_on = re.search(r'^(.+?)\s+on\s+(.+)$', after_press, re.IGNORECASE)
+        if m_on:
+            key_combo = m_on.group(1).strip()
+            # Target is in the remainder — resolve element then press on it
+            el = await self._resolve_element(
+                page, step, "locate",
+                extract_quoted(step, preserve_case=False),
+                None, strategic_context, failed_ids=set(),
+            )
+            if el is None:
+                print(f"    ❌ PRESS: could not resolve target element")
+                return False
+            loc = page.locator(f"xpath={el['xpath']}").first
+            await loc.press(key_combo, timeout=prompts.TIMEOUT)
+            print(f"    ⌨️  Pressed '{key_combo}' on '{self._fmt_el_name(el['name'])}'")
+        else:
+            key_combo = after_press
+            await page.keyboard.press(key_combo)
+            print(f"    ⌨️  Pressed '{key_combo}'")
+
+        await asyncio.sleep(ACTION_WAIT)
+        return True
+
+    async def _handle_right_click(self, page, step: str, strategic_context: str = "", step_idx: int = 0) -> bool:
+        """Handle RIGHT CLICK 'Target'.
+
+        Resolves the target element via heuristics/LLM, then performs
+        a right-click using ``locator.click(button='right')``.
+        """
+        el = await self._resolve_element(
+            page, step, "clickable",
+            extract_quoted(step, preserve_case=False),
+            None, strategic_context, failed_ids=set(),
+        )
+        if el is None:
+            print("    ❌ RIGHT CLICK: could not resolve target element")
+            return False
+        loc = page.locator(f"xpath={el['xpath']}").first
+        is_shad = el.get("is_shadow")
+        try:
+            if not is_shad:
+                await loc.scroll_into_view_if_needed(timeout=2000)
+                await self._highlight(page, loc)
+            else:
+                await self._highlight(page, el["id"], by_js_id=True)
+        except Exception:
+            pass
+        if is_shad:
+            await page.evaluate(
+                f"window.manulElements[{el['id']}].dispatchEvent("
+                f"new MouseEvent('contextmenu',{{bubbles:true,cancelable:true,button:2,view:window}}))"
+            )
+        else:
+            await loc.click(button="right", force=True, timeout=prompts.TIMEOUT)
+        print(f"    🖱️  Right-clicked '{self._fmt_el_name(el['name'])}'")
+        await asyncio.sleep(ACTION_WAIT)
+        return True
+
+    async def _handle_upload(self, page, step: str, strategic_context: str = "",
+                             step_idx: int = 0, hunt_dir: str | None = None) -> bool:
+        """Handle UPLOAD 'file.pdf' to 'Target'.
+
+        Resolves the file path relative to the hunt file's directory (or CWD)
+        and the target element via heuristics, then calls ``set_input_files()``.
+        """
+        quoted = extract_quoted(step, preserve_case=True)
+        if len(quoted) < 2:
+            print("    ❌ UPLOAD: expected UPLOAD 'file' to 'Target'")
+            return False
+        file_path_raw = quoted[0]
+        # Resolve file path relative to hunt dir, then CWD
+        from pathlib import Path as _Path
+        if hunt_dir:
+            candidate = _Path(hunt_dir) / file_path_raw
+            if candidate.exists():
+                file_path = str(candidate.resolve())
+            else:
+                file_path = str(_Path.cwd() / file_path_raw)
+        else:
+            file_path = str(_Path.cwd() / file_path_raw)
+
+        search_texts = [quoted[1].lower()]
+        el = await self._resolve_element(
+            page, step, "clickable", search_texts,
+            None, strategic_context, failed_ids=set(),
+        )
+        if el is None:
+            print("    ❌ UPLOAD: could not resolve target element")
+            return False
+        loc = page.locator(f"xpath={el['xpath']}").first
+        try:
+            if not el.get("is_shadow"):
+                await loc.scroll_into_view_if_needed(timeout=2000)
+                await self._highlight(page, loc)
+            else:
+                await self._highlight(page, el["id"], by_js_id=True)
+        except Exception:
+            pass
+        await loc.set_input_files(file_path, timeout=prompts.TIMEOUT)
+        print(f"    📎 Uploaded '{file_path_raw}' → '{self._fmt_el_name(el['name'])}'")
+        await asyncio.sleep(ACTION_WAIT)
+        return True
+
     async def _handle_extract(self, page, step: str) -> bool:
         var_m  = re.search(r'\{(.*?)\}', step)
         target = (extract_quoted(step) or [""])[0].replace("'", "")
