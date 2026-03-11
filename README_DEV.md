@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.0.8.4 — The Mastermind
+# 😼 ManulEngine v0.0.8.5 — The Mastermind
 
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 
@@ -24,12 +24,13 @@ Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristi
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.8.4
+├── pyproject.toml                    Build config — package: manul-engine 0.0.8.5
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
 │   ├── cli.py                        Installed CLI entry point (`manul` command + `manul scan` subcommand)
 │   ├── hooks.py                      [SETUP] / [TEARDOWN] hook parser and executor
+│   ├── controls.py                   Custom Controls registry (@custom_control, get_custom_control, load_custom_controls)
 │   ├── _test_runner.py               Dev-only synthetic test runner (not in public CLI)
 │   ├── prompts.py                    JSON config loader, thresholds, LLM prompts
 │   ├── helpers.py                    Pure utility functions, env helpers, timing constants
@@ -47,8 +48,12 @@ ManulEngine/
 │       ├── test_13_controls_cache.py Unit: persistent controls cache
 │       ├── test_14_qa_classics.py    Unit: legacy HTML patterns, tables, fieldsets
         ├── test_15_facebook_final_boss.py
-        └── test_16_hooks.py          Unit: [SETUP]/[TEARDOWN] hooks (no browser)
+        ├── test_16_hooks.py          Unit: [SETUP]/[TEARDOWN] hooks (no browser)
+        └── test_19_custom_controls.py Unit: Custom Controls registry + engine interception (19 assertions, no browser)
+├── controls/                         User-owned custom Python handlers (auto-loaded at engine startup)
+│   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
+│   ├── demo_controls.hunt            Demo: Custom Controls workflow (companion to controls/demo_custom.py)
 │   ├── demoqa.hunt
 │   ├── mega.hunt
 │   ├── rahul.hunt
@@ -59,14 +64,14 @@ ManulEngine/
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 └── vscode-extension/                 VS Code extension (language support + UI)
-    ├── package.json                  Extension manifest (v0.0.84)
+    ├── package.json                  Extension manifest (v0.0.85)
     ├── src/
     │   ├── extension.ts              Activation, command registration
     │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
     │   ├── huntTestController.ts     VS Code Test Explorer integration
     │   ├── configPanel.ts            Webview sidebar: config editor + Ollama discovery
     │   ├── cacheTreeProvider.ts      Sidebar tree: controls cache browser
-    │   ├── stepBuilderPanel.ts       Step Builder sidebar (incl. Scan Page button)
+    │   ├── stepBuilderPanel.ts       Step Builder sidebar (incl. Live Page Scanner UI + Scan Page button)
     │   └── debugControlPanel.ts      Singleton QuickPick overlay for interactive debug stepping
     └── syntaxes/hunt.tmLanguage.json Hunt file syntax grammar
 ```
@@ -128,6 +133,66 @@ run_hooks(lines, label, hunt_dir)  → bool
 `parse_hunt_file()` in `cli.py` returns a 6-tuple including `setup_lines` and `teardown_lines`. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
 
 The full hook unit test suite (`41 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
+
+### 🎛️ Custom Controls & Page Object Model
+
+Custom Controls provide a first-class escape hatch for UI elements that heuristics and AI cannot reliably target: React virtual tables, canvas widgets, multi-step date-pickers, drag-to-rank lists, etc.
+
+**How it ties into `pages.json`:**
+The page name key in the decorator must match the value returned by `lookup_page_name(page.url)` at runtime — i.e. whatever is mapped in `pages.json` for the current URL. This makes the routing completely declarative: update the page name in `pages.json` and all dependent custom controls follow.
+
+**Decorator syntax:**
+
+```python
+# controls/checkout.py
+from manul_engine import custom_control
+
+@custom_control(page="Checkout Page", target="React Datepicker")
+async def handle_datepicker(page, action_type: str, value: str | None) -> None:
+    """
+    page        — live Playwright Page
+    action_type — "input" | "clickable" | "select" | "hover" | "drag" | "locate"
+    value       — for 'input' steps: the text to type; None for everything else
+    """
+    input_loc = page.locator(".react-datepicker__input-container input").first
+    if action_type == "input" and value:
+        await input_loc.click()
+        await input_loc.fill(value)
+```
+
+Both sync and async handlers are accepted; the engine awaits async ones.
+
+**Auto-loading:**
+`load_custom_controls(workspace_dir)` is called from `ManulEngine.__init__` with `Path.cwd()`. It imports every `*.py` file (not starting with `_`) from `controls/` in an isolated `ModuleType` — same sandboxing pattern as `[SETUP]`/`[TEARDOWN]` hooks.
+
+**Interception point:**
+In `run_mission()`, the `else` branch (action steps) runs `get_custom_control(page_name, target)` before taking any DOM snapshot. If a handler is found, it is called with `(page, mode, value)` and `_execute_step` is bypassed entirely. If not found, the normal heuristic/AI pipeline runs.
+
+**Module layout:**
+
+```text
+controls/              # user-owned; loaded by load_custom_controls() at startup
+  __init__.py          # optional; not loaded (filenames starting with _ are skipped)
+  checkout.py          # @custom_control(page="Checkout Page", target="...")
+  search.py            # @custom_control(page="Search Results", target="...")
+manul_engine/
+  controls.py          # registry: _CUSTOM_CONTROLS, @custom_control, get_custom_control,
+                       #           load_custom_controls
+```
+
+**Corresponding hunt file (no change needed for QA):**
+
+```text
+@context: Checkout smoke test
+
+1. NAVIGATE to https://example.com/checkout
+2. Fill 'React Datepicker' with '2026-12-25'
+3. Click the 'Place Order' button
+4. VERIFY that 'Order confirmed' is present.
+5. DONE.
+```
+
+---
 
 ### 🛡️ Ironclad JS Fallbacks
 
@@ -235,7 +300,8 @@ Environment variables (`MANUL_*`) always override JSON values — useful for CI/
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
   "workers": 1,
-  "tests_home": "tests"
+  "tests_home": "tests",
+  "auto_annotate": false
 }
 ```
 
@@ -340,6 +406,7 @@ The engine is battle-tested with **1296+** synthetic DOM/unit tests covering the
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).
 * **AI modes regression suite:** `manul_engine/test/test_12_ai_modes.py` (Always-AI, strict override, AI rejection).
 * **QA Classics regression suite:** `manul_engine/test/test_14_qa_classics.py` (legacy HTML patterns, tables, fieldsets).
+* **Custom Controls unit suite:** `manul_engine/test/test_19_custom_controls.py` (registry correctness + engine interception, 19 assertions, no browser).
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
 Run the synthetic suite:
@@ -382,7 +449,7 @@ The `prompts/` directory contains ready-to-use LLM prompt templates that let you
 
 ## 🖱️ VS Code Extension
 
-The `vscode-extension/` directory contains a companion VS Code extension (v0.0.84) that provides:
+The `vscode-extension/` directory contains a companion VS Code extension (v0.0.85) that provides:
 
 | Feature | Details |
 | --- | --- |
@@ -392,7 +459,7 @@ The `vscode-extension/` directory contains a companion VS Code extension (v0.0.8
 | **Cache browser** | Tree-view sidebar showing the controls cache hierarchy (`site → page → controls.json`) |
 | **Run commands** | `ManulEngine: Run Hunt File` (output panel) and `ManulEngine: Run Hunt File in Terminal` (raw CLI) |
 | **Debug run profile** | Test Explorer exposes a **Debug** run profile alongside the normal one; places gutter breakpoints (red dots) in `.hunt` files, pauses at each with a floating QuickPick overlay — **⏭ Next Step** / **▶ Continue All**. The Test Explorer **Stop** button aborts the run cleanly (no hanging QuickPick). On Linux, a system notification appears via `notify-send` when execution pauses. |
-| **Step Builder** | Sidebar buttons for every step type including **Debug / Pause** (inserts `DEBUG` step) |
+| **Step Builder** | Sidebar buttons for every step type including **Debug / Pause** (inserts `DEBUG` step); **🔍 Live Page Scanner** — URL input + Run Scan button that invokes `manul scan <URL>` directly and opens the result in the editor |
 | **Bounded concurrency** | Test Explorer respects `workers` config or `manulEngine.workers` VS Code setting (default: 1) |
 
 ### Extension behaviour notes
@@ -400,7 +467,7 @@ The `vscode-extension/` directory contains a companion VS Code extension (v0.0.8
 * **Working directory:** The extension spawns `manul` with `cwd` set to the **VS Code workspace folder root** (not the directory of the `.hunt` file). This ensures `manul_engine_configuration.json` and the cache directory are always resolved from the project root, matching what you get when running `manul` from the terminal.
 * **Debug protocol:** `runHuntFileDebugPanel` spawns `manul` with `--break-lines` (never `--debug`) and piped stdio. Python emits `\x00MANUL_DEBUG_PAUSE\x00{"step":"...","idx":N}\n` when pausing; TS responds on stdin with one of: `"next\n"` (pause at idx+1), `"continue\n"` (restore original gutter breakpoints), `"debug-stop\n"` (clear all breakpoints, run to end), or `"abort\n"` (then kill the process after 500 ms). The QuickPick overlay exposes five actions: **⏭ Next Step**, **▶ Continue All**, **👁 Highlight Element**, **⏹ Debug Stop**, **🛑 Stop Test**.
 * **Auto-annotate:** When `auto_annotate` is enabled (via the Config Panel or `MANUL_AUTO_ANNOTATE` env var), the engine inserts/overwrites `# 📍 Auto-Nav:` comments above any step that follows a URL change — not only explicit `NAVIGATE` steps. URL tracking happens in `run_mission()`: `url_before` is captured before each step's `try` block; after the step's `finally`, if `page.url != url_before` and there is a next step, `_auto_annotate_navigate(page, hunt_file, step_file_lines, i+1)` is called. NAVIGATE steps annotate above themselves as before.
-* **`pages.json` format:** Nested two-level dict — `{ "site_root_url": { "Domain": "display name", "regex_or_exact_url": "Page Name", ... } }`. `lookup_page_name()` in `prompts.py` re-reads the file on every call, finds the longest-prefix matching site block, then tries exact URL → regex patterns → `"Domain"` fallback. Auto-generated placeholders are stored under `{ "Domain": "Auto: domain/path" }` for the detected site root. Unknown unmapped pages write back `"Auto: ..."` as the display name in the comment.
+* **`pages.json` format:** Nested two-level dict — `{ "site_root_url": { "Domain": "display name", "regex_or_exact_url": "Page Name", ... } }`. `lookup_page_name()` in `prompts.py` re-reads the file on every call, finds the longest-prefix matching site block, then tries exact URL → regex patterns → `"Domain"` fallback. Auto-generated placeholders are stored under `{ "Domain": "Auto: domain/path" }` for the detected site root. Unknown unmapped pages write back `"Auto: ..."` as the display name in the comment. Auto-population uses a safe **deep-merge**: existing site blocks and their user-defined page mappings are never overwritten — only new top-level site keys or new page keys within a previously-unseen site block are added.
 * **`ai_always` guard:** The config panel automatically forces `ai_always` to `false` when no model is selected, preventing an invalid heuristics-only config from being saved with `ai_always: true`.
 * **Ollama discovery:** On panel open the extension fetches `http://localhost:11434/api/tags` and populates a `<select>` with installed model names. If Ollama is not running the field accepts free-text input instead.
 
@@ -418,7 +485,7 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 ---
 
-**Version:** 0.0.8.4
+**Version:** 0.0.8.5
 
 **Codename:** The Mastermind
 

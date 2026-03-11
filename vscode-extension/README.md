@@ -101,6 +101,7 @@ The **Cache** sidebar tree shows per-site cache entries created by ManulEngine's
 A sidebar panel that lets you insert hunt steps with a single click — no typing required.
 
 - **＋ New Hunt File** button — prompts for a name, creates a `.hunt` file with a starter template in the `tests_home` directory (configured via `tests_home` in `manul_engine_configuration.json`, defaults to `tests/`), and opens it
+- **🔍 Live Page Scanner** — paste any URL into the sidebar text input and click **Run Scan**; the extension invokes `manul scan <URL>` as a child process with a progress notification, then automatically opens the freshly generated `tests_home/draft.hunt` in the editor — no terminal required
 - **Step buttons** — one button per step type: Navigate, Fill field, Click, Double Click, Select, Check, Radio, Hover, Drag & Drop, Extract, Verify present/absent/state, Press Enter, Wait, Scroll Down, **Scan Page**, **🐍 Call Python**, **Debug / Pause**, Done
 - **🐍 Call Python** — appends a numbered `CALL PYTHON module_name.function_name` step to the end of the current `.hunt` file with a single click; rename the placeholders and your Python function runs inline as part of the test — no block wrappers needed
 - **Hooks buttons** — **🔧 Insert [SETUP]** and **🧹 Insert [TEARDOWN]** insert pre-filled hook blocks with `CALL PYTHON module.function` placeholders; **🎯 Generate Demo Test** scaffolds a complete hunt file with setup, UI steps, and teardown in one click
@@ -199,7 +200,39 @@ See the [ManulEngine README](https://github.com/alexbeatnik/ManulEngine) for the
 
 ---
 
+## 🎛️ Custom Controls — Python Power Behind Simple Steps
+
+Some UI elements cannot be reliably targeted by heuristics or AI: React virtual tables, canvas datepickers, WebGL widgets, and similar custom components. **Custom Controls** bridge the gap by routing specific `.hunt` steps to hand-written Playwright Python — while the hunt file stays plain English.
+
+**How it works:**
+
+1. Create a `controls/` directory in your workspace root.
+2. Add a `.py` file with a `@custom_control` handler:
+   ```python
+   # controls/booking.py
+   from manul_engine import custom_control
+
+   @custom_control(page="Checkout Page", target="React Datepicker")
+   async def handle_datepicker(page, action_type, value):
+       await page.locator(".react-datepicker__input-container input").fill(value or "")
+   ```
+3. Map the URL to `"Checkout Page"` in `pages.json` (editable via the Config Panel).
+4. Write a normal `.hunt` step — no special syntax required:
+   ```text
+   2. Fill 'React Datepicker' with '2026-12-25'
+   ```
+
+The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are loaded automatically on engine startup — no extension configuration needed. Debug breakpoints, Test Explorer integration, and live output streaming all work exactly the same whether a step uses a custom control or the standard heuristic pipeline.
+
+> **Team workflow:** QA authors keep writing plain English. SDETs own the `controls/` directory. The `.hunt` file never needs to change when the underlying Playwright logic evolves.
+
+---
+
 ## Release Notes
+
+### 0.0.85
+- **🎛️ Custom Controls** — decorator-based Python handler registry (`@custom_control(page, target)`) for complex UI elements (React virtual tables, canvas widgets, WebGL, multi-step datepickers); handlers in `controls/` are auto-loaded at engine startup; `controls/demo_custom.py` and `tests/demo_controls.hunt` ship as a reference implementation
+- **🔍 Live Page Scanner in Step Builder** — new URL input + **Run Scan** button in the Step Builder sidebar; invokes `manul scan <URL>` as a child process with a progress notification and automatically opens the generated `tests_home/draft.hunt` in the editor — no terminal required
 
 ### 0.0.84
 - **⏹ Debug Stop / 🛑 Stop Test buttons** — two new actions in the floating debug QuickPick overlay replace the old implicit close/abort behaviour: **Debug Stop** skips all remaining breakpoints (including user-set gutter ones) and runs the test to the end without further pauses; **Stop Test** sends a clean `abort` signal to Python, waits 500 ms for graceful shutdown, then kills the process

@@ -152,6 +152,60 @@ if not _PAGES_WRITE_PATH.exists():
 AUTO_ANNOTATE: bool = env_bool("MANUL_AUTO_ANNOTATE")
 
 
+def _auto_populate_registry(url: str) -> str:
+    """Safe read-modify-write of pages.json for an unmapped URL.
+
+    Always reads from _PAGES_WRITE_PATH before writing so that any entries
+    accumulated since module load (by other lookups or manual edits) are never
+    clobbered.  Only adds keys that are not already present (deep merge).
+
+    Returns the placeholder string generated for *url*.
+    """
+    from urllib.parse import urlparse as _urlparse_ap
+    _up = _urlparse_ap(url)
+    netloc = _up.netloc
+    _slug = (netloc + _up.path).rstrip("/")
+    placeholder = f"Auto: {_slug}" if _slug else f"Auto: {url}"
+    site_root_auto = f"{_up.scheme}://{netloc}/" if netloc else url
+
+    # 1. Read the current on-disk state from the definitive write target.
+    registry: dict[str, dict[str, str]] = {}
+    if _PAGES_WRITE_PATH.exists():
+        try:
+            with open(_PAGES_WRITE_PATH, encoding="utf-8") as _rf:
+                _raw = json.load(_rf)
+            if isinstance(_raw, dict):
+                for _sk, _sv in _raw.items():
+                    _sk = str(_sk).strip()
+                    if _sk and isinstance(_sv, dict):
+                        registry[_sk] = {str(k): str(v) for k, v in _sv.items()}
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    # 2. Deep merge: never overwrite existing keys.
+    if site_root_auto not in registry:
+        registry[site_root_auto] = {"Domain": placeholder}
+    else:
+        # Site block exists; only add the specific page URL if not already present.
+        if url not in registry[site_root_auto]:
+            registry[site_root_auto][url] = placeholder
+
+    # 3. Sync the in-memory PAGE_REGISTRY so subsequent lookups in this session
+    #    see the latest state without another disk read.
+    PAGE_REGISTRY.clear()
+    PAGE_REGISTRY.update(registry)
+
+    # 4. Write the combined state back to disk.
+    try:
+        with open(_PAGES_WRITE_PATH, "w", encoding="utf-8") as _wf:
+            json.dump(registry, _wf, indent=4, ensure_ascii=False)
+            _wf.write("\n")
+    except OSError:
+        pass
+
+    return placeholder
+
+
 def lookup_page_name(url: str) -> str:
     """Match *url* against PAGE_REGISTRY and return the mapped page name.
 
@@ -230,27 +284,8 @@ def lookup_page_name(url: str) -> str:
         if domain_name:
             return domain_name
 
-    # ── 4. No site block matched — auto-generate placeholder ─────────────────
-    _up = _urlparse(url)
-    netloc = _up.netloc
-    _slug = (netloc + _up.path).rstrip("/")
-    placeholder = f"Auto: {_slug}" if _slug else f"Auto: {url}"
-    # Build a site root from scheme + netloc + trailing slash.
-    site_root_auto = f"{_up.scheme}://{netloc}/" if netloc else url
-    if site_root_auto not in _live_registry:
-        _live_registry[site_root_auto] = {"Domain": placeholder}
-    else:
-        # Site exists but this specific page wasn't mapped — add it.
-        _live_registry[site_root_auto][url] = placeholder
-    PAGE_REGISTRY.clear()
-    PAGE_REGISTRY.update(_live_registry)
-    try:
-        with open(_PAGES_WRITE_PATH, "w", encoding="utf-8") as _wf:
-            json.dump(_live_registry, _wf, indent=2, ensure_ascii=False)
-            _wf.write("\n")
-    except OSError:
-        pass
-    return placeholder
+    # ── 4. No site block matched — delegate to safe read-modify-write helper ─
+    return _auto_populate_registry(url)
 
 # ── AI control switches ──────────────────────────────────────────────────────
 # When enabled, ALL element resolution decisions go through the LLM picker.

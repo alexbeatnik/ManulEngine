@@ -28,12 +28,13 @@ except Exception:  # pragma: no cover
     ollama = None
 
 from . import prompts
-from .helpers import substitute_memory, compact_log_field
+from .helpers import substitute_memory, compact_log_field, extract_quoted
 from .hooks import execute_hook_line
 from .js_scripts import SNAPSHOT_JS
 from .scoring import score_elements
 from .actions import _ActionsMixin
 from .cache import _ControlsCacheMixin
+from .controls import load_custom_controls, get_custom_control
 
 
 class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
@@ -93,6 +94,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             print("    ℹ️  No model configured — running in heuristics-only mode (AI disabled).")
         if self.debug_mode:
             print("    🐛 Debug mode ON — engine will pause before each step.")
+        load_custom_controls(str(Path.cwd()))
 
     def reset_session_state(self) -> None:
         """Clear in-memory caches and variables. Useful for synthetic stateless tests."""
@@ -936,7 +938,44 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             break
 
                         else:
-                            if not await self._execute_step(page, step, strategic_context, step_idx=i):
+                            # ── Custom controls interception ───────────────────────────────
+                            _cc_step_l = step.lower()
+                            _cc_words = set(re.findall(r'\b[a-z]+\b', _cc_step_l))
+                            if "drag" in _cc_words and "drop" in _cc_words:
+                                _cc_mode = "drag"
+                            elif "select" in _cc_words or "choose" in _cc_words:
+                                _cc_mode = "select"
+                            elif any(w in _cc_words for w in ("type", "fill", "enter")):
+                                _cc_mode = "input"
+                            elif any(w in _cc_words for w in ("click", "double", "check", "uncheck")):
+                                _cc_mode = "clickable"
+                            elif "hover" in _cc_words:
+                                _cc_mode = "hover"
+                            else:
+                                _cc_mode = "locate"
+                            _cc_quoted = extract_quoted(step, preserve_case=True)
+                            if _cc_mode == "input" and len(_cc_quoted) >= 2:
+                                _cc_target, _cc_value = _cc_quoted[0], _cc_quoted[-1]
+                            elif _cc_quoted:
+                                _cc_target, _cc_value = _cc_quoted[0], None
+                            else:
+                                _cc_target, _cc_value = "", None
+                            _cc_handler = None
+                            if _cc_target:
+                                _cc_page = prompts.lookup_page_name(page.url)
+                                _cc_handler = get_custom_control(_cc_page, _cc_target)
+                            if _cc_handler is not None:
+                                print(f"    🎛️  [CUSTOM CONTROL] Routed '{_cc_target}' on '{_cc_page}' to custom handler.")
+                                try:
+                                    if asyncio.iscoroutinefunction(_cc_handler):
+                                        await _cc_handler(page, _cc_mode, _cc_value)
+                                    else:
+                                        _cc_handler(page, _cc_mode, _cc_value)
+                                except Exception as _cc_exc:
+                                    print(f"    ❌ Custom control error: {_cc_exc}")
+                                    ok = False; break
+                            # ── End custom controls interception ──────────────────────────
+                            elif not await self._execute_step(page, step, strategic_context, step_idx=i):
                                 print("    ❌ ACTION FAILED")
                                 ok = False; break
                     finally:

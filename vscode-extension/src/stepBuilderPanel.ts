@@ -11,6 +11,8 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
+import { execFile } from "child_process";
+import { findManulExecutable } from "./huntRunner";
 
 // ── Hook scaffold constants ──────────────────────────────────────────────────
 
@@ -108,7 +110,7 @@ export class StepBuilderProvider implements vscode.WebviewViewProvider {
     webviewView.webview.options = { enableScripts: true };
     webviewView.webview.html = this._getHtml(webviewView.webview);
 
-    webviewView.webview.onDidReceiveMessage(async (msg: { command: string; template?: string }) => {
+    webviewView.webview.onDidReceiveMessage(async (msg: { command: string; template?: string; url?: string }) => {
       if (msg.command === "insertStep" && msg.template !== undefined) {
         await insertStep(msg.template, this._lastHuntUri);
       } else if (msg.command === "newHuntFile") {
@@ -119,6 +121,8 @@ export class StepBuilderProvider implements vscode.WebviewViewProvider {
         await vscode.commands.executeCommand("manul.insertTeardown");
       } else if (msg.command === "generateDemoTest") {
         await vscode.commands.executeCommand("manul.generateDemoTest");
+      } else if (msg.command === "runLiveScan") {
+        await runLiveScanCommand(msg.url ?? "");
       }
     });
   }
@@ -167,6 +171,21 @@ export class StepBuilderProvider implements vscode.WebviewViewProvider {
     font-size: 12px;
   }
   .step-btn:hover { background: var(--vscode-button-secondaryHoverBackground); }
+  .scanner-row { display: flex; gap: 6px; margin-bottom: 0; }
+  .scanner-row input {
+    flex: 1; padding: 5px 8px;
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border, transparent);
+    border-radius: 3px; font-size: 12px;
+  }
+  .scan-btn {
+    padding: 5px 10px; white-space: nowrap;
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none; cursor: pointer; border-radius: 3px; font-size: 12px;
+  }
+  .scan-btn:hover { background: var(--vscode-button-hoverBackground); }
 </style>
 </head>
 <body>
@@ -175,6 +194,11 @@ export class StepBuilderProvider implements vscode.WebviewViewProvider {
   <button class="step-btn" id="btn-insert-setup">🔧 Insert [SETUP] block</button>
   <button class="step-btn" id="btn-insert-teardown">🧹 Insert [TEARDOWN] block</button>
   <button class="step-btn" id="btn-generate-demo">🎯 Generate Demo Test</button>
+  <h3>Live Page Scanner</h3>
+  <div class="scanner-row">
+    <input type="text" id="scanner-url-input" placeholder="https://example.com" />
+    <button class="scan-btn" id="run-live-scan-btn">🔍 Run Scan</button>
+  </div>
   <h3>Insert Step</h3>
   ${buttons}
   <script nonce="${nonce}">
@@ -197,6 +221,14 @@ export class StepBuilderProvider implements vscode.WebviewViewProvider {
           vsc.postMessage({ command: 'insertStep', template: btn.dataset.template });
         }
       });
+    });
+    document.getElementById('run-live-scan-btn').addEventListener('click', function() {
+      var urlVal = document.getElementById('scanner-url-input').value.trim();
+      if (!urlVal) {
+        document.getElementById('scanner-url-input').focus();
+        return;
+      }
+      vsc.postMessage({ command: 'runLiveScan', url: urlVal });
     });
   </script>
 </body></html>`;
@@ -459,5 +491,91 @@ export async function newHuntFileCommand(
     const end = line.range.end;
     editor.selection = new vscode.Selection(end, end);
     editor.revealRange(new vscode.Range(end, end));
+  }
+}
+
+/**
+ * Run `manul scan <url> <outputFile>` and open the generated draft hunt file.
+ * Uses execFile (argv array) so the URL is never interpreted by a shell.
+ */
+async function runLiveScanCommand(rawUrl: string): Promise<void> {
+  // Validate: must be a full http(s) URL.
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(rawUrl);
+  } catch {
+    vscode.window.showErrorMessage(
+      "ManulEngine: Invalid URL. Enter a full URL starting with http:// or https://"
+    );
+    return;
+  }
+  if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+    vscode.window.showErrorMessage(
+      "ManulEngine: Only http:// and https:// URLs are supported."
+    );
+    return;
+  }
+
+  const folders = vscode.workspace.workspaceFolders;
+  if (!folders || folders.length === 0) {
+    vscode.window.showErrorMessage("ManulEngine: No workspace folder open.");
+    return;
+  }
+  const workspaceRoot = folders[0].uri.fsPath;
+
+  // Read tests_home from manul_engine_configuration.json (mirrors newHuntFileCommand).
+  let testsHome = "tests";
+  try {
+    const cfgPath = path.join(workspaceRoot, "manul_engine_configuration.json");
+    const cfg = JSON.parse(fs.readFileSync(cfgPath, "utf8"));
+    if (typeof cfg.tests_home === "string" && cfg.tests_home.trim()) {
+      testsHome = cfg.tests_home.trim();
+    }
+  } catch { /* config missing or malformed — use default */ }
+
+  const outputDir = path.isAbsolute(testsHome)
+    ? testsHome
+    : path.join(workspaceRoot, testsHome);
+  const outputFile = path.join(outputDir, "draft.hunt");
+
+  let scanSucceeded = false;
+  await vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: "ManulEngine: Scanning page...",
+      cancellable: false,
+    },
+    async () => {
+      const manulExe = await findManulExecutable(workspaceRoot);
+      await new Promise<void>((resolve) => {
+        // Passing args as an array prevents shell injection — safe even if the URL
+        // contains special characters.
+        execFile(
+          manulExe,
+          ["scan", rawUrl, outputFile],
+          { cwd: workspaceRoot, timeout: 60_000 },
+          (err, _stdout, stderr) => {
+            if (err) {
+              const detail = stderr.trim() || err.message;
+              vscode.window.showErrorMessage(`ManulEngine: Scan failed — ${detail}`);
+            } else {
+              scanSucceeded = true;
+            }
+            resolve();
+          }
+        );
+      });
+    }
+  );
+
+  if (!scanSucceeded) { return; }
+
+  if (fs.existsSync(outputFile)) {
+    const openedDoc = await vscode.workspace.openTextDocument(outputFile);
+    await vscode.window.showTextDocument(openedDoc);
+  } else {
+    vscode.window.showWarningMessage(
+      `ManulEngine: Scan finished but ${outputFile} was not created.`
+    );
   }
 }
