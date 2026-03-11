@@ -13,6 +13,7 @@ import * as path from "path";
 import * as fs from "fs";
 import { spawn } from "child_process";
 import { findManulExecutable } from "./huntRunner";
+import { getConfigFileName } from "./constants";
 
 // ── Hook scaffold constants ──────────────────────────────────────────────────
 
@@ -448,7 +449,7 @@ export async function newHuntFileCommand(
   const workspaceRoot = folders[0].uri.fsPath;
 
   // Read tests_home from manul_engine_configuration.json
-  const cfgFile = path.join(workspaceRoot, "manul_engine_configuration.json");
+  const cfgFile = path.join(workspaceRoot, getConfigFileName());
   let testsHome = "tests";
   try {
     const cfg = JSON.parse(fs.readFileSync(cfgFile, "utf8"));
@@ -543,10 +544,7 @@ async function runLiveScanCommand(rawUrl: string): Promise<void> {
   // setting, matching the behaviour of configPanel.ts and huntTestController.ts).
   let testsHome = "tests";
   try {
-    const manulConfig = vscode.workspace.getConfiguration("manulEngine");
-    const configFile =
-      (manulConfig.get<string>("configFile") || "manul_engine_configuration.json").trim() ||
-      "manul_engine_configuration.json";
+    const configFile = getConfigFileName();
     const cfgPath = path.join(workspaceRoot, configFile);
     const cfg = JSON.parse(fs.readFileSync(cfgPath, "utf8"));
     if (typeof cfg.tests_home === "string" && cfg.tests_home.trim()) {

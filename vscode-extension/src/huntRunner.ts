@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as os from "os";
 import { execFile, spawn, ChildProcess } from "child_process";
 import * as vscode from "vscode";
+import { PAUSE_MARKER, DEBUG_TERMINAL_NAME } from "./constants";
 
 /**
  * Probe candidate paths in order, then falls back to a one-time async
@@ -236,7 +237,6 @@ export function runHuntFileDebugPanel(
   breakLines?: number[],
   onPause?: (step: string, idx: number) => Promise<"next" | "continue" | "highlight" | "debug-stop" | "stop-test">
 ): Promise<number> {
-  const PAUSE_MARKER = "\x00MANUL_DEBUG_PAUSE\x00";
   return new Promise((resolve, reject) => {
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(huntFile));
     const cwd = workspaceFolder?.uri.fsPath ?? path.dirname(huntFile);
@@ -364,7 +364,7 @@ export async function runHuntFileDebugInTerminal(
     ? `& "${manulExe}" --debug${breakFlag} "${uri.fsPath}"`
     : `"${manulExe}" --debug${breakFlag} "${uri.fsPath}"`;
   const terminal = vscode.window.createTerminal({
-    name: "ManulEngine Debug",
+    name: DEBUG_TERMINAL_NAME,
     cwd: workspaceRoot,
     env: { PYTHONUNBUFFERED: "1" },
   });

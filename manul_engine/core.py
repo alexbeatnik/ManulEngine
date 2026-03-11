@@ -30,7 +30,7 @@ except Exception:  # pragma: no cover
     ollama = None
 
 from . import prompts
-from .helpers import substitute_memory, compact_log_field, extract_quoted
+from .helpers import substitute_memory, compact_log_field, extract_quoted, detect_mode, classify_step, RE_SYSTEM_STEP
 from .hooks import execute_hook_line
 from .js_scripts import SNAPSHOT_JS
 from .scoring import score_elements
@@ -847,17 +847,14 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                     started_at = datetime.datetime.now()
                     started_perf = time.perf_counter()
                     print(f"\n[🐾 STEP {i} @ {started_at.strftime('%H:%M:%S')}] {step}")
-                    s_up = step.upper()
+                    step_kind = classify_step(step)
 
                     # Determine whether this step is a system step (NAVIGATE, SCROLL,
                     # etc.) or an action step (click, fill, select, hover…).
                     # For action steps, the debug pause fires INSIDE _execute_step
                     # after element resolution so the tester sees the highlighted
                     # element before deciding to proceed.
-                    _is_system_step = bool(re.search(
-                        r'\b(?:NAVIGATE|WAIT|SCROLL|EXTRACT|PRESS\s+ENTER|SCAN\s+PAGE|CALL\s+PYTHON|DEBUG|PAUSE|DONE)\b',
-                        s_up
-                    ))
+                    _is_system_step = step_kind != "action"
 
                     if self.debug_mode and _is_system_step:
                         await self._debug_prompt(page, step, i)
@@ -883,35 +880,35 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                         url_before = ""
 
                     try:
-                        if re.search(r'\bNAVIGATE\b', s_up):
+                        if step_kind == "navigate":
                             if not await self._handle_navigate(page, step):
                                 ok = False; break
                             if _auto_annotate_live and hunt_file and step_file_lines:
                                 await self._auto_annotate_navigate(page, hunt_file, step_file_lines, i)
 
-                        elif re.search(r'\bWAIT\b', s_up):
+                        elif step_kind == "wait":
                             n = re.search(r'(\d+)', step)
                             await asyncio.sleep(int(n.group(1)) if n else 2)
 
-                        elif re.search(r'\bSCROLL\b', s_up):
+                        elif step_kind == "scroll":
                             await self._handle_scroll(page, step)
 
-                        elif re.search(r'\bEXTRACT\b', s_up):
+                        elif step_kind == "extract":
                             if not await self._handle_extract(page, step):
                                 ok = False; break
 
-                        elif re.search(r'\bVERIFY\b', s_up):
+                        elif step_kind == "verify":
                             if not await self._handle_verify(page, step, step_idx=i):
                                 ok = False; break
 
-                        elif re.search(r'\bPRESS\s+ENTER\b', s_up):
+                        elif step_kind == "press_enter":
                             await self._handle_press_enter(page)
 
-                        elif re.search(r'\bSCAN\s+PAGE\b', s_up):
+                        elif step_kind == "scan_page":
                             if not await self._handle_scan_page(page, step):
                                 ok = False; break
 
-                        elif re.search(r'\bCALL\s+PYTHON\b', s_up):
+                        elif step_kind == "call_python":
                             # Strip any leading step number, then re-check from
                             # the start to avoid false positives on button labels
                             # that happen to contain the words "CALL PYTHON".
@@ -935,7 +932,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                     print("    ❌ ACTION FAILED")
                                     ok = False; break
 
-                        elif re.search(r'\b(?:DEBUG|PAUSE)\b', s_up):
+                        elif step_kind == "debug":
                             # In debug_mode the pre-step _debug_prompt() above already
                             # paused execution; treat this step as a no-op to avoid a
                             # double-pause for the same step.
@@ -951,7 +948,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                     print("    \U0001f50e DEBUG/PAUSE step \u2014 opening Playwright Inspector\u2026")
                                     await page.pause()
 
-                        elif re.search(r'\bDONE\b', s_up):
+                        elif step_kind == "done":
                             print("    🏁 MISSION ACCOMPLISHED")
                             done = True
                             break
@@ -959,19 +956,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                         else:
                             # ── Custom controls interception ───────────────────────────────
                             _cc_step_l = step.lower()
-                            _cc_words = set(re.findall(r'\b[a-z]+\b', _cc_step_l))
-                            if "drag" in _cc_words and "drop" in _cc_words:
-                                _cc_mode = "drag"
-                            elif "select" in _cc_words or "choose" in _cc_words:
-                                _cc_mode = "select"
-                            elif any(w in _cc_words for w in ("type", "fill", "enter")):
-                                _cc_mode = "input"
-                            elif any(w in _cc_words for w in ("click", "double", "check", "uncheck")):
-                                _cc_mode = "clickable"
-                            elif "hover" in _cc_words:
-                                _cc_mode = "hover"
-                            else:
-                                _cc_mode = "locate"
+                            _cc_mode = detect_mode(step)
                             _cc_quoted = extract_quoted(step, preserve_case=True)
                             if _cc_mode == "input" and len(_cc_quoted) >= 2:
                                 # target = field/control name, value = text to type
@@ -1023,7 +1008,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                         # After non-NAVIGATE steps, check if the URL changed and
                         # annotate the next step with the new landing URL.
                         if _auto_annotate_live and hunt_file and step_file_lines \
-                                and not re.search(r'\bNAVIGATE\b', s_up):
+                                and step_kind != "navigate":
                             try:
                                 url_after = page.url
                                 if url_after != url_before and i < len(step_file_lines):

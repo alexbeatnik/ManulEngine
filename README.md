@@ -8,7 +8,7 @@ ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automa
 Forget brittle CSS/XPath locators that break on every UI update — write tests in plain English.
 Stop paying for expensive cloud APIs — leverage local micro-LLMs via **Ollama**, entirely on your machine.
 
-Manul combines the blazing speed of **Playwright**, powerful JavaScript DOM heuristics, and the reasoning of local neural networks. It is fast, private, and highly resilient to UI changes.
+Manul combines the blazing speed of **Playwright**, 20+ JavaScript DOM heuristics, and the reasoning of local neural networks. It is fast, private, and highly resilient to UI changes.
 
 > The Manul goes hunting and never returns without its prey.
 
@@ -85,18 +85,60 @@ The engine loads every `.py` file in `controls/` at startup. No configuration re
 
 ---
 
-## ⚡ Lightning-Fast Preconditions with Python Hooks
+## 📋 Static Variables — Clean Test Data, Zero Hardcoding
 
-Stop wasting hours on brittle UI-based preconditions. With `[SETUP]` and `[TEARDOWN]` hooks you can inject test data directly into your database or call an API in pure Python — keeping your `.hunt` files crystal clear and your test runs **dramatically faster**.
+Declare all test data at the top of your `.hunt` file with `@var:`. Values are injected into the engine’s memory before step 1 runs and can be referenced anywhere via `{placeholder}` — keeping your test logic clean and your data in one place.
 
 ```text
+@var: {email}    = admin@example.com
+@var: {password} = secret123
+
+1. NAVIGATE to https://myapp.com/login
+2. Fill 'Email' with '{email}'
+3. Fill 'Password' with '{password}'
+4. Click the 'Sign In' button
+5. VERIFY that 'Dashboard' is present.
+```
+
+Both `@var: {key} = value` and `@var: key = value` are accepted. Variables declared with `@var:` work identically to those created by `EXTRACT` and `CALL PYTHON ... into {var}`.
+
+---
+
+## 🏷️ Tags — Run Exactly What You Need
+
+Tag any `.hunt` file and cherry-pick which tests to run — no directory juggling required.
+
+```text
+@tags: smoke, auth, regression
+
+1. NAVIGATE to https://example.com/login
+2. DONE.
+```
+
+```bash
+manul tests/ --tags smoke               # run only 'smoke'-tagged files
+manul tests/ --tags smoke,critical      # OR logic — either tag matches
+```
+
+Files without `@tags:` are excluded when `--tags` is active. Zero config, zero complexity.
+
+---
+
+## ⚡ Lightning-Fast Preconditions with Python Hooks
+
+Stop wasting hours on brittle UI-based preconditions. With `[SETUP]` and `[TEARDOWN]` hooks you can inject test data directly into your database or call an API in pure Python — keeping your `.hunt` files crystal clear and your test runs dramatically faster.
+
+```text
+@var: {email}    = admin@example.com
+@var: {password} = secret
+
 [SETUP]
 CALL PYTHON db_helpers.seed_admin_user
 [END SETUP]
 
 1. NAVIGATE to https://myapp.com/login
-2. Fill 'Email' field with 'admin@example.com'
-3. Fill 'Password' field with 'secret'
+2. Fill 'Email' field with '{email}'
+3. Fill 'Password' field with '{password}'
 4. Click the 'Sign In' button
 5. VERIFY that 'Dashboard' is present.
 
@@ -177,11 +219,14 @@ ollama serve
 ```text
 @context: Demo smoke test
 @blueprint: smoke
+@tags: smoke
+
+@var: {name} = Ghost Manul
 
 1. NAVIGATE to https://demoqa.com/text-box
-2. Fill 'Full Name' field with 'Ghost Manul'
+2. Fill 'Full Name' field with '{name}'
 3. Click the 'Submit' button
-4. VERIFY that 'Ghost Manul' is present.
+4. VERIFY that '{name}' is present.
 5. DONE.
 ```
 
@@ -465,7 +510,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 
 ## 🐾 Battle-Tested
 
-ManulEngine is verified against **1296+ synthetic DOM tests** covering:
+ManulEngine is verified against **1466+ synthetic DOM tests** covering:
 
 - Shadow DOM, invisible overlays, zero-pixel honeypots
 - Custom dropdowns, drag-and-drop, hover menus
@@ -475,4 +520,4 @@ ManulEngine is verified against **1296+ synthetic DOM tests** covering:
 
 ---
 
-**Version:** 0.0.8.6 · **Status:** Hunting...
+**Version:** 0.0.8.7 · **Status:** Hunting...

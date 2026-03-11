@@ -3,6 +3,7 @@ import * as path from "path";
 import * as fs from "fs";
 import { findManulExecutable, runHunt, runHuntFileDebugPanel, getHuntBreakpointLines } from "./huntRunner";
 import { DebugControlPanel } from "./debugControlPanel";
+import { DEFAULT_CONFIG_FILENAME, TERMINAL_NAME, getConfigFileName } from "./constants";
 
 // ── Concurrency helpers ────────────────────────────────────────────────────
 
@@ -27,9 +28,7 @@ function readWorkers(workspaceRoot: string): number {
     return clamp(cfg);
   }
   try {
-    const configFile = vscode.workspace
-      .getConfiguration("manulEngine")
-      .get<string>("configFile") ?? "manul_engine_configuration.json";
+    const configFile = getConfigFileName();
     const raw = fs.readFileSync(path.join(workspaceRoot, configFile), "utf-8");
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     const w = parsed["workers"];
@@ -443,7 +442,7 @@ export async function runHuntFileInTerminalCommand(uri?: vscode.Uri): Promise<vo
     ?? roots[0]?.uri.fsPath
     ?? path.dirname(target.fsPath);
   const manulExe = await findManulExecutable(workspaceRoot);
-  const terminal = vscode.window.createTerminal("ManulEngine");
+  const terminal = vscode.window.createTerminal(TERMINAL_NAME);
   terminal.show();
   // PowerShell requires `&` to invoke a path-quoted executable; other shells
   // (bash, zsh, fish, cmd) use plain quoting.

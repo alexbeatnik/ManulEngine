@@ -1,7 +1,7 @@
 ﻿# manul_engine/actions.py
 import asyncio
 import re
-from .helpers import extract_quoted, compact_log_field, SCROLL_WAIT, ACTION_WAIT, NAV_WAIT
+from .helpers import extract_quoted, compact_log_field, SCROLL_WAIT, ACTION_WAIT, NAV_WAIT, detect_mode
 from .js_scripts import VISIBLE_TEXT_JS, EXTRACT_DATA_JS, DEEP_TEXT_JS, STATE_CHECK_JS, SCAN_JS
 from . import prompts
 
@@ -268,14 +268,7 @@ class _ActionsMixin:
 
     async def _execute_step(self, page, step: str, strategic_context: str = "", step_idx: int = 0) -> bool:
         step_l = step.lower()
-        words  = set(re.findall(r'\b[a-z]+\b', step_l))
-
-        if   "drag" in words and "drop" in words:              mode = "drag"
-        elif "select" in words or "choose" in words:           mode = "select"
-        elif any(w in words for w in ("type","fill","enter")): mode = "input"
-        elif any(w in words for w in ("click","double","check","uncheck")): mode = "clickable"
-        elif "hover" in words:                                  mode = "hover"
-        else:                                                   mode = "locate"
+        mode   = detect_mode(step)
 
         preserve = mode in ("input", "select")
         expected = extract_quoted(step, preserve_case=preserve)
