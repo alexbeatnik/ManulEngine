@@ -188,6 +188,7 @@ The extension probes the following locations in order (platform-aware):
 ```hunt
 @context: Login and verify dashboard
 @blueprint: smoke_login
+@tags: smoke, auth
 
 @var: {user_email} = user@example.com
 @var: {password}   = secret
@@ -238,6 +239,7 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 - **📌 Static Variable Declaration** — declare test data at the top of any `.hunt` file using `@var: {key} = value`; values are pre-populated into the engine's runtime memory before any step runs and can be interpolated anywhere a `{placeholder}` is accepted (e.g. `Fill 'Email' with '{user_email}'`). Both brace and bare-key forms accepted (`@var: {key} = val` and `@var: key = val` are equivalent). Core engine bump to **0.0.8.6**
 - **🐍 Dynamic Variable Capture** — `CALL PYTHON module.function into {variable_name}` (or `to {var}`) captures the return value of any synchronous Python function and stores it as a string in runtime memory; use immediately in subsequent steps via `{variable_name}`. Enables mid-test backend calls (OTP, magic links, DB tokens) without hardcoding values
 - **🐍 "Call Python → Var" button in Step Builder** — one-click insertion of `CALL PYTHON module_name.function_name into {variable_name}` scaffold directly into the active `.hunt` file
+- **🏷️ Arbitrary Tags (`@tags:`) and `--tags` CLI filter** — declare comma-separated tags at the top of any `.hunt` file with `@tags: smoke, auth, regression`; run `manul tests/ --tags smoke` to execute only matching files (OR logic: the file must contain at least one of the requested tags; untagged files are excluded when `--tags` is active)
 
 ### 0.0.85
 - **🎛️ Custom Controls** — decorator-based Python handler registry (`@custom_control(page, target)`) for complex UI elements (React virtual tables, canvas widgets, WebGL, multi-step datepickers); handlers in `controls/` are auto-loaded at engine startup; `controls/demo_custom.py` and `tests/demo_controls.hunt` ship as a reference implementation
