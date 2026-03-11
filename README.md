@@ -324,6 +324,22 @@ EXTRACT the price of 'Laptop' into {price}
 VERIFY that '{price}' is present.
 ```
 
+### Variable Declaration
+
+Declare static test data at the top of the file using `@var:`. These values are pre-populated into the runtime memory before any step runs and can be interpolated anywhere a variable placeholder `{name}` is accepted.
+
+```text
+@var: {email}    = admin@example.com
+@var: {password} = secret123
+
+1. NAVIGATE to https://myapp.com/login
+2. Fill 'Email' with '{email}'
+3. Fill 'Password' with '{password}'
+4. Click the 'Login' button
+```
+
+The surrounding `{}` braces in the declaration are optional — `@var: email = ...` and `@var: {email} = ...` are equivalent. Values are stripped of leading/trailing whitespace. Declared variables behave exactly like variables populated by `EXTRACT` and can be used interchangeably with them in downstream steps.
+
 ---
 
 ## 🤖 Generate Hunt Files with AI Prompts

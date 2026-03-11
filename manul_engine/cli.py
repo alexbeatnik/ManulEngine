@@ -82,8 +82,8 @@ class _Tee:
 # ── Parse .hunt file ─────────────────────────────────────────────────────────
 def parse_hunt_file(
     filepath: str,
-) -> tuple[str, str, str, list[int], list[str], list[str]]:
-    """Return ``(mission_body, context, blueprint, step_file_lines, setup_lines, teardown_lines)``.
+) -> tuple[str, str, str, list[int], list[str], list[str], dict[str, str]]:
+    """Return ``(mission_body, context, blueprint, step_file_lines, setup_lines, teardown_lines, parsed_vars)``.
 
     *step_file_lines[i]* is the 1-based file line number of the *(i+1)*-th
     numbered step, in order of appearance.  Used to map editor gutter
@@ -94,11 +94,17 @@ def parse_hunt_file(
     *setup_lines* / *teardown_lines* contain the instruction strings extracted
     from ``[SETUP]`` / ``[TEARDOWN]`` blocks respectively, ready for
     execution by :func:`manul_engine.hooks.run_hooks`.
+
+    *parsed_vars* contains key/value pairs declared with ``@var: {key} = value``
+    at the top of the file.  Keys are stored without the surrounding ``{}``
+    braces and are pre-populated into the engine's runtime memory before any
+    step runs, enabling interpolation like ``Fill 'Email' with '{email}'``.
     """
     from .hooks import RE_SETUP, RE_END_SETUP, RE_TEARDOWN, RE_END_TEARDOWN
 
     context = ""
     blueprint = ""
+    parsed_vars: dict[str, str] = {}
     mission_lines:  list[str] = []
     step_file_lines: list[int] = []
     setup_lines:    list[str] = []
@@ -138,6 +144,11 @@ def parse_hunt_file(
                 context = stripped.split(":", 1)[1].strip()
             elif stripped.startswith("@blueprint:"):
                 blueprint = stripped.split(":", 1)[1].strip()
+            elif stripped.startswith("@var:"):
+                var_part = stripped[5:].strip()
+                m = re.match(r"\{?([^}=\s]+)\}?\s*=\s*(.*)", var_part)
+                if m:
+                    parsed_vars[m.group(1).strip()] = m.group(2).strip()
             elif not stripped.startswith("#") and stripped:
                 mission_lines.append(line)
                 if re.match(r'^\d+\.', stripped):
@@ -150,6 +161,7 @@ def parse_hunt_file(
         step_file_lines,
         setup_lines,
         teardown_lines,
+        parsed_vars,
     )
 
 
@@ -183,7 +195,7 @@ async def _run_hunt_file(
     print(f"📜 EXECUTING MANUL HUNT: {filename}")
     print(f"{'='*60}")
 
-    mission, context, blueprint, step_file_lines, setup_lines, teardown_lines = (
+    mission, context, blueprint, step_file_lines, setup_lines, teardown_lines, parsed_vars = (
         parse_hunt_file(path)
     )
 
@@ -226,6 +238,7 @@ async def _run_hunt_file(
             hunt_dir=hunt_dir,
             hunt_file=path,
             step_file_lines=step_file_lines,
+            initial_vars=parsed_vars,
         )
         return bool(result)
     except Exception as exc:

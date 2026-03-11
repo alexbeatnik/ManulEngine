@@ -797,7 +797,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             print(f"    ⚠️  Auto-Nav: {_ann_exc}")
 
     async def run_mission(self, task: str, strategic_context: str = "", hunt_dir: str | None = None,
-                          hunt_file: str | None = None, step_file_lines: "list[int] | None" = None) -> bool:
+                          hunt_file: str | None = None, step_file_lines: "list[int] | None" = None,
+                          initial_vars: "dict | None" = None) -> bool:
         """
         Execute a full browser automation mission.
 
@@ -831,6 +832,10 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
             ok = True
             done = False
+            # Pre-populate runtime memory with static variables declared via
+            # @var: {key} = value in the hunt file (or passed programmatically).
+            if initial_vars:
+                self.memory.update(initial_vars)
             # Cache lookup_page_name() results within this mission.
             # The cache is invalidated when pages.json is modified on disk so live
             # edits made during a long run are still reflected within one step.
