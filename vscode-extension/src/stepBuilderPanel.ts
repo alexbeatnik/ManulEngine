@@ -11,7 +11,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
-import { execFile, spawn } from "child_process";
+import { spawn } from "child_process";
 import { findManulExecutable } from "./huntRunner";
 
 // ── Hook scaffold constants ──────────────────────────────────────────────────
@@ -562,9 +562,20 @@ async function runLiveScanCommand(rawUrl: string): Promise<void> {
           stdio: ["ignore", "ignore", "pipe"],
         });
         let stderrBuf = "";
+        let settled = false;
         proc.stderr.on("data", (chunk: Buffer) => { stderrBuf += chunk.toString(); });
         const killTimer = setTimeout(() => { proc.kill(); }, 90_000);
+        proc.on("error", (err) => {
+          if (settled) { return; }
+          settled = true;
+          clearTimeout(killTimer);
+          const detail = stderrBuf.trim() || err.message || String(err);
+          vscode.window.showErrorMessage(`ManulEngine: Scan failed — unable to start manul: ${detail}`);
+          resolve();
+        });
         proc.on("close", (code) => {
+          if (settled) { return; }
+          settled = true;
           clearTimeout(killTimer);
           if (code !== 0) {
             const detail = stderrBuf.trim() || `process exited with code ${code}`;

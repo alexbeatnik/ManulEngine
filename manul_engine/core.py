@@ -960,8 +960,17 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                 _cc_mode = "locate"
                             _cc_quoted = extract_quoted(step, preserve_case=True)
                             if _cc_mode == "input" and len(_cc_quoted) >= 2:
+                                # target = field/control name, value = text to type
+                                _cc_target, _cc_value = _cc_quoted[0], _cc_quoted[-1]
+                            elif _cc_mode == "select" and len(_cc_quoted) >= 2:
+                                # target = dropdown/control name (last quoted), value = option (first quoted)
+                                # e.g. Select 'Express' from the 'Shipping Method' dropdown
+                                _cc_target, _cc_value = _cc_quoted[-1], _cc_quoted[0]
+                            elif _cc_mode == "drag" and len(_cc_quoted) >= 2:
+                                # target = drag source, value = drop destination
                                 _cc_target, _cc_value = _cc_quoted[0], _cc_quoted[-1]
                             elif _cc_quoted:
+                                # click/hover/locate: first quoted token is the target, no value
                                 _cc_target, _cc_value = _cc_quoted[0], None
                             else:
                                 _cc_target, _cc_value = "", None

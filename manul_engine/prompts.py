@@ -240,7 +240,12 @@ def lookup_page_name(url: str) -> str:
     # auto-populated entries from previous lookups.  Fall back to the package-root
     # copy only when CWD has no file at all (fresh checkout without a local copy).
     _live_registry: dict[str, dict[str, str]] = PAGE_REGISTRY
-    _effective_read_path = _PAGES_WRITE_PATH if _PAGES_WRITE_PATH.exists() else _PAGES_READ_PATH
+    # Prefer _PAGES_WRITE_PATH (CWD) when it has real content; an empty file
+    # produced by the auto-create block at module load time is treated as absent
+    # so the richer package/repo copy stays in effect until the user (or
+    # _auto_populate_registry) writes actual entries.
+    _cwd_populated = _PAGES_WRITE_PATH.exists() and _PAGES_WRITE_PATH.stat().st_size > 4
+    _effective_read_path = _PAGES_WRITE_PATH if _cwd_populated else _PAGES_READ_PATH
     if _effective_read_path.exists():
         try:
             with open(_effective_read_path, encoding="utf-8") as _rf:
