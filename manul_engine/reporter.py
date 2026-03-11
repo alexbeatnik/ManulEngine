@@ -350,6 +350,7 @@ def _render_mission(mission: MissionResult) -> str:
     if mission.attempts > 1:
         meta_parts.append(f"{mission.attempts} attempts")
 
+    meta_text = " \u00b7 ".join(meta_parts)
     steps_html = ""
     if mission.steps:
         rows = "\n".join(_render_step_row(s) for s in mission.steps)
@@ -372,7 +373,7 @@ def _render_mission(mission: MissionResult) -> str:
         f'    <span class="icon">{icon}</span>'
         f'    <span class="name">{_esc(mission.name)}</span>'
         f'    <span class="badge {badge_class}">{status}</span>'
-        f'    <span class="meta">{" \u00b7 ".join(meta_parts)}</span>'
+        f'    <span class="meta">{meta_text}</span>'
         f'  </div>'
         f'  <div class="mission-body">{steps_html}</div>'
         f'</div>'
