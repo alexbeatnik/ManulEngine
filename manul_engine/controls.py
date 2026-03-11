@@ -91,11 +91,13 @@ def load_custom_controls(workspace_dir: str) -> None:
     resolved = str(Path(workspace_dir).resolve())
     if resolved in _LOADED_DIRS:
         return
-    _LOADED_DIRS.add(resolved)
 
     controls_dir = Path(resolved) / "controls"
     if not controls_dir.is_dir():
         return
+    # Only mark as loaded after confirming the controls directory exists, so a
+    # later call can still pick up the directory if it is created after this one.
+    _LOADED_DIRS.add(resolved)
 
     for py_file in sorted(controls_dir.glob("*.py")):
         if py_file.name.startswith("_"):

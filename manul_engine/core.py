@@ -35,7 +35,7 @@ from .js_scripts import SNAPSHOT_JS
 from .scoring import score_elements
 from .actions import _ActionsMixin
 from .cache import _ControlsCacheMixin
-from .controls import load_custom_controls, get_custom_control, _CUSTOM_CONTROLS
+from .controls import load_custom_controls, get_custom_control
 
 
 class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
@@ -975,7 +975,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             else:
                                 _cc_target, _cc_value = "", None
                             _cc_handler = None
-                            if _cc_target and _CUSTOM_CONTROLS:
+                            if _cc_target:
                                 _cc_page = _cc_page_cache.get(page.url) or prompts.lookup_page_name(page.url)
                                 _cc_page_cache[page.url] = _cc_page
                                 _cc_handler = get_custom_control(_cc_page, _cc_target)

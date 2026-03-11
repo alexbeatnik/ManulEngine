@@ -184,11 +184,15 @@ def _auto_populate_registry(url: str) -> str:
 
     # 2. Deep merge: never overwrite existing keys.
     if site_root_auto not in registry:
-        registry[site_root_auto] = {"Domain": placeholder}
+        # New site block: persist both the domain-level label and the specific URL.
+        registry[site_root_auto] = {"Domain": placeholder, url: placeholder}
     else:
-        # Site block exists; only add the specific page URL if not already present.
-        if url not in registry[site_root_auto]:
-            registry[site_root_auto][url] = placeholder
+        # Site block exists; backfill Domain/URL entries only if they are missing.
+        site_block = registry[site_root_auto]
+        if "Domain" not in site_block:
+            site_block["Domain"] = placeholder
+        if url not in site_block:
+            site_block[url] = placeholder
 
     # 3. Sync the in-memory PAGE_REGISTRY so subsequent lookups in this session
     #    see the latest state without another disk read.
