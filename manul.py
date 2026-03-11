@@ -30,7 +30,9 @@ def main() -> None:
     args = [a for a in sys.argv[1:] if a != "--headless"]
     if args and args[0] == "test":
         from manul_engine._test_runner import run_tests
-        log_path = os.path.join(os.getcwd(), "last_test_run.log")
+        _reports_dir = os.path.join(os.getcwd(), "reports")
+        os.makedirs(_reports_dir, exist_ok=True)
+        log_path = os.path.join(_reports_dir, "last_test_run.log")
         all_ok = asyncio.run(run_tests(log_path))
         print(f"\n📄 Full test log saved to: {log_path}")
         sys.exit(0 if all_ok else 1)

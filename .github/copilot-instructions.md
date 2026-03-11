@@ -28,6 +28,8 @@ manul_engine/
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
   cache.py                 _ControlsCacheMixin (persistent per-site controls cache)
   actions.py               _ActionsMixin (navigate, scroll, extract, verify, drag, press, right_click, upload, _execute_step, scan_page)
+  reporting.py             StepResult, MissionResult, RunSummary dataclasses
+  reporter.py              Self-contained HTML report generator (dark theme, base64 screenshots)
   prompts.py               JSON config loader, thresholds, LLM prompt templates
   scoring.py               score_elements() — pure function, 20+ heuristic rules
   js_scripts.py            All JS injected into the browser (includes SCAN_JS)
@@ -50,6 +52,8 @@ manul_engine/
     test_21_dynamic_vars.py    CALL PYTHON ... into {var} dynamic variable capture
     test_22_tags.py            @tags: / --tags CLI filter (20 assertions, no browser)
     test_23_advanced_interactions.py  PRESS/RIGHT CLICK/UPLOAD commands (39 assertions, no browser)
+    test_24_reporting.py       StepResult/MissionResult/RunSummary dataclasses (45 assertions)
+    test_25_reporter.py        HTML report generator (42 assertions, no browser)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
@@ -230,6 +234,7 @@ Wrong (do not do this):
 * **Exact Text Matching:** Put target texts in quotes (`'Save'`) to yield a high heuristic score.
 * **Verify After Actions:** Always use a `VERIFY` step after taking a significant action (e.g., login, form submit) before assuming the new page state.
 * **Implicit Context:** The engine reuses context if you refer to previous elements implicitly, e.g., `Type "Password" into that field`.
+* **MANDATORY — Reporting, Screenshots, and Retries are CLI/Execution concerns, NOT DSL syntax.** Never write steps like `RETRY 3`, `TAKE SCREENSHOT`, `GENERATE REPORT`, or similar in `.hunt` files. These features are controlled exclusively via CLI flags (`--retries`, `--screenshot`, `--html-report`), `manul_engine_configuration.json` keys (`retries`, `screenshot`, `html_report`), or VS Code Extension settings (`manulEngine.retries`, `manulEngine.screenshotMode`, `manulEngine.htmlReport`). When asked to add retries or reporting to a test, instruct the user to use CLI flags or config — never inject pseudo-steps into the hunt file.
 
 ### 9. Python Hooks (`[SETUP]` / `[TEARDOWN]`) and Inline `CALL PYTHON` Steps
 Hook blocks run synchronous Python functions **outside the browser** — the primary use case is injecting database state or calling an API before the mission starts. Inline `CALL PYTHON` steps run **inside the mission** as numbered steps, with identical safety guarantees.
@@ -264,6 +269,8 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * **Auto-Nav annotation:** When `auto_annotate` is enabled, `run_mission()` captures `url_before = page.url` before every step. For `NAVIGATE` steps, the annotation is written above the step itself. For all other steps, `url_after` is checked in the `finally` block — if the URL changed, `_auto_annotate_navigate(page, hunt_file, step_file_lines, i+1)` is called to insert a comment above the *next* step line. The comment uses the mapped page name when found in `pages.json`, or the full URL when the lookup returns an `"Auto:"` placeholder.
 * **`pages.json` — nested per-site format:** `{ "<site_root_url>": { "Domain": "<display_name>", "<regex_or_exact_url>": "<page_name>" } }`. `lookup_page_name(url)` in `prompts.py` re-reads this file from disk on **every call** (live edits take effect immediately with no restart). Resolution order: exact URL key → regex/substring patterns (skipping `"Domain"` key) → `"Domain"` fallback. When no site block matches, a new nested entry is auto-generated. The longest-prefix site block wins when multiple blocks could match.
 * **`_debug_prompt()` `debug-stop` token:** When Python receives `"debug-stop"` on stdin from the VS Code extension (user pressed ⏹ Debug Stop), it clears **both** `self._user_break_steps = set()` and `self.break_steps = set()`, then breaks the pause loop. The test run continues to completion without any further pauses.
+* **Reporting & HTML reports:** `reporting.py` owns `StepResult`, `MissionResult` (with `__bool__` — truthy if all steps passed), and `RunSummary` dataclasses. `reporter.py` owns `generate_report(summary, output_path)` — produces a self-contained dark-themed HTML file with dashboard stats, per-step accordion, and inline base64 screenshots. All artifacts (logs, HTML reports) are saved to `reports/` (auto-created by `cli.py`). The `reports/` directory is `.gitignored`.
+* **Screenshot capture:** `run_mission()` accepts `screenshot_mode` (`"none"`, `"on-fail"`, `"always"`). Screenshots are stored as base64 PNGs in `StepResult.screenshot_base64`.
 
 ## Running tests
 
@@ -295,6 +302,12 @@ manul --break-lines 5,10,15 tests/saucedemo.hunt
 manul scan https://example.com                   # scan → tests/draft.hunt (tests_home default)
 manul scan https://example.com tests/my.hunt     # scan → explicit output file
 manul scan https://example.com --headless        # headless scan
+
+# Retries, screenshots, HTML reports
+manul tests/ --retries 2                          # retry failed hunts up to 2 times
+manul tests/ --html-report                        # generate reports/manul_report.html
+manul tests/ --retries 2 --screenshot on-fail --html-report  # full CI combo
+manul tests/ --screenshot always --html-report    # every-step forensic report
 ```
 
 Ollama is optional, but required for:
@@ -330,6 +343,9 @@ Environment variables (`MANUL_*`) always override JSON values.
 | `nav_timeout` | `30000` | Navigation timeout (ms) |
 | `tests_home` | `"tests"` | Default directory for new hunt files and `SCAN PAGE` / `manul scan` output |
 | `auto_annotate` | `false` | If `true`, engine automatically inserts `# 📍 Auto-Nav: <name>` comments into `.hunt` files whenever the page URL changes during a run. Page names come from `pages.json`; falls back to full URL for unmapped pages. Overridable via `MANUL_AUTO_ANNOTATE` env var |
+| `retries` | `0` | Number of times to retry a failed hunt file before marking it as failed (0 = no retries) |
+| `screenshot` | `"none"` | Screenshot capture mode: `"none"` (default), `"on-fail"` (failed steps only), `"always"` (every step) |
+| `html_report` | `false` | Generate a self-contained HTML report after the run (`reports/manul_report.html`) |
 Threshold auto-calculation by model size: `<1b → 500`, `1-4b → 750`, `5-9b → 1000`, `10-19b → 1500`, `20b+ → 2000`, `null → 0`.
 
 Suggested config for mixed mode:

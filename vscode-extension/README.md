@@ -162,6 +162,9 @@ The extension probes the following locations in order (platform-aware):
 | `manulEngine.manulPath` | `""` | Absolute path to the `manul` CLI. Leave empty to auto-detect. |
 | `manulEngine.configFile` | `manul_engine_configuration.json` | Config file name resolved from the workspace root. |
 | `manulEngine.workers` | `null` | Max concurrent hunt files in Test Explorer. Overrides `workers` in config. Leave empty to use the config value (default: 1). |
+| `manulEngine.htmlReport` | `false` | Generate a self-contained HTML report after each run (saved to `reports/manul_report.html`). |
+| `manulEngine.retries` | `0` | Number of times to retry a failed hunt file before marking it as failed (0–10). |
+| `manulEngine.screenshotMode` | `"none"` | Screenshot capture mode: `none`, `on-fail` (failed steps only), `always` (every step). |
 
 ---
 
@@ -234,6 +237,13 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 ---
 
 ## Release Notes
+
+### 0.0.88
+- **📊 HTML Reports** — new `manulEngine.htmlReport` toggle in Config Panel (“📊 Reporting & Retries” section); generates a self-contained dark-themed HTML report with dashboard stats, per-step accordion, and inline base64 screenshots after each run. Report is saved to `reports/manul_report.html` in the workspace root
+- **🔄 Automatic Retries** — new `manulEngine.retries` setting (0–10) in Config Panel; retries each failed hunt the specified number of times before marking it as failed. Each retry is a full fresh browser run
+- **📷 Screenshot Capture** — new `manulEngine.screenshotMode` selector (`none` / `on-fail` / `always`) in Config Panel; screenshots are embedded as base64 in the HTML report
+- All three settings are auto-injected as CLI flags (`--html-report`, `--retries`, `--screenshot`) when running hunts via the extension — no manual CLI arguments needed
+- All artifacts (logs, reports) are now saved to the `reports/` directory — workspace stays clean
 
 ### 0.0.87
 - **📌 Static Variable Declaration (`@var:`)** — declare test data at the top of any `.hunt` file using `@var: {key} = value`; values are pre-populated into the engine's runtime memory before step 1 runs and can be interpolated anywhere a `{placeholder}` is accepted (e.g. `Fill 'Email' with '{user_email}'`). Both brace and bare-key forms are accepted. Keeps test data separate from test logic — no more hardcoded credentials scattered across steps

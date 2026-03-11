@@ -48,6 +48,9 @@ _KEY_MAP: dict[str, str] = {
     "log_thought_maxlen":     "MANUL_LOG_THOUGHT_MAXLEN",
     "workers":                "MANUL_WORKERS",
     "auto_annotate":          "MANUL_AUTO_ANNOTATE",
+    "retries":                "MANUL_RETRIES",
+    "screenshot":             "MANUL_SCREENSHOT",
+    "html_report":            "MANUL_HTML_REPORT",
 }
 
 # browser_args is a list and cannot be round-tripped through a plain env string
@@ -150,6 +153,13 @@ if not _PAGES_WRITE_PATH.exists():
         pass
 
 AUTO_ANNOTATE: bool = env_bool("MANUL_AUTO_ANNOTATE")
+
+# ── Retries & Reporting ──────────────────────────────────────────────────────
+RETRIES: int = max(0, int(os.getenv("MANUL_RETRIES", "0")))
+_VALID_SCREENSHOT = ("on-fail", "always", "none")
+_raw_screenshot = (os.getenv("MANUL_SCREENSHOT") or "on-fail").strip().lower()
+SCREENSHOT: str = _raw_screenshot if _raw_screenshot in _VALID_SCREENSHOT else "on-fail"
+HTML_REPORT: bool = env_bool("MANUL_HTML_REPORT")
 
 
 def _auto_populate_registry(url: str) -> str:

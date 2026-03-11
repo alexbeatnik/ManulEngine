@@ -18,6 +18,7 @@ import asyncio
 import datetime
 import inspect
 import json
+import os
 import re
 import time
 import traceback
@@ -37,6 +38,7 @@ from .scoring import score_elements
 from .actions import _ActionsMixin
 from .cache import _ControlsCacheMixin
 from .controls import load_custom_controls, get_custom_control
+from .reporting import StepResult, MissionResult
 
 
 class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
@@ -798,12 +800,15 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
     async def run_mission(self, task: str, strategic_context: str = "", hunt_dir: str | None = None,
                           hunt_file: str | None = None, step_file_lines: "list[int] | None" = None,
-                          initial_vars: "dict | None" = None) -> bool:
+                          initial_vars: "dict | None" = None,
+                          screenshot_mode: str = "none") -> MissionResult:
         """
         Execute a full browser automation mission.
 
         The task can be either a numbered step list ("1. Navigate to ... 2. Click ...")
         or a free-text description that will be decomposed by the LLM planner.
+
+        Returns a :class:`MissionResult` (truthy when status != "fail").
         """
         mode_label = f"[{self.model}]  — Transparent AI" if self.model else "— Heuristics-only (no AI)"
         print(f"\n🐾 ManulEngine {mode_label}  |  browser: {self.browser}")
@@ -828,10 +833,12 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
             if not plan:
                 await browser.close()
-                return False
+                return MissionResult(file=hunt_file or "", name="", status="fail")
 
             ok = True
             done = False
+            _step_results: list[StepResult] = []
+            _screenshot_mode = screenshot_mode
             # Pre-populate runtime memory with static variables declared via
             # @var: {key} = value in the hunt file (or passed programmatically).
             if initial_vars:
@@ -879,10 +886,12 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                     except Exception:
                         url_before = ""
 
+                    _step_ok = True
+                    _step_error: str | None = None
                     try:
                         if step_kind == "navigate":
                             if not await self._handle_navigate(page, step):
-                                ok = False; break
+                                _step_ok = False; ok = False; break
                             if _auto_annotate_live and hunt_file and step_file_lines:
                                 await self._auto_annotate_navigate(page, hunt_file, step_file_lines, i)
 
@@ -895,30 +904,30 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
                         elif step_kind == "extract":
                             if not await self._handle_extract(page, step):
-                                ok = False; break
+                                _step_ok = False; ok = False; break
 
                         elif step_kind == "verify":
                             if not await self._handle_verify(page, step, step_idx=i):
-                                ok = False; break
+                                _step_ok = False; ok = False; break
 
                         elif step_kind == "press_enter":
                             await self._handle_press_enter(page)
 
                         elif step_kind == "press":
                             if not await self._handle_press(page, step, strategic_context, step_idx=i):
-                                ok = False; break
+                                _step_ok = False; ok = False; break
 
                         elif step_kind == "right_click":
                             if not await self._handle_right_click(page, step, strategic_context, step_idx=i):
-                                ok = False; break
+                                _step_ok = False; ok = False; break
 
                         elif step_kind == "upload":
                             if not await self._handle_upload(page, step, strategic_context, step_idx=i, hunt_dir=hunt_dir):
-                                ok = False; break
+                                _step_ok = False; ok = False; break
 
                         elif step_kind == "scan_page":
                             if not await self._handle_scan_page(page, step):
-                                ok = False; break
+                                _step_ok = False; ok = False; break
 
                         elif step_kind == "call_python":
                             # Strip any leading step number, then re-check from
@@ -934,7 +943,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                 result = execute_hook_line(raw_instr, hunt_dir=hunt_dir)
                                 print(f"     {result.message}")
                                 if not result.success:
-                                    ok = False; break
+                                    _step_ok = False; ok = False; break
                                 if result.var_name and result.return_value is not None:
                                     self.memory[result.var_name] = result.return_value
                             else:
@@ -942,7 +951,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                 # label) — route through the normal action executor.
                                 if not await self._execute_step(page, step, strategic_context, step_idx=i):
                                     print("    ❌ ACTION FAILED")
-                                    ok = False; break
+                                    _step_ok = False; ok = False; break
 
                         elif step_kind == "debug":
                             # In debug_mode the pre-step _debug_prompt() above already
@@ -1006,17 +1015,40 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                         f"'{_cc_target}' (page='{_cc_page}'): {_cc_exc}\n"
                                         + traceback.format_exc()
                                     )
-                                    ok = False; break
+                                    _step_ok = False; ok = False; break
                             # ── End custom controls interception ──────────────────────────
                             elif not await self._execute_step(page, step, strategic_context, step_idx=i):
                                 print("    ❌ ACTION FAILED")
-                                ok = False; break
+                                _step_ok = False; ok = False; break
+                    except Exception as _step_exc:
+                        _step_ok = False
+                        _step_error = traceback.format_exc()
+                        raise
                     finally:
                         ended_at = datetime.datetime.now()
                         duration_s = time.perf_counter() - started_perf
+                        duration_ms = duration_s * 1000
                         print(
                             f"    ⏱️  STEP END @ {ended_at.strftime('%H:%M:%S')} — duration {duration_s:.2f}s"
                         )
+                        # ── Screenshot capture ────────────────────────────────────
+                        _ss_b64: str | None = None
+                        if _screenshot_mode == "always" or (_screenshot_mode == "on-fail" and not _step_ok):
+                            try:
+                                import base64 as _b64
+                                _ss_bytes = await page.screenshot(type="png")
+                                _ss_b64 = _b64.b64encode(_ss_bytes).decode("ascii")
+                            except Exception:
+                                pass
+                        # ── Collect step result ───────────────────────────────────
+                        _step_results.append(StepResult(
+                            index=i,
+                            text=step,
+                            status="pass" if _step_ok else "fail",
+                            duration_ms=duration_ms,
+                            error=_step_error,
+                            screenshot=_ss_b64,
+                        ))
                         # After non-NAVIGATE steps, check if the URL changed and
                         # annotate the next step with the new landing URL.
                         if _auto_annotate_live and hunt_file and step_file_lines \
@@ -1033,4 +1065,11 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             finally:
                 await browser.close()
 
-        return True if done else ok
+        _status = "pass" if (done or ok) else "fail"
+        return MissionResult(
+            file=hunt_file or "",
+            name=os.path.basename(hunt_file) if hunt_file else "",
+            status=_status,
+            steps=_step_results,
+            error=_step_results[-1].error if _step_results and _status == "fail" else None,
+        )

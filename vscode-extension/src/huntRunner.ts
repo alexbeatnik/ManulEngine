@@ -184,11 +184,20 @@ export function runHunt(
       if (breakLines && breakLines.length > 0) {
         spawnArgs.push("--break-lines", breakLines.join(","));
       }
+
+      // ── Reporting & retry flags from VS Code settings ──────────────────────
+      const _cfg = vscode.workspace.getConfiguration("manulEngine");
+      const _retries = _cfg.get<number>("retries", 0);
+      if (_retries > 0) { spawnArgs.push("--retries", String(_retries)); }
+      const _screenshot = _cfg.get<string>("screenshotMode", "on-fail");
+      if (_screenshot && _screenshot !== "on-fail") { spawnArgs.push("--screenshot", _screenshot); }
+      if (_cfg.get<boolean>("htmlReport", false)) { spawnArgs.push("--html-report"); }
+
       spawnArgs.push(huntFile);
       // Only inject MANUL_AUTO_ANNOTATE when it is explicitly ON in VS Code settings.
       // When the setting is false/unset, do NOT inject the env var — this lets the
       // project's manul_engine_configuration.json auto_annotate value take effect.
-      const _autoAnnotate = vscode.workspace.getConfiguration("manulEngine").get<boolean>("autoAnnotate", false);
+      const _autoAnnotate = _cfg.get<boolean>("autoAnnotate", false);
       proc = spawn(manulExe, spawnArgs, {
         cwd,
         env: {
@@ -247,11 +256,20 @@ export function runHuntFileDebugPanel(
     if (breakLines && breakLines.length > 0) {
       spawnArgs.push("--break-lines", breakLines.join(","));
     }
+
+    // ── Reporting & retry flags from VS Code settings ──────────────────────
+    const _cfgPanel = vscode.workspace.getConfiguration("manulEngine");
+    const _retriesPanel = _cfgPanel.get<number>("retries", 0);
+    if (_retriesPanel > 0) { spawnArgs.push("--retries", String(_retriesPanel)); }
+    const _screenshotPanel = _cfgPanel.get<string>("screenshotMode", "on-fail");
+    if (_screenshotPanel && _screenshotPanel !== "on-fail") { spawnArgs.push("--screenshot", _screenshotPanel); }
+    if (_cfgPanel.get<boolean>("htmlReport", false)) { spawnArgs.push("--html-report"); }
+
     spawnArgs.push(huntFile);
 
     let proc: ChildProcess;
     try {
-      const _autoAnnotatePanel = vscode.workspace.getConfiguration("manulEngine").get<boolean>("autoAnnotate", false);
+      const _autoAnnotatePanel = _cfgPanel.get<boolean>("autoAnnotate", false);
       proc = spawn(manulExe, spawnArgs, {
         cwd,
         stdio: ["pipe", "pipe", "pipe"],

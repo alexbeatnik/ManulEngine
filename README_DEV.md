@@ -40,6 +40,8 @@ ManulEngine/
 │   ├── core.py                       ManulEngine class (LLM, resolution, mission runner)
 │   ├── cache.py                      Persistent per-site controls cache mixin
 │   ├── actions.py                    Action execution mixin (click, type, select, hover, drag, scan_page)
+│   ├── reporting.py                  StepResult, MissionResult, RunSummary dataclasses
+│   ├── reporter.py                   Self-contained HTML report generator (dark theme, base64 screenshots)
 │   └── test/
 │       ├── test_00_engine.py         Engine micro-suite (synthetic DOM via local HTML)
 │       ├── test_01_ecommerce.py      Scenario pack: ecommerce
@@ -54,7 +56,10 @@ ManulEngine/
 │       ├── test_19_custom_controls.py Unit: Custom Controls registry + engine interception (19 assertions, no browser)
 │       ├── test_20_variables.py      Unit: @var: static variable declaration (17 assertions, no browser)
 │       ├── test_21_dynamic_vars.py   Unit: CALL PYTHON ... into {var} dynamic variable capture
-│       └── test_22_tags.py           Unit: @tags: / --tags CLI filter (20 assertions, no browser)
+│       ├── test_22_tags.py           Unit: @tags: / --tags CLI filter (20 assertions, no browser)
+│       ├── test_23_advanced_interactions.py  Unit: PRESS/RIGHT CLICK/UPLOAD (39 assertions, no browser)
+│       ├── test_24_reporting.py      Unit: StepResult/MissionResult/RunSummary dataclasses (45 assertions)
+│       └── test_25_reporter.py       Unit: HTML report generator (42 assertions, no browser)
 ├── controls/                         User-owned custom Python handlers (auto-loaded at engine startup)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
@@ -66,6 +71,7 @@ ManulEngine/
 │   ├── rahul.hunt
 │   ├── saucedemo.hunt
 │   └── wikipedia.hunt
+├── reports/                          Generated logs and HTML reports (auto-created, .gitignored)
 ├── prompts/                          LLM prompt templates for hunt file generation
 │   ├── README.md                     Usage guide (Copilot, ChatGPT, Claude, Ollama)
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
@@ -362,7 +368,11 @@ Environment variables (`MANUL_*`) always override JSON values — useful for CI/
   "log_thought_maxlen": 0,
   "workers": 1,
   "tests_home": "tests",
-  "auto_annotate": false
+  "auto_annotate": false,
+
+  "retries": 0,
+  "screenshot": "none",
+  "html_report": false
 }
 ```
 
@@ -407,6 +417,18 @@ manul scan https://example.com                  # scan → tests/draft.hunt (tes
 manul scan https://example.com tests/my.hunt    # explicit output file
 manul scan https://example.com --headless       # headless scan
 manul scan https://example.com --browser firefox
+
+# Retry failed hunts up to 2 times
+manul tests/ --retries 2
+
+# Generate a standalone HTML report (saved to reports/manul_report.html)
+manul tests/ --html-report
+
+# Screenshots on failure + HTML report + retries (full CI combo)
+manul tests/ --retries 2 --screenshot on-fail --html-report
+
+# Screenshots for every step (detailed forensic report)
+manul tests/ --screenshot always --html-report
 
 # Dev launcher (from repo root, no install needed)
 python manul.py test               # run synthetic DOM laboratory tests
@@ -463,7 +485,7 @@ manul tests/mission.hunt
 
 ## 🐾 Chaos Chamber Verified (1466+ Tests)
 
-The engine is battle-tested with **1466+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
+The engine is battle-tested with **1592+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).
@@ -473,6 +495,9 @@ The engine is battle-tested with **1466+** synthetic DOM/unit tests covering the
 * **Static Variables unit suite:** `manul_engine/test/test_20_variables.py` (parser correctness, `initial_vars` interpolation, 17 assertions, no browser).
 * **Dynamic Variables unit suite:** `manul_engine/test/test_21_dynamic_vars.py` (`CALL PYTHON ... into {var}` capture and substitution).
 * **Tags unit suite:** `manul_engine/test/test_22_tags.py` (`@tags:` parsing + `--tags` CLI filter, 20 assertions, no browser).
+* **Advanced interactions unit suite:** `manul_engine/test/test_23_advanced_interactions.py` (PRESS, RIGHT CLICK, UPLOAD commands, 39 assertions, no browser).
+* **Reporting unit suite:** `manul_engine/test/test_24_reporting.py` (StepResult, MissionResult, RunSummary dataclasses, 45 assertions, no browser).
+* **HTML reporter unit suite:** `manul_engine/test/test_25_reporter.py` (HTML report generation, base64 screenshots, XSS safety, 42 assertions, no browser).
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
 Run the synthetic suite:

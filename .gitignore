@@ -202,9 +202,8 @@ cython_debug/
 # Manul persistent control cache
 cache/
 
-# Manul runtime logs
-last_run.log
-last_test_run.log
+# Manul runtime artifacts (reports, logs)
+reports/
 
 # VS Code extension artifacts
 *.vsix

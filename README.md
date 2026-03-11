@@ -56,6 +56,29 @@ Set `MANUL_AI_THRESHOLD=0` to disable the LLM entirely and run fully on determin
 
 Successful element resolutions are stored per-site and reused on subsequent runs — making repeated test flows dramatically faster.
 
+### 🔄 Automatic Retries — Tame Flaky Tests
+
+Real-world E2E tests flake. Network hiccups, slow renders, third-party scripts — you name it. ManulEngine lets you retry failed hunts automatically:
+
+```bash
+manul tests/ --retries 2                # retry each failed hunt up to 2 times
+manul tests/ --retries 3 --html-report  # retry + generate an HTML report
+```
+
+Or set `"retries": 2` in `manul_engine_configuration.json` for a permanent default. Each retry is a full fresh run — no stale state carried over.
+
+### 📊 Standalone HTML Reports
+
+One flag. One self-contained HTML file. Dark-themed dashboard with pass/fail stats, per-step accordion, inline base64 screenshots, and XSS-safe output — no external dependencies, no CDN, no server.
+
+```bash
+manul tests/ --html-report                          # report saved to reports/manul_report.html
+manul tests/ --screenshot always --html-report      # embed a screenshot for every step
+manul tests/ --screenshot on-fail --html-report     # screenshots only on failures
+```
+
+All artifacts (logs, reports) are saved to the `reports/` directory — your workspace stays clean.
+
 ---
 
 ## 🎛️ Custom Controls — Escape Hatch for Complex UI
@@ -258,6 +281,18 @@ manul my_tests/ --tags smoke
 # Run only files tagged 'smoke' OR 'critical'
 manul my_tests/ --tags smoke,critical
 
+# Retry failed hunts up to 2 times
+manul my_tests/ --retries 2
+
+# Generate a standalone HTML report (saved to reports/manul_report.html)
+manul my_tests/ --html-report
+
+# Screenshots on failure + HTML report + retries (the full CI combo)
+manul my_tests/ --retries 2 --screenshot on-fail --html-report
+
+# Screenshots for every step (detailed forensic report)
+manul my_tests/ --screenshot always --html-report
+
 # Interactive debug mode (terminal) — pause before every step, confirm in terminal
 manul --debug my_tests/smoke.hunt
 
@@ -453,7 +488,11 @@ Create `manul_engine_configuration.json` in your project root — all settings a
   "log_thought_maxlen": 0,
   "workers": 1,
   "tests_home": "tests",
-  "auto_annotate": false
+  "auto_annotate": false,
+
+  "retries": 0,
+  "screenshot": "none",
+  "html_report": false
 }
 ```
 
@@ -488,6 +527,9 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 | `workers` | `1` | Number of hunt files to run concurrently (each gets its own browser) |
 | `tests_home` | `"tests"` | Default directory for new hunt files and `SCAN PAGE` / `manul scan` output |
 | `auto_annotate` | `false` | Automatically insert `# 📍 Auto-Nav:` comments in hunt files whenever the browser URL changes (not only on `NAVIGATE` steps). Page names are resolved from `pages.json`; unmapped URLs fall back to the full URL |
+| `retries` | `0` | Number of times to retry a failed hunt file before marking it as failed (0 = no retries) |
+| `screenshot` | `"none"` | Screenshot capture mode: `"none"` (default), `"on-fail"` (screenshot on failed steps), `"always"` (every step) |
+| `html_report` | `false` | Generate a self-contained HTML report after the run (`reports/manul_report.html`) |
 
 ---
 
@@ -516,7 +558,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 
 ## 🐾 Battle-Tested
 
-ManulEngine is verified against **1466+ synthetic DOM tests** covering:
+ManulEngine is verified against **1592+ synthetic DOM tests** covering:
 
 - Shadow DOM, invisible overlays, zero-pixel honeypots
 - Custom dropdowns, drag-and-drop, hover menus

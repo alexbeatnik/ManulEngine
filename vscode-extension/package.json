@@ -232,6 +232,29 @@
           "type": "boolean",
           "default": false,
           "description": "Automatically annotate hunt output with page names when the browser navigates to a page matched by `page_registry` in manul_engine_configuration.json. Sets the MANUL_AUTO_ANNOTATE environment variable when running hunts."
+        },
+        "manulEngine.htmlReport": {
+          "type": "boolean",
+          "default": false,
+          "description": "Generate a self-contained HTML report (manul_report.html) after each test run."
+        },
+        "manulEngine.retries": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Number of times to retry a failed hunt file. Tests that pass on retry are marked as flaky."
+        },
+        "manulEngine.screenshotMode": {
+          "type": "string",
+          "default": "on-fail",
+          "enum": ["on-fail", "always", "none"],
+          "enumDescriptions": [
+            "Capture a screenshot only when a step fails",
+            "Capture a screenshot after every step",
+            "Never capture screenshots"
+          ],
+          "description": "When to capture browser screenshots during test execution."
         }
       }
     }
