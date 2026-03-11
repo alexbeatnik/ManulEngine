@@ -232,7 +232,8 @@ async def _test_engine_integration() -> None:
 
     # 2d. 'to' alias also works end-to-end.
     captured_steps.clear()
-    engine2 = ManulEngine(model=None, disable_cache=True)
+    with patch("manul_engine.core.load_custom_controls"):
+        engine2 = ManulEngine(model=None, disable_cache=True)
     mission2 = (
         "1. CALL PYTHON api_helpers.fetch_otp to {token}\n"
         "2. Fill 'Token' with '{token}'\n"

@@ -39,7 +39,7 @@ RE_TEARDOWN     = re.compile(r"^\[TEARDOWN\]$",       re.IGNORECASE)
 RE_END_TEARDOWN = re.compile(r"^\[END\s+TEARDOWN\]$", re.IGNORECASE)
 
 _RE_CALL_PYTHON = re.compile(
-    r"^CALL\s+PYTHON\s+([\w.]+)(?:\s+(?:into|to)\s+\{?(\w+)\}?)?\s*$",
+    r"^CALL\s+PYTHON\s+([\w.]+)(?:\s+(?:into|to)\s+\{(\w+)\})?\s*$",
     re.IGNORECASE,
 )
 

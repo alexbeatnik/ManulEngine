@@ -456,8 +456,7 @@ async def main() -> None:
             files = [f for f in files if filter_tags & set(_read_tags(f))]
             skipped = before - len(files)
             tag_str = ",".join(sorted(filter_tags))
-            if skipped:
-                print(f"🏷️  --tags '{tag_str}': {skipped} file(s) skipped, {len(files)} matched.")
+            print(f"🏷️  --tags '{tag_str}': {skipped} file(s) skipped, {len(files)} matched.")
             if not files:
                 print(f"📭 No .hunt files matched tags: {tag_str}")
                 return

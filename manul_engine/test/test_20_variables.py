@@ -228,7 +228,8 @@ async def _test_interpolation() -> None:
     )
 
     # 2e. No initial_vars → memory starts empty for that key.
-    engine2 = ManulEngine(model=None, disable_cache=True)
+    with patch("manul_engine.core.load_custom_controls"):
+        engine2 = ManulEngine(model=None, disable_cache=True)
     _assert(
         engine2.memory.get("user_email") is None,
         "fresh engine has no pre-populated variables without initial_vars",
@@ -236,7 +237,8 @@ async def _test_interpolation() -> None:
 
     # 2f. initial_vars=None is accepted and treated as no-op.
     captured_steps.clear()
-    engine3 = ManulEngine(model=None, disable_cache=True)
+    with patch("manul_engine.core.load_custom_controls"):
+        engine3 = ManulEngine(model=None, disable_cache=True)
     with (
         patch("manul_engine.core.async_playwright", return_value=mock_playwright),
         patch.object(engine3, "_execute_step", side_effect=_fake_execute_step),

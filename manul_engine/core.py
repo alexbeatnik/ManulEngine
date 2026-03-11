@@ -917,13 +917,26 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             # that happen to contain the words "CALL PYTHON".
                             instruction = re.sub(r'^\s*\d+\.\s*', '', step).strip()
                             if re.match(r'CALL\s+PYTHON\b', instruction.upper()):
+                                # Preserve the binding variable from the RAW step
+                                # (before substitute_memory ran) so that a {var}
+                                # that already exists in memory isn't expanded away
+                                # and the capture clause is lost.
+                                raw_instr = re.sub(r'^\s*\d+\.\s*', '', raw_step).strip()
+                                _raw_bind = re.search(
+                                    r'\b(?:into|to)\s+\{(\w+)\}', raw_instr, re.IGNORECASE
+                                )
                                 result = execute_hook_line(instruction, hunt_dir=hunt_dir)
                                 print(f"     {result.message}")
                                 if not result.success:
                                     ok = False; break
                                 # Bind return value to memory when 'into {var}' was used.
-                                if result.var_name and result.return_value is not None:
-                                    self.memory[result.var_name] = result.return_value
+                                # Prefer the var extracted from raw_step to guard against
+                                # accidental {var} → value substitution before parsing.
+                                _bind_var = (
+                                    _raw_bind.group(1) if _raw_bind else None
+                                ) or result.var_name
+                                if _bind_var and result.return_value is not None:
+                                    self.memory[_bind_var] = result.return_value
                             else:
                                 # "CALL PYTHON" appears mid-sentence (e.g. a button
                                 # label) — route through the normal action executor.
