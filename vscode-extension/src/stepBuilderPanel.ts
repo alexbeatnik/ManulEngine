@@ -64,7 +64,7 @@ const STEP_TEMPLATES: StepTemplate[] = [
   { label: "Verify absent", icon: "🚫", template: "VERIFY that '' is NOT present" },
   { label: "Verify state",  icon: "🔒", template: "VERIFY that '' is DISABLED" },
   { label: "Press Enter",   icon: "↩️",  template: "PRESS ENTER" },
-  { label: "Press Key",     icon: "⌨️",  template: "PRESS Enter" },
+  { label: "Press Key",     icon: "⌨️",  template: "PRESS <KEY>" },
   { label: "Right Click",   icon: "🖱️",  template: "RIGHT CLICK ''" },
   { label: "Upload File",   icon: "📎", template: "UPLOAD '' to ''" },
   { label: "Wait",          icon: "⏸️",  template: "WAIT 2" },

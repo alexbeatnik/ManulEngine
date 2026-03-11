@@ -25,6 +25,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
+from manul_engine import prompts
 from manul_engine.helpers import classify_step, detect_mode
 
 # ── Test helpers ──────────────────────────────────────────────────────────────
@@ -191,7 +192,7 @@ async def _test_handle_press_targeted() -> None:
     with patch.object(engine, "_resolve_element", new=AsyncMock(return_value=el)):
         ok = await engine._handle_press(page, "3. PRESS ArrowDown on 'Search Input'")
         _assert(ok, "PRESS ArrowDown on 'Target' returns True")
-        page._mock_locator.press.assert_awaited_once_with("ArrowDown", timeout=5000)
+        page._mock_locator.press.assert_awaited_once_with("ArrowDown", timeout=prompts.TIMEOUT)
         _assert(True, "locator.press called with 'ArrowDown'")
 
 
@@ -253,14 +254,18 @@ async def _test_handle_upload() -> None:
     el["tag_name"] = "input"
     el["input_type"] = "file"
 
-    with patch.object(engine, "_resolve_element", new=AsyncMock(return_value=el)):
-        ok = await engine._handle_upload(
-            page, "1. UPLOAD 'avatar.png' to 'Profile Picture'",
-            hunt_dir="/tmp",
-        )
-        _assert(ok, "UPLOAD returns True")
-        page._mock_locator.set_input_files.assert_awaited_once()
-        _assert(True, "set_input_files called")
+    with tempfile.TemporaryDirectory() as tmp:
+        test_file = Path(tmp) / "avatar.png"
+        test_file.write_bytes(b"\x89PNG")
+
+        with patch.object(engine, "_resolve_element", new=AsyncMock(return_value=el)):
+            ok = await engine._handle_upload(
+                page, "1. UPLOAD 'avatar.png' to 'Profile Picture'",
+                hunt_dir=tmp,
+            )
+            _assert(ok, "UPLOAD returns True")
+            page._mock_locator.set_input_files.assert_awaited_once()
+            _assert(True, "set_input_files called")
 
 
 async def _test_handle_upload_missing_args() -> None:
@@ -277,11 +282,16 @@ async def _test_handle_upload_not_found() -> None:
     engine = _make_engine()
     page = _mock_page()
 
-    with patch.object(engine, "_resolve_element", new=AsyncMock(return_value=None)):
-        ok = await engine._handle_upload(
-            page, "2. UPLOAD 'file.pdf' to 'Dropzone'",
-        )
-        _assert(not ok, "UPLOAD on missing element returns False")
+    with tempfile.TemporaryDirectory() as tmp:
+        test_file = Path(tmp) / "file.pdf"
+        test_file.write_bytes(b"%PDF")
+
+        with patch.object(engine, "_resolve_element", new=AsyncMock(return_value=None)):
+            ok = await engine._handle_upload(
+                page, "2. UPLOAD 'file.pdf' to 'Dropzone'",
+                hunt_dir=tmp,
+            )
+            _assert(not ok, "UPLOAD on missing element returns False")
 
 
 async def _test_handle_upload_hunt_dir_resolution() -> None:
@@ -289,6 +299,8 @@ async def _test_handle_upload_hunt_dir_resolution() -> None:
     engine = _make_engine()
     page = _mock_page()
     el = _mock_element(name="Import")
+    el["tag_name"] = "input"
+    el["input_type"] = "file"
 
     # Create a temporary file in a temp directory to verify resolution
     with tempfile.TemporaryDirectory() as tmp:
@@ -305,6 +317,38 @@ async def _test_handle_upload_hunt_dir_resolution() -> None:
             resolved = call_args.args[0]
             _assert(str(test_file.resolve()) == resolved,
                     f"file resolved to hunt_dir path: {resolved}")
+
+
+async def _test_handle_upload_file_not_found() -> None:
+    print("\n  ── _handle_upload — file not found ───────────────────")
+    engine = _make_engine()
+    page = _mock_page()
+
+    with tempfile.TemporaryDirectory() as tmp:
+        ok = await engine._handle_upload(
+            page, "1. UPLOAD 'nonexistent.pdf' to 'Target'",
+            hunt_dir=tmp,
+        )
+        _assert(not ok, "UPLOAD with missing file returns False")
+
+
+async def _test_handle_upload_wrong_element_type() -> None:
+    print("\n  ── _handle_upload — wrong element type ───────────────")
+    engine = _make_engine()
+    page = _mock_page()
+    el = _mock_element(name="Submit Button")
+    # default tag_name is 'button', not 'input type=file'
+
+    with tempfile.TemporaryDirectory() as tmp:
+        test_file = Path(tmp) / "doc.txt"
+        test_file.write_text("hello")
+
+        with patch.object(engine, "_resolve_element", new=AsyncMock(return_value=el)):
+            ok = await engine._handle_upload(
+                page, "1. UPLOAD 'doc.txt' to 'Submit Button'",
+                hunt_dir=tmp,
+            )
+            _assert(not ok, "UPLOAD on non-file-input element returns False")
 
 
 # ── Suite runner ──────────────────────────────────────────────────────────────
@@ -332,6 +376,8 @@ async def run_suite() -> bool:
     await _test_handle_upload_missing_args()
     await _test_handle_upload_not_found()
     await _test_handle_upload_hunt_dir_resolution()
+    await _test_handle_upload_file_not_found()
+    await _test_handle_upload_wrong_element_type()
 
     print(f"\n  ── RESULT: {_PASS} passed, {_FAIL} failed ──")
     total = _PASS + _FAIL

@@ -154,9 +154,19 @@ class _ActionsMixin:
             if candidate.exists():
                 file_path = str(candidate.resolve())
             else:
-                file_path = str(_Path.cwd() / file_path_raw)
+                fallback = _Path.cwd() / file_path_raw
+                if fallback.exists():
+                    file_path = str(fallback.resolve())
+                else:
+                    print(f"    ❌ UPLOAD: file not found — tried '{candidate}' and '{fallback}'")
+                    return False
         else:
-            file_path = str(_Path.cwd() / file_path_raw)
+            cwd_path = _Path.cwd() / file_path_raw
+            if cwd_path.exists():
+                file_path = str(cwd_path.resolve())
+            else:
+                print(f"    ❌ UPLOAD: file not found — tried '{cwd_path}'")
+                return False
 
         search_texts = [quoted[1].lower()]
         el = await self._resolve_element(
@@ -175,6 +185,11 @@ class _ActionsMixin:
                 await self._highlight(page, el["id"], by_js_id=True)
         except Exception:
             pass
+        tag = str(el.get("tag_name", "")).lower()
+        itype = str(el.get("input_type", "")).lower()
+        if tag != "input" or itype != "file":
+            print(f"    ❌ UPLOAD: resolved element is <{tag} type='{itype}'>, expected <input type='file'>")
+            return False
         await loc.set_input_files(file_path, timeout=prompts.TIMEOUT)
         print(f"    📎 Uploaded '{file_path_raw}' → '{self._fmt_el_name(el['name'])}'")
         await asyncio.sleep(ACTION_WAIT)

@@ -53,8 +53,8 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
     ("done",        re.compile(r'\bDONE\b')),
 ]
 
-# Pre-compiled pattern used by run_mission to detect system steps for debug
-# pause ordering (system steps pause before, action steps pause after resolve).
+# Legacy pre-compiled system-step pattern kept for backwards compatibility.
+# Prefer classify_step() for step classification.
 RE_SYSTEM_STEP = re.compile(
     r'\b(?:NAVIGATE|WAIT|SCROLL|EXTRACT|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|DEBUG|PAUSE|DONE)\b'
 )

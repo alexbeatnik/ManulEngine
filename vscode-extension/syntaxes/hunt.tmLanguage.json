@@ -62,7 +62,7 @@
     },
     "system-keyword": {
       "name": "keyword.control.hunt",
-      "match": "\\b(NAVIGATE to|NAVIGATE|VERIFY that|VERIFY|EXTRACT|SCROLL DOWN inside the list|SCROLL DOWN|SCROLL|PRESS ENTER|PRESS|RIGHT CLICK|UPLOAD|WAIT|DONE|DOUBLE CLICK|HOVER)\\b"
+      "match": "(?i)\\b(NAVIGATE to|NAVIGATE|VERIFY that|VERIFY|EXTRACT|SCROLL DOWN inside the list|SCROLL DOWN|SCROLL|PRESS ENTER|PRESS|RIGHT CLICK|UPLOAD|WAIT|DONE|DOUBLE CLICK|HOVER)\\b"
     },
     "action-verb": {
       "name": "keyword.operator.action.hunt",

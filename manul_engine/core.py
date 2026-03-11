@@ -861,7 +861,10 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                     # For action steps, the debug pause fires INSIDE _execute_step
                     # after element resolution so the tester sees the highlighted
                     # element before deciding to proceed.
-                    _is_system_step = step_kind != "action"
+                    # PRESS, RIGHT CLICK, and UPLOAD also resolve DOM elements,
+                    # so they are treated like action steps (pause after resolve).
+                    _resolving_kinds = {"action", "press", "right_click", "upload"}
+                    _is_system_step = step_kind not in _resolving_kinds
 
                     if self.debug_mode and _is_system_step:
                         await self._debug_prompt(page, step, i)
