@@ -3,9 +3,9 @@
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
 
-ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing. **Built to bridge the gap between Manual QA and Engineering** — write tests in plain English, run them on any machine, and never touch a CSS selector again.
+ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing. **It is built to bridge the gap between Manual QA and Engineering.**
 
-Forget brittle locators that break on every UI update. Stop paying for cloud APIs. Manul combines the speed of **Playwright**, 20+ JavaScript DOM heuristics, and optional local LLM reasoning (via **Ollama**) — entirely on your machine, entirely private.
+Forget brittle CSS/XPath locators that break on every UI update. Stop paying for expensive cloud APIs. Manul combines the blazing speed of **Playwright**, powerful JavaScript DOM heuristics, and the reasoning of local neural networks (via **Ollama**) entirely on your machine.
 
 > The Manul goes hunting and never returns without its prey.
 
@@ -235,15 +235,11 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 
 ## Release Notes
 
-### 0.0.87
-- **📌 Static Variable Declaration (`@var:`)** — declare test data at the top of any `.hunt` file using `@var: {key} = value`; values are pre-populated into the engine's runtime memory before step 1 runs and can be interpolated anywhere a `{placeholder}` is accepted (e.g. `Fill 'Email' with '{user_email}'`). Both brace and bare-key forms are accepted. Keeps test data separate from test logic — no more hardcoded credentials scattered across steps
-- **🐍 Dynamic Variable Capture (`CALL PYTHON ... into {var}`)** — `CALL PYTHON module.function into {variable_name}` (or `to {var}`) captures the return value of any synchronous Python function and stores it as a string in runtime memory; use immediately in subsequent steps via `{variable_name}`. Enables mid-test backend calls (OTP retrieval, magic links, DB tokens) without hardcoding values
-- **🐍 "Call Python → Var" button in Step Builder** — one-click insertion of `CALL PYTHON module_name.function_name into {variable_name}` scaffold directly into the active `.hunt` file
-- **🏷️ Arbitrary Tags (`@tags:`) and `--tags` CLI filter** — declare comma-separated tags at the top of any `.hunt` file with `@tags: smoke, auth, regression`; run `manul tests/ --tags smoke` to execute only matching files (OR logic: file must contain at least one requested tag; untagged files are excluded when `--tags` is active)
-- Core engine bump to **0.0.8.7**
-
 ### 0.0.86
-- Core engine bump to **0.0.8.6** — internal improvements and bug fixes
+- **📌 Static Variable Declaration** — declare test data at the top of any `.hunt` file using `@var: {key} = value`; values are pre-populated into the engine's runtime memory before any step runs and can be interpolated anywhere a `{placeholder}` is accepted (e.g. `Fill 'Email' with '{user_email}'`). Both brace and bare-key forms accepted (`@var: {key} = val` and `@var: key = val` are equivalent). Core engine bump to **0.0.8.6**
+- **🐍 Dynamic Variable Capture** — `CALL PYTHON module.function into {variable_name}` (or `to {var}`) captures the return value of any synchronous Python function and stores it as a string in runtime memory; use immediately in subsequent steps via `{variable_name}`. Enables mid-test backend calls (OTP, magic links, DB tokens) without hardcoding values
+- **🐍 "Call Python → Var" button in Step Builder** — one-click insertion of `CALL PYTHON module_name.function_name into {variable_name}` scaffold directly into the active `.hunt` file
+- **🏷️ Arbitrary Tags (`@tags:`) and `--tags` CLI filter** — declare comma-separated tags at the top of any `.hunt` file with `@tags: smoke, auth, regression`; run `manul tests/ --tags smoke` to execute only matching files (OR logic: the file must contain at least one of the requested tags; untagged files are excluded when `--tags` is active)
 
 ### 0.0.85
 - **🎛️ Custom Controls** — decorator-based Python handler registry (`@custom_control(page, target)`) for complex UI elements (React virtual tables, canvas widgets, WebGL, multi-step datepickers); handlers in `controls/` are auto-loaded at engine startup; `controls/demo_custom.py` and `tests/demo_controls.hunt` ship as a reference implementation

@@ -12,65 +12,6 @@ ACTION_WAIT = 2.0
 NAV_WAIT    = 2.0
 
 
-# ── Mode detection ────────────────────────────────────────────────────────────
-
-def detect_mode(step: str) -> str:
-    """Detect the interaction mode from a step's verb keywords.
-
-    Returns one of: ``"drag"``, ``"select"``, ``"input"``,
-    ``"clickable"``, ``"hover"``, or ``"locate"`` (fallback).
-    """
-    words = set(re.findall(r'\b[a-z]+\b', step.lower()))
-    if "drag" in words and "drop" in words:
-        return "drag"
-    if "select" in words or "choose" in words:
-        return "select"
-    if any(w in words for w in ("type", "fill", "enter")):
-        return "input"
-    if any(w in words for w in ("click", "double", "check", "uncheck")):
-        return "clickable"
-    if "hover" in words:
-        return "hover"
-    return "locate"
-
-
-# ── Step classification ──────────────────────────────────────────────────────
-
-# Compiled patterns for system keyword detection (order matters).
-_STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
-    ("navigate",    re.compile(r'\bNAVIGATE\b')),
-    ("wait",        re.compile(r'\bWAIT\b')),
-    ("scroll",      re.compile(r'\bSCROLL\b')),
-    ("extract",     re.compile(r'\bEXTRACT\b')),
-    ("verify",      re.compile(r'\bVERIFY\b')),
-    ("press_enter", re.compile(r'\bPRESS\s+ENTER\b')),
-    ("scan_page",   re.compile(r'\bSCAN\s+PAGE\b')),
-    ("call_python", re.compile(r'\bCALL\s+PYTHON\b')),
-    ("debug",       re.compile(r'\b(?:DEBUG|PAUSE)\b')),
-    ("done",        re.compile(r'\bDONE\b')),
-]
-
-# Pre-compiled pattern used by run_mission to detect system steps for debug
-# pause ordering (system steps pause before, action steps pause after resolve).
-RE_SYSTEM_STEP = re.compile(
-    r'\b(?:NAVIGATE|WAIT|SCROLL|EXTRACT|PRESS\s+ENTER|SCAN\s+PAGE|CALL\s+PYTHON|DEBUG|PAUSE|DONE)\b'
-)
-
-
-def classify_step(step: str) -> str:
-    """Return the system keyword type of a step, or ``"action"`` for DOM steps.
-
-    The returned string is one of: ``"navigate"``, ``"wait"``, ``"scroll"``,
-    ``"extract"``, ``"verify"``, ``"press_enter"``, ``"scan_page"``,
-    ``"call_python"``, ``"debug"``, ``"done"``, or ``"action"``.
-    """
-    s_up = step.upper()
-    for kind, pattern in _STEP_PATTERNS:
-        if pattern.search(s_up):
-            return kind
-    return "action"
-
-
 # ── Pure helpers ──────────────────────────────────────────────────────────────
 
 def substitute_memory(text: str, memory: dict) -> str:

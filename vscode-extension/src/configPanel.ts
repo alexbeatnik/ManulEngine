@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
-import { DEFAULT_CONFIG_FILENAME, getConfigFileName } from "./constants";
 
 // ── Default configuration values ─────────────────────────────────────────────
 
@@ -117,7 +116,9 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
   }
 
   private _configPath(): string {
-    const name = getConfigFileName();
+    const name = vscode.workspace
+      .getConfiguration("manulEngine")
+      .get<string>("configFile", "manul_engine_configuration.json");
     return path.join(this._workspaceRoot, name);
   }
 
@@ -473,12 +474,12 @@ export function generateConfigCommand(): void {
   }
   const configPath = path.join(
     folders[0].uri.fsPath,
-    DEFAULT_CONFIG_FILENAME
+    "manul_engine_configuration.json"
   );
   if (fs.existsSync(configPath)) {
     vscode.window
       .showWarningMessage(
-        `${DEFAULT_CONFIG_FILENAME} already exists. Overwrite?`,
+        "manul_engine_configuration.json already exists. Overwrite?",
         "Yes",
         "No"
       )

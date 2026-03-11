@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
-import { getConfigFileName } from "./constants";
 
 // ── Tree Item ─────────────────────────────────────────────────────────────────
 
@@ -72,7 +71,7 @@ export class CacheTreeProvider
     // Read cache dir from config file
     const configPath = path.join(
       this._workspaceRoot,
-      getConfigFileName()
+      "manul_engine_configuration.json"
     );
     let cacheDir = "cache";
     try {
@@ -192,7 +191,7 @@ export async function clearAllCacheCommand(
 
   const configPath = path.join(
     folders[0].uri.fsPath,
-    getConfigFileName()
+    "manul_engine_configuration.json"
   );
   let cacheDir = path.join(folders[0].uri.fsPath, "cache");
   try {

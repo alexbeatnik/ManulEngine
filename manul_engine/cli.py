@@ -18,7 +18,6 @@ import os
 import re
 import sys
 import time
-from typing import NamedTuple
 
 # ─────────────────────────────────────────────────────────────────────────────
 _USAGE = """
@@ -83,27 +82,11 @@ class _Tee:
         self._file.close()
 
 
-# ── Structured return type for parse_hunt_file ───────────────────────────────
-class ParsedHunt(NamedTuple):
-    """Structured result of parsing a ``.hunt`` file.
-
-    Behaves exactly like an 8-tuple for backward compatibility
-    (positional indexing and unpacking both work), but also
-    supports named attribute access.
-    """
-    mission: str
-    context: str
-    blueprint: str
-    step_file_lines: list[int]
-    setup_lines: list[str]
-    teardown_lines: list[str]
-    parsed_vars: dict[str, str]
-    tags: list[str]
-
-
 # ── Parse .hunt file ─────────────────────────────────────────────────────────
-def parse_hunt_file(filepath: str) -> ParsedHunt:
-    """Return a :class:`ParsedHunt` with all parsed fields.
+def parse_hunt_file(
+    filepath: str,
+) -> tuple[str, str, str, list[int], list[str], list[str], dict[str, str], list[str]]:
+    """Return ``(mission_body, context, blueprint, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags)``.
 
     *step_file_lines[i]* is the 1-based file line number of the *(i+1)*-th
     numbered step, in order of appearance.  Used to map editor gutter
@@ -182,15 +165,15 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
                 if re.match(r'^\d+\.', stripped):
                     step_file_lines.append(lineno)
 
-    return ParsedHunt(
-        mission="".join(mission_lines).strip(),
-        context=context,
-        blueprint=blueprint,
-        step_file_lines=step_file_lines,
-        setup_lines=setup_lines,
-        teardown_lines=teardown_lines,
-        parsed_vars=parsed_vars,
-        tags=tags,
+    return (
+        "".join(mission_lines).strip(),
+        context,
+        blueprint,
+        step_file_lines,
+        setup_lines,
+        teardown_lines,
+        parsed_vars,
+        tags,
     )
 
 
@@ -242,24 +225,27 @@ async def _run_hunt_file(
     print(f"📜 EXECUTING MANUL HUNT: {filename}")
     print(f"{'='*60}")
 
-    hunt = parse_hunt_file(path)
+    mission, context, blueprint, step_file_lines, setup_lines, teardown_lines, parsed_vars, _ = (
+        parse_hunt_file(path)
+    )
 
     # Map file line numbers (from editor gutter breakpoints) to step indices.
     _break_lines = break_lines or set()
     break_steps: set[int] = {
         step_idx
-        for step_idx, file_line in enumerate(hunt.step_file_lines, 1)
+        for step_idx, file_line in enumerate(step_file_lines, 1)
         if file_line in _break_lines
     }
 
-    if not hunt.mission:
+    if not mission:
         print(f"⚠️  Skipping {filename}: empty or comments-only.")
         return True
 
-    context = hunt.context or filename.replace(".hunt", "").replace("_", " ").title()
-    if hunt.blueprint:
-        print(f"🧩 Blueprint: {hunt.blueprint}")
-        context = f"[{hunt.blueprint}] {context}"
+    if not context:
+        context = filename.replace(".hunt", "").replace("_", " ").title()
+    if blueprint:
+        print(f"🧩 Blueprint: {blueprint}")
+        context = f"[{blueprint}] {context}"
 
     from manul_engine import ManulEngine
     from manul_engine.hooks import run_hooks
@@ -269,7 +255,7 @@ async def _run_hunt_file(
     # ── [SETUP] ───────────────────────────────────────────────────────────────
     # If setup fails, we skip the mission and teardown entirely — there is
     # nothing to clean up because setup never completed.
-    if not run_hooks(hunt.setup_lines, label="SETUP", hunt_dir=hunt_dir):
+    if not run_hooks(setup_lines, label="SETUP", hunt_dir=hunt_dir):
         print(f"\n❌ SETUP failed — skipping mission and teardown for {filename}")
         return False
 
@@ -277,12 +263,12 @@ async def _run_hunt_file(
     result = False
     try:
         result = await manul.run_mission(
-            hunt.mission,
+            mission,
             strategic_context=context,
             hunt_dir=hunt_dir,
             hunt_file=path,
-            step_file_lines=hunt.step_file_lines,
-            initial_vars=hunt.parsed_vars,
+            step_file_lines=step_file_lines,
+            initial_vars=parsed_vars,
         )
         return bool(result)
     except Exception as exc:
@@ -294,7 +280,7 @@ async def _run_hunt_file(
         # ── [TEARDOWN] ────────────────────────────────────────────────────────
         # Always runs after setup succeeds, regardless of mission outcome.
         # Teardown failures are logged but do not override the mission result.
-        run_hooks(hunt.teardown_lines, label="TEARDOWN", hunt_dir=hunt_dir)
+        run_hooks(teardown_lines, label="TEARDOWN", hunt_dir=hunt_dir)
 
 
 # ── Collect .hunt files from a path ──────────────────────────────────────────
