@@ -67,6 +67,7 @@ const STEP_TEMPLATES: StepTemplate[] = [
   { label: "Scroll Down",   icon: "⬇️",  template: "SCROLL DOWN" },
   { label: "Scan Page",     icon: "🔍", template: "SCAN PAGE into draft.hunt" },
   { label: "Call Python",   icon: "🐍", template: "CALL PYTHON module_name.function_name" },
+  { label: "Call Python → Var", icon: "🐍", template: "CALL PYTHON module_name.function_name into {variable_name}" },
   { label: "Debug / Pause", icon: "🐛", template: "DEBUG" },
   { label: "Done",          icon: "🏁", template: "DONE." },
 ];

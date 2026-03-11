@@ -188,6 +188,22 @@ Wrong (do not do this):
 2. Fill 'Password' with 'secret123'
 ```
 
+### 7b. Dynamic Variable Capture (`CALL PYTHON ... into {var}`)
+`CALL PYTHON <module>.<function> into {variable_name}` captures the **return value** of the function as a string and stores it in the engine's runtime memory, available for `{placeholder}` substitution in all subsequent steps. The `to` keyword is accepted as an alias for `into`.
+* The function must be **synchronous** and return any value; the engine calls `str()` on the result before storing it.
+* **MANDATORY rule for AI-generated hunt files:** Whenever a step needs data that comes from a backend call, API, OTP service, or any computed value, capture it with `CALL PYTHON ... into {var}` and reference the result via `{var}` in following steps. Never hardcode computed or runtime values directly in steps.
+
+Correct:
+```text
+3. CALL PYTHON helpers.api.get_otp into {otp_code}
+4. Fill 'OTP' field with '{otp_code}'
+```
+
+Wrong (do not do this):
+```text
+4. Fill 'OTP' field with '123456'
+```
+
 ### 8. Best Practices
 * **Specify Element Type:** Include words like `button`, `field`, `link`, `dropdown`, `checkbox`, `radio` outside quotes. This acts as a strong heuristic signal.
 * **Exact Text Matching:** Put target texts in quotes (`'Save'`) to yield a high heuristic score.
