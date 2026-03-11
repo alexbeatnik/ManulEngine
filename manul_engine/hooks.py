@@ -269,11 +269,11 @@ def execute_hook_line(
     try:
         ret = func()
         ret_str: str | None = None
-        if var_name is not None and ret is not None:
+        if var_name is not None:
+            # Always stringify — even None → "None" — so that a variable binding
+            # is guaranteed when 'into {var}' / 'to {var}' was explicitly requested.
             ret_str = str(ret)
-        suffix = (
-            f" → {{{var_name}}} = {ret_str!r}" if var_name and ret_str is not None else ""
-        )
+        suffix = f" → {{{var_name}}} = {ret_str!r}" if var_name and ret_str is not None else ""
         return HookResult(
             success=True,
             message=f"✔  {dotted}(){suffix}",

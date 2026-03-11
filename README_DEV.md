@@ -131,7 +131,7 @@ execute_hook_line(line, hunt_dir)  → HookResult(success, message, return_value
 run_hooks(lines, label, hunt_dir)  → bool
 ```
 
-**`HookResult` fields:** `success: bool`, `message: str`, `return_value: str | None`, `var_name: str | None`. The last two fields are populated when the step used the `into {var}` / `to {var}` capture syntax (see *Dynamic Variables* below); they are `None` for plain `CALL PYTHON` steps.
+**`HookResult` fields:** `success: bool`, `message: str`, `return_value: str | None`, `var_name: str | None`. The last two fields are populated when the step used the `into {var}` / `to {var}` capture syntax (see *Dynamic Variables* below); they are `None` for plain `CALL PYTHON` steps. When `into/to` is present, `return_value` is **always** set to `str(ret)` — even when the function returns `None` (yielding the string `"None"`). This guarantees that `{var}` is always bound after a capture step.
 
 **Dynamic Variables via `CALL PYTHON ... into {var}`:** Inline `CALL PYTHON` steps may optionally bind their return value to a mission variable:
 
