@@ -269,9 +269,11 @@ def execute_hook_line(
     try:
         ret = func()
         ret_str: str | None = None
-        if var_name is not None:
+        if var_name is not None and ret is not None:
             ret_str = str(ret)
-        suffix = f" → {{{var_name}}} = {ret_str!r}" if var_name else ""
+        suffix = (
+            f" → {{{var_name}}} = {ret_str!r}" if var_name and ret_str is not None else ""
+        )
         return HookResult(
             success=True,
             message=f"✔  {dotted}(){suffix}",

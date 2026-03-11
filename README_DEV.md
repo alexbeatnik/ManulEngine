@@ -515,7 +515,7 @@ The `vscode-extension/` directory contains a companion VS Code extension (v0.0.8
 | **Cache browser** | Tree-view sidebar showing the controls cache hierarchy (`site → page → controls.json`) |
 | **Run commands** | `ManulEngine: Run Hunt File` (output panel) and `ManulEngine: Run Hunt File in Terminal` (raw CLI) |
 | **Debug run profile** | Test Explorer exposes a **Debug** run profile alongside the normal one; places gutter breakpoints (red dots) in `.hunt` files, pauses at each with a floating QuickPick overlay — **⏭ Next Step** / **▶ Continue All**. The Test Explorer **Stop** button aborts the run cleanly (no hanging QuickPick). On Linux, a system notification appears via `notify-send` when execution pauses. |
-| **Step Builder** | Sidebar buttons for every step type including **Debug / Pause** (inserts `DEBUG` step); **� Call Python → Var** (inserts `CALL PYTHON module.function into {variable_name}` and captures the return value as a mission variable); **�🔍 Live Page Scanner** — URL input + Run Scan button that invokes `manul scan <URL>` directly and opens the result in the editor |
+| **Step Builder** | Sidebar buttons for every step type including **Debug / Pause** (inserts `DEBUG` step); **🐍 Call Python → Var** (inserts `CALL PYTHON module.function into {variable_name}` and captures the return value as a mission variable); **🔍 Live Page Scanner** — URL input + Run Scan button that invokes `manul scan <URL>` directly and opens the result in the editor |
 | **Bounded concurrency** | Test Explorer respects `workers` config or `manulEngine.workers` VS Code setting (default: 1) |
 
 ### Extension behaviour notes

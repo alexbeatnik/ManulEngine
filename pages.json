@@ -8,7 +8,7 @@
         ".*/checkout-complete": "Checkout: Complete"
     },
     "https://example.com/": {
-        "Domain": "Auto: example.com/login",
-        "https://example.com/login": "Auto: example.com/login"
+        "Domain": "Auto: example.com",
+        "https://example.com/login": "Example.com Login"
     }
 }
