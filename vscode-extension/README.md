@@ -188,9 +188,12 @@ The extension probes the following locations in order (platform-aware):
 @context: Login and verify dashboard
 @blueprint: smoke_login
 
+@var: {user_email} = user@example.com
+@var: {password}   = secret
+
 1. NAVIGATE to https://example.com/login
-2. Fill 'Email' field with 'user@example.com'
-3. Fill 'Password' field with 'secret'
+2. Fill 'Email' field with '{user_email}'
+3. Fill 'Password' field with '{password}'
 4. Click the 'Sign In' button
 5. VERIFY that 'Welcome' is present.
 6. DONE.
