@@ -830,10 +830,11 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
             ok = True
             done = False
-            # Cache lookup_page_name() results for the duration of this mission.
-            # Avoids repeated file I/O (and auto-populate side-effects) when many
-            # action steps hit the same URL.
+            # Cache lookup_page_name() results within this mission.
+            # The cache is invalidated when pages.json is modified on disk so live
+            # edits made during a long run are still reflected within one step.
             _cc_page_cache: dict[str, str] = {}
+            _cc_pages_mtime: float = 0.0
             try:
                 for i, raw_step in enumerate(plan, 1):
                     step = substitute_memory(raw_step, self.memory)
@@ -976,6 +977,13 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                 _cc_target, _cc_value = "", None
                             _cc_handler = None
                             if _cc_target:
+                                try:
+                                    _mt = prompts._PAGES_WRITE_PATH.stat().st_mtime
+                                except OSError:
+                                    _mt = 0.0
+                                if _mt != _cc_pages_mtime:
+                                    _cc_page_cache.clear()
+                                    _cc_pages_mtime = _mt
                                 _cc_page = _cc_page_cache.get(page.url) or prompts.lookup_page_name(page.url)
                                 _cc_page_cache[page.url] = _cc_page
                                 _cc_handler = get_custom_control(_cc_page, _cc_target)

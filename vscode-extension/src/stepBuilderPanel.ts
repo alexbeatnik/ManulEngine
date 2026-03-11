@@ -500,15 +500,29 @@ export async function newHuntFileCommand(
  * page output does not hit Node's execFile maxBuffer limit.
  */
 async function runLiveScanCommand(rawUrl: string): Promise<void> {
-  // Validate: must be a full http(s) URL.
+  // Accept a full http(s) URL or a bare hostname/path (auto-prefix https://).
   let parsedUrl: URL;
+  let scanUrl = rawUrl.trim();
   try {
-    parsedUrl = new URL(rawUrl);
+    parsedUrl = new URL(scanUrl);
   } catch {
-    vscode.window.showErrorMessage(
-      "ManulEngine: Invalid URL. Enter a full URL starting with http:// or https://"
-    );
-    return;
+    // Retry with https:// if it looks like a bare hostname (no spaces, no scheme).
+    if (!scanUrl.includes(" ")) {
+      try {
+        scanUrl = "https://" + scanUrl;
+        parsedUrl = new URL(scanUrl);
+      } catch {
+        vscode.window.showErrorMessage(
+          "ManulEngine: Invalid URL. Enter a full URL or a bare hostname like example.com."
+        );
+        return;
+      }
+    } else {
+      vscode.window.showErrorMessage(
+        "ManulEngine: Invalid URL. Enter a full URL or a bare hostname like example.com."
+      );
+      return;
+    }
   }
   if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
     vscode.window.showErrorMessage(
@@ -557,14 +571,15 @@ async function runLiveScanCommand(rawUrl: string): Promise<void> {
         // `manul scan` writes the hunt file to disk and may print a large page
         // snapshot to stdout.  Using spawn (instead of execFile) avoids the
         // 1 MB maxBuffer limit; we discard stdout since the result is on disk.
-        const proc = spawn(manulExe, ["scan", rawUrl, outputFile], {
+        const proc = spawn(manulExe, ["scan", scanUrl, outputFile], {
           cwd: workspaceRoot,
           stdio: ["ignore", "ignore", "pipe"],
         });
         let stderrBuf = "";
         let settled = false;
         proc.stderr.on("data", (chunk: Buffer) => { stderrBuf += chunk.toString(); });
-        const killTimer = setTimeout(() => { proc.kill(); }, 90_000);
+        let timedOut = false;
+        const killTimer = setTimeout(() => { timedOut = true; proc.kill(); }, 90_000);
         proc.on("error", (err) => {
           if (settled) { return; }
           settled = true;
@@ -577,7 +592,9 @@ async function runLiveScanCommand(rawUrl: string): Promise<void> {
           if (settled) { return; }
           settled = true;
           clearTimeout(killTimer);
-          if (code !== 0) {
+          if (timedOut) {
+            vscode.window.showErrorMessage("ManulEngine: Scan timed out after 90s.");
+          } else if (code !== 0) {
             const detail = stderrBuf.trim() || `process exited with code ${code}`;
             vscode.window.showErrorMessage(`ManulEngine: Scan failed — ${detail}`);
           } else {
