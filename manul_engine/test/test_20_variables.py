@@ -74,14 +74,14 @@ def _test_parser() -> None:
     finally:
         os.unlink(tmp_path)
 
-    # 1a. Return value is a 7-tuple.
+    # 1a. Return value is a 8-tuple.
     _assert(
-        len(result) == 7,
-        "parse_hunt_file returns 7-tuple",
+        len(result) == 8,
+        "parse_hunt_file returns 8-tuple",
         f"len={len(result)}",
     )
 
-    mission, context, blueprint, step_file_lines, setup_lines, teardown_lines, parsed_vars = result
+    mission, context, blueprint, step_file_lines, setup_lines, teardown_lines, parsed_vars, _ = result
 
     # 1b. Standard metadata still parsed correctly.
     _assert(context == "Variables test", "context parsed correctly", f"got={context!r}")
@@ -134,7 +134,7 @@ def _test_parser() -> None:
         tf.write(hunt_malformed)
         tmp_path2 = tf.name
     try:
-        _, _, _, _, _, _, bad_vars = parse_hunt_file(tmp_path2)
+        _, _, _, _, _, _, bad_vars, _ = parse_hunt_file(tmp_path2)
     finally:
         os.unlink(tmp_path2)
     _assert(

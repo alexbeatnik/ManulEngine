@@ -207,6 +207,12 @@ manul "1. NAVIGATE to https://example.com  2. Click the 'More' link  3. DONE."
 # Run multiple hunt files in parallel (4 concurrent browsers)
 manul my_tests/ --workers 4
 
+# Run only files tagged 'smoke'
+manul my_tests/ --tags smoke
+
+# Run only files tagged 'smoke' OR 'critical'
+manul my_tests/ --tags smoke,critical
+
 # Interactive debug mode (terminal) — pause before every step, confirm in terminal
 manul --debug my_tests/smoke.hunt
 
@@ -251,7 +257,10 @@ Hunt files are plain-text test scenarios with a `.hunt` extension.
 ```text
 @context: Strategic context passed to the LLM planner
 @blueprint: short-tag
+@tags: smoke, auth, regression
 ```
+
+`@tags:` declares a comma-separated list of arbitrary tag names.  Use `manul --tags smoke tests/` to run only files whose `@tags:` header contains at least one matching tag.  Untagged files are excluded when `--tags` is active.
 
 ### Comments
 

@@ -142,7 +142,7 @@ run_hooks(lines, label, hunt_dir)  → bool
 
 `execute_hook_line` captures the return value from `func()`, converts it to a string, and stores it in `HookResult.return_value`. `run_mission` then writes it to `self.memory[var_name]`, making it available for `{placeholder}` substitution in every subsequent step — exactly like `EXTRACT` or `@var:` variables. Both `into` and `to` are accepted as the keyword. Dynamic-variable unit tests live in `manul_engine/test/test_21_dynamic_vars.py`.
 
-`parse_hunt_file()` in `cli.py` returns a **7-tuple** `(mission, context, blueprint, step_file_lines, setup_lines, teardown_lines, parsed_vars)`. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
+`parse_hunt_file()` in `cli.py` returns an **8-tuple** `(mission, context, blueprint, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags)`. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
 
 The full hook unit test suite (`41 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
 
@@ -158,11 +158,36 @@ Version 0.0.8.6 adds static test-data declaration at the top of `.hunt` files:
 2. Fill 'Password' with '{password}'
 ```
 
-**How it works:** `parse_hunt_file()` scans for `@var: {key} = value` header lines and returns them as `parsed_vars` (the 7th element of the tuple). `_run_hunt_file()` passes `parsed_vars` to `run_mission(initial_vars=...)`, which pre-populates `self.memory` before the step loop starts. Both brace and bare-key forms are accepted (`@var: {key} = val` and `@var: key = val` are equivalent). Values are stripped of leading/trailing whitespace. Malformed `@var:` lines (no `=`) are silently skipped.
+**How it works:** `parse_hunt_file()` scans for `@var: {key} = value` header lines and returns them as `parsed_vars` (the 7th element of the 8-tuple). `_run_hunt_file()` passes `parsed_vars` to `run_mission(initial_vars=...)`, which pre-populates `self.memory` before the step loop starts. Both brace and bare-key forms are accepted (`@var: {key} = val` and `@var: key = val` are equivalent). Values are stripped of leading/trailing whitespace. Malformed `@var:` lines (no `=`) are silently skipped.
 
 **Design rule:** When generating or suggesting `.hunt` test files, **never** hardcode test data (emails, passwords, usernames, search queries, IDs, etc.) directly into `Fill` or `Type` steps. Always declare them at the top via `@var:` and reference them via `{placeholder}`. This keeps test logic separate from test data.
 
 Unit tests: `manul_engine/test/test_20_variables.py` (17 assertions, no browser).
+
+### 🏷️ Arbitrary Tags (`@tags:`) and `--tags` CLI Filter
+
+Version 0.0.8.6 adds a tagging system that lets users run subsets of `.hunt` files without changing directory layout or file names.
+
+**Hunt file header:**
+```text
+@context: Login flow
+@tags: smoke, auth, regression
+
+1. NAVIGATE to https://example.com/login
+2. DONE.
+```
+
+**CLI usage:**
+```bash
+manul tests/ --tags smoke               # run only files tagged 'smoke'
+manul tests/ --tags smoke,critical      # OR logic — run files with either tag
+```
+
+**Intersection rule:** A file is included in the run if its `@tags:` list shares at least one tag with the `--tags` argument.  Files with no `@tags:` header are **always excluded** when `--tags` is active.
+
+**How it works:** `parse_hunt_file()` now extracts `@tags:` into the **8th element** of the tuple (`tags: list[str]`).  The CLI also exposes `_read_tags(path)` — a fast header-only scanner that stops at the first numbered step — used to pre-filter files in `main()` without running the full parse twice.  Tag filtering prints a one-line summary (`🏷️ --tags '...': N skipped, M matched.`) before the run starts.
+
+Unit tests: `manul_engine/test/test_22_tags.py` (20 assertions, no browser).
 
 ### 🎛️ Custom Controls & Page Object Model
 
