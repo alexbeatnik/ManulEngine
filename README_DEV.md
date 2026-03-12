@@ -94,6 +94,15 @@ ManulEngine/
 
 ---
 
+## 🚀 What's New: The Enterprise Update
+
+* **Clean, Unnumbered DSL:** The requirement for line numbers before actions has been completely dropped. Scripts now read exactly like plain English (`NAVIGATE to url` instead of `1. NAVIGATE to url`).
+* **Logical STEP Grouping:** `STEP [optional number]: [Description]` metadata blocks allow mapping manual QA cases directly into `.hunt` files. Unmatched quotes inside descriptions (e.g. `STEP: Pallas's cat`) are cleanly isolated.
+* **Enterprise HTML Reporter:** The reporter is now dual-mode and zero-dependency, featuring native HTML5 accordions (`<details>`), auto-expanding failures, and a clean Flexbox layout instead of old-school tables.
+* **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, and `@after_group` orchestrate complex DB seeding and auth logic. `ctx.variables` are securely serialized across parallel `--workers`.
+* **Bulletproof DOM Heuristics:** The updated `SNAPSHOT_JS` rigorously filters out invisible or hidden UI elements (like hidden sticky headers), and effortlessly handles deeply nested modern frameworks (e.g. Wikipedia Vector 2022 / Codex) by strongly prioritizing `aria-label` and `name_attr`.
+* **VS Code Extension Polish:** The Step Builder is now context-aware, verifying `vscode.window.activeTextEditor` to prevent accidental insertions in non-`.hunt` files, and provides robust syntax highlighting for the unnumbered DSL.
+
 ## ✨ Key Features
 
 ### ⚡ Heuristics-First Architecture

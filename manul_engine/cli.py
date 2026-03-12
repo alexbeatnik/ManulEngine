@@ -740,8 +740,10 @@ async def main() -> None:
             try:
                 from .reporter import generate_report
                 report_path = os.path.join(_reports_dir, "manul_report.html")
+                abs_report = os.path.abspath(report_path)
                 generate_report(run_summary, report_path)
-                print(f"\n✅ HTML Report saved to: {os.path.abspath(report_path)}")
+                print(f"\n📊 HTML Report successfully generated!")
+                print(f"👉 file://{abs_report}")
             except Exception as _rpt_err:
                 print(f"\n⚠️  HTML report generation failed: {_rpt_err}")
 

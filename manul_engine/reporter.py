@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import html
 import os
+import re
 from pathlib import Path
 
 from .reporting import RunSummary, MissionResult, StepResult
@@ -181,34 +182,54 @@ h1 .logo { font-size: 1.8rem; }
 }
 .mission.open .mission-body { display: block; }
 
-/* ── Steps table ──────────────────────── */
+/* ── Steps list ───────────────────────── */
 
-.steps-table {
-  width: 100%;
-  border-collapse: collapse;
+.steps-list { width: 100%; }
+
+.step-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
 }
-.steps-table th {
-  text-align: left;
-  font-size: 0.7rem;
+.step-row:last-child { border-bottom: none; }
+
+.step-index {
+  width: 24px;
+  flex-shrink: 0;
   color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 8px 16px;
-  background: var(--surface2);
-  border-bottom: 1px solid var(--border);
+  font-size: 0.8rem;
+  padding-top: 2px;
 }
-.steps-table td {
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--border);
-  vertical-align: top;
+
+.step-content { flex: 1; min-width: 0; }
+
+.step-row.step-pass { border-left: 3px solid var(--green); }
+.step-row.step-fail {
+  border-left: 3px solid var(--red);
+  background: rgba(243,139,168,0.05);
 }
-.steps-table tr:last-child td { border-bottom: none; }
+.step-row.step-skip { border-left: 3px solid var(--text-dim); }
 
-.step-pass td:first-child { border-left: 3px solid var(--green); }
-.step-fail td:first-child { border-left: 3px solid var(--red); }
-.step-skip td:first-child { border-left: 3px solid var(--text-dim); }
+.step-status {
+  width: 60px;
+  flex-shrink: 0;
+  font-weight: 600;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  padding-top: 2px;
+}
 
-.step-fail { background: rgba(243,139,168,0.05); }
+.step-duration {
+  width: 60px;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  text-align: right;
+  padding-top: 2px;
+}
 
 .step-text {
   font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
@@ -268,18 +289,25 @@ h1 .logo { font-size: 1.8rem; }
 
 /* ── Logical step groups ──────────────── */
 
+details.lstep-block {
+  border-top: 1px solid var(--border);
+}
+details.lstep-block:first-of-type {
+  border-top: none;
+}
+
 .lstep-header {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 7px 16px;
   background: var(--surface2);
-  border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   user-select: none;
+  list-style: none;
 }
-.lstep-header:first-child { border-top: none; }
+.lstep-header::-webkit-details-marker { display: none; }
 .lstep-header .lstep-chevron {
   font-size: 0.65rem;
   color: var(--text-dim);
@@ -287,7 +315,8 @@ h1 .logo { font-size: 1.8rem; }
   width: 12px;
   flex-shrink: 0;
 }
-.lstep-block.open .lstep-chevron { transform: rotate(90deg); }
+details.lstep-block[open] .lstep-chevron { transform: rotate(90deg); }
+.lstep-body { padding-left: 24px; }
 .lstep-header .lstep-label {
   font-size: 0.78rem;
   font-weight: 600;
@@ -305,8 +334,6 @@ h1 .logo { font-size: 1.8rem; }
 }
 .lstep-status-pass  { color: var(--green); }
 .lstep-status-fail  { color: var(--red); }
-.lstep-body { display: none; }
-.lstep-block.open .lstep-body { display: block; }
 
 /* ── Footer ───────────────────────────── */
 
@@ -326,12 +353,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.mission-header').forEach(h => {
     h.addEventListener('click', () => {
       h.closest('.mission').classList.toggle('open');
-    });
-  });
-  document.querySelectorAll('.lstep-header').forEach(h => {
-    h.addEventListener('click', e => {
-      e.stopPropagation();
-      h.closest('.lstep-block').classList.toggle('open');
     });
   });
   document.querySelectorAll('.step-screenshot img').forEach(img => {
@@ -362,31 +383,40 @@ def _fmt_duration(ms: float) -> str:
     return f"{mins}m {remaining:.0f}s"
 
 
-def _render_step_row(step: StepResult) -> str:
-    """Render a single <tr> for a step."""
+def _render_step_row(step: StepResult, local_index: int | None = None) -> str:
+    """Render a single flex-row div for a step.
+
+    *local_index* — when supplied, overrides ``step.index`` for the # column.
+    This avoids confusing gaps when STEP marker lines were counted in the
+    plan enumeration but produced no StepResult.
+    """
     css_class = f"step-{step.status}"
     status_class = f"status-{step.status}"
     status_label = step.status.upper()
+    display_index = local_index if local_index is not None else step.index
 
-    # Build cell content for the step text column
-    text_html = f'<span class="step-text">{_esc(step.text)}</span>'
+    # Strip any legacy numbered prefix ("2. ") from the step text so it is
+    # never shown in the report regardless of the source hunt file format.
+    display_text = re.sub(r'^\s*\d+\.\s*', '', step.text)
+
+    content_html = f'<div class="step-text">{_esc(display_text)}</div>'
     if step.error:
-        text_html += f'\n<div class="step-error">{_esc(step.error)}</div>'
+        content_html += f'\n<div class="step-error">{_esc(step.error)}</div>'
     if step.screenshot:
-        text_html += (
+        content_html += (
             f'\n<div class="step-screenshot">'
             f'<img src="data:image/png;base64,{step.screenshot}" '
-            f'alt="Screenshot step {step.index}" title="Click to expand" />'
+            f'alt="Screenshot step {display_index}" title="Click to expand" />'
             f'</div>'
         )
 
     return (
-        f'<tr class="{css_class}">'
-        f'<td>{step.index}</td>'
-        f'<td>{text_html}</td>'
-        f'<td class="step-status {status_class}">{status_label}</td>'
-        f'<td class="step-duration">{_fmt_duration(step.duration_ms)}</td>'
-        f'</tr>'
+        f'<div class="step-row {css_class}">'
+        f'<div class="step-index">{display_index}</div>'
+        f'<div class="step-content">{content_html}</div>'
+        f'<div class="step-status {status_class}">{status_label}</div>'
+        f'<div class="step-duration">{_fmt_duration(step.duration_ms)}</div>'
+        f'</div>'
     )
 
 
@@ -413,28 +443,31 @@ def _group_steps(steps: list[StepResult]) -> list[tuple[str | None, list[StepRes
 
 
 def _render_lstep_group(label: str | None, steps: list[StepResult], index: int) -> str:
-    """Render one logical-step accordion block containing a steps table."""
+    """Render one logical-step accordion block containing a steps table.
+
+    Uses a native ``<details>/<summary>`` element — no JavaScript required.
+    Passing groups start collapsed; failing groups start expanded so errors
+    are immediately visible.
+    """
     has_failure = any(s.status == "fail" for s in steps)
     status_text = "FAIL" if has_failure else "PASS"
     status_class = "lstep-status-fail" if has_failure else "lstep-status-pass"
     display_label = _esc(label) if label else "Default"
-    rows = "\n".join(_render_step_row(s) for s in steps)
-    table_html = (
-        f'<table class="steps-table">'
-        f'<thead><tr><th>#</th><th>Step</th><th>Status</th><th>Time</th></tr></thead>'
-        f'<tbody>{rows}</tbody>'
-        f'</table>'
-    )
+    open_attr = " open" if has_failure else ""
+    # Use 1-based local indices so the # column reads 1, 2, 3… within each
+    # STEP group rather than the global plan position (which has gaps where
+    # STEP marker lines were counted but produced no StepResult).
+    rows = "\n".join(_render_step_row(s, local_index=i) for i, s in enumerate(steps, 1))
     return (
-        f'<div class="lstep-block open">'
-        f'  <div class="lstep-header">'
+        f'<details class="lstep-block"{open_attr}>'
+        f'  <summary class="lstep-header">'
         f'    <span class="lstep-chevron">&#9658;</span>'
         f'    <span class="lstep-label">{display_label}</span>'
         f'    <span class="lstep-count">{len(steps)} action{"s" if len(steps) != 1 else ""}</span>'
         f'    <span class="lstep-status {status_class}">{status_text}</span>'
-        f'  </div>'
-        f'  <div class="lstep-body">{table_html}</div>'
-        f'</div>'
+        f'  </summary>'
+        f'  <div class="lstep-body"><div class="steps-list">{rows}</div></div>'
+        f'</details>'
     )
 
 
@@ -454,13 +487,11 @@ def _render_mission(mission: MissionResult) -> str:
         groups = _group_steps(mission.steps)
         # Use flat rendering when no STEP markers were used (single None group).
         if len(groups) == 1 and groups[0][0] is None:
-            rows = "\n".join(_render_step_row(s) for s in mission.steps)
-            steps_html = (
-                f'<table class="steps-table">'
-                f'<thead><tr><th>#</th><th>Step</th><th>Status</th><th>Time</th></tr></thead>'
-                f'<tbody>{rows}</tbody>'
-                f'</table>'
+            rows = "\n".join(
+                _render_step_row(s, local_index=i)
+                for i, s in enumerate(groups[0][1], 1)
             )
+            steps_html = f'<div class="steps-list">{rows}</div>'
         else:
             steps_html = "\n".join(
                 _render_lstep_group(label, grp, i)

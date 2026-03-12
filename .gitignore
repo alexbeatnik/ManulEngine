@@ -205,6 +205,13 @@ cache/
 # Manul runtime artifacts (reports, logs)
 reports/
 
+# Accidentally generated stdlib-shadowing files
+os
+sys
+
+# macOS Finder metadata
+.DS_Store
+
 # VS Code extension artifacts
 *.vsix
 #  refer to https://docs.cursor.com/context/ignore-files

@@ -10,5 +10,17 @@
     "https://example.com/": {
         "Domain": "Auto: example.com",
         "https://example.com/login": "Example.com Login"
+    },
+    "https://demoqa.com/": {
+        "Domain": "Auto: demoqa.com/text-box",
+        "https://demoqa.com/text-box": "Auto: demoqa.com/text-box"
+    },
+    "https://testautomationpractice.blogspot.com/": {
+        "Domain": "Auto: testautomationpractice.blogspot.com",
+        "https://testautomationpractice.blogspot.com/": "Auto: testautomationpractice.blogspot.com"
+    },
+    "https://en.wikipedia.org/": {
+        "Domain": "Auto: en.wikipedia.org/wiki/Main_Page",
+        "https://en.wikipedia.org/wiki/Main_Page": "Auto: en.wikipedia.org/wiki/Main_Page"
     }
 }

@@ -29,7 +29,7 @@ manul_engine/
   cache.py                 _ControlsCacheMixin (persistent per-site controls cache)
   actions.py               _ActionsMixin (navigate, scroll, extract, verify, drag, press, right_click, upload, _execute_step, scan_page)
   reporting.py             StepResult, MissionResult, RunSummary dataclasses
-  reporter.py              Self-contained HTML report generator (dark theme, base64 screenshots)
+  reporter.py              Self-contained HTML report generator (dark theme, native <details>/<summary> accordions, Flexbox step layout, base64 screenshots)
   prompts.py               JSON config loader, thresholds, LLM prompt templates
   scoring.py               score_elements() — pure function, 20+ heuristic rules
   js_scripts.py            All JS injected into the browser (includes SCAN_JS)
@@ -133,7 +133,7 @@ DONE.
 ```
 
 Rules for STEP-grouped files:
-* The `STEP` keyword triggers STEP-grouped mode. Individual actions must be **plain unnumbered lines** (no `1.` prefix).
+* `run_mission()` switches to line-by-line parsing when it detects **either** a `STEP` marker OR recognizable action keywords (NAVIGATE, VERIFY, DONE, etc.) in an unnumbered file. STEP markers are not required — a file containing only plain unnumbered action lines is parsed directly without them.
 * `STEP [number]: [description]` — number is optional; description is used for console output and HTML report section headers.
 * Blank lines between groups are allowed and ignored.
 * All other keywords (NAVIGATE, VERIFY, DONE, etc.) work identically in both formats.
@@ -181,14 +181,16 @@ Placed at the top of the file. Used by the engine for logging and LLM context.
 **STEP-grouped (unnumbered) is the mandatory standard for all new hunt files.**
 * Use `STEP N: label` headers to mark logical groups. The STEP number is optional (`STEP: label` is also valid).
 * All action lines following a STEP header must be **plain, unnumbered text** — no `1.` prefix, no bullet points, no dashes.
-* `run_mission()` detects the presence of any `STEP` marker and automatically switches to line-by-line splitting.
+* `run_mission()` detects `STEP` markers **or** recognizable action keywords (NAVIGATE, VERIFY, DONE, etc.) and automatically switches to line-by-line splitting. STEP markers are not required — a file with only plain unnumbered action lines is also parsed directly.
 * Blank lines between groups are allowed and ignored.
-* The classic numbered format (`1. CMD`, `2. CMD`, …) is still supported for backward compatibility but must not be used when generating new files.
-* Free-form, non-numbered text with no STEP markers is routed through the LLM planner (less deterministic; requires Ollama).
+* The classic numbered format (`1. CMD`, `2. CMD`, …) is still supported for backward compatibility, but numeric prefixes are stripped from the HTML report and must not be used when generating new files.
+* Only genuinely free-form natural language with no recognized keywords is routed through the LLM planner (less deterministic; requires Ollama).
 * Elements should be wrapped in single or double quotes for best heuristic matching (e.g., `'Submit'`, `"Password"`).
 
 **ABSOLUTE RULE — Zero Tolerance:**
-> When generating or suggesting `.hunt` files, you MUST use the STEP-grouped unnumbered format. Adding `1.`, `2.`, or any numeric prefix to action lines inside a STEP-grouped file is a critical error that corrupts the parser's line-by-line splitting and will cause test failures. Never do it.
+> When generating or suggesting `.hunt` files:
+> 1. You MUST use the **Clean, Unnumbered DSL Syntax**. NEVER prepend numbers (`1. `, `2. `) to execution actions.
+> 2. You MUST use **Logical `STEP` Grouping** (`STEP [optional number]: [Description]`) to structure E2E flows, matching manual QA test cases. These map perfectly to the Enterprise HTML Reporter's accordions.
 
 ### 5. System Keywords (parser-detected)
 These keywords are detected via word-boundary regex, bypass heuristics, and are handled directly by the engine parser:
@@ -236,14 +238,16 @@ Correct:
 @var: {user_email} = admin@example.com
 @var: {password}   = secret123
 
-1. Fill 'Email' with '{user_email}'
-2. Fill 'Password' with '{password}'
+STEP 1: Login
+Fill 'Email' with '{user_email}'
+Fill 'Password' with '{password}'
 ```
 
 Wrong (do not do this):
 ```text
-1. Fill 'Email' with 'admin@example.com'
-2. Fill 'Password' with 'secret123'
+STEP 1: Login
+Fill 'Email' with 'admin@example.com'
+Fill 'Password' with 'secret123'
 ```
 
 ### 7b. Dynamic Variable Capture (`CALL PYTHON ... into {var}`)
@@ -302,7 +306,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * **Auto-Nav annotation:** When `auto_annotate` is enabled, `run_mission()` captures `url_before = page.url` before every step. For `NAVIGATE` steps, the annotation is written above the step itself. For all other steps, `url_after` is checked in the `finally` block — if the URL changed, `_auto_annotate_navigate(page, hunt_file, step_file_lines, i+1)` is called to insert a comment above the *next* step line. The comment uses the mapped page name when found in `pages.json`, or the full URL when the lookup returns an `"Auto:"` placeholder.
 * **`pages.json` — nested per-site format:** `{ "<site_root_url>": { "Domain": "<display_name>", "<regex_or_exact_url>": "<page_name>" } }`. `lookup_page_name(url)` in `prompts.py` re-reads this file from disk on **every call** (live edits take effect immediately with no restart). Resolution order: exact URL key → regex/substring patterns (skipping `"Domain"` key) → `"Domain"` fallback. When no site block matches, a new nested entry is auto-generated. The longest-prefix site block wins when multiple blocks could match.
 * **`_debug_prompt()` `debug-stop` token:** When Python receives `"debug-stop"` on stdin from the VS Code extension (user pressed ⏹ Debug Stop), it clears **both** `self._user_break_steps = set()` and `self.break_steps = set()`, then breaks the pause loop. The test run continues to completion without any further pauses.
-* **Reporting & HTML reports:** `reporting.py` owns `StepResult`, `MissionResult` (with `__bool__` — truthy if all steps passed), and `RunSummary` dataclasses. `reporter.py` owns `generate_report(summary, output_path)` — produces a self-contained dark-themed HTML file with dashboard stats, per-step accordion, and inline base64 screenshots. All artifacts (logs, HTML reports) are saved to `reports/` (auto-created by `cli.py`). The `reports/` directory is `.gitignored`.
+* **Reporting & HTML reports:** `reporting.py` owns `StepResult`, `MissionResult` (with `__bool__` — truthy if all steps passed), and `RunSummary` dataclasses. `reporter.py` owns `generate_report(summary, output_path)` — produces a self-contained dark-themed HTML file with dashboard stats, native `<details>/<summary>` accordions (collapsed by default, auto-expanded on failure), Flexbox step rows, and inline base64 screenshots. All artifacts (logs, HTML reports) are saved to `reports/` (auto-created by `cli.py`). The `reports/` directory is `.gitignored`.
 * **Screenshot capture:** `run_mission()` accepts `screenshot_mode` (`"none"`, `"on-fail"`, `"always"`). Screenshots are stored as base64 PNGs in `StepResult.screenshot`.
 
 ## Running tests
@@ -434,7 +438,7 @@ async def handle_datepicker(page, action_type: str, value: str | None) -> None:
 ```
 ```text
 # tests/checkout.hunt
-2. Fill 'React Datepicker' with '2026-12-25'
+Fill 'React Datepicker' with '2026-12-25'
 ```
 
 Example — WRONG (do not do this):

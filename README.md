@@ -18,6 +18,15 @@ Manul combines the blazing speed of **Playwright**, 20+ JavaScript DOM heuristic
 
 ---
 
+## 🚀 What's New: The Enterprise Update
+
+* **Clean, Unnumbered DSL:** The requirement for line numbers before actions has been completely dropped. Scripts now read exactly like plain English (`NAVIGATE to url` instead of `1. NAVIGATE to url`).
+* **Logical STEP Grouping:** `STEP [optional number]: [Description]` metadata blocks allow mapping manual QA cases directly into `.hunt` files. Unmatched quotes inside descriptions (e.g. `STEP: Pallas's cat`) are cleanly isolated.
+* **Enterprise HTML Reporter:** The reporter is now dual-mode and zero-dependency, featuring native HTML5 accordions (`<details>`), auto-expanding failures, and a clean Flexbox layout instead of old-school tables.
+* **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, and `@after_group` orchestrate complex DB seeding and auth logic. `ctx.variables` are securely serialized across parallel `--workers`.
+* **Bulletproof DOM Heuristics:** The updated `SNAPSHOT_JS` rigorously filters out invisible or hidden UI elements (like hidden sticky headers), and effortlessly handles deeply nested modern frameworks (e.g. Wikipedia Vector 2022 / Codex) by strongly prioritizing `aria-label` and `name_attr`.
+* **VS Code Extension Polish:** The Step Builder is now context-aware, verifying `vscode.window.activeTextEditor` to prevent accidental insertions in non-`.hunt` files, and provides robust syntax highlighting for the unnumbered DSL.
+
 ## ✨ Key Features
 
 ### ⚡ Heuristics-First Architecture
@@ -71,9 +80,13 @@ manul tests/ --retries 3 --html-report  # retry + generate an HTML report
 
 Or set `"retries": 2` in `manul_engine_configuration.json` for a permanent default. Each retry is a full fresh run — no stale state carried over.
 
-### 📊 Standalone HTML Reports
+### 📊 Enterprise HTML Reporter
 
-One flag. One self-contained HTML file. Dark-themed dashboard with pass/fail stats, per-step accordion, inline base64 screenshots, and XSS-safe output — no external dependencies, no CDN, no server.
+One flag. One self-contained HTML file. Dark-themed dashboard with pass/fail stats, native HTML5 `<details>` step accordions, inline base64 screenshots, and XSS-safe output — zero external dependencies, zero CDN, zero server.
+
+**Enterprise Upgrades:**
+* **Dual-Mode Rendering:** If `STEP` blocks are used, steps are grouped into logical Accordions. Passing steps collapse by default; failing steps auto-expand to show exactly what broke.
+* **Flexbox Layout:** Dropped clunky tables for a sleek Flexbox design ensuring perfect text alignment and zero text mashing.
 
 ```bash
 manul tests/ --html-report                          # report saved to reports/manul_report.html
@@ -103,7 +116,7 @@ NAVIGATE to https://myapp.com/cart
 VERIFY that 'Laptop Pro' is present.
 ```
 
-`STEP` headers produce zero browser actions — they are pure metadata. Action lines that follow must be plain unnumbered text (never `1.`, `2.`, …).
+`STEP` headers produce zero browser actions — they are pure metadata. The `STEP N:` tag is optional but highly recommended: it maps 1:1 to manual QA test cases and gives the HTML report its accordion structure. Action lines that follow must be written as **plain text without leading numbers** — never prefix with `1.`, `2.`, etc.
 
 ---
 
@@ -125,7 +138,7 @@ async def handle_datepicker(page, action_type, value):
 
 ```text
 # tests/checkout.hunt  — no change needed for the QA author
-2. Fill 'React Datepicker' with '2026-12-25'
+Fill 'React Datepicker' with '2026-12-25'
 ```
 
 The engine loads every `.py` file in `controls/` at startup. No configuration required.
@@ -161,8 +174,8 @@ Tag any `.hunt` file and cherry-pick which tests to run — no directory jugglin
 ```text
 @tags: smoke, auth, regression
 
-1. NAVIGATE to https://example.com/login
-2. DONE.
+NAVIGATE to https://example.com/login
+DONE.
 ```
 
 ```bash
@@ -356,7 +369,7 @@ manul my_tests/ --browser firefox
 manul my_tests/ --headless --browser webkit
 
 # Run an inline one-liner
-manul "1. NAVIGATE to https://example.com  2. Click the 'More' link  3. DONE."
+manul "NAVIGATE to https://example.com  Click the 'More' link  DONE."
 
 # Run multiple hunt files in parallel (4 concurrent browsers)
 manul my_tests/ --workers 4
@@ -524,10 +537,11 @@ Declare static test data at the top of the file using `@var:`. These values are 
 @var: {email}    = admin@example.com
 @var: {password} = secret123
 
-1. NAVIGATE to https://myapp.com/login
-2. Fill 'Email' with '{email}'
-3. Fill 'Password' with '{password}'
-4. Click the 'Login' button
+STEP 1: Login
+NAVIGATE to https://myapp.com/login
+Fill 'Email' with '{email}'
+Fill 'Password' with '{password}'
+Click the 'Login' button
 ```
 
 The surrounding `{}` braces in the declaration are optional — `@var: email = ...` and `@var: {email} = ...` are equivalent. Values are stripped of leading/trailing whitespace. Declared variables behave exactly like variables populated by `EXTRACT` and can be used interchangeably with them in downstream steps.

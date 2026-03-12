@@ -178,7 +178,7 @@ def _test_render_lstep_group() -> None:
     _assert("lstep-header" in html, "_render_lstep_group: has lstep-header class")
     _assert("Authenticate" in html, "_render_lstep_group: label text present")
     _assert("lstep-body" in html, "_render_lstep_group: has lstep-body wrapper")
-    _assert("steps-table" in html, "_render_lstep_group: inner steps table present")
+    _assert("steps-list" in html, "_render_lstep_group: inner steps list present")
     _assert("2 actions" in html, "_render_lstep_group: action count shown")
     _assert("PASS" in html, "_render_lstep_group: PASS status when all steps pass")
 
@@ -245,8 +245,8 @@ def _test_generate_report() -> None:
             "generate_report: 'Login' group label present")
     _assert("Verification" in content,
             "generate_report: 'Verification' group label present")
-    _assert("lstep-chevron" in content,
-            "generate_report: accordion chevron element present")
+    _assert('<details class="lstep-block"' in content,
+            "generate_report: accordion details element present")
 
     # Flat rendering: no STEP markers → no lstep-header
     steps_flat = [
@@ -272,8 +272,8 @@ def _test_generate_report() -> None:
 
     _assert('class="lstep-header"' not in content_flat,
             "generate_report: no lstep-header when no STEP markers (flat rendering)")
-    _assert("steps-table" in content_flat,
-            "generate_report: flat steps-table still present")
+    _assert("steps-list" in content_flat,
+            "generate_report: flat steps-list still present")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

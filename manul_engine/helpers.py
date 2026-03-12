@@ -39,14 +39,15 @@ def detect_mode(step: str) -> str:
 # Compiled patterns for system keyword detection (order matters).
 _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
     # STEP must precede other keywords so "STEP 1: NAVIGATE..." is classified correctly.
-    ("logical_step", re.compile(r'\bSTEP\s*\d*\s*:')),
+    # Anchored to line start so that STEP inside quoted labels is not matched.
+    ("logical_step", re.compile(r'^\s*(?:\d+\.\s*)?STEP\s*\d*\s*:')),
     ("navigate",    re.compile(r'\bNAVIGATE\b')),
     ("wait",        re.compile(r'\bWAIT\b')),
     ("scroll",      re.compile(r'\bSCROLL\b')),
     ("extract",     re.compile(r'\bEXTRACT\b')),
     ("verify",      re.compile(r'\bVERIFY\b')),
-    ("press_enter", re.compile(r'\bPRESS\s+ENTER\b')),
-    ("press",       re.compile(r'\bPRESS\b')),
+    ("press_enter", re.compile(r'^\s*(?:\d+\.\s*)?PRESS\s+ENTER\b')),
+    ("press",       re.compile(r'^\s*(?:\d+\.\s*)?PRESS\b')),
     ("right_click", re.compile(r'\bRIGHT\s+CLICK\b')),
     ("upload",      re.compile(r'\bUPLOAD\b')),
     ("scan_page",   re.compile(r'\bSCAN\s+PAGE\b')),
@@ -96,14 +97,22 @@ def classify_step(step: str) -> str:
     Quoted strings are stripped before matching so that keywords inside
     element labels (e.g. ``Click 'Press Here'``) are not misclassified.
 
-    The returned string is one of: ``"navigate"``, ``"wait"``, ``"scroll"``,
-    ``"extract"``, ``"verify"``, ``"press_enter"``, ``"press"``,
-    ``"right_click"``, ``"upload"``, ``"scan_page"``,
-    ``"call_python"``, ``"debug"``, ``"done"``, or ``"action"``.
+    The returned string is one of: ``"logical_step"``, ``"navigate"``,
+    ``"wait"``, ``"scroll"``, ``"extract"``, ``"verify"``,
+    ``"press_enter"``, ``"press"``, ``"right_click"``, ``"upload"``,
+    ``"scan_page"``, ``"call_python"``, ``"debug"``, ``"done"``,
+    or ``"action"``.
     """
+    # Fast-path: STEP markers are checked on the raw text BEFORE quote
+    # stripping so that apostrophes in descriptions (e.g. "Pallas's cat")
+    # never interfere with classification.  The pattern is anchored to line
+    # start so "STEP 1:" inside a quoted label does not trigger a false match.
+    if _STEP_PATTERNS[0][1].search(step.upper()):  # logical_step
+        return "logical_step"
+
     # Remove quoted substrings so keywords inside labels are invisible.
     s_up = _RE_QUOTED.sub("", step).upper()
-    for kind, pattern in _STEP_PATTERNS:
+    for kind, pattern in _STEP_PATTERNS[1:]:
         if pattern.search(s_up):
             return kind
     return "action"
