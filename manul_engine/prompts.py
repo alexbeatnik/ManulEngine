@@ -155,7 +155,10 @@ if not _PAGES_WRITE_PATH.exists():
 AUTO_ANNOTATE: bool = env_bool("MANUL_AUTO_ANNOTATE")
 
 # ── Retries & Reporting ──────────────────────────────────────────────────────
-RETRIES: int = max(0, int(os.getenv("MANUL_RETRIES", "0")))
+try:
+    RETRIES: int = max(0, int(os.getenv("MANUL_RETRIES", "0")))
+except ValueError:
+    RETRIES = 0
 _VALID_SCREENSHOT = ("on-fail", "always", "none")
 _raw_screenshot = (os.getenv("MANUL_SCREENSHOT") or "on-fail").strip().lower()
 SCREENSHOT: str = _raw_screenshot if _raw_screenshot in _VALID_SCREENSHOT else "on-fail"

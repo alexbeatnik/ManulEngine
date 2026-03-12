@@ -79,6 +79,8 @@ manul tests/ --screenshot on-fail --html-report     # screenshots only on failur
 
 All artifacts (logs, reports) are saved to the `reports/` directory — your workspace stays clean.
 
+> **Note:** Per-step details (accordion + embedded screenshots) require `--workers 1` (the default). When `--workers > 1`, the report aggregates per-hunt results only.
+
 ---
 
 ## 🎛️ Custom Controls — Escape Hatch for Complex UI
@@ -491,7 +493,7 @@ Create `manul_engine_configuration.json` in your project root — all settings a
   "auto_annotate": false,
 
   "retries": 0,
-  "screenshot": "none",
+  "screenshot": "on-fail",
   "html_report": false
 }
 ```
@@ -528,7 +530,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 | `tests_home` | `"tests"` | Default directory for new hunt files and `SCAN PAGE` / `manul scan` output |
 | `auto_annotate` | `false` | Automatically insert `# 📍 Auto-Nav:` comments in hunt files whenever the browser URL changes (not only on `NAVIGATE` steps). Page names are resolved from `pages.json`; unmapped URLs fall back to the full URL |
 | `retries` | `0` | Number of times to retry a failed hunt file before marking it as failed (0 = no retries) |
-| `screenshot` | `"none"` | Screenshot capture mode: `"none"` (default), `"on-fail"` (screenshot on failed steps), `"always"` (every step) |
+| `screenshot` | `"on-fail"` | Screenshot capture mode: `"none"` (no screenshots), `"on-fail"` (default — failed steps only), `"always"` (every step) |
 | `html_report` | `false` | Generate a self-contained HTML report after the run (`reports/manul_report.html`) |
 
 ---

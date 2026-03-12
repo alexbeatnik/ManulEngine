@@ -371,7 +371,7 @@ Environment variables (`MANUL_*`) always override JSON values — useful for CI/
   "auto_annotate": false,
 
   "retries": 0,
-  "screenshot": "none",
+  "screenshot": "on-fail",
   "html_report": false
 }
 ```

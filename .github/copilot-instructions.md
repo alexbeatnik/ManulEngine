@@ -344,7 +344,7 @@ Environment variables (`MANUL_*`) always override JSON values.
 | `tests_home` | `"tests"` | Default directory for new hunt files and `SCAN PAGE` / `manul scan` output |
 | `auto_annotate` | `false` | If `true`, engine automatically inserts `# 📍 Auto-Nav: <name>` comments into `.hunt` files whenever the page URL changes during a run. Page names come from `pages.json`; falls back to full URL for unmapped pages. Overridable via `MANUL_AUTO_ANNOTATE` env var |
 | `retries` | `0` | Number of times to retry a failed hunt file before marking it as failed (0 = no retries) |
-| `screenshot` | `"none"` | Screenshot capture mode: `"none"` (default), `"on-fail"` (failed steps only), `"always"` (every step) |
+| `screenshot` | `"on-fail"` | Screenshot capture mode: `"on-fail"` (default — failed steps only), `"always"` (every step), `"none"` (disabled) |
 | `html_report` | `false` | Generate a self-contained HTML report after the run (`reports/manul_report.html`) |
 Threshold auto-calculation by model size: `<1b → 500`, `1-4b → 750`, `5-9b → 1000`, `10-19b → 1500`, `20b+ → 2000`, `null → 0`.
 
