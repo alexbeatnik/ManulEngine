@@ -595,8 +595,8 @@ async def main() -> None:
                     flags += ["--retries", str(retries)]
                 if screenshot_mode != "none":
                     flags += ["--screenshot", screenshot_mode]
-                if html_report:
-                    flags.append("--html-report")
+                # Do NOT forward --html-report: the parent process generates
+                # the consolidated report; workers would overwrite each other.
                 cmd = base + flags + [path]
 
                 async with sem:

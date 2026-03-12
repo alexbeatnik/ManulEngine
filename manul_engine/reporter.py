@@ -362,7 +362,7 @@ def _render_mission(mission: MissionResult) -> str:
         )
         if mission.attempts > 1:
             label = "passed on retry" if status == "flaky" else "after retries"
-            steps_html += f'<div class="attempts-note">\U0001f504 {label} (attempt {mission.attempts}/{mission.attempts})</div>'
+            steps_html += f'<div class="attempts-note">\U0001f504 {label} (attempt {mission.attempts})</div>'
     elif mission.error:
         steps_html = f'<div class="step-error" style="margin:12px 16px;">{_esc(mission.error)}</div>'
 
