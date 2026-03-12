@@ -117,7 +117,7 @@ A sidebar panel that lets you insert hunt steps with a single click — no typin
 - **Hooks buttons** — **🔧 Insert [SETUP]** and **🧹 Insert [TEARDOWN]** insert pre-filled hook blocks with `CALL PYTHON module.function` placeholders; **🎯 Generate Demo Test** scaffolds a complete hunt file with setup, UI steps, and teardown in one click
 - **Scan Page** — inserts `SCAN PAGE into draft.hunt`; when the engine executes this step it scans the current browser page for interactive elements and writes a ready-to-run draft hunt file to `tests_home/draft.hunt`
 - Each click appends to the currently open `.hunt` file and positions the cursor inside the first `''` pair for immediate editing
-- Works even when the sidebar has focus (the editor is not the active panel)
+- Requires the `.hunt` file to be the active editor tab.
 
 ---
 

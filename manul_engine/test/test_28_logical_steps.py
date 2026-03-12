@@ -278,7 +278,7 @@ def _test_generate_report() -> None:
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
-async def run_suite() -> tuple[int, int]:
+async def run_suite() -> bool:
     global _PASS, _FAIL
     _PASS = _FAIL = 0
 
@@ -295,4 +295,4 @@ async def run_suite() -> tuple[int, int]:
     total = _PASS + _FAIL
     print(f"\n📊 SCORE: {_PASS}/{total}")
     print(f"  {'✅' if _FAIL == 0 else '❌'}  {_PASS} passed, {_FAIL} failed\n")
-    return _PASS, _FAIL
+    return _FAIL == 0

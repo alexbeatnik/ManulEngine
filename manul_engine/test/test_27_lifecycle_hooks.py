@@ -430,7 +430,7 @@ def _test_public_exports() -> None:
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
-async def run_suite() -> None:
+async def run_suite() -> bool:
     global _PASS, _FAIL
     _PASS = 0
     _FAIL = 0
@@ -459,6 +459,8 @@ async def run_suite() -> None:
     print(f"\n  SCORE: {_PASS}/{total}")
     if _FAIL:
         print(f"  ❌  {_FAIL} assertion(s) failed")
+
+    return _FAIL == 0
 
 
 if __name__ == "__main__":
