@@ -723,11 +723,12 @@ async def main() -> None:
 
     finally:
         # ── @after_all (always runs, even after exceptions) ────────────────
-        try:
-            _lc_registry.run_after_all(_lc_ctx)
-        except Exception:
-            # Be defensive: never let @after_all teardown errors mask the primary failure.
-            pass
+        if locals().get("_lc_registry") and locals().get("_lc_ctx"):
+            try:
+                _lc_registry.run_after_all(_lc_ctx)
+            except Exception:
+                # Be defensive: never let @after_all teardown errors mask the primary failure.
+                pass
 
         # ── HTML report generation (always runs, even after exceptions) ────
         if html_report and run_summary is not None and run_summary.missions:
