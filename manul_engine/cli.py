@@ -242,6 +242,7 @@ async def _run_hunt_file(
     debug: bool = False,
     break_lines: "set[int] | None" = None,
     screenshot_mode: str = "none",
+    global_vars: "dict[str, str] | None" = None,
 ) -> MissionResult:
     filename = os.path.basename(path)
     print(f"\n{'='*60}")
@@ -281,6 +282,9 @@ async def _run_hunt_file(
 
     manul = ManulEngine(headless=headless, browser=browser, debug_mode=debug, break_steps=break_steps)
     mission_result = MissionResult(file=path, name=filename, status="fail")
+    # Merge global lifecycle vars (lower priority) with per-file @var: declarations
+    # so that @var: can always override a global default.
+    merged_vars: dict[str, str] = {**(global_vars or {}), **hunt.parsed_vars}
     try:
         mission_result = await manul.run_mission(
             hunt.mission,
@@ -288,7 +292,7 @@ async def _run_hunt_file(
             hunt_dir=hunt_dir,
             hunt_file=path,
             step_file_lines=hunt.step_file_lines,
-            initial_vars=hunt.parsed_vars,
+            initial_vars=merged_vars,
             screenshot_mode=screenshot_mode,
         )
         mission_result.file = path
@@ -534,16 +538,61 @@ async def main() -> None:
         if html_report:
             print(f"📊 HTML report: enabled")
 
+        # ── Global lifecycle hooks ─────────────────────────────────────────────
+        from .lifecycle import registry as _lc_registry, GlobalContext, load_hooks_file, serialize_global_vars, deserialize_global_vars
+        _lc_registry.clear()          # reset any stale registrations from a previous run
+        _lc_ctx = GlobalContext()
+        # Inherit variables serialised by the orchestrator for parallel workers.
+        _lc_ctx.variables.update(deserialize_global_vars())
+
+        # Discover and load manul_hooks.py from the target directory.
+        _target_dir = os.path.dirname(os.path.abspath(files[0])) if files else os.path.abspath(target)
+        _hooks_loaded = load_hooks_file(_target_dir)
+        if _hooks_loaded and not _lc_registry.is_empty:
+            print(f"🪝  Lifecycle hooks loaded from: {os.path.join(_target_dir, 'manul_hooks.py')}")
+
         run_summary = RunSummary(started_at=_dt.datetime.now().isoformat())
         total_start = time.perf_counter()
 
-        if workers == 1:
+        # ── @before_all ───────────────────────────────────────────────────────
+        _before_all_ok = _lc_registry.run_before_all(_lc_ctx)
+        if not _before_all_ok:
+            print("\n❌ @before_all hook failed — aborting entire suite.")
+            # Record all hunts as skipped and fall through to @after_all.
+            for path in files:
+                _mr = MissionResult(
+                    file=path,
+                    name=os.path.basename(path),
+                    status="fail",
+                    error="@before_all hook failed",
+                )
+                run_summary.missions.append(_mr)
+                results.append((_mr.name, "FAIL", 0.0))
+        elif workers == 1:
             # ── Sequential (default) ──────────────────────────────────────
             for path in files:
+                file_tags = _read_tags(path)
+
+                # ── @before_group ─────────────────────────────────────────
+                _bg_ok = _lc_registry.run_before_group(file_tags, _lc_ctx)
+                if not _bg_ok:
+                    print(f"    ❌ @before_group hook failed — skipping {os.path.basename(path)}")
+                    _lc_registry.run_after_group(file_tags, _lc_ctx)
+                    _mr = MissionResult(
+                        file=path,
+                        name=os.path.basename(path),
+                        status="fail",
+                        error="@before_group hook failed",
+                    )
+                    run_summary.missions.append(_mr)
+                    results.append((_mr.name, "FAIL", 0.0))
+                    continue
+
                 t0 = time.perf_counter()
                 mission_result = await _run_hunt_file(
                     path, headless, browser, debug, break_lines,
                     screenshot_mode=screenshot_mode,
+                    global_vars=_lc_ctx.variables,
                 )
                 # ── Retry loop ────────────────────────────────────────────
                 if not mission_result and retries > 0:
@@ -552,6 +601,7 @@ async def main() -> None:
                         mission_result = await _run_hunt_file(
                             path, headless, browser, debug, break_lines,
                             screenshot_mode=screenshot_mode,
+                            global_vars=_lc_ctx.variables,
                         )
                         mission_result.attempts = attempt
                         if mission_result:
@@ -563,6 +613,9 @@ async def main() -> None:
                 run_summary.missions.append(mission_result)
                 status_label = mission_result.status.upper()
                 results.append((mission_result.name, status_label, elapsed))
+
+                # ── @after_group ──────────────────────────────────────────
+                _lc_registry.run_after_group(file_tags, _lc_ctx)
         else:
             # ── Parallel via subprocesses ─────────────────────────────────
             # Each hunt is spawned as a separate `manul <file>` subprocess so
@@ -571,6 +624,8 @@ async def main() -> None:
             print(f"\u2699\ufe0f  Running with up to {workers} parallel worker(s)\n")
             sem = asyncio.Semaphore(workers)
             manul_exe = _find_manul_exe()
+            # Serialise ctx.variables so worker processes can inherit them.
+            _global_vars_json = serialize_global_vars(_lc_ctx)
 
             async def _run_subprocess(path: str) -> tuple[str, str, float, str]:
                 # Build base command: executable + optional script path
@@ -599,12 +654,16 @@ async def main() -> None:
                 # the consolidated report; workers would overwrite each other.
                 cmd = base + flags + [path]
 
+                # Inject serialised global vars into the child's environment.
+                child_env = {**os.environ, "MANUL_GLOBAL_VARS": _global_vars_json}
+
                 async with sem:
                     t0 = time.perf_counter()
                     proc = await asyncio.create_subprocess_exec(
                         *cmd,
                         stdout=asyncio.subprocess.PIPE,
                         stderr=asyncio.subprocess.STDOUT,
+                        env=child_env,
                     )
                     raw, _ = await proc.communicate()
                     elapsed = time.perf_counter() - t0
@@ -659,6 +718,12 @@ async def main() -> None:
         return run_summary.failed  # number of failures
 
     finally:
+        # ── @after_all (always runs, even after exceptions) ────────────────
+        try:
+            _lc_registry.run_after_all(_lc_ctx)
+        except Exception:
+            pass  # _lc_registry / _lc_ctx may be unbound if setup failed early
+
         # ── HTML report generation (always runs, even after exceptions) ────
         if html_report and run_summary is not None and run_summary.missions:
             if not run_summary.ended_at:

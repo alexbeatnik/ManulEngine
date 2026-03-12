@@ -238,6 +238,12 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 
 ## Release Notes
 
+### 0.0.88
+- **🌐 Global Lifecycle Hooks** — create `manul_hooks.py` alongside your `.hunt` files and use `@before_all`, `@after_all`, `@before_group(tag=)`, `@after_group(tag=)` decorators from `manul_engine` to wire up suite-level setup and teardown in pure Python. Variables written to `ctx.variables` in any hook are injected into every matching hunt as `{placeholder}` data — no per-file `@var:` needed. Works identically whether running with `--workers 1` (sequential) or `--workers N` (parallel subprocesses): the orchestrator serialises shared variables into `MANUL_GLOBAL_VARS` before spawning workers so every browser process inherits the same state
+- **🧠 Deep Accessibility Heuristics** — element scoring now uses the HTML `name` attribute as a first-class signal (`name_attr` exact match: +3,000 points; substring: +1,000 points). This resolves long-standing issues with modern SPA design systems (React, Vue, Wikipedia Vector 2022 / Codex) where inputs use `aria-label` and `name` as the primary identifiers instead of visible text. No configuration change required — the improvement is automatic
+- **Suite-level failure semantics** — `@before_all` failure aborts the entire suite (all remaining hunts recorded as failed); `@after_all` always fires in the `finally` block. `@before_group` failure skips only the matching mission; `@after_group` still runs for it. Cleanup hooks continue past individual errors so teardown is never partially skipped
+- Core engine bump to **0.0.8.8**
+
 ### 0.0.87
 - **📊 HTML Reports** — new `manulEngine.htmlReport` toggle in Config Panel (“📊 Reporting & Retries” section); generates a self-contained dark-themed HTML report with dashboard stats, per-step accordion, and inline base64 screenshots after each run. Report is saved to `reports/manul_report.html` in the workspace root
 - **🔄 Automatic Retries** — new `manulEngine.retries` setting (0–10) in Config Panel; retries each failed hunt the specified number of times before marking it as failed. Each retry is a full fresh browser run

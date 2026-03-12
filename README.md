@@ -30,6 +30,10 @@ When the LLM picker is used, Manul passes the heuristic score as a **prior** (hi
 
 Modern websites love to hide elements behind invisible overlays, custom dropdowns, and zero-pixel traps. Manul uses Playwright with `force=True` plus retries and self-healing; for Shadow DOM elements it falls back to direct JS helpers to keep execution moving.
 
+### 🧠 Deep Accessibility Heuristics
+
+Manul scores elements using 20+ signals including `aria-label`, `placeholder`, `name`, `data-qa`, `html_id`, semantic `input type`, and contextual section headings. This means it handles modern single-page apps (React, Vue, Angular) and complex design systems (like Wikipedia's Vector 2022 / Codex skin) without any tuning — accessibility attributes are treated as first-class identifiers.
+
 ### 🌑 Shadow DOM Awareness
 
 The DOM snapshotter recursively inspects shadow roots and can interact with elements inside the shadow tree.
@@ -206,7 +210,62 @@ Append `into {var_name}` (or `to {var_name}`) to bind the function’s return va
 
 The raw return value is converted to a string (`str(return_value)`) and stored under the variable name. It is then available for `{placeholder}` substitution in every subsequent step, exactly like variables populated by `EXTRACT` or `@var:`.
 ---
+## 🌐 Global Lifecycle Hooks — Enterprise-Scale Test Orchestration
 
+For multi-file test suites that need shared state — a global auth token, a seeded database, a per-run environment flag — create a `manul_hooks.py` file in the same directory as your `.hunt` files. The engine discovers and loads it automatically.
+
+```python
+# tests/manul_hooks.py
+from manul_engine import before_all, after_all, before_group, after_group, GlobalContext
+
+@before_all
+def global_setup(ctx: GlobalContext) -> None:
+    """Runs once before any hunt file starts."""
+    ctx.variables["BASE_URL"] = "https://staging.example.com"
+    ctx.variables["API_TOKEN"] = fetch_token_from_vault()
+
+@after_all
+def global_teardown(ctx: GlobalContext) -> None:
+    """Always runs after all hunt files finish, pass or fail."""
+    db.rollback_all_test_data()
+
+@before_group(tag="smoke")
+def seed_smoke(ctx: GlobalContext) -> None:
+    """Runs before every hunt file tagged @tags: smoke."""
+    ctx.variables["ORDER_ID"] = db.create_temp_order()
+
+@after_group(tag="smoke")
+def clean_smoke(ctx: GlobalContext) -> None:
+    ctx.variables.pop("ORDER_ID", None)
+```
+
+Variables written to `ctx.variables` are injected into every matching mission as `{placeholder}`-ready data — identical to `@var:` declarations, but shared across all hunt files:
+
+```text
+# tests/checkout.hunt
+@tags: smoke
+
+1. NAVIGATE to '{BASE_URL}/checkout'
+2. Fill 'API Token' field with '{API_TOKEN}'
+3. DONE.
+```
+
+### Hook execution order and failure semantics
+
+| Hook | When it fires | Failure behaviour |
+|---|---|---|
+| `@before_all` | Once before the first hunt file | Aborts the entire suite; `@after_all` still runs |
+| `@after_all` | Once after all hunts finish | Always runs; failure logged, does not override suite result |
+| `@before_group(tag=)` | Before each hunt file whose `@tags:` contains `tag` | Failure skips that mission; `@after_group` still runs for it |
+| `@after_group(tag=)` | After each matching mission (pass or fail) | Always runs; failure logged, does not override mission result |
+
+### Parallel workers
+
+When running with `--workers N`, `@before_all` runs in the orchestrator process and its `ctx.variables` are serialised as JSON into the `MANUL_GLOBAL_VARS` environment variable before worker subprocesses are spawned. Each worker deserialises them at startup — `{placeholder}` substitution works identically in parallel and sequential modes.
+
+> **Rule for adding pre-test setup:** If a test scenario requires a database record, a seeded user, a valid auth token, or any per-suite environment state, **always** use `@before_all` or `@before_group` in `manul_hooks.py`. Never add setup steps to individual `.hunt` files — they are slow, brittle, and couple production UI flows to test infrastructure.
+
+---
 ## 💻 System Requirements
 
 | | Minimum | Recommended |
@@ -560,7 +619,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 
 ## 🐾 Battle-Tested
 
-ManulEngine is verified against **1592+ synthetic DOM tests** covering:
+ManulEngine is verified against **1653+ synthetic DOM tests** covering:
 
 - Shadow DOM, invisible overlays, zero-pixel honeypots
 - Custom dropdowns, drag-and-drop, hover menus
@@ -570,4 +629,4 @@ ManulEngine is verified against **1592+ synthetic DOM tests** covering:
 
 ---
 
-**Version:** 0.0.8.7 · **Status:** Hunting...
+**Version:** 0.0.8.8 · **Status:** Hunting...

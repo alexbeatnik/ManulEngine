@@ -22,7 +22,7 @@ Current operating mode in this repo is typically **mixed**:
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.7
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.8
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
@@ -38,6 +38,7 @@ manul_engine/
   cli.py                   Public installed CLI entry point (manul command + manul scan subcommand); ParsedHunt NamedTuple
   controls.py              Custom Controls registry (@custom_control, get_custom_control, load_custom_controls)
   hooks.py                 [SETUP] / [TEARDOWN] hook parser and executor
+  lifecycle.py             Global Lifecycle Hook Registry (@before_all, @after_all, @before_group, @after_group, GlobalContext, load_hooks_file)
   _test_runner.py          Dev-only synthetic test runner (not in public CLI)
   test/
     test_00_engine.py       synthetic DOM micro-suite (local HTML via Playwright)
@@ -64,7 +65,7 @@ tests/
   demo_login.hunt         integration: login with @var: static variables
   demo_variables.hunt     integration: @var: + CALL PYTHON into {var} combined
 vscode-extension/
-  package.json              Extension manifest (v0.0.87)
+  package.json              Extension manifest (v0.0.88)
   src:
     extension.ts            Activation, command registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
@@ -418,6 +419,21 @@ The page name in `@custom_control(page=...)` must match the value returned by `l
 
 ## Common pitfalls & Advanced Learnings
 
+* **Global Lifecycle Hooks — mandatory rule:** When a user asks to set up a database, perform a global login, seed test data, obtain an auth token, or do any pre-suite or pre-group environment setup, you **MUST** generate a `manul_hooks.py` file using `@before_all` or `@before_group(tag=...)` from `manul_engine`. **Never** add setup steps to individual `.hunt` files — that couples UI flows to infrastructure, slows each run, and makes teardown unreliable. The only correct pattern:
+  ```python
+  # tests/manul_hooks.py
+  from manul_engine import before_all, after_all, GlobalContext
+
+  @before_all
+  def setup(ctx: GlobalContext) -> None:
+      ctx.variables["TOKEN"] = auth_service.get_token()
+
+  @after_all
+  def teardown(ctx: GlobalContext) -> None:
+      auth_service.revoke_token(ctx.variables["TOKEN"])
+  ```
+  The token is then available as `{TOKEN}` in all `.hunt` files without any per-file declaration.
+
 * **Native Select vs Custom Dropdowns:** Playwright's `select_option()` crashes on non-`<select>` tags. If `mode == "select"` but the element is a `div`/`span`, gracefully fallback to a standard `click()`.
 * **Overlapped Elements:** Modern UIs use invisible overlays. The engine primarily uses Playwright with `force=True` plus retries/alternate candidates; JS helpers (`window.manulClick`, `window.manulType`) are mainly used for Shadow DOM elements.
 * **Deep Text Verification:** Standard `document.body.innerText` does not see text inside Shadow DOMs or Input values. `_handle_verify` uses a JS collector (`VISIBLE_TEXT_JS`) plus fallback checks.
@@ -442,7 +458,9 @@ The engine does not use a single fixed “chain constant”; it sums many heuris
 ## Element data shape
 
 Each element dict returned by `SNAPSHOT_JS` contains:
-`id, name, xpath, is_select, is_shadow, is_contenteditable, class_name, tag_name, input_type, data_qa, html_id, icon_classes, aria_label, placeholder, role, disabled, aria_disabled`.
+`id, name, xpath, is_select, is_shadow, is_contenteditable, class_name, tag_name, input_type, data_qa, html_id, icon_classes, aria_label, placeholder, role, disabled, aria_disabled, name_attr`.
+
+* `name_attr` — the HTML `name` attribute (e.g. `name="search"` on Wikipedia's Codex search input). Scoring treats it as a text signal: exact match +3,000; substring match +1,000. Always cast with `str(el.get("name_attr", ""))` before comparing.
 
 * `name` includes section context: `"Section -> Element Name input text"`.
 * For `<select>` elements, `name` embeds options: `"dropdown [Option A | Option B]"`.
@@ -483,7 +501,7 @@ When the version changes, **ALL** of the following files must be updated:
 |------|----------------|
 | `pyproject.toml` | `version = "X.Y.Z"` under `[project]` |
 | `README.md` | `**Version:** X.Y.Z` in the footer |
-| `README_DEV.md` | Title `# 😼 ManulEngine vX.Y.Z`, pyproject.toml ref, extension manifest ref, VS Code extension version ref, footer `**Version:** X.Y.Z` |
+| `README_DEV.md` | Title `# 😼 ManulEngine vX.Y.Z`, pyproject.toml ref, extension manifest ref, VS Code extension version ref, lifecycle/test suite lists, footer `**Version:** X.Y.Z` |
 | `vscode-extension/package.json` | `"version": "X.Y.Z"` (uses 3-digit semver, e.g. `"0.0.84"`) |
 | `vscode-extension/README.md` | Add `### X.Y.Z` release notes section above the previous entry |
 | `.github/copilot-instructions.md` | Version in the repo layout section (this file) |
