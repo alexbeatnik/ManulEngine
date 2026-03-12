@@ -82,29 +82,7 @@ export class StepBuilderProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "manul.stepBuilder";
 
   private _view?: vscode.WebviewView;
-  /**
-   * URI of the last .hunt document that was active.
-   * We store the URI (not the TextEditor object) because editor references
-   * become stale as soon as the webview steals focus — stale editors silently
-   * reject edit() calls.
-   */
-  private _lastHuntUri?: vscode.Uri;
-
-  constructor(private readonly _context: vscode.ExtensionContext) {
-    // Track the URI whenever the active editor changes to a .hunt file.
-    _context.subscriptions.push(
-      vscode.window.onDidChangeActiveTextEditor((editor) => {
-        if (editor && editor.document.fileName.endsWith(".hunt")) {
-          this._lastHuntUri = editor.document.uri;
-        }
-      })
-    );
-    // Capture whatever is already open when the extension loads.
-    const active = vscode.window.activeTextEditor;
-    if (active && active.document.fileName.endsWith(".hunt")) {
-      this._lastHuntUri = active.document.uri;
-    }
-  }
+  constructor(private readonly _context: vscode.ExtensionContext) {}
 
   public resolveWebviewView(
     webviewView: vscode.WebviewView,
@@ -117,7 +95,7 @@ export class StepBuilderProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.onDidReceiveMessage(async (msg: { command: string; template?: string; url?: string }) => {
       if (msg.command === "insertStep" && msg.template !== undefined) {
-        await insertStep(msg.template, this._lastHuntUri);
+        await insertStep(msg.template);
       } else if (msg.command === "newHuntFile") {
         await newHuntFileCommand(this._context);
       } else if (msg.command === "insertSetup") {
@@ -266,35 +244,17 @@ function nextStepNumber(text: string): number {
  * Append a numbered step to the active .hunt file.
  * Positions the cursor inside the first pair of '' in the inserted line.
  *
- * Uses WorkspaceEdit (not editor.edit) so that the insert works even when
- * the sidebar webview holds focus and activeTextEditor is undefined / stale.
- *
- * @param lastHuntUri - URI of the last known .hunt document, kept by the
- *   provider across webview focus changes.
+ * Only operates on `vscode.window.activeTextEditor` — if the active editor
+ * is not a .hunt file, shows a warning and returns without switching tabs.
  */
-async function insertStep(template: string, lastHuntUri?: vscode.Uri): Promise<void> {
-  // 1. Active editor (if it's a .hunt file)
-  const activeUri = vscode.window.activeTextEditor?.document.fileName.endsWith(".hunt")
-    ? vscode.window.activeTextEditor.document.uri
-    : undefined;
-
-  // 2. Remembered URI from the last time user focused a .hunt file
-  // 3. Any .hunt doc currently open in the workspace (last resort)
-  const anyOpenHunt = vscode.workspace.textDocuments.find((d) =>
-    d.fileName.endsWith(".hunt") && !d.isClosed
-  )?.uri;
-
-  const uri = activeUri ?? lastHuntUri ?? anyOpenHunt;
-
-  if (!uri) {
-    vscode.window.showWarningMessage("Open a .hunt file first.");
+async function insertStep(template: string): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor || !editor.document.fileName.endsWith(".hunt")) {
+    vscode.window.showWarningMessage("Please open a .hunt file to insert steps.");
     return;
   }
 
-  // Bring the document to the foreground FIRST so we get a live editor.
-  const doc = await vscode.workspace.openTextDocument(uri);
-  const editor = await vscode.window.showTextDocument(doc, { preview: false, preserveFocus: false });
-
+  const doc = editor.document;
   const text = doc.getText();
   const num = nextStepNumber(text);
   const stepText = `${num}. ${template}`;
@@ -304,7 +264,6 @@ async function insertStep(template: string, lastHuntUri?: vscode.Uri): Promise<v
   const endPos = lastLine.range.end;
   const prefix = lastLine.text.trim() === "" ? "" : "\n";
 
-  // Use editor.edit() on the freshly-focused, live editor reference.
   const ok = await editor.edit((eb) => {
     eb.insert(endPos, `${prefix}${stepText}`);
   });
@@ -315,8 +274,8 @@ async function insertStep(template: string, lastHuntUri?: vscode.Uri): Promise<v
   }
 
   // Position cursor inside the first '' pair.
-  const updatedText = doc.getText();
-  const lines = updatedText.split("\n");
+  const updatedDoc = editor.document;
+  const lines = updatedDoc.getText().split("\n");
   const insertedLineIdx = lines.findIndex((l) => l.startsWith(`${num}. `));
   if (insertedLineIdx === -1) { return; }
 
@@ -332,34 +291,18 @@ async function insertStep(template: string, lastHuntUri?: vscode.Uri): Promise<v
 // ── Hook commands ────────────────────────────────────────────────────────────
 
 /**
- * Shared helper for hook/demo commands: resolves the best available .hunt
- * document, brings it to the foreground via `openTextDocument` +
- * `showTextDocument` (same pattern as `insertStep`), then calls *action* with
- * a live, freshly-focused editor reference so that `editor.edit()` never
- * operates on a stale reference.
- *
- * URI resolution priority (mirrors `insertStep`):
- *   1. Active editor if it is a .hunt file
- *   2. Any open (non-closed) .hunt document in the workspace
- *
- * Returns `undefined` (with a warning) if no .hunt document is found.
+ * Shared helper for hook/demo commands: operates strictly on the active
+ * editor. If the active editor is not a .hunt file, shows a warning and
+ * returns without switching tabs.
  */
 async function _withHuntEditor(
   action: (editor: vscode.TextEditor) => Promise<void>
 ): Promise<void> {
-  const activeUri = vscode.window.activeTextEditor?.document.fileName.endsWith(".hunt")
-    ? vscode.window.activeTextEditor.document.uri
-    : undefined;
-  const anyOpenHunt = vscode.workspace.textDocuments.find(
-    (d) => d.fileName.endsWith(".hunt") && !d.isClosed
-  )?.uri;
-  const uri = activeUri ?? anyOpenHunt;
-  if (!uri) {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor || !editor.document.fileName.endsWith(".hunt")) {
     vscode.window.showWarningMessage("Please open a .hunt file first.");
     return;
   }
-  const doc = await vscode.workspace.openTextDocument(uri);
-  const editor = await vscode.window.showTextDocument(doc, { preview: false, preserveFocus: false });
   await action(editor);
 }
 
@@ -415,7 +358,7 @@ export async function insertTeardownCommand(): Promise<void> {
  * Registered as `manul.insertInlinePythonCall`.
  */
 export async function insertInlinePythonCallCommand(): Promise<void> {
-  await insertStep("CALL PYTHON module_name.function_name", undefined);
+  await insertStep("CALL PYTHON module_name.function_name");
 }
 
 /**
