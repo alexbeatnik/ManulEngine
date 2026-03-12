@@ -593,7 +593,7 @@ async def main() -> None:
                     flags += ["--browser", browser]
                 if retries:
                     flags += ["--retries", str(retries)]
-                if screenshot_mode != "none":
+                if screenshot_mode is not None:
                     flags += ["--screenshot", screenshot_mode]
                 # Do NOT forward --html-report: the parent process generates
                 # the consolidated report; workers would overwrite each other.

@@ -297,7 +297,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 def _esc(text: str | None) -> str:
     """HTML-escape a string (or return empty string for None)."""
-    return html.escape(str(text)) if text else ""
+    if text is None:
+        return ""
+    return html.escape(str(text))
 
 
 def _fmt_duration(ms: float) -> str:
