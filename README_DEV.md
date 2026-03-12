@@ -154,7 +154,7 @@ run_hooks(lines, label, hunt_dir)  → bool
 
 `execute_hook_line` captures the return value from `func()`, converts it to a string, and stores it in `HookResult.return_value`. `run_mission` then writes it to `self.memory[var_name]`, making it available for `{placeholder}` substitution in every subsequent step — exactly like `EXTRACT` or `@var:` variables. Both `into` and `to` are accepted as the keyword. Dynamic-variable unit tests live in `manul_engine/test/test_21_dynamic_vars.py`.
 
-`parse_hunt_file()` in `cli.py` returns an **8-tuple** `(mission, context, blueprint, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags)`. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
+`parse_hunt_file()` in `cli.py` returns an **8-tuple** `(mission, context, title, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags)`. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
 
 The full hook unit test suite (`41 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
 
@@ -444,7 +444,7 @@ Create a hunt file: `tests/mission.hunt`
 
 ```text
 @context: Demo flow
-@blueprint: smoke
+@title: smoke
 
 1. NAVIGATE to https://demoqa.com/text-box
 2. Fill 'Full Name' field with 'Ghost Manul'
@@ -475,7 +475,7 @@ manul tests/mission.hunt
 | **Page Scanner** | `SCAN PAGE`, `SCAN PAGE into {filename}` |
 | **Debug** | `DEBUG` / `PAUSE` — pause execution at that step (use with `--debug` or VS Code gutter breakpoints) |
 | **Keyboard** | `PRESS ENTER`, `PRESS [Key]`, `PRESS [Key] on [Element]` |
-| **File Upload** | `UPLOAD [File] to [Element]` |
+| **File Upload** | `UPLOAD 'File' to 'Element'` |
 | **Flow Control** | `WAIT [seconds]`, `SCROLL DOWN` |
 | **Finish** | `DONE.` |
 

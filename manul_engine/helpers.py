@@ -56,19 +56,27 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
 # Legacy pre-compiled system-step pattern kept for backwards compatibility.
 # Prefer classify_step() for step classification.
 RE_SYSTEM_STEP = re.compile(
-    r'\b(?:NAVIGATE|WAIT|SCROLL|EXTRACT|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|DEBUG|PAUSE|DONE)\b'
+    r'\b(?:NAVIGATE|WAIT|SCROLL|EXTRACT|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|DEBUG|PAUSE|DONE)\b'
 )
+
+
+# Pattern to strip quoted text before classification.
+_RE_QUOTED = re.compile(r"""(['"]).*?\1""")
 
 
 def classify_step(step: str) -> str:
     """Return the system keyword type of a step, or ``"action"`` for DOM steps.
+
+    Quoted strings are stripped before matching so that keywords inside
+    element labels (e.g. ``Click 'Press Here'``) are not misclassified.
 
     The returned string is one of: ``"navigate"``, ``"wait"``, ``"scroll"``,
     ``"extract"``, ``"verify"``, ``"press_enter"``, ``"press"``,
     ``"right_click"``, ``"upload"``, ``"scan_page"``,
     ``"call_python"``, ``"debug"``, ``"done"``, or ``"action"``.
     """
-    s_up = step.upper()
+    # Remove quoted substrings so keywords inside labels are invisible.
+    s_up = _RE_QUOTED.sub("", step).upper()
     for kind, pattern in _STEP_PATTERNS:
         if pattern.search(s_up):
             return kind

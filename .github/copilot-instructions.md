@@ -51,7 +51,7 @@ manul_engine/
     test_20_variables.py       @var: static variable declaration (17 assertions, no browser)
     test_21_dynamic_vars.py    CALL PYTHON ... into {var} dynamic variable capture
     test_22_tags.py            @tags: / --tags CLI filter (20 assertions, no browser)
-    test_23_advanced_interactions.py  PRESS/RIGHT CLICK/UPLOAD commands (39 assertions, no browser)
+    test_23_advanced_interactions.py  PRESS/RIGHT CLICK/UPLOAD commands (48 assertions, no browser)
     test_24_reporting.py       StepResult/MissionResult/RunSummary dataclasses (45 assertions)
     test_25_reporter.py        HTML report generator (42 assertions, no browser)
 tests/
@@ -123,7 +123,7 @@ Steps are numbered strings parsed by `run_mission()`. They must be atomic browse
 * `PRESS [Key]` — Presses any key or combination globally (e.g. `PRESS Escape`, `PRESS Control+A`).
 * `PRESS [Key] on [Target]` — Presses a key on a specific resolved element (e.g. `PRESS ArrowDown on 'Search Input'`).
 * `RIGHT CLICK [Target]` — Right-clicks a resolved element to open a context menu.
-* `UPLOAD [File] to [Target]` — Uploads a file to a file-input element. Path is resolved relative to the `.hunt` file's directory, then CWD.
+* `UPLOAD 'File' to 'Target'` — Uploads a file to a file-input element. Path is resolved relative to the `.hunt` file's directory, then CWD. Both file path and target must be quoted.
 * `SCROLL DOWN` or `SCROLL DOWN inside the list`
 * `EXTRACT [target] into {variable_name}`
 * `VERIFY that [target] is present` / `is NOT present` / `is DISABLED` / `is checked`
@@ -137,7 +137,7 @@ Optional steps contain "if exists" / "optional" **outside** the quoted target (e
 
 ## Writing integration tests (hunt files)
 
-Hunt files are plain-text test scenarios that the CLI parses via `parse_hunt_file()` (to extract `@context` / `@blueprint` / `@tags` and strip full-line `#` comments) before passing the mission body into `run_mission()`, which then parses and executes the numbered steps. They provide a robust way to write integration tests without Python boilerplate.
+Hunt files are plain-text test scenarios that the CLI parses via `parse_hunt_file()` (to extract `@context` / `@title` / `@tags` and strip full-line `#` comments) before passing the mission body into `run_mission()`, which then parses and executes the numbered steps. They provide a robust way to write integration tests without Python boilerplate.
 
 ### 1. File Naming & Location
 * For this repo's default auto-discovery (`python manul.py` with no target), hunt files are discovered under the `tests/` directory.
@@ -147,7 +147,7 @@ Hunt files are plain-text test scenarios that the CLI parses via `parse_hunt_fil
 ### 2. Metadata Headers
 Placed at the top of the file. Used by the engine for logging and LLM context.
 * `@context: [description]` — Strategic context passed to the engine.
-* `@blueprint: [tag_name]` — Short tag representing the test suite.
+* `@title: [short_title]` — Short title representing the test suite. `@blueprint:` is also accepted for backward compatibility.
 * `@tags: tag1, tag2` — Arbitrary comma-separated run tags. Used with `manul --tags smoke tests/` to filter which files execute.
 
 ### 3. Comments
@@ -165,7 +165,7 @@ These keywords are detected via word-boundary regex, bypass heuristics, and are 
 * `PRESS [Key]` — Presses any key or combination globally (e.g. `PRESS Escape`, `PRESS Control+A`). Mapped to `page.keyboard.press(key)`.
 * `PRESS [Key] on [Target]` — Presses a key on a specific element resolved via heuristics (e.g. `PRESS ArrowDown on 'Search Input'`). Mapped to `locator.press(key)`.
 * `RIGHT CLICK [Target]` — Right-clicks a resolved element (e.g. `RIGHT CLICK 'Context Menu Area'`). Mapped to `locator.click(button='right')`. Shadow DOM elements dispatch a JS `contextmenu` event.
-* `UPLOAD [File] to [Target]` — Uploads a file to a file-input element (e.g. `UPLOAD 'avatar.png' to 'Profile Picture'`). File path is resolved relative to the `.hunt` file's directory first, then CWD. Mapped to `locator.set_input_files(path)`.
+* `UPLOAD 'File' to 'Target'` — Uploads a file to a file-input element (e.g. `UPLOAD 'avatar.png' to 'Profile Picture'`). Both file path and target must be quoted. File path is resolved relative to the `.hunt` file's directory first, then CWD. Mapped to `locator.set_input_files(path)`.
 * `SCROLL DOWN` — Scrolls the main page down by one viewport height. `SCROLL DOWN inside the list` — scrolls the first dropdown-style scroll container (e.g., `#dropdown` or any element whose class name contains `dropdown`) all the way to the bottom (by setting `scrollTop = scrollHeight`). Phrases like `SCROLL DOWN to the very bottom` are accepted but currently behave the same as a single `SCROLL DOWN` on the main page (they do not auto-scroll the page all the way to the bottom).
 * `EXTRACT [target] into {variable_name}` — Extracts text data into memory.
 * `VERIFY that [target] is present` (or `is NOT present`, `is DISABLED`, `is checked`)
@@ -265,12 +265,12 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
 * **Debug mode:** `ManulEngine(debug_mode=True, break_steps={N,...})`. `debug_mode=True` (from `--debug`) highlights the resolved element and pauses before every step using `input()` in TTY or Playwright's `page.pause()`. `break_steps` (from `--break-lines`) pauses only at listed step indices using the stdout/stdin panel protocol when stdout is not a TTY. The two are mutually exclusive in practice — the extension only ever sets `break_steps` via `--break-lines`.
 * **Element highlight in debug mode:** When `debug_mode=True` (or a `break_steps` pause fires), the engine calls `highlight_element(page, locator)` which injects `<style id="manul-debug-style">` (once) and sets `data-manul-debug-highlight="true"` on the target element, producing a persistent 4px magenta outline + glow that stays until `clear_highlight(page)` is called just before the action executes. A separate `_highlight()` method draws a short 2-second flash (non-debug, `setTimeout` inside JS) for non-pausing visual feedback.
-* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). `parse_hunt_file()` in `cli.py` returns a `ParsedHunt` NamedTuple with 8 fields: `mission`, `context`, `blueprint`, `step_file_lines`, `setup_lines`, `teardown_lines`, `parsed_vars`, `tags`. `parsed_vars` is a `dict[str, str]` populated from `@var: {key} = value` header lines. `tags` is a `list[str]` populated from `@tags: tag1, tag2` header lines; empty list when absent. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
+* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). `parse_hunt_file()` in `cli.py` returns a `ParsedHunt` NamedTuple with 8 fields: `mission`, `context`, `title`, `step_file_lines`, `setup_lines`, `teardown_lines`, `parsed_vars`, `tags`. `parsed_vars` is a `dict[str, str]` populated from `@var: {key} = value` header lines. `tags` is a `list[str]` populated from `@tags: tag1, tag2` header lines; empty list when absent. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
 * **Auto-Nav annotation:** When `auto_annotate` is enabled, `run_mission()` captures `url_before = page.url` before every step. For `NAVIGATE` steps, the annotation is written above the step itself. For all other steps, `url_after` is checked in the `finally` block — if the URL changed, `_auto_annotate_navigate(page, hunt_file, step_file_lines, i+1)` is called to insert a comment above the *next* step line. The comment uses the mapped page name when found in `pages.json`, or the full URL when the lookup returns an `"Auto:"` placeholder.
 * **`pages.json` — nested per-site format:** `{ "<site_root_url>": { "Domain": "<display_name>", "<regex_or_exact_url>": "<page_name>" } }`. `lookup_page_name(url)` in `prompts.py` re-reads this file from disk on **every call** (live edits take effect immediately with no restart). Resolution order: exact URL key → regex/substring patterns (skipping `"Domain"` key) → `"Domain"` fallback. When no site block matches, a new nested entry is auto-generated. The longest-prefix site block wins when multiple blocks could match.
 * **`_debug_prompt()` `debug-stop` token:** When Python receives `"debug-stop"` on stdin from the VS Code extension (user pressed ⏹ Debug Stop), it clears **both** `self._user_break_steps = set()` and `self.break_steps = set()`, then breaks the pause loop. The test run continues to completion without any further pauses.
 * **Reporting & HTML reports:** `reporting.py` owns `StepResult`, `MissionResult` (with `__bool__` — truthy if all steps passed), and `RunSummary` dataclasses. `reporter.py` owns `generate_report(summary, output_path)` — produces a self-contained dark-themed HTML file with dashboard stats, per-step accordion, and inline base64 screenshots. All artifacts (logs, HTML reports) are saved to `reports/` (auto-created by `cli.py`). The `reports/` directory is `.gitignored`.
-* **Screenshot capture:** `run_mission()` accepts `screenshot_mode` (`"none"`, `"on-fail"`, `"always"`). Screenshots are stored as base64 PNGs in `StepResult.screenshot_base64`.
+* **Screenshot capture:** `run_mission()` accepts `screenshot_mode` (`"none"`, `"on-fail"`, `"always"`). Screenshots are stored as base64 PNGs in `StepResult.screenshot`.
 
 ## Running tests
 

@@ -16,7 +16,7 @@
       "patterns": [
         {
           "name": "meta.annotation.hunt",
-          "match": "^(@context|@blueprint)(:)(.*)$",
+          "match": "^(@context|@title|@blueprint)(:)(.*)$",
           "captures": {
             "1": { "name": "keyword.other.metadata.hunt" },
             "2": { "name": "punctuation.separator.hunt" },

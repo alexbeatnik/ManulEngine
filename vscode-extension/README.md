@@ -190,7 +190,7 @@ The extension probes the following locations in order (platform-aware):
 
 ```hunt
 @context: Login and verify dashboard
-@blueprint: smoke_login
+@title: smoke_login
 @tags: smoke, auth
 
 @var: {user_email} = user@example.com

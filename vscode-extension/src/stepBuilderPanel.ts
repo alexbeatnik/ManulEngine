@@ -483,7 +483,7 @@ export async function newHuntFileCommand(
     return;
   }
 
-  const starter = `@context: \n@blueprint: ${name}\n\n1. NAVIGATE to \n`;
+  const starter = `@context: \n@title: ${name}\n\n1. NAVIGATE to \n`;
   fs.writeFileSync(filePath, starter, "utf8");
 
   const doc = await vscode.workspace.openTextDocument(filePath);

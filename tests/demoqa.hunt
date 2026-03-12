@@ -1,5 +1,5 @@
 @context: DemoQA Gauntlet - Comprehensive UI Elements Test. Covers forms, checkbox trees, radio buttons, dynamic web tables, multi-click buttons, select menus, and date pickers.
-@blueprint: full_ui_element_suite
+@title: full_ui_element_suite
 
 # 🐾 DEMOQA GAUNTLET: The Full Elements Challenge
 

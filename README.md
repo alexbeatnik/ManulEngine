@@ -241,7 +241,7 @@ ollama serve
 
 ```text
 @context: Demo smoke test
-@blueprint: smoke
+@title: smoke
 @tags: smoke
 
 @var: {name} = Ghost Manul
@@ -336,7 +336,7 @@ Hunt files are plain-text test scenarios with a `.hunt` extension.
 
 ```text
 @context: Strategic context passed to the LLM planner
-@blueprint: short-tag
+@title: short-tag
 @tags: smoke, auth, regression
 ```
 
@@ -356,7 +356,7 @@ Lines starting with `#` are ignored.
 | `PRESS [Key]` | Press any key or combination globally (e.g. `PRESS Escape`, `PRESS Control+A`) |
 | `PRESS [Key] on [Target]` | Press a key on a specific element (e.g. `PRESS ArrowDown on 'Search Input'`) |
 | `RIGHT CLICK [Target]` | Right-click an element to open a context menu |
-| `UPLOAD [File] to [Target]` | Upload a file to a file input element (path relative to `.hunt` file or CWD) |
+| `UPLOAD 'File' to 'Target'` | Upload a file to a file input element (both must be quoted; path relative to `.hunt` file or CWD) |
 | `SCROLL DOWN` | Scroll the main page down one viewport |
 | `EXTRACT [target] into {var}` | Extract text into a memory variable |
 | `VERIFY that [target] is present` | Assert text/element is visible |
@@ -547,7 +547,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 | **Page Scanner** | `SCAN PAGE`, `SCAN PAGE into {filename}` |
 | **Debug** | `DEBUG` / `PAUSE` — pause execution at that step (use with `--debug` or VS Code gutter breakpoints) |
 | **Keyboard** | `PRESS ENTER`, `PRESS [Key]`, `PRESS [Key] on [Element]` |
-| **File Upload** | `UPLOAD [File] to [Element]` |
+| **File Upload** | `UPLOAD 'File' to 'Element'` |
 | **Flow Control** | `WAIT [seconds]`, `SCROLL DOWN` |
 | **Finish** | `DONE.` |
 

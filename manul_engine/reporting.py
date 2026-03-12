@@ -31,7 +31,7 @@ class MissionResult:
     name:        str                     # basename, e.g. "saucedemo.hunt"
     status:      str = "pass"            # "pass" | "fail" | "flaky"
     attempts:    int = 1                 # total attempts (1 = no retries used)
-    duration_ms: float = 0.0            # wall clock ms for the final attempt
+    duration_ms: float = 0.0            # wall clock ms (total, including retries)
     error:       str | None = None       # last error message when status == "fail"
     steps:       list[StepResult] = field(default_factory=list)
 

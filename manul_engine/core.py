@@ -31,7 +31,7 @@ except Exception:  # pragma: no cover
     ollama = None
 
 from . import prompts
-from .helpers import substitute_memory, compact_log_field, extract_quoted, detect_mode, classify_step, RE_SYSTEM_STEP
+from .helpers import substitute_memory, compact_log_field, extract_quoted, detect_mode, classify_step
 from .hooks import execute_hook_line
 from .js_scripts import SNAPSHOT_JS
 from .scoring import score_elements
@@ -832,7 +832,6 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                 print("    ❌ No plan produced. If you're running without Ollama, provide a numbered step list.")
 
             if not plan:
-                await browser.close()
                 return MissionResult(file=hunt_file or "", name="", status="fail")
 
             ok = True

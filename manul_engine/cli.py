@@ -10,7 +10,7 @@ Usage:
   manul --headless .                 any of the above in headless mode
   manul --workers 4 tests/           run up to 4 hunt files in parallel
 
-Hunt file format: plain text, numbered steps, optional @context / @blueprint headers.
+Hunt file format: plain text, numbered steps, optional @context / @title headers.
 """
 
 import asyncio
@@ -98,7 +98,7 @@ class ParsedHunt(NamedTuple):
     """
     mission: str
     context: str
-    blueprint: str
+    title: str
     step_file_lines: list[int]
     setup_lines: list[str]
     teardown_lines: list[str]
@@ -132,7 +132,7 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
     from .hooks import RE_SETUP, RE_END_SETUP, RE_TEARDOWN, RE_END_TEARDOWN
 
     context = ""
-    blueprint = ""
+    title = ""
     parsed_vars: dict[str, str] = {}
     tags: list[str] = []
     mission_lines:  list[str] = []
@@ -172,8 +172,8 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
             # ── Normal mission line ────────────────────────────────────────────
             if stripped.startswith("@context:"):
                 context = stripped.split(":", 1)[1].strip()
-            elif stripped.startswith("@blueprint:"):
-                blueprint = stripped.split(":", 1)[1].strip()
+            elif stripped.startswith("@title:") or stripped.startswith("@blueprint:"):
+                title = stripped.split(":", 1)[1].strip()
             elif stripped.startswith("@tags:"):
                 raw_tags = stripped.split(":", 1)[1]
                 tags = [t.strip() for t in raw_tags.split(",") if t.strip()]
@@ -190,7 +190,7 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
     return ParsedHunt(
         mission="".join(mission_lines).strip(),
         context=context,
-        blueprint=blueprint,
+        title=title,
         step_file_lines=step_file_lines,
         setup_lines=setup_lines,
         teardown_lines=teardown_lines,
@@ -263,9 +263,9 @@ async def _run_hunt_file(
         return MissionResult(file=path, name=filename, status="pass")
 
     context = hunt.context or filename.replace(".hunt", "").replace("_", " ").title()
-    if hunt.blueprint:
-        print(f"🧩 Blueprint: {hunt.blueprint}")
-        context = f"[{hunt.blueprint}] {context}"
+    if hunt.title:
+        print(f"🧩 Title: {hunt.title}")
+        context = f"[{hunt.title}] {context}"
 
     from manul_engine import ManulEngine
     from manul_engine.hooks import run_hooks

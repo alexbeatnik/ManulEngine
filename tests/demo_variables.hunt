@@ -1,5 +1,5 @@
 @context: Demonstrates @var: static variables and CALL PYTHON ... into {var} dynamic variables
-@blueprint: demo-vars
+@title: demo-vars
 
 # ── Static variables ──────────────────────────────────────────────────────────
 # Declare test data once at the top; reference via {placeholder} anywhere below.

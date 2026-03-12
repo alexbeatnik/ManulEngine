@@ -118,7 +118,7 @@ jq -Rs '{model: "qwen2.5:7b", prompt: ., stream: false}' prompts/html_to_hunt.md
 
 ```
 @context: Short description of what this test covers
-@blueprint: tag_name
+@title: tag_name
 
 1. NAVIGATE to https://example.com
 2. Fill 'Username' field with 'admin'
@@ -135,7 +135,7 @@ jq -Rs '{model: "qwen2.5:7b", prompt: ., stream: false}' prompts/html_to_hunt.md
 - `PRESS [Key]` (e.g. `PRESS Escape`, `PRESS Control+A`)
 - `PRESS [Key] on [Element]` (e.g. `PRESS ArrowDown on 'Search Input'`)
 - `RIGHT CLICK [Element]`
-- `UPLOAD [File] to [Element]`
+- `UPLOAD 'File' to 'Element'`
 - `SCROLL DOWN`
 - `EXTRACT the '<target>' into {var}`
 - `VERIFY that '<target>' is present / is NOT present / is DISABLED / is checked`

@@ -61,7 +61,7 @@ def _test_parser() -> None:
     # 1a. Basic @tags: line with multiple comma-separated tags.
     path = _write_hunt(
         "@context: Login flow\n"
-        "@blueprint: auth\n"
+        "@title: auth\n"
         "@tags: smoke, auth, regression\n"
         "\n"
         "1. NAVIGATE to https://example.com\n"
@@ -85,7 +85,7 @@ def _test_parser() -> None:
 
     # 1c. Other metadata fields still work alongside @tags:.
     _assert(result[1] == "Login flow", "context still parsed alongside @tags:", f"got={result[1]!r}")
-    _assert(result[2] == "auth", "blueprint still parsed alongside @tags:", f"got={result[2]!r}")
+    _assert(result[2] == "auth", "title still parsed alongside @tags:", f"got={result[2]!r}")
 
     # 1d. No @tags: line ⇒ empty list.
     path2 = _write_hunt(
@@ -170,7 +170,7 @@ def _test_read_tags() -> None:
             f"got={tags3!r}")
 
     # 2d. Result matches parse_hunt_file for the same file.
-    path4 = _write_hunt("@blueprint: x\n@tags: a, b, c\n1. DONE.\n")
+    path4 = _write_hunt("@title: x\n@tags: a, b, c\n1. DONE.\n")
     try:
         fast  = _read_tags(path4)
         full  = parse_hunt_file(path4)[7]

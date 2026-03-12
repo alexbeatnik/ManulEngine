@@ -51,7 +51,7 @@ def _test_parser() -> None:
 
     hunt_content = """\
 @context: Variables test
-@blueprint: vars
+@title: vars
 
 @var: {user_email} = admin@test.com
 @var: {password} = secret123
@@ -81,11 +81,11 @@ def _test_parser() -> None:
         f"len={len(result)}",
     )
 
-    mission, context, blueprint, step_file_lines, setup_lines, teardown_lines, parsed_vars, _ = result
+    mission, context, title, step_file_lines, setup_lines, teardown_lines, parsed_vars, _ = result
 
     # 1b. Standard metadata still parsed correctly.
     _assert(context == "Variables test", "context parsed correctly", f"got={context!r}")
-    _assert(blueprint == "vars", "blueprint parsed correctly", f"got={blueprint!r}")
+    _assert(title == "vars", "title parsed correctly", f"got={title!r}")
 
     # 1c. @var: lines with braces are parsed into parsed_vars without braces.
     _assert(

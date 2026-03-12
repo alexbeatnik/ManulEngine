@@ -1,5 +1,5 @@
 @context: Rahul Shetty Academy Practice Page
-@blueprint: complex_ui_inspector
+@title: complex_ui_inspector
 
 # 🐾 RAHUL SHETTY HUNT: The Real Inspector Challenge
 # Validation of radio buttons, autocomplete, tables, and hovers.

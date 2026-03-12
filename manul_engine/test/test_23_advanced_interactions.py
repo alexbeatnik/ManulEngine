@@ -92,6 +92,15 @@ def _test_classify_step() -> None:
     _assert(classify_step("DONE.") == "done",
             "DONE. still works")
 
+    # Keywords inside quoted labels must NOT misclassify
+    _assert(classify_step("Click 'Press Here' button") == "action",
+            "PRESS inside quotes → action (not press)")
+    _assert(classify_step("Click the 'Upload Logo' button") == "action",
+            "UPLOAD inside quotes → action (not upload)")
+    _assert(classify_step("Click 'DONE' button") == "action",
+            "DONE inside quotes → action (not done)")
+    _assert(classify_step("Fill 'Navigate Away' field with 'test'") == "action",
+            "NAVIGATE inside quotes → action (not navigate)")
 
 # ── 2. RE_SYSTEM_STEP tests ─────────────────────────────────────────────────
 
@@ -107,6 +116,8 @@ def _test_re_system_step() -> None:
             "RE_SYSTEM_STEP matches RIGHT CLICK")
     _assert(RE_SYSTEM_STEP.search("UPLOAD 'file.pdf' to 'Target'") is not None,
             "RE_SYSTEM_STEP matches UPLOAD")
+    _assert(RE_SYSTEM_STEP.search("VERIFY that 'Welcome' is present") is not None,
+            "RE_SYSTEM_STEP matches VERIFY")
     _assert(RE_SYSTEM_STEP.search("Click 'Submit'") is None,
             "RE_SYSTEM_STEP does NOT match Click (action)")
 
