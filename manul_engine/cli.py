@@ -626,6 +626,9 @@ async def main() -> None:
             # that browsers run in truly separate processes (no shared Playwright
             # event loop) and stdout is captured cleanly without interleaving.
             print(f"\u2699\ufe0f  Running with up to {workers} parallel worker(s)\n")
+            if _hooks_loaded and not _lc_registry.is_empty:
+                print("⚠️  WARNING: When --workers > 1, lifecycle hooks (@before_all, @before_group) are run independently by each worker for every file. They are not evaluated 'once per suite'.\n")
+            
             sem = asyncio.Semaphore(workers)
             manul_exe = _find_manul_exe()
             # Serialise ctx.variables so worker processes can inherit them.
@@ -742,10 +745,10 @@ async def main() -> None:
             try:
                 from .reporter import generate_report
                 report_path = os.path.join(_reports_dir, "manul_report.html")
-                abs_report = os.path.abspath(report_path)
+                abs_report = _pathlib.Path(report_path).resolve().as_uri()
                 generate_report(run_summary, report_path)
                 print(f"\n📊 HTML Report successfully generated!")
-                print(f"👉 file://{abs_report}")
+                print(f"👉 {abs_report}")
             except Exception as _rpt_err:
                 print(f"\n⚠️  HTML report generation failed: {_rpt_err}")
 
