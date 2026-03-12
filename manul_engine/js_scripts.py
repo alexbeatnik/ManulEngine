@@ -277,6 +277,7 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             role:          el.getAttribute('role') || '',
             disabled:      el.hasAttribute('disabled') || el.disabled || false,
             aria_disabled: el.getAttribute('aria-disabled') || '',
+            name_attr:     nameAttr,
         };
     });
 }"""

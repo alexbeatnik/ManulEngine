@@ -51,6 +51,7 @@ def score_elements(
         aria       = el.get("aria_label", "").lower() if isinstance(el.get("aria_label", ""), str) else ""
         role       = el.get("role", "").lower() if isinstance(el.get("role", ""), str) else ""
         ph         = el.get("placeholder", "").lower() if isinstance(el.get("placeholder", ""), str) else ""
+        name_attr  = str(el.get("name_attr", "")).lower()
         
         dev_names = f"{html_id} {class_name} {data_qa}"
         score = 0
@@ -142,6 +143,12 @@ def score_elements(
 
             if tl in html_id: score += 600
             if any(w in icons for w in tl.split() if len(w) > 3): score += 700
+            # HTML 'name' attribute — form field identifiers (e.g. name="search", name="q")
+            if name_attr:
+                if tl == name_attr:
+                    score += 3_000
+                elif len(name_attr) >= 3 and name_attr in tl:
+                    score += 1_000
 
         if context_words:
             cls_normalized = re.sub(r'[-_]', ' ', class_name)

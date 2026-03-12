@@ -1,5 +1,5 @@
 {
-  "model": null,
+  "model": "qwen2.5:0.5b",
   "headless": false,
   "browser": "chromium",
   "browser_args": [],
