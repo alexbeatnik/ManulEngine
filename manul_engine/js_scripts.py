@@ -147,7 +147,7 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             el.dataset.manulId  = id;
             window.manulElements[id] = el;
         }
-        results.push({el, inShadow});
+        results.push({el, inShadow, isHidden, isAncestorHidden});
     };
 
     const collect = (root, inShadow=false) => {
@@ -222,7 +222,7 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         return '';
     };
 
-    return results.map(({el, inShadow}) => {
+    return results.map(({el, inShadow, isHidden, isAncestorHidden}) => {
         let name, isSelect = false;
         const iconClasses = Array.from(el.querySelectorAll('i, svg, span[class*="icon"]'))
             .map(i => (typeof i.className === 'string' ? i.className : (i.getAttribute('class') || '')))
@@ -272,16 +272,10 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         if (rect.left < -999) isStructuralHidden = true;
         // Ancestor-hidden elements that slipped through (file/checkbox/radio
         // exemption) should still be tagged for scoring penalty.
-        if (!isStructuralHidden) {
-            let p = el.parentElement;
-            while (p && p !== document.documentElement) {
-                if (window.getComputedStyle(p).display === 'none') {
-                    isStructuralHidden = true;
-                    break;
-                }
-                p = p.parentElement;
-            }
+        if (!isStructuralHidden && (isHidden || isAncestorHidden)) {
+            isStructuralHidden = true;
         }
+
         const isScrollAbove = rect.top < -999 && !isStructuralHidden;
 
         if (isStructuralHidden) name += ' [HIDDEN]';

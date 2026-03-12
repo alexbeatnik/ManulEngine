@@ -225,7 +225,7 @@ def load_hooks_file(directory: str) -> bool:
 
     spec = importlib.util.spec_from_file_location("manul_hooks", candidate)
     if spec and spec.loader:
-        mod = ModuleType("manul_hooks")
+        mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)  # type: ignore[union-attr]
     return True
 
