@@ -40,8 +40,9 @@ every matching hunt file as ``initial_vars``—the same mechanism used by
 any step::
 
     # inside a .hunt file
-    1. NAVIGATE to '{BASE_URL}/login'
-    2. Fill 'API Token' with '{API_TOKEN}'
+    STEP Login:
+        NAVIGATE to '{BASE_URL}/login'
+        Fill 'API Token' with '{API_TOKEN}'
 
 Failure semantics
 -----------------

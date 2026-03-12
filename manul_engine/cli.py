@@ -726,7 +726,8 @@ async def main() -> None:
         try:
             _lc_registry.run_after_all(_lc_ctx)
         except Exception:
-            pass  # _lc_registry / _lc_ctx may be unbound if setup failed early
+            # Be defensive: never let @after_all teardown errors mask the primary failure.
+            pass
 
         # ── HTML report generation (always runs, even after exceptions) ────
         if html_report and run_summary is not None and run_summary.missions:
