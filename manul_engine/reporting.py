@@ -16,12 +16,13 @@ from dataclasses import dataclass, field
 @dataclass
 class StepResult:
     """Outcome of a single numbered step within a mission."""
-    index:       int                     # 1-based step number
-    text:        str                     # step text after variable substitution
-    status:      str = "pass"            # "pass" | "fail" | "skip"
-    duration_ms: float = 0.0
-    error:       str | None = None       # traceback / message on failure
-    screenshot:  str | None = None       # base64-encoded PNG, or None
+    index:         int                     # 1-based step number
+    text:          str                     # step text after variable substitution
+    status:        str = "pass"            # "pass" | "fail" | "skip"
+    duration_ms:   float = 0.0
+    error:         str | None = None       # traceback / message on failure
+    screenshot:    str | None = None       # base64-encoded PNG, or None
+    logical_step:  str | None = None       # active STEP label when this step ran
 
 
 @dataclass

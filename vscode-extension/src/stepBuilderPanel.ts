@@ -142,6 +142,15 @@ export class StepBuilderProvider implements vscode.WebviewViewProvider {
     font-weight: 600;
   }
   .new-btn:hover { background: var(--vscode-button-hoverBackground); }
+  .lstep-btn {
+    display: block; width: 100%; padding: 7px 10px; margin-bottom: 12px;
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none; cursor: pointer; border-radius: 3px; font-size: 13px;
+    font-weight: 600; text-align: left;
+    border-left: 3px solid #89b4fa;
+  }
+  .lstep-btn:hover { background: var(--vscode-button-hoverBackground); }
   h3 {
     margin: 0 0 6px 0; font-size: 10px; text-transform: uppercase;
     letter-spacing: 0.08em; opacity: 0.6;
@@ -173,6 +182,8 @@ export class StepBuilderProvider implements vscode.WebviewViewProvider {
 </head>
 <body>
   <button class="new-btn" id="btn-new-file">＋ New Hunt File</button>
+  <h3>Logical Steps</h3>
+  <button class="lstep-btn" id="btn-logical-step" data-template="STEP : Description">📋 Add Logical Step</button>
   <h3>Hooks</h3>
   <button class="step-btn" id="btn-insert-setup">🔧 Insert [SETUP] block</button>
   <button class="step-btn" id="btn-insert-teardown">🧹 Insert [TEARDOWN] block</button>
@@ -188,6 +199,9 @@ export class StepBuilderProvider implements vscode.WebviewViewProvider {
     const vsc = acquireVsCodeApi();
     document.getElementById('btn-new-file').addEventListener('click', function() {
       vsc.postMessage({ command: 'newHuntFile' });
+    });
+    document.getElementById('btn-logical-step').addEventListener('click', function() {
+      vsc.postMessage({ command: 'insertStep', template: 'STEP : Description' });
     });
     document.getElementById('btn-insert-setup').addEventListener('click', function() {
       vsc.postMessage({ command: 'insertSetup' });

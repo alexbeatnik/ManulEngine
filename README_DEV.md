@@ -150,13 +150,13 @@ def seed_smoke(ctx: GlobalContext) -> None:
 Unit tests: `manul_engine/test/test_27_lifecycle_hooks.py` (57 assertions, no browser).
 ### 🧹 [SETUP] / [TEARDOWN] Hooks and Inline `CALL PYTHON` Steps
 
-Version 0.0.8.3 introduces a pre/post hook mechanism powered by `manul_engine/hooks.py`. Hooks allow arbitrary synchronous Python to run before and after the browser mission. Version 0.0.8.3 also extends this capability to **inline steps**: `CALL PYTHON <module>.<func>` can now appear as a regular numbered step anywhere in the main mission body.
+Version 0.0.8.3 introduces a pre/post hook mechanism powered by `manul_engine/hooks.py`. Hooks allow arbitrary synchronous Python to run before and after the browser mission. Version 0.0.8.3 also extends this capability to **inline steps**: `CALL PYTHON <module>.<func>` can now appear as a plain action step anywhere in the main mission body.
 
 **Execution lifecycle:**
 
 ```
 [SETUP] block         → runs before browser launches
-  browser mission     → numbered hunt steps (may include CALL PYTHON steps)
+  browser mission     → hunt steps (may include CALL PYTHON steps)
 [TEARDOWN] block      → runs in finally{}, always after setup succeeds
 ```
 
@@ -197,8 +197,9 @@ run_hooks(lines, label, hunt_dir)  → bool
 **Dynamic Variables via `CALL PYTHON ... into {var}`:** Inline `CALL PYTHON` steps may optionally bind their return value to a mission variable:
 
 ```text
-1. CALL PYTHON api_helpers.fetch_otp into {dynamic_otp}
-2. Fill 'Security Code' with '{dynamic_otp}'
+STEP 1: OTP verification
+CALL PYTHON api_helpers.fetch_otp into {dynamic_otp}
+Fill 'Security Code' with '{dynamic_otp}'
 ```
 
 `execute_hook_line` captures the return value from `func()`, converts it to a string, and stores it in `HookResult.return_value`. `run_mission` then writes it to `self.memory[var_name]`, making it available for `{placeholder}` substitution in every subsequent step — exactly like `EXTRACT` or `@var:` variables. Both `into` and `to` are accepted as the keyword. Dynamic-variable unit tests live in `manul_engine/test/test_21_dynamic_vars.py`.
@@ -215,8 +216,9 @@ Version 0.0.8.7 adds static test-data declaration at the top of `.hunt` files:
 @var: {user_email} = admin@example.com
 @var: {password}   = secret123
 
-1. Fill 'Email' with '{user_email}'
-2. Fill 'Password' with '{password}'
+STEP 1: Login
+Fill 'Email' with '{user_email}'
+Fill 'Password' with '{password}'
 ```
 
 **How it works:** `parse_hunt_file()` scans for `@var: {key} = value` header lines and returns them as `parsed_vars` (the 7th element of the 8-tuple). `_run_hunt_file()` passes `parsed_vars` to `run_mission(initial_vars=...)`, which pre-populates `self.memory` before the step loop starts. Both brace and bare-key forms are accepted (`@var: {key} = val` and `@var: key = val` are equivalent). Values are stripped of leading/trailing whitespace. Malformed `@var:` lines (no `=`) are silently skipped.
@@ -234,8 +236,9 @@ Version 0.0.8.7 adds a tagging system that lets users run subsets of `.hunt` fil
 @context: Login flow
 @tags: smoke, auth, regression
 
-1. NAVIGATE to https://example.com/login
-2. DONE.
+STEP 1: Navigate
+NAVIGATE to https://example.com/login
+DONE.
 ```
 
 **CLI usage:**
@@ -246,7 +249,7 @@ manul tests/ --tags smoke,critical      # OR logic — run files with either tag
 
 **Intersection rule:** A file is included in the run if its `@tags:` list shares at least one tag with the `--tags` argument.  Files with no `@tags:` header are **always excluded** when `--tags` is active.
 
-**How it works:** `parse_hunt_file()` now extracts `@tags:` into the **8th element** of the tuple (`tags: list[str]`).  The CLI also exposes `_read_tags(path)` — a fast header-only scanner that stops at the first numbered step — used to pre-filter files in `main()` without running the full parse twice.  Tag filtering prints a one-line summary (`🏷️ --tags '...': N skipped, M matched.`) before the run starts.
+**How it works:** `parse_hunt_file()` now extracts `@tags:` into the **8th element** of the tuple (`tags: list[str]`).  The CLI also exposes `_read_tags(path)` — a fast header-only scanner that stops at the first action or STEP header line — used to pre-filter files in `main()` without running the full parse twice.  Tag filtering prints a one-line summary (`🏷️ --tags '...': N skipped, M matched.`) before the run starts.
 
 Unit tests: `manul_engine/test/test_22_tags.py` (20 assertions, no browser).
 
@@ -301,11 +304,12 @@ manul_engine/
 ```text
 @context: Checkout smoke test
 
-1. NAVIGATE to https://example.com/checkout
-2. Fill 'React Datepicker' with '2026-12-25'
-3. Click the 'Place Order' button
-4. VERIFY that 'Order confirmed' is present.
-5. DONE.
+STEP 1: Checkout
+NAVIGATE to https://example.com/checkout
+Fill 'React Datepicker' with '2026-12-25'
+Click the 'Place Order' button
+VERIFY that 'Order confirmed' is present.
+DONE.
 ```
 
 ---
@@ -495,11 +499,12 @@ Create a hunt file: `tests/mission.hunt`
 @context: Demo flow
 @title: smoke
 
-1. NAVIGATE to https://demoqa.com/text-box
-2. Fill 'Full Name' field with 'Ghost Manul'
-3. Click the 'Submit' button
-4. VERIFY that 'Ghost Manul' is present.
-5. DONE.
+STEP 1: Fill text box form
+NAVIGATE to https://demoqa.com/text-box
+Fill 'Full Name' field with 'Ghost Manul'
+Click the 'Submit' button
+VERIFY that 'Ghost Manul' is present.
+DONE.
 ```
 
 Run it:

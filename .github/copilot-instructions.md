@@ -102,19 +102,42 @@ Detected from step keywords:
 
 ## Step format
 
-Steps are numbered strings parsed by `run_mission()`. They must be atomic browser instructions.
+Steps are parsed by `run_mission()` and must be atomic browser instructions. **STEP-grouped (unnumbered) is the canonical format for all new files.** The legacy numbered format is supported for backward compatibility.
+
+**STEP-grouped format — canonical (use this for all new files):**
+
+```text
+STEP 1: Navigate to the login page
+NAVIGATE to https://example.com/login
+VERIFY that 'Sign In' is present
+
+STEP 2: Fill credentials
+Fill 'Username' field with 'admin'
+Fill 'Password' field with 'secret'
+Click the 'Login' button
+VERIFY that 'Welcome' is present.
+
+STEP 3: Wrap up
+EXTRACT the 'Product Price' into {price}
+DONE.
+```
+
+**Numbered format — legacy (backward compat only, do not use for new files):**
 
 ```text
 "1. NAVIGATE to https://example.com"
 "2. Fill 'Username' field with 'admin'"
 "3. Click the 'Login' button"
-"4. Select 'English' from the 'Language' dropdown"
-"5. VERIFY that 'Welcome' is present."
-"6. EXTRACT the 'Product Price' into {price}"
-"7. SCROLL DOWN"
-"8. DONE."
-
+"4. VERIFY that 'Welcome' is present."
+"5. DONE."
 ```
+
+Rules for STEP-grouped files:
+* The `STEP` keyword triggers STEP-grouped mode. Individual actions must be **plain unnumbered lines** (no `1.` prefix).
+* `STEP [number]: [description]` — number is optional; description is used for console output and HTML report section headers.
+* Blank lines between groups are allowed and ignored.
+* All other keywords (NAVIGATE, VERIFY, DONE, etc.) work identically in both formats.
+* Mixed numbered+STEP (e.g. `1. STEP 1: ...`) is also valid: the numbered split runs and STEP markers are detected by `classify_step()` as `"logical_step"` kind, same as in STEP-grouped mode.
 
 **System Keywords** parsed directly by `run_mission()` (these skip heuristics):
 
@@ -138,7 +161,7 @@ Optional steps contain "if exists" / "optional" **outside** the quoted target (e
 
 ## Writing integration tests (hunt files)
 
-Hunt files are plain-text test scenarios that the CLI parses via `parse_hunt_file()` (to extract `@context` / `@title` / `@tags` and strip full-line `#` comments) before passing the mission body into `run_mission()`, which then parses and executes the numbered steps. They provide a robust way to write integration tests without Python boilerplate.
+Hunt files are plain-text test scenarios parsed by `parse_hunt_file()` (extracts `@context` / `@title` / `@tags`, strips `#` comments, collects hook blocks) then executed by `run_mission()`. **The STEP-grouped unnumbered format is the mandatory standard for all new hunt files.** The legacy numbered format is still supported but must not be used in new files.
 
 ### 1. File Naming & Location
 * For this repo's default auto-discovery (`python manul.py` with no target), hunt files are discovered under the `tests/` directory.
@@ -155,8 +178,17 @@ Placed at the top of the file. Used by the engine for logging and LLM context.
 * Use `#` at the beginning of a line for comments. Any line whose trimmed text starts with `#` is ignored during execution; `#` appearing after a step on the same line is treated as part of the step text, not a comment.
 
 ### 4. Step Formatting
-* For deterministic hunts and when running without Ollama, each action should be a numbered, atomic instruction (e.g., `1. `, `2. `). Free-form, non-numbered text is also accepted and will be routed through the LLM planner, but may produce less deterministic runs.
+**STEP-grouped (unnumbered) is the mandatory standard for all new hunt files.**
+* Use `STEP N: label` headers to mark logical groups. The STEP number is optional (`STEP: label` is also valid).
+* All action lines following a STEP header must be **plain, unnumbered text** — no `1.` prefix, no bullet points, no dashes.
+* `run_mission()` detects the presence of any `STEP` marker and automatically switches to line-by-line splitting.
+* Blank lines between groups are allowed and ignored.
+* The classic numbered format (`1. CMD`, `2. CMD`, …) is still supported for backward compatibility but must not be used when generating new files.
+* Free-form, non-numbered text with no STEP markers is routed through the LLM planner (less deterministic; requires Ollama).
 * Elements should be wrapped in single or double quotes for best heuristic matching (e.g., `'Submit'`, `"Password"`).
+
+**ABSOLUTE RULE — Zero Tolerance:**
+> When generating or suggesting `.hunt` files, you MUST use the STEP-grouped unnumbered format. Adding `1.`, `2.`, or any numeric prefix to action lines inside a STEP-grouped file is a critical error that corrupts the parser's line-by-line splitting and will cause test failures. Never do it.
 
 ### 5. System Keywords (parser-detected)
 These keywords are detected via word-boundary regex, bypass heuristics, and are handled directly by the engine parser:

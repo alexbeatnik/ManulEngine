@@ -266,6 +266,48 @@ h1 .logo { font-size: 1.8rem; }
   padding: 6px 16px 10px;
 }
 
+/* ── Logical step groups ──────────────── */
+
+.lstep-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  background: var(--surface2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+}
+.lstep-header:first-child { border-top: none; }
+.lstep-header .lstep-chevron {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  transition: transform 0.2s;
+  width: 12px;
+  flex-shrink: 0;
+}
+.lstep-block.open .lstep-chevron { transform: rotate(90deg); }
+.lstep-header .lstep-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+.lstep-header .lstep-count {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+.lstep-header .lstep-status {
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.lstep-status-pass  { color: var(--green); }
+.lstep-status-fail  { color: var(--red); }
+.lstep-body { display: none; }
+.lstep-block.open .lstep-body { display: block; }
+
 /* ── Footer ───────────────────────────── */
 
 .footer {
@@ -284,6 +326,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.mission-header').forEach(h => {
     h.addEventListener('click', () => {
       h.closest('.mission').classList.toggle('open');
+    });
+  });
+  document.querySelectorAll('.lstep-header').forEach(h => {
+    h.addEventListener('click', e => {
+      e.stopPropagation();
+      h.closest('.lstep-block').classList.toggle('open');
     });
   });
   document.querySelectorAll('.step-screenshot img').forEach(img => {
@@ -342,8 +390,56 @@ def _render_step_row(step: StepResult) -> str:
     )
 
 
+def _group_steps(steps: list[StepResult]) -> list[tuple[str | None, list[StepResult]]]:
+    """Partition a flat step list into (label, [steps]) groups.
+
+    Steps that precede any STEP marker go into the ``None`` group.
+    Returns a single-element list with label ``None`` when no STEP markers exist,
+    allowing the caller to fall back to the flat rendering.
+    """
+    groups: list[tuple[str | None, list[StepResult]]] = []
+    current_label: str | None = None
+    bucket: list[StepResult] = []
+    for s in steps:
+        if s.logical_step != current_label:
+            if bucket:
+                groups.append((current_label, bucket))
+            current_label = s.logical_step
+            bucket = []
+        bucket.append(s)
+    if bucket:
+        groups.append((current_label, bucket))
+    return groups
+
+
+def _render_lstep_group(label: str | None, steps: list[StepResult], index: int) -> str:
+    """Render one logical-step accordion block containing a steps table."""
+    has_failure = any(s.status == "fail" for s in steps)
+    status_text = "FAIL" if has_failure else "PASS"
+    status_class = "lstep-status-fail" if has_failure else "lstep-status-pass"
+    display_label = _esc(label) if label else "Default"
+    rows = "\n".join(_render_step_row(s) for s in steps)
+    table_html = (
+        f'<table class="steps-table">'
+        f'<thead><tr><th>#</th><th>Step</th><th>Status</th><th>Time</th></tr></thead>'
+        f'<tbody>{rows}</tbody>'
+        f'</table>'
+    )
+    return (
+        f'<div class="lstep-block open">'
+        f'  <div class="lstep-header">'
+        f'    <span class="lstep-chevron">&#9658;</span>'
+        f'    <span class="lstep-label">{display_label}</span>'
+        f'    <span class="lstep-count">{len(steps)} action{"s" if len(steps) != 1 else ""}</span>'
+        f'    <span class="lstep-status {status_class}">{status_text}</span>'
+        f'  </div>'
+        f'  <div class="lstep-body">{table_html}</div>'
+        f'</div>'
+    )
+
+
 def _render_mission(mission: MissionResult) -> str:
-    """Render one mission accordion block."""
+    """Render one mission accordion block, with optional logical-step grouping."""
     status = mission.status
     icon = {"pass": "\u2705", "fail": "\u274c", "flaky": "\u26a0\ufe0f"}.get(status, "\u2753")
     badge_class = f"badge-{status}"
@@ -355,16 +451,24 @@ def _render_mission(mission: MissionResult) -> str:
     meta_text = " \u00b7 ".join(meta_parts)
     steps_html = ""
     if mission.steps:
-        rows = "\n".join(_render_step_row(s) for s in mission.steps)
-        steps_html = (
-            f'<table class="steps-table">'
-            f'<thead><tr><th>#</th><th>Step</th><th>Status</th><th>Time</th></tr></thead>'
-            f'<tbody>{rows}</tbody>'
-            f'</table>'
-        )
+        groups = _group_steps(mission.steps)
+        # Use flat rendering when no STEP markers were used (single None group).
+        if len(groups) == 1 and groups[0][0] is None:
+            rows = "\n".join(_render_step_row(s) for s in mission.steps)
+            steps_html = (
+                f'<table class="steps-table">'
+                f'<thead><tr><th>#</th><th>Step</th><th>Status</th><th>Time</th></tr></thead>'
+                f'<tbody>{rows}</tbody>'
+                f'</table>'
+            )
+        else:
+            steps_html = "\n".join(
+                _render_lstep_group(label, grp, i)
+                for i, (label, grp) in enumerate(groups)
+            )
         if mission.attempts > 1:
-            label = "passed on retry" if status == "flaky" else "after retries"
-            steps_html += f'<div class="attempts-note">\U0001f504 {label} (attempt {mission.attempts})</div>'
+            label_txt = "passed on retry" if status == "flaky" else "after retries"
+            steps_html += f'<div class="attempts-note">\U0001f504 {label_txt} (attempt {mission.attempts})</div>'
     elif mission.error:
         steps_html = f'<div class="step-error" style="margin:12px 16px;">{_esc(mission.error)}</div>'
 

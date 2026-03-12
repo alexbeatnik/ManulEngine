@@ -85,6 +85,26 @@ All artifacts (logs, reports) are saved to the `reports/` directory — your wor
 
 > **Note:** Per-step details (accordion + embedded screenshots) require `--workers 1` (the default). When `--workers > 1`, the report aggregates per-hunt results only.
 
+### 📋 STEP Groups — Manual Test Cases Meet Automation
+
+ManulEngine bridges the gap between manual QA test cases ("Steps & Expected Results") and automation. Use `STEP N: Description` headers to mirror the structure of your manual test plan directly in the `.hunt` file. The engine renders each group as an accordion section in the HTML report — with its own pass/fail badge and action count — so stakeholders can read results without decoding raw step indices.
+
+```text
+STEP 1: Login
+NAVIGATE to https://myapp.com/login
+Fill 'Email' with '{email}'
+Fill 'Password' with '{password}'
+Click 'Sign In' button
+VERIFY that 'Dashboard' is present.
+
+STEP 2: Add item to cart
+Click 'Add to cart' near 'Laptop Pro'
+NAVIGATE to https://myapp.com/cart
+VERIFY that 'Laptop Pro' is present.
+```
+
+`STEP` headers produce zero browser actions — they are pure metadata. Action lines that follow must be plain unnumbered text (never `1.`, `2.`, …).
+
 ---
 
 ## 🎛️ Custom Controls — Escape Hatch for Complex UI
@@ -122,11 +142,12 @@ Declare all test data at the top of your `.hunt` file with `@var:`. Values are i
 @var: {email}    = admin@example.com
 @var: {password} = secret123
 
-1. NAVIGATE to https://myapp.com/login
-2. Fill 'Email' with '{email}'
-3. Fill 'Password' with '{password}'
-4. Click the 'Sign In' button
-5. VERIFY that 'Dashboard' is present.
+STEP 1: Login
+NAVIGATE to https://myapp.com/login
+Fill 'Email' with '{email}'
+Fill 'Password' with '{password}'
+Click the 'Sign In' button
+VERIFY that 'Dashboard' is present.
 ```
 
 Both `@var: {key} = value` and `@var: key = value` are accepted. Variables declared with `@var:` work identically to those created by `EXTRACT` and `CALL PYTHON ... into {var}`.
@@ -165,11 +186,12 @@ Stop wasting hours on brittle UI-based preconditions. With `[SETUP]` and `[TEARD
 CALL PYTHON db_helpers.seed_admin_user
 [END SETUP]
 
-1. NAVIGATE to https://myapp.com/login
-2. Fill 'Email' field with '{email}'
-3. Fill 'Password' field with '{password}'
-4. Click the 'Sign In' button
-5. VERIFY that 'Dashboard' is present.
+STEP 1: Login
+NAVIGATE to https://myapp.com/login
+Fill 'Email' field with '{email}'
+Fill 'Password' field with '{password}'
+Click the 'Sign In' button
+VERIFY that 'Dashboard' is present.
 
 [TEARDOWN]
 CALL PYTHON db_helpers.clean_database
@@ -187,15 +209,16 @@ The helper module is resolved relative to the `.hunt` file's directory first, th
 
 ### 🐍 Inline Python Calls
 
-Need to fetch an OTP from the database mid-test? Or trigger a backend job before clicking "Refresh"? You can now call Python functions **directly as standard numbered steps** — right in the middle of your UI flow.
+Need to fetch an OTP from the database mid-test? Or trigger a backend job before clicking "Refresh"? Call Python functions directly as action lines right in the middle of your UI flow.
 
 ```text
-1. FILL 'Email' field with 'test@manul.com'
-2. CLICK the 'Send OTP' button
-3. CALL PYTHON api_helpers.fetch_and_set_otp
-4. Fill 'OTP' field with '{otp}'
-5. CLICK the 'Login' button
-6. VERIFY that 'Dashboard' is present.
+STEP 2: OTP verification
+Fill 'Email' field with 'test@manul.com'
+Click the 'Send OTP' button
+CALL PYTHON api_helpers.fetch_and_set_otp
+Fill 'OTP' field with '{otp}'
+Click the 'Login' button
+VERIFY that 'Dashboard' is present.
 ```
 
 The same module resolution rules apply as for `[SETUP]`/`[TEARDOWN]`: hunt file directory → CWD → `sys.path`. Functions must be synchronous. If the call fails, the mission stops immediately — just like any other failed step. No special syntax or block wrapping required.
@@ -204,8 +227,8 @@ The same module resolution rules apply as for `[SETUP]`/`[TEARDOWN]`: hunt file 
 Append `into {var_name}` (or `to {var_name}`) to bind the function’s return value directly into an in-mission variable:
 
 ```text
-2. CALL PYTHON api_helpers.fetch_otp into {dynamic_otp}
-3. Fill 'Security Code' field with '{dynamic_otp}'
+CALL PYTHON api_helpers.fetch_otp into {dynamic_otp}
+Fill 'Security Code' field with '{dynamic_otp}'
 ```
 
 The raw return value is converted to a string (`str(return_value)`) and stored under the variable name. It is then available for `{placeholder}` substitution in every subsequent step, exactly like variables populated by `EXTRACT` or `@var:`.
@@ -245,9 +268,10 @@ Variables written to `ctx.variables` are injected into every matching mission as
 # tests/checkout.hunt
 @tags: smoke
 
-1. NAVIGATE to '{BASE_URL}/checkout'
-2. Fill 'API Token' field with '{API_TOKEN}'
-3. DONE.
+STEP 1: Checkout
+NAVIGATE to '{BASE_URL}/checkout'
+Fill 'API Token' field with '{API_TOKEN}'
+DONE.
 ```
 
 ### Hook execution order and failure semantics
@@ -307,11 +331,12 @@ ollama serve
 
 @var: {name} = Ghost Manul
 
-1. NAVIGATE to https://demoqa.com/text-box
-2. Fill 'Full Name' field with '{name}'
-3. Click the 'Submit' button
-4. VERIFY that '{name}' is present.
-5. DONE.
+STEP 1: Fill text box form
+NAVIGATE to https://demoqa.com/text-box
+Fill 'Full Name' field with '{name}'
+Click the 'Submit' button
+VERIFY that '{name}' is present.
+DONE.
 ```
 
 ### 2. Run it
@@ -377,11 +402,12 @@ from manul_engine import ManulEngine
 async def main():
     manul = ManulEngine(headless=True)
     await manul.run_mission("""
-        1. NAVIGATE to https://demoqa.com/text-box
-        2. Fill 'Full Name' field with 'Ghost Manul'
-        3. Click the 'Submit' button
-        4. VERIFY that 'Ghost Manul' is present.
-        5. DONE.
+        STEP 1: Fill text box form
+        NAVIGATE to https://demoqa.com/text-box
+        Fill 'Full Name' field with 'Ghost Manul'
+        Click the 'Submit' button
+        VERIFY that 'Ghost Manul' is present.
+        DONE.
     """)
 
 asyncio.run(main())
@@ -438,10 +464,11 @@ Optional `[SETUP]`/`[TEARDOWN]` blocks (placed at the top/bottom of the file) an
 CALL PYTHON <module_path>.<function_name>
 [END SETUP]
 
-1. NAVIGATE to https://myapp.com
-2. CALL PYTHON api_helpers.fetch_otp into {dynamic_otp}
-3. Fill 'Security Code' with '{dynamic_otp}'
-4. VERIFY that 'Dashboard' is present.
+STEP 1: Authenticate
+NAVIGATE to https://myapp.com
+CALL PYTHON api_helpers.fetch_otp into {dynamic_otp}
+Fill 'Security Code' with '{dynamic_otp}'
+VERIFY that 'Dashboard' is present.
 
 [TEARDOWN]
 CALL PYTHON <module_path>.<function_name>

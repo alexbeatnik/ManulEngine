@@ -31,7 +31,7 @@ except Exception:  # pragma: no cover
     ollama = None
 
 from . import prompts
-from .helpers import substitute_memory, compact_log_field, extract_quoted, detect_mode, classify_step
+from .helpers import substitute_memory, compact_log_field, extract_quoted, detect_mode, classify_step, parse_logical_step
 from .hooks import execute_hook_line
 from .js_scripts import SNAPSHOT_JS
 from .scoring import score_elements
@@ -823,12 +823,18 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             ctx  = await browser.new_context(no_viewport=True)
             page = await ctx.new_page()
 
-            if re.match(r'^\s*\d+\.', task):
+            _has_step_markers = bool(re.search(r'^\s*STEP\s*\d*\s*:', task, re.MULTILINE | re.IGNORECASE))
+            _is_numbered = bool(re.match(r'^\s*\d+\.', task))
+            if _has_step_markers and not _is_numbered:
+                # STEP-grouped unnumbered format: split line-by-line, preserve
+                # blank-line separation between groups as natural delimiters.
+                plan = [line.strip() for line in task.splitlines() if line.strip()]
+            elif _is_numbered:
                 plan = [s.strip() for s in re.split(r'(?=\b\d+\.\s)', task) if s.strip()]
             else:
                 plan = await self._llm_plan(task)
 
-            if not plan and not re.match(r'^\s*\d+\.', task):
+            if not plan and not _is_numbered and not _has_step_markers:
                 print("    ❌ No plan produced. If you're running without Ollama, provide a numbered step list.")
 
             if not plan:
@@ -838,6 +844,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             done = False
             _step_results: list[StepResult] = []
             _screenshot_mode = screenshot_mode
+            _current_logical_step: str | None = None  # active STEP label
             # Pre-populate runtime memory with static variables declared via
             # @var: {key} = value in the hunt file (or passed programmatically).
             if initial_vars:
@@ -864,6 +871,12 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                     # outside _execute_step, so they are treated as system steps
                     # and use the pre-step pause logic.
                     _is_system_step = step_kind != "action"
+
+                    if step_kind == "logical_step":
+                        _, desc = parse_logical_step(step)
+                        _current_logical_step = desc or step
+                        print(f"\n{'='*60}\n  STEP: {_current_logical_step}\n{'='*60}")
+                        continue  # no browser action, no StepResult
 
                     if self.debug_mode and _is_system_step:
                         await self._debug_prompt(page, step, i)
@@ -1066,6 +1079,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             duration_ms=duration_ms,
                             error=_step_error,
                             screenshot=_ss_b64,
+                            logical_step=_current_logical_step,
                         ))
                         # After non-NAVIGATE steps, check if the URL changed and
                         # annotate the next step with the new landing URL.

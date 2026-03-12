@@ -18,21 +18,21 @@
 # The engine loads that file at startup via load_custom_controls(CWD).
 # --------------------------------------------------------------------------
 
-1. NAVIGATE to https://example-shop.com/checkout
+STEP 1: Navigate to checkout
+NAVIGATE to https://example-shop.com/checkout
 
+STEP 2: Fill order details
 # The engine resolves the current page name as "Checkout Page" via pages.json.
 # When it sees 'React Datepicker' as the target, get_custom_control() returns
 # our Python handler from controls/demo_custom.py.
 # Standard DOM heuristics and AI resolution are bypassed entirely.
+Fill 'React Datepicker' with '2026-12-25'
+# The rest of the steps use normal heuristic/AI resolution.
+Fill 'Email' field with 'ghost@manul.ai'
+Fill 'Full Name' field with 'Ghost Manul'
+Select 'Express Shipping' from the 'Shipping Method' dropdown
 
-2. Fill 'React Datepicker' with '2026-12-25'
-
-# The rest of the steps use normal heuristic/AI resolution — no custom controls
-# needed for standard HTML form elements.
-
-3. Fill 'Email' field with 'ghost@manul.ai'
-4. Fill 'Full Name' field with 'Ghost Manul'
-5. Select 'Express Shipping' from the 'Shipping Method' dropdown
-6. Click the 'Place Order' button
-7. VERIFY that 'Order confirmed' is present.
-8. DONE.
+STEP 3: Place order and verify
+Click the 'Place Order' button
+VERIFY that 'Order confirmed' is present.
+DONE.

@@ -4,68 +4,68 @@
 # 🐾 RAHUL SHETTY HUNT: The Real Inspector Challenge
 # Validation of radio buttons, autocomplete, tables, and hovers.
 
-1. NAVIGATE to https://rahulshettyacademy.com/AutomationPractice/
+STEP 1: Navigate to practice page
+NAVIGATE to https://rahulshettyacademy.com/AutomationPractice/
 
-# ── Radio buttons ─────────────────────────────────────────────────
-2. Click the radio button for 'Radio1'
-3. VERIFY that 'Radio1' is checked.
-4. Click the radio button for 'Radio3'
-5. VERIFY that 'Radio3' is checked.
+STEP 2: Radio buttons
+Click the radio button for 'Radio1'
+VERIFY that 'Radio1' is checked.
+Click the radio button for 'Radio3'
+VERIFY that 'Radio3' is checked.
 
-# ── Autocomplete / suggestion field ───────────────────────────────
-6. Fill 'Suggession Class' field with 'Ukra'
-7. Click 'Ukraine' in the suggestion list
-8. VERIFY that 'Ukraine' is present.
+STEP 3: Autocomplete field
+Fill 'Suggession Class' field with 'Ukra'
+Click 'Ukraine' in the suggestion list
+VERIFY that 'Ukraine' is present.
 
-# ── Dropdown ──────────────────────────────────────────────────────
-9. Select 'Option1' from the 'Dropdown' list
-10. Select 'Option2' from the 'Dropdown' list
-11. Select 'Option3' from the 'Dropdown' list
+STEP 4: Dropdown
+Select 'Option1' from the 'Dropdown' list
+Select 'Option2' from the 'Dropdown' list
+Select 'Option3' from the 'Dropdown' list
 
-# ── Checkboxes ────────────────────────────────────────────────────
-12. Click the checkbox for 'Option1'
-13. VERIFY that 'Option1' is checked.
-14. Click the checkbox for 'Option2'
-15. VERIFY that 'Option2' is checked.
-16. Click the checkbox for 'Option3'
-17. VERIFY that 'Option3' is checked.
-18. Click the checkbox for 'Option1'
-19. VERIFY that 'Option1' is not checked.
+STEP 5: Checkboxes
+Click the checkbox for 'Option1'
+VERIFY that 'Option1' is checked.
+Click the checkbox for 'Option2'
+VERIFY that 'Option2' is checked.
+Click the checkbox for 'Option3'
+VERIFY that 'Option3' is checked.
+Click the checkbox for 'Option1'
+VERIFY that 'Option1' is not checked.
 
-# ── Name field + alert confirm ─────────────────────────────────────
-20. Fill 'Enter Your Name' field with 'Cyber Manul'
-21. VERIFY that 'Cyber Manul' is present.
-22. Click the 'Confirm' button
-23. VERIFY that 'Cyber Manul' is NOT present.
+STEP 6: Name field and alert
+Fill 'Enter Your Name' field with 'Cyber Manul'
+VERIFY that 'Cyber Manul' is present.
+Click the 'Confirm' button
+VERIFY that 'Cyber Manul' is NOT present.
 
-# ── SCROLL + data extraction from table ───────────────────────────
-24. SCROLL DOWN
-25. EXTRACT the Price of 'Selenium' into {selenium_price}
-26. EXTRACT the Price of 'Appium' into {appium_price}
-27. EXTRACT the Price of 'Learn SQL' into {sql_price}
-28. VERIFY that '25' is present.
+STEP 7: Scroll and extract prices
+SCROLL DOWN
+EXTRACT the Price of 'Selenium' into {selenium_price}
+EXTRACT the Price of 'Appium' into {appium_price}
+EXTRACT the Price of 'Learn SQL' into {sql_price}
+VERIFY that '25' is present.
 
-# ── Hide / Show ───────────────────────────────────────────────────
-29. Fill 'Hide/Show Example' field with 'Ghost Mode'
-30. VERIFY that 'Ghost Mode' is present.
-31. Click the 'Hide' button
-32. VERIFY that 'Ghost Mode' is NOT present.
-33. Click the 'Show' button
-34. VERIFY that 'Ghost Mode' is present.
+STEP 8: Hide / Show element
+Fill 'Hide/Show Example' field with 'Ghost Mode'
+VERIFY that 'Ghost Mode' is present.
+Click the 'Hide' button
+VERIFY that 'Ghost Mode' is NOT present.
+Click the 'Show' button
+VERIFY that 'Ghost Mode' is present.
 
-# ── Dynamic table ──────────────────────────────────────────────────
-35. SCROLL DOWN
-36. EXTRACT the Amount of 'Jack' into {jack_amount}
-37. EXTRACT the Amount of 'Joe' into {joe_amount}
-38. VERIFY that 'Joe' is present.
+STEP 9: Dynamic table extraction
+SCROLL DOWN
+EXTRACT the Amount of 'Jack' into {jack_amount}
+EXTRACT the Amount of 'Joe' into {joe_amount}
+VERIFY that 'Joe' is present.
 
-# ── Mouse hover ────────────────────────────────────────────────────
-39. HOVER over the 'Mouse Hover' button
-40. VERIFY that 'Reload' is present.
-41. VERIFY that 'Top' is present.
+STEP 10: Mouse hover
+HOVER over the 'Mouse Hover' button
+VERIFY that 'Reload' is present.
+VERIFY that 'Top' is present.
 
-# ── Back to top ────────────────────────────────────────────────────
-42. Click the 'Top' link in the menu
-43. VERIFY that 'Practice Page' is present.
-
-44. DONE.
+STEP 11: Back to top
+Click the 'Top' link in the menu
+VERIFY that 'Practice Page' is present.
+DONE.

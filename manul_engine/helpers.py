@@ -38,6 +38,8 @@ def detect_mode(step: str) -> str:
 
 # Compiled patterns for system keyword detection (order matters).
 _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
+    # STEP must precede other keywords so "STEP 1: NAVIGATE..." is classified correctly.
+    ("logical_step", re.compile(r'\bSTEP\s*\d*\s*:')),
     ("navigate",    re.compile(r'\bNAVIGATE\b')),
     ("wait",        re.compile(r'\bWAIT\b')),
     ("scroll",      re.compile(r'\bSCROLL\b')),
@@ -56,8 +58,32 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
 # Legacy pre-compiled system-step pattern kept for backwards compatibility.
 # Prefer classify_step() for step classification.
 RE_SYSTEM_STEP = re.compile(
-    r'\b(?:NAVIGATE|WAIT|SCROLL|EXTRACT|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|DEBUG|PAUSE|DONE)\b'
+    r'\b(?:STEP\s*\d*\s*:|NAVIGATE|WAIT|SCROLL|EXTRACT|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|DEBUG|PAUSE|DONE)\b'
 )
+
+# Extracts the description from a STEP marker line.
+# Matches: "STEP 1: Description" and "STEP: Description" (case-insensitive).
+# The stripped 1-based numbering prefix is handled by the caller.
+_RE_LOGICAL_STEP = re.compile(r'\bSTEP\s*(\d*)\s*:\s*(.*)', re.IGNORECASE)
+
+
+def parse_logical_step(step: str) -> "tuple[str | None, str | None]":
+    """Extract (number_or_None, description) from a logical STEP marker.
+
+    Returns (None, None) if the step is not a STEP marker.
+
+    Examples::
+
+        parse_logical_step("1. STEP 2: Navigate")  -> ("2", "Navigate")
+        parse_logical_step("3. STEP: Fill form")   -> (None, "Fill form")
+        parse_logical_step("1. Click button")       -> (None, None)
+    """
+    m = _RE_LOGICAL_STEP.search(step)
+    if m is None:
+        return None, None
+    num = m.group(1).strip() or None
+    desc = m.group(2).strip()
+    return num, desc
 
 
 # Pattern to strip quoted text before classification.

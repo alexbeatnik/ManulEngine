@@ -111,8 +111,12 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
     """Return a :class:`ParsedHunt` with all parsed fields.
 
     *step_file_lines[i]* is the 1-based file line number of the *(i+1)*-th
-    numbered step, in order of appearance.  Used to map editor gutter
-    breakpoints to step indices that ManulEngine should pause before.
+    mission line (non-blank, non-comment, not a header), in order of
+    appearance.  Used to map editor gutter breakpoints to step indices that
+    ManulEngine should pause before.  For numbered-step files every entry is a
+    numbered line; for STEP-grouped unnumbered files every content line
+    (including STEP markers themselves) is recorded so indices stay aligned
+    with the line-by-line plan produced by ``run_mission()``.
     Line numbers always refer to the **original** file, even when hook blocks
     are present — hook block lines are skipped transparently.
 
@@ -184,8 +188,7 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
                     parsed_vars[m.group(1).strip()] = m.group(2).strip()
             elif not stripped.startswith("#") and stripped:
                 mission_lines.append(line)
-                if re.match(r'^\d+\.', stripped):
-                    step_file_lines.append(lineno)
+                step_file_lines.append(lineno)
 
     return ParsedHunt(
         mission="".join(mission_lines).strip(),
@@ -203,7 +206,8 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
 def _read_tags(path: str) -> list[str]:
     """Scan only the header lines of a .hunt file and return its @tags: values.
 
-    Stops at the first numbered step line to avoid reading the whole file.
+    Stops at the first action line (numbered step or STEP marker) to avoid
+    reading the whole file.
     Returns an empty list when no ``@tags:`` header is found.
     """
     with open(path, "r", encoding="utf-8") as fh:
@@ -212,7 +216,7 @@ def _read_tags(path: str) -> list[str]:
             if stripped.startswith("@tags:"):
                 raw = stripped.split(":", 1)[1]
                 return [t.strip() for t in raw.split(",") if t.strip()]
-            if re.match(r'^\d+\.', stripped):
+            if re.match(r'^\d+\.', stripped) or re.match(r'^STEP\b', stripped, re.IGNORECASE):
                 break
     return []
 

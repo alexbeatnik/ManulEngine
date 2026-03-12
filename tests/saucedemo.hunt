@@ -1,25 +1,34 @@
 @context: E-commerce purchase flow on SauceDemo
 @title: swag-labs-checkout
 
+STEP 1: Login
 # 📍 Auto-Nav: https://www.saucedemo.com/
-1. NAVIGATE to https://www.saucedemo.com/
-2. Fill 'Username' with 'standard_user'
-3. Fill 'Password' with 'secret_sauce'
-4. Click 'Login' button
+NAVIGATE to https://www.saucedemo.com/
+Fill 'Username' with 'standard_user'
+Fill 'Password' with 'secret_sauce'
+Click 'Login' button
+
+STEP 2: Add item to cart
 # 📍 Auto-Nav: Products Catalog
-5. VERIFY that 'Products' is present
-6. Click 'Add to cart' near 'Sauce Labs Fleece Jacket'
+VERIFY that 'Products' is present
+Click 'Add to cart' near 'Sauce Labs Fleece Jacket'
+
+STEP 3: Review cart
 # 📍 Auto-Nav: Shopping Cart
-7. NAVIGATE to https://www.saucedemo.com/cart.html
-8. VERIFY that 'Sauce Labs Fleece Jacket' is present
-9. Click 'Checkout' button
+NAVIGATE to https://www.saucedemo.com/cart.html
+VERIFY that 'Sauce Labs Fleece Jacket' is present
+Click 'Checkout' button
+
+STEP 4: Fill shipping info
 # 📍 Auto-Nav: Checkout: Your Info
-10. Fill 'First Name' with 'FirstName'
-11. Fill 'Last Name' with 'LastName'
-12. Fill 'Zip/Postal Code' with '49000'
-13. Click 'Continue' button
+Fill 'First Name' with 'FirstName'
+Fill 'Last Name' with 'LastName'
+Fill 'Zip/Postal Code' with '49000'
+Click 'Continue' button
+
+STEP 5: Complete order
 # 📍 Auto-Nav: Checkout: Overview
-14. Click 'Finish' button
+Click 'Finish' button
 # 📍 Auto-Nav: Checkout: Complete
-15. VERIFY that 'Thank you for your order!' is present
-16. DONE.
+VERIFY that 'Thank you for your order!' is present
+DONE.
