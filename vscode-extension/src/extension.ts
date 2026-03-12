@@ -16,7 +16,7 @@ import {
   clearAllCacheCommand,
   clearSiteCacheCommand,
 } from "./cacheTreeProvider";
-import { DEFAULT_CONFIG_FILENAME, DEBUG_TERMINAL_NAME, TERMINAL_NAME } from "./constants";
+import { DEFAULT_CONFIG_FILENAME, DEBUG_TERMINAL_NAME, TERMINAL_NAME, getConfigFileName } from "./constants";
 
 export function activate(context: vscode.ExtensionContext): void {
   // Output channel reused across debug runs from the editor button / context menu.
@@ -227,7 +227,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Refresh config view when the config file changes
   const configWatcher = vscode.workspace.createFileSystemWatcher(
-    `**/${DEFAULT_CONFIG_FILENAME}`
+    `**/${getConfigFileName()}`
   );
   context.subscriptions.push(configWatcher);
   configWatcher.onDidChange(() => cacheProvider.refresh());

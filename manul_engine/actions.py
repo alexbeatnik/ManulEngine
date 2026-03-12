@@ -193,6 +193,19 @@ class _ActionsMixin:
             pass
         tag = str(el.get("tag_name", "")).lower()
         itype = str(el.get("input_type", "")).lower()
+        if tag == "label":
+            linked_id = str(el.get("html_id", ""))
+            if linked_id:
+                linked_loc = page.locator(f"#{linked_id}").first
+                try:
+                    linked_tag = await linked_loc.evaluate("e => e.tagName.toLowerCase()")
+                    linked_type = await linked_loc.evaluate("e => (e.type || '').toLowerCase()")
+                except Exception:
+                    linked_tag, linked_type = "", ""
+                if linked_tag == "input" and linked_type == "file":
+                    loc = linked_loc
+                    tag, itype = linked_tag, linked_type
+                    print(f"    🏷️  UPLOAD: followed <label for='{linked_id}'> → <input type='file'>")
         if tag != "input" or itype != "file":
             print(f"    ❌ UPLOAD: resolved element is <{tag} type='{itype}'>, expected <input type='file'>")
             return False
