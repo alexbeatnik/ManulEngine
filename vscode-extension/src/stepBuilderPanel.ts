@@ -33,9 +33,10 @@ const DEMO_TEST_SCAFFOLD = `@context: E2E Login Flow with Hooks
 # CALL PYTHON demo_helpers.inject_test_session
 # [END SETUP]
 
-1. NAVIGATE to "https://example.com"
-2. Click "More information..." link
-3. VERIFY that "IANA" is present
+STEP 1: Navigate to IANA
+NAVIGATE to "https://example.com"
+Click "More information..." link
+VERIFY that "IANA" is present
 
 # [TEARDOWN]
 # CALL PYTHON demo_helpers.clean_database
@@ -245,18 +246,9 @@ function getNonce(): string {
 }
 
 /**
- * Determine the next step number from the active .hunt document text.
- * Scans for lines matching `\d+.` and returns max + 1 (or 1 if none found).
- */
-function nextStepNumber(text: string): number {
-  const matches = [...text.matchAll(/^(\d+)\./gm)];
-  if (matches.length === 0) { return 1; }
-  return Math.max(...matches.map((m) => parseInt(m[1], 10))) + 1;
-}
-
-/**
- * Append a numbered step to the active .hunt file.
- * Positions the cursor inside the first pair of '' in the inserted line.
+ * Append a step to the active .hunt file.
+ * Automatically inserts at the current cursor position, moving to a new line if needed.
+ * Uses VS Code Snippets to position the cursor inside placeholders.
  *
  * Only operates on `vscode.window.activeTextEditor` — if the active editor
  * is not a .hunt file, shows a warning and returns without switching tabs.
@@ -269,37 +261,65 @@ async function insertStep(template: string): Promise<void> {
   }
 
   const doc = editor.document;
-  const text = doc.getText();
-  const num = nextStepNumber(text);
-  const stepText = `${num}. ${template}`;
+  const activePos = editor.selection.active;
 
-  // Determine insertion point: end of file, prefixed with newline if needed.
-  const lastLine = doc.lineAt(doc.lineCount - 1);
-  const endPos = lastLine.range.end;
-  const prefix = lastLine.text.trim() === "" ? "" : "\n";
-
-  const ok = await editor.edit((eb) => {
-    eb.insert(endPos, `${prefix}${stepText}`);
-  });
-
-  if (!ok) {
-    vscode.window.showWarningMessage("Could not insert step — document may be read-only.");
+  // Guardrail: Do not allow inserting steps after a "DONE." command
+  const textBeforeCursor = doc.getText(new vscode.Range(new vscode.Position(0, 0), activePos));
+  if (/(^|\n)\s*DONE\.\s*(\n|$)/.test(textBeforeCursor)) {
+    vscode.window.showWarningMessage(
+      "Cannot add actions after 'DONE.'. Please move your cursor above it, or remove 'DONE.' to continue building."
+    );
     return;
   }
 
-  // Position cursor inside the first '' pair.
-  const updatedDoc = editor.document;
-  const lines = updatedDoc.getText().split("\n");
-  const insertedLineIdx = lines.findIndex((l) => l.startsWith(`${num}. `));
-  if (insertedLineIdx === -1) { return; }
+  const line = doc.lineAt(activePos.line);
 
-  const lineText = lines[insertedLineIdx];
-  const quoteIdx = lineText.indexOf("''");
-  if (quoteIdx !== -1) {
-    const pos = new vscode.Position(insertedLineIdx, quoteIdx + 1);
-    editor.selection = new vscode.Selection(pos, pos);
-    editor.revealRange(new vscode.Range(pos, pos));
+  let prefix = "";
+  let insertPos = activePos;
+
+  if (line.text.trim() !== "") {
+    if (activePos.character === line.range.end.character) {
+      prefix = "\n";
+    } else {
+      prefix = "\n";
+      insertPos = line.range.end;
+    }
+  } else {
+    if (template.startsWith("STEP") && activePos.line > 0) {
+      if (doc.lineAt(activePos.line - 1).text.trim() !== "") {
+        prefix = "\n";
+      }
+    }
   }
+
+  if (prefix !== "" || insertPos.character !== activePos.character) {
+    const ok = await editor.edit((eb) => {
+      eb.insert(insertPos, prefix);
+    });
+    if (!ok) return;
+    const newPos = new vscode.Position(insertPos.line + (prefix.includes("\n") ? 1 : 0), 0);
+    editor.selection = new vscode.Selection(newPos, newPos);
+  }
+
+  let snippetString = template;
+  if (template === "STEP : Description") {
+    snippetString = "STEP ${1:1}: ${2:Description}";
+  } else if (template === "CALL PYTHON module_name.function_name") {
+    snippetString = "CALL PYTHON ${1:module_name}.${2:function_name}";
+  } else if (template === "CALL PYTHON module_name.function_name into {variable_name}") {
+    snippetString = "CALL PYTHON ${1:module_name}.${2:function_name} into {${3:variable_name}}";
+  } else {
+    let counter = 1;
+    snippetString = snippetString.replace(/''/g, () => `'$\{${counter++}}'`);
+    snippetString = snippetString.replace(/\{\}/g, () => `{$\{${counter++}}}`);
+    snippetString = snippetString.replace("<KEY>", "${1:KEY}");
+  }
+
+  if (template.startsWith("STEP")) {
+    snippetString += "\n";
+  }
+
+  await editor.insertSnippet(new vscode.SnippetString(snippetString));
 }
 
 // ── Hook commands ────────────────────────────────────────────────────────────
@@ -440,7 +460,7 @@ export async function newHuntFileCommand(
     return;
   }
 
-  const starter = `@context: \n@title: ${name}\n\n1. NAVIGATE to \n`;
+  const starter = `@context: \n@title: ${name}\n\nSTEP 1: Navigate\nNAVIGATE to \n`;
   fs.writeFileSync(filePath, starter, "utf8");
 
   const doc = await vscode.workspace.openTextDocument(filePath);
@@ -449,7 +469,7 @@ export async function newHuntFileCommand(
   // Position cursor at the end of the NAVIGATE line
   const editor = vscode.window.activeTextEditor;
   if (editor) {
-    const line = doc.lineAt(3); // "1. NAVIGATE to "
+    const line = doc.lineAt(4); // "NAVIGATE to "
     const end = line.range.end;
     editor.selection = new vscode.Selection(end, end);
     editor.revealRange(new vscode.Range(end, end));
