@@ -1,5 +1,5 @@
 @context: Checkout flow with a React Datepicker custom control. Demonstrates that complex UI widgets can be driven by a Python handler registered via @custom_control, while the .hunt file stays readable plain English.
-@blueprint: demo_custom_controls
+@title: demo_custom_controls
 
 # --------------------------------------------------------------------------
 # PREREQUISITE: pages.json must map the checkout URL to "Checkout Page".

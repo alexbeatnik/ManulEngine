@@ -3,9 +3,9 @@
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
 
-ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing. **It is built to bridge the gap between Manual QA and Engineering.**
+ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing. **Built to bridge the gap between Manual QA and Engineering** — write tests in plain English, run them on any machine, and never touch a CSS selector again.
 
-Forget brittle CSS/XPath locators that break on every UI update. Stop paying for expensive cloud APIs. Manul combines the blazing speed of **Playwright**, powerful JavaScript DOM heuristics, and the reasoning of local neural networks (via **Ollama**) entirely on your machine.
+Forget brittle locators that break on every UI update. Stop paying for cloud APIs. Manul combines the speed of **Playwright**, 20+ JavaScript DOM heuristics, and optional local LLM reasoning (via **Ollama**) — entirely on your machine, entirely private.
 
 > The Manul goes hunting and never returns without its prey.
 
@@ -102,7 +102,7 @@ A sidebar panel that lets you insert hunt steps with a single click — no typin
 
 - **＋ New Hunt File** button — prompts for a name, creates a `.hunt` file with a starter template in the `tests_home` directory (configured via `tests_home` in `manul_engine_configuration.json`, defaults to `tests/`), and opens it
 - **🔍 Live Page Scanner** — paste any URL into the sidebar text input and click **Run Scan**; the extension invokes `manul scan <URL>` as a child process with a progress notification, then automatically opens the freshly generated `tests_home/draft.hunt` in the editor — no terminal required
-- **Step buttons** — one button per step type: Navigate, Fill field, Click, Double Click, Select, Check, Radio, Hover, Drag & Drop, Extract, Verify present/absent/state, Press Enter, Wait, Scroll Down, **Scan Page**, **🐍 Call Python**, **🐍 Call Python → Var**, **Debug / Pause**, Done
+- **Step buttons** — one button per step type: Navigate, Fill field, Click, Double Click, Right Click, Select, Check, Radio, Hover, Drag & Drop, Extract, Verify present/absent/state, Press Enter, Press Key, Upload File, Wait, Scroll Down, **Scan Page**, **🐍 Call Python**, **🐍 Call Python → Var**, **Debug / Pause**, Done
 - **🐍 Call Python** — appends a numbered `CALL PYTHON module_name.function_name` step to the end of the current `.hunt` file with a single click; rename the placeholders and your Python function runs inline as part of the test — no block wrappers needed
 - **🐍 Call Python → Var** — appends a numbered `CALL PYTHON module_name.function_name into {variable_name}` step; the function's return value is captured as a string and bound to `{variable_name}`, available for `{placeholder}` substitution in all subsequent steps
 - **Hooks buttons** — **🔧 Insert [SETUP]** and **🧹 Insert [TEARDOWN]** insert pre-filled hook blocks with `CALL PYTHON module.function` placeholders; **🎯 Generate Demo Test** scaffolds a complete hunt file with setup, UI steps, and teardown in one click
@@ -162,6 +162,9 @@ The extension probes the following locations in order (platform-aware):
 | `manulEngine.manulPath` | `""` | Absolute path to the `manul` CLI. Leave empty to auto-detect. |
 | `manulEngine.configFile` | `manul_engine_configuration.json` | Config file name resolved from the workspace root. |
 | `manulEngine.workers` | `null` | Max concurrent hunt files in Test Explorer. Overrides `workers` in config. Leave empty to use the config value (default: 1). |
+| `manulEngine.htmlReport` | `false` | Generate a self-contained HTML report after each run (saved to `reports/manul_report.html`). |
+| `manulEngine.retries` | `0` | Number of times to retry a failed hunt file before marking it as failed (0–10). |
+| `manulEngine.screenshotMode` | `"on-fail"` | Screenshot capture mode: `none`, `on-fail` (failed steps only), `always` (every step). |
 
 ---
 
@@ -187,7 +190,7 @@ The extension probes the following locations in order (platform-aware):
 
 ```hunt
 @context: Login and verify dashboard
-@blueprint: smoke_login
+@title: smoke_login
 @tags: smoke, auth
 
 @var: {user_email} = user@example.com
@@ -235,13 +238,24 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 
 ## Release Notes
 
+### 0.0.87
+- **📊 HTML Reports** — new `manulEngine.htmlReport` toggle in Config Panel (“📊 Reporting & Retries” section); generates a self-contained dark-themed HTML report with dashboard stats, per-step accordion, and inline base64 screenshots after each run. Report is saved to `reports/manul_report.html` in the workspace root
+- **🔄 Automatic Retries** — new `manulEngine.retries` setting (0–10) in Config Panel; retries each failed hunt the specified number of times before marking it as failed. Each retry is a full fresh browser run
+- **📷 Screenshot Capture** — new `manulEngine.screenshotMode` selector (`none` / `on-fail` / `always`) in Config Panel; screenshots are embedded as base64 in the HTML report
+- All three settings are auto-injected as CLI flags (`--html-report`, `--retries`, `--screenshot`) when running hunts via the extension — no manual CLI arguments needed
+- All artifacts (logs, reports) are now saved to the `reports/` directory — workspace stays clean
+
 ### 0.0.86
-- **📌 Static Variable Declaration** — declare test data at the top of any `.hunt` file using `@var: {key} = value`; values are pre-populated into the engine's runtime memory before any step runs and can be interpolated anywhere a `{placeholder}` is accepted (e.g. `Fill 'Email' with '{user_email}'`). Both brace and bare-key forms accepted (`@var: {key} = val` and `@var: key = val` are equivalent). Core engine bump to **0.0.8.6**
-- **🐍 Dynamic Variable Capture** — `CALL PYTHON module.function into {variable_name}` (or `to {var}`) captures the return value of any synchronous Python function and stores it as a string in runtime memory; use immediately in subsequent steps via `{variable_name}`. Enables mid-test backend calls (OTP, magic links, DB tokens) without hardcoding values
+- **📌 Static Variable Declaration (`@var:`)** — declare test data at the top of any `.hunt` file using `@var: {key} = value`; values are pre-populated into the engine's runtime memory before step 1 runs and can be interpolated anywhere a `{placeholder}` is accepted (e.g. `Fill 'Email' with '{user_email}'`). Both brace and bare-key forms are accepted. Keeps test data separate from test logic — no more hardcoded credentials scattered across steps
+- **🐍 Dynamic Variable Capture (`CALL PYTHON ... into {var}`)** — `CALL PYTHON module.function into {variable_name}` (or `to {var}`) captures the return value of any synchronous Python function and stores it as a string in runtime memory; use immediately in subsequent steps via `{variable_name}`. Enables mid-test backend calls (OTP retrieval, magic links, DB tokens) without hardcoding values
 - **🐍 "Call Python → Var" button in Step Builder** — one-click insertion of `CALL PYTHON module_name.function_name into {variable_name}` scaffold directly into the active `.hunt` file
-- **🏷️ Arbitrary Tags (`@tags:`) and `--tags` CLI filter** — declare comma-separated tags at the top of any `.hunt` file with `@tags: smoke, auth, regression`; run `manul tests/ --tags smoke` to execute only matching files (OR logic: the file must contain at least one of the requested tags; untagged files are excluded when `--tags` is active)
+- **🏷️ Arbitrary Tags (`@tags:`) and `--tags` CLI filter** — declare comma-separated tags at the top of any `.hunt` file with `@tags: smoke, auth, regression`; run `manul tests/ --tags smoke` to execute only matching files (OR logic: file must contain at least one requested tag; untagged files are excluded when `--tags` is active)
+- Core engine bump to **0.0.8.7**
 
 ### 0.0.85
+- Core engine bump to **0.0.8.6** — internal improvements and bug fixes
+
+### 0.0.84
 - **🎛️ Custom Controls** — decorator-based Python handler registry (`@custom_control(page, target)`) for complex UI elements (React virtual tables, canvas widgets, WebGL, multi-step datepickers); handlers in `controls/` are auto-loaded at engine startup; `controls/demo_custom.py` and `tests/demo_controls.hunt` ship as a reference implementation
 - **🔍 Live Page Scanner in Step Builder** — new URL input + **Run Scan** button in the Step Builder sidebar; invokes `manul scan <URL>` as a child process with a progress notification and automatically opens the generated `tests_home/draft.hunt` in the editor — no terminal required
 

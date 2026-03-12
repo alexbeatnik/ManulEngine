@@ -1,5 +1,5 @@
 @context: Automation Practice Gauntlet (testautomationpractice.blogspot.com). Includes text inputs, radio/checkboxes, dropdowns, date pickers, drag-and-drop, dynamic tables with pagination, and Shadow DOM.
-@blueprint: complex_ui_full_inspection
+@title: complex_ui_full_inspection
 
 # 🐾 THE MEGA HUNT: Ultimate Automation Challenge
 # Validation of all possible element types on a single page.

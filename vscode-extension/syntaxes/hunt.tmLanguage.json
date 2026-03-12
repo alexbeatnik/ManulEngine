@@ -16,7 +16,7 @@
       "patterns": [
         {
           "name": "meta.annotation.hunt",
-          "match": "^(@context|@blueprint)(:)(.*)$",
+          "match": "^(@context|@title|@blueprint)(:)(.*)$",
           "captures": {
             "1": { "name": "keyword.other.metadata.hunt" },
             "2": { "name": "punctuation.separator.hunt" },
@@ -62,11 +62,11 @@
     },
     "system-keyword": {
       "name": "keyword.control.hunt",
-      "match": "\\b(NAVIGATE to|NAVIGATE|VERIFY that|VERIFY|EXTRACT|SCROLL DOWN inside the list|SCROLL DOWN|SCROLL|WAIT|DONE|DOUBLE CLICK|HOVER)\\b"
+      "match": "(?i)\\b(NAVIGATE to|NAVIGATE|VERIFY that|VERIFY|EXTRACT|SCROLL DOWN inside the list|SCROLL DOWN|SCROLL|PRESS ENTER|PRESS|RIGHT CLICK|UPLOAD|WAIT|DONE|DOUBLE CLICK|HOVER)\\b"
     },
     "action-verb": {
       "name": "keyword.operator.action.hunt",
-      "match": "(?i)\\b(Click|Fill|Type|Select|Choose|Check|Uncheck|Hover|Drag|Drop|Locate|Navigate|Enter)\\b"
+      "match": "(?i)\\b(Click|Fill|Type|Select|Choose|Check|Uncheck|Hover|Drag|Drop|Locate|Navigate|Enter|Upload)\\b"
     },
     "quoted-single": {
       "name": "string.quoted.single.hunt",

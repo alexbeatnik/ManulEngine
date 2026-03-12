@@ -71,7 +71,7 @@ def build_hunt(url: str, elements: list[dict]) -> str:
     """
     lines: list[str] = [
         f"@context: Auto-generated scan for {url}",
-        "@blueprint: scan-draft",
+        "@title: scan-draft",
         "",
         "1. NAVIGATE to " + url,
         "2. WAIT 2",

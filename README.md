@@ -8,7 +8,7 @@ ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automa
 Forget brittle CSS/XPath locators that break on every UI update — write tests in plain English.
 Stop paying for expensive cloud APIs — leverage local micro-LLMs via **Ollama**, entirely on your machine.
 
-Manul combines the blazing speed of **Playwright**, powerful JavaScript DOM heuristics, and the reasoning of local neural networks. It is fast, private, and highly resilient to UI changes.
+Manul combines the blazing speed of **Playwright**, 20+ JavaScript DOM heuristics, and the reasoning of local neural networks. It is fast, private, and highly resilient to UI changes.
 
 > The Manul goes hunting and never returns without its prey.
 
@@ -56,6 +56,31 @@ Set `MANUL_AI_THRESHOLD=0` to disable the LLM entirely and run fully on determin
 
 Successful element resolutions are stored per-site and reused on subsequent runs — making repeated test flows dramatically faster.
 
+### 🔄 Automatic Retries — Tame Flaky Tests
+
+Real-world E2E tests flake. Network hiccups, slow renders, third-party scripts — you name it. ManulEngine lets you retry failed hunts automatically:
+
+```bash
+manul tests/ --retries 2                # retry each failed hunt up to 2 times
+manul tests/ --retries 3 --html-report  # retry + generate an HTML report
+```
+
+Or set `"retries": 2` in `manul_engine_configuration.json` for a permanent default. Each retry is a full fresh run — no stale state carried over.
+
+### 📊 Standalone HTML Reports
+
+One flag. One self-contained HTML file. Dark-themed dashboard with pass/fail stats, per-step accordion, inline base64 screenshots, and XSS-safe output — no external dependencies, no CDN, no server.
+
+```bash
+manul tests/ --html-report                          # report saved to reports/manul_report.html
+manul tests/ --screenshot always --html-report      # embed a screenshot for every step
+manul tests/ --screenshot on-fail --html-report     # screenshots only on failures
+```
+
+All artifacts (logs, reports) are saved to the `reports/` directory — your workspace stays clean.
+
+> **Note:** Per-step details (accordion + embedded screenshots) require `--workers 1` (the default). When `--workers > 1`, the report aggregates per-hunt results only.
+
 ---
 
 ## 🎛️ Custom Controls — Escape Hatch for Complex UI
@@ -85,18 +110,60 @@ The engine loads every `.py` file in `controls/` at startup. No configuration re
 
 ---
 
-## ⚡ Lightning-Fast Preconditions with Python Hooks
+## 📋 Static Variables — Clean Test Data, Zero Hardcoding
 
-Stop wasting hours on brittle UI-based preconditions. With `[SETUP]` and `[TEARDOWN]` hooks you can inject test data directly into your database or call an API in pure Python — keeping your `.hunt` files crystal clear and your test runs **dramatically faster**.
+Declare all test data at the top of your `.hunt` file with `@var:`. Values are injected into the engine’s memory before step 1 runs and can be referenced anywhere via `{placeholder}` — keeping your test logic clean and your data in one place.
 
 ```text
+@var: {email}    = admin@example.com
+@var: {password} = secret123
+
+1. NAVIGATE to https://myapp.com/login
+2. Fill 'Email' with '{email}'
+3. Fill 'Password' with '{password}'
+4. Click the 'Sign In' button
+5. VERIFY that 'Dashboard' is present.
+```
+
+Both `@var: {key} = value` and `@var: key = value` are accepted. Variables declared with `@var:` work identically to those created by `EXTRACT` and `CALL PYTHON ... into {var}`.
+
+---
+
+## 🏷️ Tags — Run Exactly What You Need
+
+Tag any `.hunt` file and cherry-pick which tests to run — no directory juggling required.
+
+```text
+@tags: smoke, auth, regression
+
+1. NAVIGATE to https://example.com/login
+2. DONE.
+```
+
+```bash
+manul tests/ --tags smoke               # run only 'smoke'-tagged files
+manul tests/ --tags smoke,critical      # OR logic — either tag matches
+```
+
+Files without `@tags:` are excluded when `--tags` is active. Zero config, zero complexity.
+
+---
+
+## ⚡ Lightning-Fast Preconditions with Python Hooks
+
+Stop wasting hours on brittle UI-based preconditions. With `[SETUP]` and `[TEARDOWN]` hooks you can inject test data directly into your database or call an API in pure Python — keeping your `.hunt` files crystal clear and your test runs dramatically faster.
+
+```text
+@var: {email}    = admin@example.com
+@var: {password} = secret
+
 [SETUP]
 CALL PYTHON db_helpers.seed_admin_user
 [END SETUP]
 
 1. NAVIGATE to https://myapp.com/login
-2. Fill 'Email' field with 'admin@example.com'
-3. Fill 'Password' field with 'secret'
+2. Fill 'Email' field with '{email}'
+3. Fill 'Password' field with '{password}'
 4. Click the 'Sign In' button
 5. VERIFY that 'Dashboard' is present.
 
@@ -176,12 +243,15 @@ ollama serve
 
 ```text
 @context: Demo smoke test
-@blueprint: smoke
+@title: smoke
+@tags: smoke
+
+@var: {name} = Ghost Manul
 
 1. NAVIGATE to https://demoqa.com/text-box
-2. Fill 'Full Name' field with 'Ghost Manul'
+2. Fill 'Full Name' field with '{name}'
 3. Click the 'Submit' button
-4. VERIFY that 'Ghost Manul' is present.
+4. VERIFY that '{name}' is present.
 5. DONE.
 ```
 
@@ -212,6 +282,18 @@ manul my_tests/ --tags smoke
 
 # Run only files tagged 'smoke' OR 'critical'
 manul my_tests/ --tags smoke,critical
+
+# Retry failed hunts up to 2 times
+manul my_tests/ --retries 2
+
+# Generate a standalone HTML report (saved to reports/manul_report.html)
+manul my_tests/ --html-report
+
+# Screenshots on failure + HTML report + retries (the full CI combo)
+manul my_tests/ --retries 2 --screenshot on-fail --html-report
+
+# Screenshots for every step (detailed forensic report)
+manul my_tests/ --screenshot always --html-report
 
 # Interactive debug mode (terminal) — pause before every step, confirm in terminal
 manul --debug my_tests/smoke.hunt
@@ -256,7 +338,7 @@ Hunt files are plain-text test scenarios with a `.hunt` extension.
 
 ```text
 @context: Strategic context passed to the LLM planner
-@blueprint: short-tag
+@title: short-tag
 @tags: smoke, auth, regression
 ```
 
@@ -273,6 +355,10 @@ Lines starting with `#` are ignored.
 | `NAVIGATE to [URL]` | Load a URL and wait for DOM settlement |
 | `WAIT [seconds]` | Hard sleep |
 | `PRESS ENTER` | Press Enter on the currently focused element (submit forms after filling a field) |
+| `PRESS [Key]` | Press any key or combination globally (e.g. `PRESS Escape`, `PRESS Control+A`) |
+| `PRESS [Key] on [Target]` | Press a key on a specific element (e.g. `PRESS ArrowDown on 'Search Input'`) |
+| `RIGHT CLICK [Target]` | Right-click an element to open a context menu |
+| `UPLOAD 'File' to 'Target'` | Upload a file to a file input element (both must be quoted; path relative to `.hunt` file or CWD) |
 | `SCROLL DOWN` | Scroll the main page down one viewport |
 | `EXTRACT [target] into {var}` | Extract text into a memory variable |
 | `VERIFY that [target] is present` | Assert text/element is visible |
@@ -404,7 +490,11 @@ Create `manul_engine_configuration.json` in your project root — all settings a
   "log_thought_maxlen": 0,
   "workers": 1,
   "tests_home": "tests",
-  "auto_annotate": false
+  "auto_annotate": false,
+
+  "retries": 0,
+  "screenshot": "on-fail",
+  "html_report": false
 }
 ```
 
@@ -439,6 +529,9 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 | `workers` | `1` | Number of hunt files to run concurrently (each gets its own browser) |
 | `tests_home` | `"tests"` | Default directory for new hunt files and `SCAN PAGE` / `manul scan` output |
 | `auto_annotate` | `false` | Automatically insert `# 📍 Auto-Nav:` comments in hunt files whenever the browser URL changes (not only on `NAVIGATE` steps). Page names are resolved from `pages.json`; unmapped URLs fall back to the full URL |
+| `retries` | `0` | Number of times to retry a failed hunt file before marking it as failed (0 = no retries) |
+| `screenshot` | `"on-fail"` | Screenshot capture mode: `"none"` (no screenshots), `"on-fail"` (default — failed steps only), `"always"` (every step) |
+| `html_report` | `false` | Generate a self-contained HTML report after the run (`reports/manul_report.html`) |
 
 ---
 
@@ -448,14 +541,16 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 |---|---|
 | **Navigation** | `NAVIGATE to [URL]` |
 | **Input** | `Fill [Field] with [Text]`, `Type [Text] into [Field]` |
-| **Click** | `Click [Element]`, `DOUBLE CLICK [Element]` |
+| **Click** | `Click [Element]`, `DOUBLE CLICK [Element]`, `RIGHT CLICK [Element]` |
 | **Selection** | `Select [Option] from [Dropdown]`, `Check [Checkbox]`, `Uncheck [Checkbox]` |
 | **Mouse Action** | `HOVER over [Element]`, `Drag [Element] and drop it into [Target]` |
 | **Data Extraction** | `EXTRACT [Target] into {variable_name}` |
 | **Verification** | `VERIFY that [Text] is present/absent`, `VERIFY that [Element] is checked/disabled` |
 | **Page Scanner** | `SCAN PAGE`, `SCAN PAGE into {filename}` |
 | **Debug** | `DEBUG` / `PAUSE` — pause execution at that step (use with `--debug` or VS Code gutter breakpoints) |
-| **Flow Control** | `WAIT [seconds]`, `PRESS ENTER`, `SCROLL DOWN` |
+| **Keyboard** | `PRESS ENTER`, `PRESS [Key]`, `PRESS [Key] on [Element]` |
+| **File Upload** | `UPLOAD 'File' to 'Element'` |
+| **Flow Control** | `WAIT [seconds]`, `SCROLL DOWN` |
 | **Finish** | `DONE.` |
 
 > Append `if exists` or `optional` to any step (outside quoted text) to make it non-blocking,
@@ -465,7 +560,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 
 ## 🐾 Battle-Tested
 
-ManulEngine is verified against **1296+ synthetic DOM tests** covering:
+ManulEngine is verified against **1592+ synthetic DOM tests** covering:
 
 - Shadow DOM, invisible overlays, zero-pixel honeypots
 - Custom dropdowns, drag-and-drop, hover menus
@@ -475,4 +570,4 @@ ManulEngine is verified against **1296+ synthetic DOM tests** covering:
 
 ---
 
-**Version:** 0.0.8.6 · **Status:** Hunting...
+**Version:** 0.0.8.7 · **Status:** Hunting...

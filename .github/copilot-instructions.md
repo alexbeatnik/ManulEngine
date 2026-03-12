@@ -22,18 +22,21 @@ Current operating mode in this repo is typically **mixed**:
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.6
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.7
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
   cache.py                 _ControlsCacheMixin (persistent per-site controls cache)
-  actions.py               _ActionsMixin (navigate, scroll, extract, verify, drag, _execute_step, scan_page)
+  actions.py               _ActionsMixin (navigate, scroll, extract, verify, drag, press, right_click, upload, _execute_step, scan_page)
+  reporting.py             StepResult, MissionResult, RunSummary dataclasses
+  reporter.py              Self-contained HTML report generator (dark theme, base64 screenshots)
   prompts.py               JSON config loader, thresholds, LLM prompt templates
   scoring.py               score_elements() — pure function, 20+ heuristic rules
   js_scripts.py            All JS injected into the browser (includes SCAN_JS)
   scanner.py               Smart Page Scanner — scan_page(), build_hunt(), scan_main()
-  helpers.py               substitute_memory(), extract_quoted(), env_bool(), timing constants
-  cli.py                   Public installed CLI entry point (manul command + manul scan subcommand)
+  helpers.py               substitute_memory(), extract_quoted(), env_bool(), detect_mode(), classify_step(), timing constants
+  cli.py                   Public installed CLI entry point (manul command + manul scan subcommand); ParsedHunt NamedTuple
+  controls.py              Custom Controls registry (@custom_control, get_custom_control, load_custom_controls)
   hooks.py                 [SETUP] / [TEARDOWN] hook parser and executor
   _test_runner.py          Dev-only synthetic test runner (not in public CLI)
   test/
@@ -42,14 +45,26 @@ manul_engine/
     ...
     test_15_facebook_final_boss.py
     test_16_hooks.py        [SETUP]/[TEARDOWN] unit tests (41 assertions, no browser)
+    test_17_frontend_hell.py   frontend anti-patterns (overlays, z-index traps, React portals)
+    test_18_disambiguation.py  ambiguous element targeting
+    test_19_custom_controls.py Custom Controls registry + engine interception (19 assertions, no browser)
+    test_20_variables.py       @var: static variable declaration (17 assertions, no browser)
+    test_21_dynamic_vars.py    CALL PYTHON ... into {var} dynamic variable capture
+    test_22_tags.py            @tags: / --tags CLI filter (20 assertions, no browser)
+    test_23_advanced_interactions.py  PRESS/RIGHT CLICK/UPLOAD commands (48 assertions, no browser)
+    test_24_reporting.py       StepResult/MissionResult/RunSummary dataclasses (45 assertions)
+    test_25_reporter.py        HTML report generator (42 assertions, no browser)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables
-  expandtesting.hunt      integration: login, inputs, dynamic tables
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
   rahul.hunt              integration: radios, autocomplete, hover
+  saucedemo.hunt          integration: login, inventory, cart
   wikipedia.hunt          integration: search, navigate, extract, verify, shadow-dom inputs
+  demo_controls.hunt      integration: Custom Controls workflow
+  demo_login.hunt         integration: login with @var: static variables
+  demo_variables.hunt     integration: @var: + CALL PYTHON into {var} combined
 vscode-extension/
-  package.json              Extension manifest (v0.0.85)
+  package.json              Extension manifest (v0.0.87)
   src:
     extension.ts            Activation, command registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
@@ -58,6 +73,7 @@ vscode-extension/
     cacheTreeProvider.ts    Sidebar tree: controls cache browser
     stepBuilderPanel.ts     Sidebar webview: step-insertion buttons + new hunt file (incl. Scan Page)
     debugControlPanel.ts    Singleton QuickPick overlay for interactive debug stepping
+    constants.ts            Shared constants (DEFAULT_CONFIG_FILENAME, PAUSE_MARKER, terminal names, getConfigFileName())
   syntaxes/hunt.tmLanguage.json  Hunt file syntax grammar
 ```
 
@@ -104,6 +120,10 @@ Steps are numbered strings parsed by `run_mission()`. They must be atomic browse
 * `NAVIGATE to [url]`
 * `WAIT [seconds]`
 * `PRESS ENTER`
+* `PRESS [Key]` — Presses any key or combination globally (e.g. `PRESS Escape`, `PRESS Control+A`).
+* `PRESS [Key] on [Target]` — Presses a key on a specific resolved element (e.g. `PRESS ArrowDown on 'Search Input'`).
+* `RIGHT CLICK [Target]` — Right-clicks a resolved element to open a context menu.
+* `UPLOAD 'File' to 'Target'` — Uploads a file to a file-input element. Path is resolved relative to the `.hunt` file's directory, then CWD. Both file path and target must be quoted.
 * `SCROLL DOWN` or `SCROLL DOWN inside the list`
 * `EXTRACT [target] into {variable_name}`
 * `VERIFY that [target] is present` / `is NOT present` / `is DISABLED` / `is checked`
@@ -117,7 +137,7 @@ Optional steps contain "if exists" / "optional" **outside** the quoted target (e
 
 ## Writing integration tests (hunt files)
 
-Hunt files are plain-text test scenarios that the CLI parses via `parse_hunt_file()` (to extract `@context` / `@blueprint` / `@tags` and strip full-line `#` comments) before passing the mission body into `run_mission()`, which then parses and executes the numbered steps. They provide a robust way to write integration tests without Python boilerplate.
+Hunt files are plain-text test scenarios that the CLI parses via `parse_hunt_file()` (to extract `@context` / `@title` / `@tags` and strip full-line `#` comments) before passing the mission body into `run_mission()`, which then parses and executes the numbered steps. They provide a robust way to write integration tests without Python boilerplate.
 
 ### 1. File Naming & Location
 * For this repo's default auto-discovery (`python manul.py` with no target), hunt files are discovered under the `tests/` directory.
@@ -127,7 +147,7 @@ Hunt files are plain-text test scenarios that the CLI parses via `parse_hunt_fil
 ### 2. Metadata Headers
 Placed at the top of the file. Used by the engine for logging and LLM context.
 * `@context: [description]` — Strategic context passed to the engine.
-* `@blueprint: [tag_name]` — Short tag representing the test suite.
+* `@title: [short_title]` — Short title representing the test suite. `@blueprint:` is also accepted for backward compatibility.
 * `@tags: tag1, tag2` — Arbitrary comma-separated run tags. Used with `manul --tags smoke tests/` to filter which files execute.
 
 ### 3. Comments
@@ -142,6 +162,10 @@ These keywords are detected via word-boundary regex, bypass heuristics, and are 
 * `NAVIGATE to [url]` — Loads a URL and waits for DOM settlement.
 * `WAIT [seconds]` — Hard sleep (e.g., `WAIT 2`).
 * `PRESS ENTER` — Presses the Enter key on the currently focused element (useful to submit forms after filling a field).
+* `PRESS [Key]` — Presses any key or combination globally (e.g. `PRESS Escape`, `PRESS Control+A`). Mapped to `page.keyboard.press(key)`.
+* `PRESS [Key] on [Target]` — Presses a key on a specific element resolved via heuristics (e.g. `PRESS ArrowDown on 'Search Input'`). Mapped to `locator.press(key)`.
+* `RIGHT CLICK [Target]` — Right-clicks a resolved element (e.g. `RIGHT CLICK 'Context Menu Area'`). Mapped to `locator.click(button='right')`. Shadow DOM elements dispatch a JS `contextmenu` event.
+* `UPLOAD 'File' to 'Target'` — Uploads a file to a file-input element (e.g. `UPLOAD 'avatar.png' to 'Profile Picture'`). Both file path and target must be quoted. File path is resolved relative to the `.hunt` file's directory first, then CWD. Mapped to `locator.set_input_files(path)`.
 * `SCROLL DOWN` — Scrolls the main page down by one viewport height. `SCROLL DOWN inside the list` — scrolls the first dropdown-style scroll container (e.g., `#dropdown` or any element whose class name contains `dropdown`) all the way to the bottom (by setting `scrollTop = scrollHeight`). Phrases like `SCROLL DOWN to the very bottom` are accepted but currently behave the same as a single `SCROLL DOWN` on the main page (they do not auto-scroll the page all the way to the bottom).
 * `EXTRACT [target] into {variable_name}` — Extracts text data into memory.
 * `VERIFY that [target] is present` (or `is NOT present`, `is DISABLED`, `is checked`)
@@ -210,6 +234,7 @@ Wrong (do not do this):
 * **Exact Text Matching:** Put target texts in quotes (`'Save'`) to yield a high heuristic score.
 * **Verify After Actions:** Always use a `VERIFY` step after taking a significant action (e.g., login, form submit) before assuming the new page state.
 * **Implicit Context:** The engine reuses context if you refer to previous elements implicitly, e.g., `Type "Password" into that field`.
+* **MANDATORY — Reporting, Screenshots, and Retries are CLI/Execution concerns, NOT DSL syntax.** Never write steps like `RETRY 3`, `TAKE SCREENSHOT`, `GENERATE REPORT`, or similar in `.hunt` files. These features are controlled exclusively via CLI flags (`--retries`, `--screenshot`, `--html-report`), `manul_engine_configuration.json` keys (`retries`, `screenshot`, `html_report`), or VS Code Extension settings (`manulEngine.retries`, `manulEngine.screenshotMode`, `manulEngine.htmlReport`). When asked to add retries or reporting to a test, instruct the user to use CLI flags or config — never inject pseudo-steps into the hunt file.
 
 ### 9. Python Hooks (`[SETUP]` / `[TEARDOWN]`) and Inline `CALL PYTHON` Steps
 Hook blocks run synchronous Python functions **outside the browser** — the primary use case is injecting database state or calling an API before the mission starts. Inline `CALL PYTHON` steps run **inside the mission** as numbered steps, with identical safety guarantees.
@@ -235,15 +260,17 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * `prompts.py` loads config from `manul_engine_configuration.json` (CWD first, then package root fallback). No dotenv dependency.
 * `js_scripts.py` owns **all** JavaScript constants injected into the browser — no inline JS in Python files. This includes `SCAN_JS` (Smart Page Scanner).
 * `scanner.py` owns the standalone scan logic: `SCAN_JS` is imported from `js_scripts.py`; `build_hunt()` maps raw element dicts to hunt steps; `scan_page()` is the async Playwright runner; `scan_main()` is the async CLI entry called by `cli.py`. `_default_output()` reads `tests_home` from the config to derive the default output path.
-* `helpers.py` provides `env_bool(name, default)` for parsing boolean env vars; used by `prompts.py`.
+* `helpers.py` provides `env_bool(name, default)` for parsing boolean env vars; `detect_mode(step)` returns the interaction mode string (`"input"`, `"clickable"`, `"select"`, `"hover"`, `"drag"`, `"locate"`); `classify_step(step)` returns a step kind string (`"navigate"`, `"wait"`, `"scroll"`, `"extract"`, `"verify"`, `"press_enter"`, `"press"`, `"right_click"`, `"upload"`, `"scan_page"`, `"call_python"`, `"debug"`, `"done"`, or `"action"`) — used by `run_mission()` and `_execute_step()` to avoid duplicated regex dispatches.
 * **Null model = heuristics-only:** When `model` is `None`, `_llm_json()` returns `None` immediately. `get_threshold(None)` returns `0`. No Ollama calls are made.
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
 * **Debug mode:** `ManulEngine(debug_mode=True, break_steps={N,...})`. `debug_mode=True` (from `--debug`) highlights the resolved element and pauses before every step using `input()` in TTY or Playwright's `page.pause()`. `break_steps` (from `--break-lines`) pauses only at listed step indices using the stdout/stdin panel protocol when stdout is not a TTY. The two are mutually exclusive in practice — the extension only ever sets `break_steps` via `--break-lines`.
 * **Element highlight in debug mode:** When `debug_mode=True` (or a `break_steps` pause fires), the engine calls `highlight_element(page, locator)` which injects `<style id="manul-debug-style">` (once) and sets `data-manul-debug-highlight="true"` on the target element, producing a persistent 4px magenta outline + glow that stays until `clear_highlight(page)` is called just before the action executes. A separate `_highlight()` method draws a short 2-second flash (non-debug, `setTimeout` inside JS) for non-pausing visual feedback.
-* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). `parse_hunt_file()` in `cli.py` returns an **8-tuple** `(mission, context, blueprint, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags)`. `parsed_vars` is a `dict[str, str]` populated from `@var: {key} = value` header lines. `tags` is a `list[str]` populated from `@tags: tag1, tag2` header lines; empty list when absent. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
+* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). `parse_hunt_file()` in `cli.py` returns a `ParsedHunt` NamedTuple with 8 fields: `mission`, `context`, `title`, `step_file_lines`, `setup_lines`, `teardown_lines`, `parsed_vars`, `tags`. `parsed_vars` is a `dict[str, str]` populated from `@var: {key} = value` header lines. `tags` is a `list[str]` populated from `@tags: tag1, tag2` header lines; empty list when absent. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
 * **Auto-Nav annotation:** When `auto_annotate` is enabled, `run_mission()` captures `url_before = page.url` before every step. For `NAVIGATE` steps, the annotation is written above the step itself. For all other steps, `url_after` is checked in the `finally` block — if the URL changed, `_auto_annotate_navigate(page, hunt_file, step_file_lines, i+1)` is called to insert a comment above the *next* step line. The comment uses the mapped page name when found in `pages.json`, or the full URL when the lookup returns an `"Auto:"` placeholder.
 * **`pages.json` — nested per-site format:** `{ "<site_root_url>": { "Domain": "<display_name>", "<regex_or_exact_url>": "<page_name>" } }`. `lookup_page_name(url)` in `prompts.py` re-reads this file from disk on **every call** (live edits take effect immediately with no restart). Resolution order: exact URL key → regex/substring patterns (skipping `"Domain"` key) → `"Domain"` fallback. When no site block matches, a new nested entry is auto-generated. The longest-prefix site block wins when multiple blocks could match.
 * **`_debug_prompt()` `debug-stop` token:** When Python receives `"debug-stop"` on stdin from the VS Code extension (user pressed ⏹ Debug Stop), it clears **both** `self._user_break_steps = set()` and `self.break_steps = set()`, then breaks the pause loop. The test run continues to completion without any further pauses.
+* **Reporting & HTML reports:** `reporting.py` owns `StepResult`, `MissionResult` (with `__bool__` — truthy if all steps passed), and `RunSummary` dataclasses. `reporter.py` owns `generate_report(summary, output_path)` — produces a self-contained dark-themed HTML file with dashboard stats, per-step accordion, and inline base64 screenshots. All artifacts (logs, HTML reports) are saved to `reports/` (auto-created by `cli.py`). The `reports/` directory is `.gitignored`.
+* **Screenshot capture:** `run_mission()` accepts `screenshot_mode` (`"none"`, `"on-fail"`, `"always"`). Screenshots are stored as base64 PNGs in `StepResult.screenshot`.
 
 ## Running tests
 
@@ -275,6 +302,12 @@ manul --break-lines 5,10,15 tests/saucedemo.hunt
 manul scan https://example.com                   # scan → tests/draft.hunt (tests_home default)
 manul scan https://example.com tests/my.hunt     # scan → explicit output file
 manul scan https://example.com --headless        # headless scan
+
+# Retries, screenshots, HTML reports
+manul tests/ --retries 2                          # retry failed hunts up to 2 times
+manul tests/ --html-report                        # generate reports/manul_report.html
+manul tests/ --retries 2 --screenshot on-fail --html-report  # full CI combo
+manul tests/ --screenshot always --html-report    # every-step forensic report
 ```
 
 Ollama is optional, but required for:
@@ -310,6 +343,9 @@ Environment variables (`MANUL_*`) always override JSON values.
 | `nav_timeout` | `30000` | Navigation timeout (ms) |
 | `tests_home` | `"tests"` | Default directory for new hunt files and `SCAN PAGE` / `manul scan` output |
 | `auto_annotate` | `false` | If `true`, engine automatically inserts `# 📍 Auto-Nav: <name>` comments into `.hunt` files whenever the page URL changes during a run. Page names come from `pages.json`; falls back to full URL for unmapped pages. Overridable via `MANUL_AUTO_ANNOTATE` env var |
+| `retries` | `0` | Number of times to retry a failed hunt file before marking it as failed (0 = no retries) |
+| `screenshot` | `"on-fail"` | Screenshot capture mode: `"on-fail"` (default — failed steps only), `"always"` (every step), `"none"` (disabled) |
+| `html_report` | `false` | Generate a self-contained HTML report after the run (`reports/manul_report.html`) |
 Threshold auto-calculation by model size: `<1b → 500`, `1-4b → 750`, `5-9b → 1000`, `10-19b → 1500`, `20b+ → 2000`, `null → 0`.
 
 Suggested config for mixed mode:
@@ -424,6 +460,7 @@ A companion extension that provides hunt file language support, Test Explorer in
 
 **Key rules when editing extension code:**
 
+* `constants.ts` — centralised shared constants module. All string literals for config filenames (`DEFAULT_CONFIG_FILENAME`), debug protocol markers (`PAUSE_MARKER`), and terminal names (`TERMINAL_NAME`, `DEBUG_TERMINAL_NAME`) live here. `getConfigFileName()` reads the `manulEngine.configFile` VS Code setting with a fallback to `DEFAULT_CONFIG_FILENAME`. **Every** TS file that references the config filename or terminal names must import from `constants.ts` — never hardcode these strings inline.
 * `huntRunner.ts` — `runHunt()` spawns `manul` with `cwd` set to the **VS Code workspace folder root** (resolved via `vscode.workspace.getWorkspaceFolder()`), not `path.dirname(huntFile)`. This ensures `manul_engine_configuration.json` and relative `controls_cache_dir` paths are always resolved from the project root, matching CLI behaviour.
 * `huntRunner.ts` — `findManulExecutable()` probes local venv folders in order: `.venv`, `venv`, `env`, `.env` (both `bin/manul` on Unix and `Scripts\manul.exe` on Windows) before falling back to user-level install paths and a login-shell lookup. When adding new candidate paths, keep this order and always guard Windows/macOS-only paths with `isWin` / `process.platform` checks.
 * `huntRunner.ts` — `runHuntFileDebugPanel(manulExe, huntFile, onData, token?, breakLines?, onPause?)` spawns with `--workers 1` and optionally `--break-lines N,M,...`. **Never pass `--debug`** — `--debug` pauses before every step including step 1 (NAVIGATE), which hangs before the browser has loaded anything. Only `--break-lines` + the stdin/stdout protocol is used for the panel runner.
@@ -434,7 +471,7 @@ A companion extension that provides hunt file language support, Test Explorer in
 * `configPanel.ts` — `doSave()` forces `ai_always: false` whenever `model` is empty/null (`modelVal !== '' && g('ai_always').checked`). Do not remove this guard — saving `ai_always: true` with no model would produce an invalid config that causes runtime errors. The `syncAiAlways()` function also disables and unchecks the `ai_always` checkbox in the UI when the model field is cleared.
 * `configPanel.ts` — Two separate cache controls: `controls_cache_enabled` is labelled **"Persistent Controls Cache"** (file-based, per-site storage, survives between runs); `semantic_cache_enabled` is labelled **"Semantic Cache"** (in-session `learned_elements`, +200,000 score boost within a single run, resets when process ends). The `controls_cache_dir` field is labelled "controls_cache_dir". Both default to `true`. Do not merge these two settings.
 * `configPanel.ts` — `auto_annotate` checkbox (default `false`): labelled **"Auto-Annotate Page Navigation"**. When enabled, the engine writes `# 📍 Auto-Nav: <name>` comments into `.hunt` files live whenever the URL changes. `doSave()` writes `auto_annotate: g('auto_annotate').checked`; `doLoad()` reads `g('auto_annotate').checked = !!config.auto_annotate`.
-* Config panel reads/writes `manul_engine_configuration.json` at the workspace root using `_configPath()`. The config file name is user-configurable via the `manulEngine.configFile` VS Code setting.
+* Config panel reads/writes `manul_engine_configuration.json` at the workspace root using `_configPath()`. The config file name is resolved via `getConfigFileName()` from `constants.ts`, which reads the `manulEngine.configFile` VS Code setting.
 * Ollama model discovery: the panel fetches `http://localhost:11434/api/tags` on open and populates a `<select>` dropdown with installed model names (replaced legacy `<datalist>` + `<input>` to fix rendering offset in Electron webview). First option is always `null (heuristics-only)`. The stored model is always preserved as an option even when Ollama is offline.
 * Build: `cd vscode-extension && npm install && npm run compile`. Use `npx vsce package` to produce a `.vsix`. Press F5 in VS Code with the extension folder open to launch a dev Extension Host.
 

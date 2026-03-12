@@ -1,5 +1,5 @@
 @context: E-commerce purchase flow on SauceDemo
-@blueprint: swag-labs-checkout
+@title: swag-labs-checkout
 
 # 📍 Auto-Nav: https://www.saucedemo.com/
 1. NAVIGATE to https://www.saucedemo.com/

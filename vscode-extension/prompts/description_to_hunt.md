@@ -9,7 +9,7 @@ You are an expert in writing browser automation test scenarios for ManulEngine â
 ### File structure
 ```
 @context: <one-line description of what the test verifies>
-@blueprint: <short_tag>
+@title: <short_tag>
 
 1. NAVIGATE to <url>
 2. ...

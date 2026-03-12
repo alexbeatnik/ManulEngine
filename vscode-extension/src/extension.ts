@@ -16,6 +16,7 @@ import {
   clearAllCacheCommand,
   clearSiteCacheCommand,
 } from "./cacheTreeProvider";
+import { DEFAULT_CONFIG_FILENAME, DEBUG_TERMINAL_NAME, TERMINAL_NAME, getConfigFileName } from "./constants";
 
 export function activate(context: vscode.ExtensionContext): void {
   // Output channel reused across debug runs from the editor button / context menu.
@@ -36,7 +37,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   function _refreshDebugContext(): void {
     const active = vscode.window.terminals.some(
-      (t) => t.name === "ManulEngine Debug"
+      (t) => t.name === DEBUG_TERMINAL_NAME
     );
     vscode.commands.executeCommand("setContext", "manulDebugSessionActive", active);
     active ? highlightItem.show() : highlightItem.hide();
@@ -189,8 +190,8 @@ export function activate(context: vscode.ExtensionContext): void {
       // Prefer the dedicated debug terminal; fall back to "ManulEngine"
       // (terminal-based normal run) and finally to whatever terminal is active.
       const terminal =
-        vscode.window.terminals.find((t) => t.name === "ManulEngine Debug") ??
-        vscode.window.terminals.find((t) => t.name === "ManulEngine") ??
+        vscode.window.terminals.find((t) => t.name === DEBUG_TERMINAL_NAME) ??
+        vscode.window.terminals.find((t) => t.name === TERMINAL_NAME) ??
         vscode.window.activeTerminal;
       if (!terminal) {
         vscode.window.showWarningMessage(
@@ -226,7 +227,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Refresh config view when the config file changes
   const configWatcher = vscode.workspace.createFileSystemWatcher(
-    "**/manul_engine_configuration.json"
+    `**/${getConfigFileName()}`
   );
   context.subscriptions.push(configWatcher);
   configWatcher.onDidChange(() => cacheProvider.refresh());

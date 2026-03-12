@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
+import { DEFAULT_CONFIG_FILENAME, getConfigFileName } from "./constants";
 
 // ── Default configuration values ─────────────────────────────────────────────
 
@@ -24,6 +25,9 @@ const DEFAULT_CONFIG = {
   workers: 1,
   tests_home: "tests",
   auto_annotate: false,
+  retries: 0,
+  screenshot: "on-fail",
+  html_report: false,
 };
 
 // ── WebviewViewProvider ───────────────────────────────────────────────────────
@@ -116,9 +120,7 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
   }
 
   private _configPath(): string {
-    const name = vscode.workspace
-      .getConfiguration("manulEngine")
-      .get<string>("configFile", "manul_engine_configuration.json");
+    const name = getConfigFileName();
     return path.join(this._workspaceRoot, name);
   }
 
@@ -304,6 +306,28 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
     </div>
     <div class="hint">Automatically inserts <code># 📍 Auto-Nav:</code> comments into hunt files whenever the browser URL changes during a run.</div>
 
+    <h2 style="margin-top:20px;border-top:1px solid var(--vscode-widget-border,#444);padding-top:14px">📊 Reporting &amp; Retries</h2>
+
+    <label>retries
+      <input type="number" id="retries" min="0" max="10" step="1"/>
+    </label>
+    <div class="hint">Retry failed hunt files up to N times. Tests that pass on retry are marked as <em>flaky</em>. 0 = no retries.</div>
+
+    <label>screenshot
+      <select id="screenshot">
+        <option value="on-fail">on-fail (default)</option>
+        <option value="always">always</option>
+        <option value="none">none</option>
+      </select>
+    </label>
+    <div class="hint">When to capture browser screenshots during test execution.</div>
+
+    <div class="checkbox-row">
+      <input type="checkbox" id="html_report"/>
+      <label for="html_report">Generate HTML Report</label>
+    </div>
+    <div class="hint">Produce a self-contained <code>manul_report.html</code> after each test run with dashboard stats, per-step results, and embedded screenshots.</div>
+
     <div class="btn-row">
       <button id="btn-save">💾 Save</button>
       <button id="btn-open" class="secondary">Open in Editor</button>
@@ -344,6 +368,9 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
         workers: parseInt(g('workers').value, 10) || 1,
         tests_home: g('tests_home').value.trim() || 'tests',
         auto_annotate: g('auto_annotate').checked,
+        retries: (v => isNaN(v) ? 0 : Math.max(0, v))(parseInt(g('retries').value, 10)),
+        screenshot: g('screenshot').value || 'on-fail',
+        html_report: g('html_report').checked,
       };
       vsc.postMessage({ command: 'save', config: cfg });
     }
@@ -379,6 +406,10 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       g('workers').value                  = String(isNaN(_w) ? 1 : _w);
       g('tests_home').value               = config.tests_home ?? 'tests';
       g('auto_annotate').checked           = !!config.auto_annotate;
+      g('retries').value                     = config.retries ?? 0;
+      const _validScreenshot = ['on-fail', 'always', 'none'];
+      g('screenshot').value                  = _validScreenshot.includes(config.screenshot) ? config.screenshot : 'on-fail';
+      g('html_report').checked               = !!config.html_report;
       syncAiAlways();
     }
 
@@ -474,12 +505,12 @@ export function generateConfigCommand(): void {
   }
   const configPath = path.join(
     folders[0].uri.fsPath,
-    "manul_engine_configuration.json"
+    DEFAULT_CONFIG_FILENAME
   );
   if (fs.existsSync(configPath)) {
     vscode.window
       .showWarningMessage(
-        "manul_engine_configuration.json already exists. Overwrite?",
+        `${DEFAULT_CONFIG_FILENAME} already exists. Overwrite?`,
         "Yes",
         "No"
       )

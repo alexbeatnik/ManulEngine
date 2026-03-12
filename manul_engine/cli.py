@@ -10,7 +10,7 @@ Usage:
   manul --headless .                 any of the above in headless mode
   manul --workers 4 tests/           run up to 4 hunt files in parallel
 
-Hunt file format: plain text, numbered steps, optional @context / @blueprint headers.
+Hunt file format: plain text, numbered steps, optional @context / @title headers.
 """
 
 import asyncio
@@ -18,6 +18,9 @@ import os
 import re
 import sys
 import time
+from typing import NamedTuple
+
+from .reporting import StepResult, MissionResult, RunSummary
 
 # ─────────────────────────────────────────────────────────────────────────────
 _USAGE = """
@@ -34,6 +37,9 @@ Flags:
   --tags <tag1,tag2,...>     — only run hunt files whose @tags: header contains at least one matching tag
   --debug                    — interactive step-by-step mode with visual element highlighting
   --break-lines <n,n,...>    — pause before steps whose line numbers match (set by clicking the editor gutter)
+  --retries <n>              — retry failed hunt files up to n times (pass on retry = flaky)
+  --screenshot <mode>        — screenshot capture: on-fail (default), always, none
+  --html-report              — generate a self-contained manul_report.html after the run
 
 Scan-specific flags (only with `manul scan`):
   --output <file>            — output file for the draft (default: draft.hunt)
@@ -82,11 +88,27 @@ class _Tee:
         self._file.close()
 
 
+# ── Structured return type for parse_hunt_file ───────────────────────────────
+class ParsedHunt(NamedTuple):
+    """Structured result of parsing a ``.hunt`` file.
+
+    Behaves exactly like an 8-tuple for backward compatibility
+    (positional indexing and unpacking both work), but also
+    supports named attribute access.
+    """
+    mission: str
+    context: str
+    title: str
+    step_file_lines: list[int]
+    setup_lines: list[str]
+    teardown_lines: list[str]
+    parsed_vars: dict[str, str]
+    tags: list[str]
+
+
 # ── Parse .hunt file ─────────────────────────────────────────────────────────
-def parse_hunt_file(
-    filepath: str,
-) -> tuple[str, str, str, list[int], list[str], list[str], dict[str, str], list[str]]:
-    """Return ``(mission_body, context, blueprint, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags)``.
+def parse_hunt_file(filepath: str) -> ParsedHunt:
+    """Return a :class:`ParsedHunt` with all parsed fields.
 
     *step_file_lines[i]* is the 1-based file line number of the *(i+1)*-th
     numbered step, in order of appearance.  Used to map editor gutter
@@ -110,7 +132,7 @@ def parse_hunt_file(
     from .hooks import RE_SETUP, RE_END_SETUP, RE_TEARDOWN, RE_END_TEARDOWN
 
     context = ""
-    blueprint = ""
+    title = ""
     parsed_vars: dict[str, str] = {}
     tags: list[str] = []
     mission_lines:  list[str] = []
@@ -150,8 +172,8 @@ def parse_hunt_file(
             # ── Normal mission line ────────────────────────────────────────────
             if stripped.startswith("@context:"):
                 context = stripped.split(":", 1)[1].strip()
-            elif stripped.startswith("@blueprint:"):
-                blueprint = stripped.split(":", 1)[1].strip()
+            elif stripped.startswith("@title:") or stripped.startswith("@blueprint:"):
+                title = stripped.split(":", 1)[1].strip()
             elif stripped.startswith("@tags:"):
                 raw_tags = stripped.split(":", 1)[1]
                 tags = [t.strip() for t in raw_tags.split(",") if t.strip()]
@@ -165,15 +187,15 @@ def parse_hunt_file(
                 if re.match(r'^\d+\.', stripped):
                     step_file_lines.append(lineno)
 
-    return (
-        "".join(mission_lines).strip(),
-        context,
-        blueprint,
-        step_file_lines,
-        setup_lines,
-        teardown_lines,
-        parsed_vars,
-        tags,
+    return ParsedHunt(
+        mission="".join(mission_lines).strip(),
+        context=context,
+        title=title,
+        step_file_lines=step_file_lines,
+        setup_lines=setup_lines,
+        teardown_lines=teardown_lines,
+        parsed_vars=parsed_vars,
+        tags=tags,
     )
 
 
@@ -219,33 +241,31 @@ async def _run_hunt_file(
     browser: "str | None" = None,
     debug: bool = False,
     break_lines: "set[int] | None" = None,
-) -> bool:
+    screenshot_mode: str = "none",
+) -> MissionResult:
     filename = os.path.basename(path)
     print(f"\n{'='*60}")
     print(f"📜 EXECUTING MANUL HUNT: {filename}")
     print(f"{'='*60}")
 
-    mission, context, blueprint, step_file_lines, setup_lines, teardown_lines, parsed_vars, _ = (
-        parse_hunt_file(path)
-    )
+    hunt = parse_hunt_file(path)
 
     # Map file line numbers (from editor gutter breakpoints) to step indices.
     _break_lines = break_lines or set()
     break_steps: set[int] = {
         step_idx
-        for step_idx, file_line in enumerate(step_file_lines, 1)
+        for step_idx, file_line in enumerate(hunt.step_file_lines, 1)
         if file_line in _break_lines
     }
 
-    if not mission:
+    if not hunt.mission:
         print(f"⚠️  Skipping {filename}: empty or comments-only.")
-        return True
+        return MissionResult(file=path, name=filename, status="pass")
 
-    if not context:
-        context = filename.replace(".hunt", "").replace("_", " ").title()
-    if blueprint:
-        print(f"🧩 Blueprint: {blueprint}")
-        context = f"[{blueprint}] {context}"
+    context = hunt.context or filename.replace(".hunt", "").replace("_", " ").title()
+    if hunt.title:
+        print(f"🧩 Title: {hunt.title}")
+        context = f"[{hunt.title}] {context}"
 
     from manul_engine import ManulEngine
     from manul_engine.hooks import run_hooks
@@ -255,32 +275,36 @@ async def _run_hunt_file(
     # ── [SETUP] ───────────────────────────────────────────────────────────────
     # If setup fails, we skip the mission and teardown entirely — there is
     # nothing to clean up because setup never completed.
-    if not run_hooks(setup_lines, label="SETUP", hunt_dir=hunt_dir):
+    if not run_hooks(hunt.setup_lines, label="SETUP", hunt_dir=hunt_dir):
         print(f"\n❌ SETUP failed — skipping mission and teardown for {filename}")
-        return False
+        return MissionResult(file=path, name=filename, status="fail", error="SETUP failed")
 
     manul = ManulEngine(headless=headless, browser=browser, debug_mode=debug, break_steps=break_steps)
-    result = False
+    mission_result = MissionResult(file=path, name=filename, status="fail")
     try:
-        result = await manul.run_mission(
-            mission,
+        mission_result = await manul.run_mission(
+            hunt.mission,
             strategic_context=context,
             hunt_dir=hunt_dir,
             hunt_file=path,
-            step_file_lines=step_file_lines,
-            initial_vars=parsed_vars,
+            step_file_lines=hunt.step_file_lines,
+            initial_vars=hunt.parsed_vars,
+            screenshot_mode=screenshot_mode,
         )
-        return bool(result)
+        mission_result.file = path
+        mission_result.name = filename
+        return mission_result
     except Exception as exc:
         print(f"\n💥 CRASH: {exc}")
         import traceback
         traceback.print_exc(file=sys.stdout)
-        return False
+        mission_result.error = str(exc)
+        return mission_result
     finally:
         # ── [TEARDOWN] ────────────────────────────────────────────────────────
         # Always runs after setup succeeds, regardless of mission outcome.
         # Teardown failures are logged but do not override the mission result.
-        run_hooks(teardown_lines, label="TEARDOWN", hunt_dir=hunt_dir)
+        run_hooks(hunt.teardown_lines, label="TEARDOWN", hunt_dir=hunt_dir)
 
 
 # ── Collect .hunt files from a path ──────────────────────────────────────────
@@ -334,9 +358,9 @@ async def main() -> None:
     # so that `manul --headless scan https://…` also works.
     _non_flag_args = [
         a for i, a in enumerate(args)
-        if a not in ("--headless", "--debug")
-        and not (i > 0 and args[i - 1] in ("--browser", "--workers", "--output", "--break-lines", "--tags"))
-        and a not in ("--browser", "--workers", "--output", "--break-lines", "--tags")
+        if a not in ("--headless", "--debug", "--html-report")
+        and not (i > 0 and args[i - 1] in ("--browser", "--workers", "--output", "--break-lines", "--tags", "--retries", "--screenshot"))
+        and a not in ("--browser", "--workers", "--output", "--break-lines", "--tags", "--retries", "--screenshot")
     ]
     if _non_flag_args and _non_flag_args[0] == "scan":
         from manul_engine.scanner import scan_main
@@ -348,7 +372,8 @@ async def main() -> None:
 
     headless = "--headless" in args
     debug = "--debug" in args
-    args = [a for a in args if a not in ("--headless", "--debug")]
+    html_report = "--html-report" in args
+    args = [a for a in args if a not in ("--headless", "--debug", "--html-report")]
 
     # Extract --break-lines <n,n,...> flag (gutter breakpoints from VS Code).
     break_lines: set[int] = set()
@@ -433,15 +458,55 @@ async def main() -> None:
         filter_tags = {t.strip() for t in args[idx + 1].split(",") if t.strip()}
         args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
 
+    # Extract --retries <N> flag
+    # Priority: CLI flag > MANUL_RETRIES env var > JSON config > 0
+    from . import prompts as _prompts_cli
+    retries: int = _prompts_cli.RETRIES
+    if "--retries" in args:
+        idx = args.index("--retries")
+        if idx + 1 >= len(args):
+            print("Error: --retries requires a number.", file=sys.stderr)
+            sys.exit(1)
+        try:
+            retries = max(0, int(args[idx + 1]))
+        except ValueError:
+            print(f"Error: --retries value must be an integer, got '{args[idx + 1]}'.", file=sys.stderr)
+            sys.exit(1)
+        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+
+    # Extract --screenshot <mode> flag (on-fail | always | none)
+    screenshot_mode: str = _prompts_cli.SCREENSHOT
+    if "--screenshot" in args:
+        idx = args.index("--screenshot")
+        if idx + 1 >= len(args):
+            print("Error: --screenshot requires a mode (on-fail, always, none).", file=sys.stderr)
+            sys.exit(1)
+        _ss_candidate = args[idx + 1].strip().lower()
+        if _ss_candidate not in ("on-fail", "always", "none"):
+            print(f"Error: --screenshot mode must be on-fail, always, or none; got '{args[idx + 1]}'.", file=sys.stderr)
+            sys.exit(1)
+        screenshot_mode = _ss_candidate
+        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+
+    # Merge --html-report with config/env
+    if not html_report:
+        html_report = _prompts_cli.HTML_REPORT
+
     if not args:
         print(_USAGE)
         sys.exit(0)
     target = args[0]
 
     # ── Hunt files ────────────────────────────────────────────────────────
-    log_file = os.path.join(os.getcwd(), "last_run.log")
+    import datetime as _dt
+    _reports_dir = os.path.join(os.getcwd(), "reports")
+    os.makedirs(_reports_dir, exist_ok=True)
+    log_file = os.path.join(_reports_dir, "last_run.log")
     tee = _Tee(log_file)
     sys.stdout = tee
+
+    run_summary: RunSummary | None = None
+    results: list[tuple[str, str, float]] = []
 
     try:
         files = _collect(target)
@@ -462,17 +527,42 @@ async def main() -> None:
                 return
 
         print(f"😼 Manul: found {len(files)} hunt file(s) in {os.path.abspath(target)}")
+        if retries:
+            print(f"🔄 Retries enabled: up to {retries} retry(ies) per failed hunt")
+        if screenshot_mode != "none":
+            print(f"📸 Screenshot mode: {screenshot_mode}")
+        if html_report:
+            print(f"📊 HTML report: enabled")
 
-        results: list[tuple[str, str, float]] = []
+        run_summary = RunSummary(started_at=_dt.datetime.now().isoformat())
         total_start = time.perf_counter()
 
         if workers == 1:
             # ── Sequential (default) ──────────────────────────────────────
             for path in files:
                 t0 = time.perf_counter()
-                success = await _run_hunt_file(path, headless, browser, debug, break_lines)
+                mission_result = await _run_hunt_file(
+                    path, headless, browser, debug, break_lines,
+                    screenshot_mode=screenshot_mode,
+                )
+                # ── Retry loop ────────────────────────────────────────────
+                if not mission_result and retries > 0:
+                    for attempt in range(2, retries + 2):
+                        print(f"\n🔄 RETRY {attempt - 1}/{retries} for {mission_result.name}")
+                        mission_result = await _run_hunt_file(
+                            path, headless, browser, debug, break_lines,
+                            screenshot_mode=screenshot_mode,
+                        )
+                        mission_result.attempts = attempt
+                        if mission_result:
+                            mission_result.status = "flaky"
+                            print(f"    ⚠️  {mission_result.name} passed on retry {attempt - 1} — marked FLAKY")
+                            break
                 elapsed = time.perf_counter() - t0
-                results.append((os.path.basename(path), "PASS" if success else "FAIL", elapsed))
+                mission_result.duration_ms = elapsed * 1000
+                run_summary.missions.append(mission_result)
+                status_label = mission_result.status.upper()
+                results.append((mission_result.name, status_label, elapsed))
         else:
             # ── Parallel via subprocesses ─────────────────────────────────
             # Each hunt is spawned as a separate `manul <file>` subprocess so
@@ -501,6 +591,12 @@ async def main() -> None:
                 # to 1 when either flag is set (see validation below).
                 if browser:
                     flags += ["--browser", browser]
+                if retries:
+                    flags += ["--retries", str(retries)]
+                if screenshot_mode is not None:
+                    flags += ["--screenshot", screenshot_mode]
+                # Do NOT forward --html-report: the parent process generates
+                # the consolidated report; workers would overwrite each other.
                 cmd = base + flags + [path]
 
                 async with sem:
@@ -522,23 +618,64 @@ async def main() -> None:
             # Print each hunt's buffered output in original submission order
             for name, status, elapsed, output in subprocess_results:
                 print(output, end="")
-                results.append((name, status, elapsed))
+                # Detect flaky status: child prints "marked FLAKY" when
+                # a hunt passes on retry. Exit code is still 0 (pass).
+                if status == "PASS" and "marked FLAKY" in output:
+                    _child_status = "flaky"
+                else:
+                    _child_status = "pass" if status == "PASS" else "fail"
+                _mr = MissionResult(
+                    file="", name=name,
+                    status=_child_status,
+                    duration_ms=elapsed * 1000,
+                )
+                run_summary.missions.append(_mr)
+                results.append((name, _child_status.upper(), elapsed))
 
         total = time.perf_counter() - total_start
-        passed = sum(1 for _, s, _ in results if s == "PASS")
+        run_summary.ended_at = _dt.datetime.now().isoformat()
+        run_summary.duration_ms = total * 1000
+        run_summary.total = len(results)
+        run_summary.passed = sum(1 for _, s, _ in results if s == "PASS")
+        run_summary.failed = sum(1 for _, s, _ in results if s == "FAIL")
+        run_summary.flaky  = sum(1 for _, s, _ in results if s == "FLAKY")
+        passed = run_summary.passed + run_summary.flaky  # flaky counts as passed overall
 
         print(f"\n\n{'='*20} HUNT SUMMARY {'='*20}")
         for name, status, secs in results:
-            icon = "✅" if status == "PASS" else "❌"
+            if status == "PASS":
+                icon = "✅"
+            elif status == "FLAKY":
+                icon = "⚠️ "
+            else:
+                icon = "❌"
             print(f"{icon} {name.ljust(34)} {status}  {secs:5.1f}s")
         print("=" * 60)
-        print(f"   {passed}/{len(results)} passed  •  total {total:.1f}s")
+        _flaky_note = f"  ({run_summary.flaky} flaky)" if run_summary.flaky else ""
+        print(f"   {passed}/{len(results)} passed{_flaky_note}  •  total {total:.1f}s")
         print("=" * 60)
         print(f"\n📄 Full log saved to: {log_file}")
 
-        return len(results) - passed  # number of failures
+        return run_summary.failed  # number of failures
 
     finally:
+        # ── HTML report generation (always runs, even after exceptions) ────
+        if html_report and run_summary is not None and run_summary.missions:
+            if not run_summary.ended_at:
+                run_summary.ended_at = _dt.datetime.now().isoformat()
+            if not run_summary.total:
+                run_summary.total = len(results)
+                run_summary.passed = sum(1 for _, s, _ in results if s == "PASS")
+                run_summary.failed = sum(1 for _, s, _ in results if s == "FAIL")
+                run_summary.flaky  = sum(1 for _, s, _ in results if s == "FLAKY")
+            try:
+                from .reporter import generate_report
+                report_path = os.path.join(_reports_dir, "manul_report.html")
+                generate_report(run_summary, report_path)
+                print(f"\n✅ HTML Report saved to: {os.path.abspath(report_path)}")
+            except Exception as _rpt_err:
+                print(f"\n⚠️  HTML report generation failed: {_rpt_err}")
+
         sys.stdout = tee._term
         tee.close()
 
