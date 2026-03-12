@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.0.8.7 — The Mastermind
+# 😼 ManulEngine v0.0.8.8 — The Mastermind
 
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 
@@ -24,11 +24,12 @@ Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristi
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.8.7
+├── pyproject.toml                    Build config — package: manul-engine 0.0.8.8
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
 │   ├── cli.py                        Installed CLI entry point (`manul` command + `manul scan` subcommand)
+│   ├── lifecycle.py                  Global Lifecycle Hook Registry (@before_all, @after_all, @before_group, @after_group)
 │   ├── hooks.py                      [SETUP] / [TEARDOWN] hook parser and executor
 │   ├── controls.py                   Custom Controls registry (@custom_control, get_custom_control, load_custom_controls)
 │   ├── _test_runner.py               Dev-only synthetic test runner (not in public CLI)
@@ -59,7 +60,10 @@ ManulEngine/
 │       ├── test_22_tags.py           Unit: @tags: / --tags CLI filter (20 assertions, no browser)
 │       ├── test_23_advanced_interactions.py  Unit: PRESS/RIGHT CLICK/UPLOAD (39 assertions, no browser)
 │       ├── test_24_reporting.py      Unit: StepResult/MissionResult/RunSummary dataclasses (45 assertions)
-│       └── test_25_reporter.py       Unit: HTML report generator (42 assertions, no browser)
+│       ├── test_25_reporter.py       Unit: HTML report generator (42 assertions, no browser)
+│       ├── test_26_wikipedia_search.py Unit: name_attr heuristic scoring (20 assertions, no browser)
+│       ├── test_27_lifecycle_hooks.py  Unit: Global Lifecycle Hook system (57 assertions, no browser)
+│       └── test_28_logical_steps.py    Unit: Logical STEP ordering and parser (48 assertions, no browser)
 ├── controls/                         User-owned custom Python handlers (auto-loaded at engine startup)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
@@ -77,7 +81,7 @@ ManulEngine/
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 └── vscode-extension/                 VS Code extension (language support + UI)
-    ├── package.json                  Extension manifest (v0.0.87)
+    ├── package.json                  Extension manifest (v0.0.88)
     ├── src/
     │   ├── extension.ts              Activation, command registration
     │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
@@ -91,6 +95,15 @@ ManulEngine/
 
 ---
 
+## 🚀 What's New: The Enterprise Update
+
+* **Clean, Unnumbered DSL:** The requirement for line numbers before actions has been completely dropped. Scripts now read exactly like plain English (`NAVIGATE to url` instead of `1. NAVIGATE to url`).
+* **Logical STEP Grouping:** `STEP [optional number]: [Description]` metadata blocks allow mapping manual QA cases directly into `.hunt` files. Unmatched quotes inside descriptions (e.g. `STEP: Pallas's cat`) are cleanly isolated.
+* **Enterprise HTML Reporter:** The reporter is now dual-mode and zero-dependency, featuring native HTML5 accordions (`<details>`), auto-expanding failures, and a clean Flexbox layout instead of old-school tables.
+* **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, and `@after_group` orchestrate complex DB seeding and auth logic. `ctx.variables` are securely serialized across parallel `--workers`.
+* **Bulletproof DOM Heuristics:** The updated `SNAPSHOT_JS` rigorously filters out invisible or hidden UI elements (like hidden sticky headers), and effortlessly handles deeply nested modern frameworks (e.g. Wikipedia Vector 2022 / Codex) by strongly prioritizing `aria-label` and `name_attr`.
+* **VS Code Extension Polish:** The Step Builder is now context-aware, verifying `vscode.window.activeTextEditor` to prevent accidental insertions in non-`.hunt` files, and provides robust syntax highlighting for the unnumbered DSL.
+
 ## ✨ Key Features
 
 ### ⚡ Heuristics-First Architecture
@@ -99,15 +112,63 @@ ManulEngine/
 
 When the LLM picker is used, Manul passes the heuristic `score` as a **prior** (hint) by default (`MANUL_AI_POLICY=prior`) — the model can override the ranking only with a clear, disqualifying reason.
 
+### 🧠 Deep Accessibility Heuristics
+
+Manul scores elements using 20+ signals including `aria-label`, `placeholder`, `name` attribute, `data-qa`, `html_id`, semantic `input type`, and contextual section headings. This makes it reliable on modern SPAs and complex design systems (React, Vue, Angular, Wikipedia Vector 2022 / Codex) without any configuration — accessibility attributes are treated as first-class identifiers at the scoring level (`name_attr` exact match: +3,000; substring: +1,000).
+
+### 🌐 Global Lifecycle Hooks (`manul_hooks.py`)
+
+Version 0.0.8.8 introduces a suite-level hook system backed by `manul_engine/lifecycle.py`. Four decorators bracket the full CLI lifecycle:
+
+| Decorator | Fires | Failure semantics |
+|---|---|---|
+| `@before_all` | Once, before any hunt starts | Failure aborts entire suite; `@after_all` still runs |
+| `@after_all` | Once, after all hunts finish | Always runs; failure logged, never overrides suite result |
+| `@before_group(tag=)` | Before each matching hunt | Failure skips that mission; `@after_group` still fires |
+| `@after_group(tag=)` | After each matching hunt (pass or fail) | Always runs; failure logged, never overrides mission result |
+
+**Quick start:** create `manul_hooks.py` alongside your `.hunt` files.
+
+```python
+# tests/manul_hooks.py
+from manul_engine import before_all, after_all, before_group, GlobalContext
+
+@before_all
+def global_setup(ctx: GlobalContext) -> None:
+    ctx.variables["BASE_URL"] = "https://staging.example.com"
+    ctx.variables["API_TOKEN"] = fetch_token_from_vault()
+
+@after_all
+def global_teardown(ctx: GlobalContext) -> None:
+    db.rollback_all_test_data()
+
+@before_group(tag="smoke")
+def seed_smoke(ctx: GlobalContext) -> None:
+    ctx.variables["ORDER_ID"] = db.create_temp_order()
+```
+
+**`GlobalContext`** has two fields:
+- `variables: dict[str, str]` — propagated into every matching hunt as `initial_vars`; available as `{placeholder}` in steps.
+- `metadata: dict[str, object]` — arbitrary per-hook scratch space; not injected into the engine.
+
+**Key implementation notes:**
+- `manul_hooks.py` is discovered via `load_hooks_file(directory)` in `lifecycle.py`, executed in an isolated `ModuleType` (same sandbox as `[SETUP]`/`[TEARDOWN]`) — never inserted into `sys.modules`.
+- The module-level `registry` singleton collects decorations; decorators reject `async` callables at registration time with `TypeError`.
+- `_run_hunt_file()` in `cli.py` accepts a `global_vars` kwarg; lifecycle vars are merged with per-file `@var:` declarations (`@var:` always wins).
+- **Parallel workers:** `ctx.variables` is serialised as JSON into the `MANUL_GLOBAL_VARS` env var before worker subprocesses are spawned. Workers call `deserialize_global_vars()` at startup to inherit the shared state. `{placeholder}` substitution works identically in parallel and sequential modes.
+- `registry.clear()` is called at the start of each `main()` invocation to prevent stale registrations from a previous run (important for the test runner).
+
+Unit tests: `manul_engine/test/test_27_lifecycle_hooks.py` (57 assertions, no browser).
+
 ### 🧹 [SETUP] / [TEARDOWN] Hooks and Inline `CALL PYTHON` Steps
 
-Version 0.0.8.3 introduces a pre/post hook mechanism powered by `manul_engine/hooks.py`. Hooks allow arbitrary synchronous Python to run before and after the browser mission. Version 0.0.8.3 also extends this capability to **inline steps**: `CALL PYTHON <module>.<func>` can now appear as a regular numbered step anywhere in the main mission body.
+Version 0.0.8.3 introduces a pre/post hook mechanism powered by `manul_engine/hooks.py`. Hooks allow arbitrary synchronous Python to run before and after the browser mission. Version 0.0.8.3 also extends this capability to **inline steps**: `CALL PYTHON <module>.<func>` can now appear as a plain action step anywhere in the main mission body.
 
 **Execution lifecycle:**
 
 ```
 [SETUP] block         → runs before browser launches
-  browser mission     → numbered hunt steps (may include CALL PYTHON steps)
+  browser mission     → hunt steps (may include CALL PYTHON steps)
 [TEARDOWN] block      → runs in finally{}, always after setup succeeds
 ```
 
@@ -148,8 +209,9 @@ run_hooks(lines, label, hunt_dir)  → bool
 **Dynamic Variables via `CALL PYTHON ... into {var}`:** Inline `CALL PYTHON` steps may optionally bind their return value to a mission variable:
 
 ```text
-1. CALL PYTHON api_helpers.fetch_otp into {dynamic_otp}
-2. Fill 'Security Code' with '{dynamic_otp}'
+STEP 1: OTP verification
+CALL PYTHON api_helpers.fetch_otp into {dynamic_otp}
+Fill 'Security Code' with '{dynamic_otp}'
 ```
 
 `execute_hook_line` captures the return value from `func()`, converts it to a string, and stores it in `HookResult.return_value`. `run_mission` then writes it to `self.memory[var_name]`, making it available for `{placeholder}` substitution in every subsequent step — exactly like `EXTRACT` or `@var:` variables. Both `into` and `to` are accepted as the keyword. Dynamic-variable unit tests live in `manul_engine/test/test_21_dynamic_vars.py`.
@@ -166,8 +228,9 @@ Version 0.0.8.7 adds static test-data declaration at the top of `.hunt` files:
 @var: {user_email} = admin@example.com
 @var: {password}   = secret123
 
-1. Fill 'Email' with '{user_email}'
-2. Fill 'Password' with '{password}'
+STEP 1: Login
+Fill 'Email' with '{user_email}'
+Fill 'Password' with '{password}'
 ```
 
 **How it works:** `parse_hunt_file()` scans for `@var: {key} = value` header lines and returns them as `parsed_vars` (the 7th element of the 8-tuple). `_run_hunt_file()` passes `parsed_vars` to `run_mission(initial_vars=...)`, which pre-populates `self.memory` before the step loop starts. Both brace and bare-key forms are accepted (`@var: {key} = val` and `@var: key = val` are equivalent). Values are stripped of leading/trailing whitespace. Malformed `@var:` lines (no `=`) are silently skipped.
@@ -185,8 +248,9 @@ Version 0.0.8.7 adds a tagging system that lets users run subsets of `.hunt` fil
 @context: Login flow
 @tags: smoke, auth, regression
 
-1. NAVIGATE to https://example.com/login
-2. DONE.
+STEP 1: Navigate
+NAVIGATE to https://example.com/login
+DONE.
 ```
 
 **CLI usage:**
@@ -197,7 +261,7 @@ manul tests/ --tags smoke,critical      # OR logic — run files with either tag
 
 **Intersection rule:** A file is included in the run if its `@tags:` list shares at least one tag with the `--tags` argument.  Files with no `@tags:` header are **always excluded** when `--tags` is active.
 
-**How it works:** `parse_hunt_file()` now extracts `@tags:` into the **8th element** of the tuple (`tags: list[str]`).  The CLI also exposes `_read_tags(path)` — a fast header-only scanner that stops at the first numbered step — used to pre-filter files in `main()` without running the full parse twice.  Tag filtering prints a one-line summary (`🏷️ --tags '...': N skipped, M matched.`) before the run starts.
+**How it works:** `parse_hunt_file()` now extracts `@tags:` into the **8th element** of the tuple (`tags: list[str]`).  The CLI also exposes `_read_tags(path)` — a fast header-only scanner that stops at the first action or STEP header line — used to pre-filter files in `main()` without running the full parse twice.  Tag filtering prints a one-line summary (`🏷️ --tags '...': N skipped, M matched.`) before the run starts.
 
 Unit tests: `manul_engine/test/test_22_tags.py` (20 assertions, no browser).
 
@@ -252,11 +316,12 @@ manul_engine/
 ```text
 @context: Checkout smoke test
 
-1. NAVIGATE to https://example.com/checkout
-2. Fill 'React Datepicker' with '2026-12-25'
-3. Click the 'Place Order' button
-4. VERIFY that 'Order confirmed' is present.
-5. DONE.
+STEP 1: Checkout
+NAVIGATE to https://example.com/checkout
+Fill 'React Datepicker' with '2026-12-25'
+Click the 'Place Order' button
+VERIFY that 'Order confirmed' is present.
+DONE.
 ```
 
 ---
@@ -446,11 +511,12 @@ Create a hunt file: `tests/mission.hunt`
 @context: Demo flow
 @title: smoke
 
-1. NAVIGATE to https://demoqa.com/text-box
-2. Fill 'Full Name' field with 'Ghost Manul'
-3. Click the 'Submit' button
-4. VERIFY that 'Ghost Manul' is present.
-5. DONE.
+STEP 1: Fill text box form
+NAVIGATE to https://demoqa.com/text-box
+Fill 'Full Name' field with 'Ghost Manul'
+Click the 'Submit' button
+VERIFY that 'Ghost Manul' is present.
+DONE.
 ```
 
 Run it:
@@ -485,7 +551,7 @@ manul tests/mission.hunt
 
 ## 🐾 Chaos Chamber Verified (1466+ Tests)
 
-The engine is battle-tested with **1592+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
+The engine is battle-tested with **1653+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).
@@ -498,6 +564,9 @@ The engine is battle-tested with **1592+** synthetic DOM/unit tests covering the
 * **Advanced interactions unit suite:** `manul_engine/test/test_23_advanced_interactions.py` (PRESS, RIGHT CLICK, UPLOAD commands, 39 assertions, no browser).
 * **Reporting unit suite:** `manul_engine/test/test_24_reporting.py` (StepResult, MissionResult, RunSummary dataclasses, 45 assertions, no browser).
 * **HTML reporter unit suite:** `manul_engine/test/test_25_reporter.py` (HTML report generation, base64 screenshots, XSS safety, 42 assertions, no browser).
+* **Wikipedia Search Input unit suite:** `manul_engine/test/test_26_wikipedia_search.py` (`name_attr` heuristic scoring for `<input name="search">` on Vector 2022 skin, 20 assertions, no browser).
+* **Lifecycle Hooks unit suite:** `manul_engine/test/test_27_lifecycle_hooks.py` (`@before_all`, `@after_all`, `@before_group`, `@after_group`, `GlobalContext`, `load_hooks_file`, serialize/deserialize, 57 assertions, no browser).
+* **Logical Steps unit suite:** `manul_engine/test/test_28_logical_steps.py` (Unnumbered DSL, STEP grouping, snippet injection logic, 48 assertions, no browser).
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
 Run the synthetic suite:
@@ -540,7 +609,7 @@ The `prompts/` directory contains ready-to-use LLM prompt templates that let you
 
 ## 🖱️ VS Code Extension
 
-The `vscode-extension/` directory contains a companion VS Code extension (v0.0.87) that provides:
+The `vscode-extension/` directory contains a companion VS Code extension (v0.0.88) that provides:
 
 | Feature | Details |
 | --- | --- |
@@ -576,7 +645,7 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 ---
 
-**Version:** 0.0.8.7
+**Version:** 0.0.8.8
 
 **Codename:** The Mastermind
 

@@ -22,14 +22,14 @@ Current operating mode in this repo is typically **mixed**:
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.7
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.8
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
   cache.py                 _ControlsCacheMixin (persistent per-site controls cache)
   actions.py               _ActionsMixin (navigate, scroll, extract, verify, drag, press, right_click, upload, _execute_step, scan_page)
   reporting.py             StepResult, MissionResult, RunSummary dataclasses
-  reporter.py              Self-contained HTML report generator (dark theme, base64 screenshots)
+  reporter.py              Self-contained HTML report generator (dark theme, native <details>/<summary> accordions, Flexbox step layout, base64 screenshots)
   prompts.py               JSON config loader, thresholds, LLM prompt templates
   scoring.py               score_elements() — pure function, 20+ heuristic rules
   js_scripts.py            All JS injected into the browser (includes SCAN_JS)
@@ -38,6 +38,7 @@ manul_engine/
   cli.py                   Public installed CLI entry point (manul command + manul scan subcommand); ParsedHunt NamedTuple
   controls.py              Custom Controls registry (@custom_control, get_custom_control, load_custom_controls)
   hooks.py                 [SETUP] / [TEARDOWN] hook parser and executor
+  lifecycle.py             Global Lifecycle Hook Registry (@before_all, @after_all, @before_group, @after_group, GlobalContext, load_hooks_file)
   _test_runner.py          Dev-only synthetic test runner (not in public CLI)
   test/
     test_00_engine.py       synthetic DOM micro-suite (local HTML via Playwright)
@@ -64,7 +65,7 @@ tests/
   demo_login.hunt         integration: login with @var: static variables
   demo_variables.hunt     integration: @var: + CALL PYTHON into {var} combined
 vscode-extension/
-  package.json              Extension manifest (v0.0.87)
+  package.json              Extension manifest (v0.0.88)
   src:
     extension.ts            Activation, command registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
@@ -101,19 +102,42 @@ Detected from step keywords:
 
 ## Step format
 
-Steps are numbered strings parsed by `run_mission()`. They must be atomic browser instructions.
+Steps are parsed by `run_mission()` and must be atomic browser instructions. **STEP-grouped (unnumbered) is the canonical format for all new files.** The legacy numbered format is supported for backward compatibility.
+
+**STEP-grouped format — canonical (use this for all new files):**
+
+```text
+STEP 1: Navigate to the login page
+NAVIGATE to https://example.com/login
+VERIFY that 'Sign In' is present
+
+STEP 2: Fill credentials
+Fill 'Username' field with 'admin'
+Fill 'Password' field with 'secret'
+Click the 'Login' button
+VERIFY that 'Welcome' is present.
+
+STEP 3: Wrap up
+EXTRACT the 'Product Price' into {price}
+DONE.
+```
+
+**Numbered format — legacy (backward compat only, do not use for new files):**
 
 ```text
 "1. NAVIGATE to https://example.com"
 "2. Fill 'Username' field with 'admin'"
 "3. Click the 'Login' button"
-"4. Select 'English' from the 'Language' dropdown"
-"5. VERIFY that 'Welcome' is present."
-"6. EXTRACT the 'Product Price' into {price}"
-"7. SCROLL DOWN"
-"8. DONE."
-
+"4. VERIFY that 'Welcome' is present."
+"5. DONE."
 ```
+
+Rules for STEP-grouped files:
+* `run_mission()` switches to line-by-line parsing when it detects **either** a `STEP` marker OR recognizable action keywords (NAVIGATE, VERIFY, DONE, etc.) in an unnumbered file. STEP markers are not required — a file containing only plain unnumbered action lines is parsed directly without them.
+* `STEP [number]: [description]` — number is optional; description is used for console output and HTML report section headers.
+* Blank lines between groups are allowed and ignored.
+* All other keywords (NAVIGATE, VERIFY, DONE, etc.) work identically in both formats.
+* Mixed numbered+STEP (e.g. `1. STEP 1: ...`) is also valid: the numbered split runs and STEP markers are detected by `classify_step()` as `"logical_step"` kind, same as in STEP-grouped mode.
 
 **System Keywords** parsed directly by `run_mission()` (these skip heuristics):
 
@@ -137,7 +161,7 @@ Optional steps contain "if exists" / "optional" **outside** the quoted target (e
 
 ## Writing integration tests (hunt files)
 
-Hunt files are plain-text test scenarios that the CLI parses via `parse_hunt_file()` (to extract `@context` / `@title` / `@tags` and strip full-line `#` comments) before passing the mission body into `run_mission()`, which then parses and executes the numbered steps. They provide a robust way to write integration tests without Python boilerplate.
+Hunt files are plain-text test scenarios parsed by `parse_hunt_file()` (extracts `@context` / `@title` / `@tags`, strips `#` comments, collects hook blocks) then executed by `run_mission()`. **The STEP-grouped unnumbered format is the mandatory standard for all new hunt files.** The legacy numbered format is still supported but must not be used in new files.
 
 ### 1. File Naming & Location
 * For this repo's default auto-discovery (`python manul.py` with no target), hunt files are discovered under the `tests/` directory.
@@ -154,8 +178,19 @@ Placed at the top of the file. Used by the engine for logging and LLM context.
 * Use `#` at the beginning of a line for comments. Any line whose trimmed text starts with `#` is ignored during execution; `#` appearing after a step on the same line is treated as part of the step text, not a comment.
 
 ### 4. Step Formatting
-* For deterministic hunts and when running without Ollama, each action should be a numbered, atomic instruction (e.g., `1. `, `2. `). Free-form, non-numbered text is also accepted and will be routed through the LLM planner, but may produce less deterministic runs.
+**STEP-grouped (unnumbered) is the mandatory standard for all new hunt files.**
+* Use `STEP N: label` headers to mark logical groups. The STEP number is optional (`STEP: label` is also valid).
+* All action lines following a STEP header must be **plain, unnumbered text** — no `1.` prefix, no bullet points, no dashes.
+* `run_mission()` detects `STEP` markers **or** recognizable action keywords (NAVIGATE, VERIFY, DONE, etc.) and automatically switches to line-by-line splitting. STEP markers are not required — a file with only plain unnumbered action lines is also parsed directly.
+* Blank lines between groups are allowed and ignored.
+* The classic numbered format (`1. CMD`, `2. CMD`, …) is still supported for backward compatibility, but numeric prefixes are stripped from the HTML report and must not be used when generating new files.
+* Only genuinely free-form natural language with no recognized keywords is routed through the LLM planner (less deterministic; requires Ollama).
 * Elements should be wrapped in single or double quotes for best heuristic matching (e.g., `'Submit'`, `"Password"`).
+
+**ABSOLUTE RULE — Zero Tolerance:**
+> When generating or suggesting `.hunt` files:
+> 1. You MUST use the **Clean, Unnumbered DSL Syntax**. NEVER prepend numbers (`1. `, `2. `) to execution actions.
+> 2. You MUST use **Logical `STEP` Grouping** (`STEP [optional number]: [Description]`) to structure E2E flows, matching manual QA test cases. These map perfectly to the Enterprise HTML Reporter's accordions.
 
 ### 5. System Keywords (parser-detected)
 These keywords are detected via word-boundary regex, bypass heuristics, and are handled directly by the engine parser:
@@ -203,14 +238,16 @@ Correct:
 @var: {user_email} = admin@example.com
 @var: {password}   = secret123
 
-1. Fill 'Email' with '{user_email}'
-2. Fill 'Password' with '{password}'
+STEP 1: Login
+Fill 'Email' with '{user_email}'
+Fill 'Password' with '{password}'
 ```
 
 Wrong (do not do this):
 ```text
-1. Fill 'Email' with 'admin@example.com'
-2. Fill 'Password' with 'secret123'
+STEP 1: Login
+Fill 'Email' with 'admin@example.com'
+Fill 'Password' with 'secret123'
 ```
 
 ### 7b. Dynamic Variable Capture (`CALL PYTHON ... into {var}`)
@@ -269,7 +306,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * **Auto-Nav annotation:** When `auto_annotate` is enabled, `run_mission()` captures `url_before = page.url` before every step. For `NAVIGATE` steps, the annotation is written above the step itself. For all other steps, `url_after` is checked in the `finally` block — if the URL changed, `_auto_annotate_navigate(page, hunt_file, step_file_lines, i+1)` is called to insert a comment above the *next* step line. The comment uses the mapped page name when found in `pages.json`, or the full URL when the lookup returns an `"Auto:"` placeholder.
 * **`pages.json` — nested per-site format:** `{ "<site_root_url>": { "Domain": "<display_name>", "<regex_or_exact_url>": "<page_name>" } }`. `lookup_page_name(url)` in `prompts.py` re-reads this file from disk on **every call** (live edits take effect immediately with no restart). Resolution order: exact URL key → regex/substring patterns (skipping `"Domain"` key) → `"Domain"` fallback. When no site block matches, a new nested entry is auto-generated. The longest-prefix site block wins when multiple blocks could match.
 * **`_debug_prompt()` `debug-stop` token:** When Python receives `"debug-stop"` on stdin from the VS Code extension (user pressed ⏹ Debug Stop), it clears **both** `self._user_break_steps = set()` and `self.break_steps = set()`, then breaks the pause loop. The test run continues to completion without any further pauses.
-* **Reporting & HTML reports:** `reporting.py` owns `StepResult`, `MissionResult` (with `__bool__` — truthy if all steps passed), and `RunSummary` dataclasses. `reporter.py` owns `generate_report(summary, output_path)` — produces a self-contained dark-themed HTML file with dashboard stats, per-step accordion, and inline base64 screenshots. All artifacts (logs, HTML reports) are saved to `reports/` (auto-created by `cli.py`). The `reports/` directory is `.gitignored`.
+* **Reporting & HTML reports:** `reporting.py` owns `StepResult`, `MissionResult` (with `__bool__` — truthy if all steps passed), and `RunSummary` dataclasses. `reporter.py` owns `generate_report(summary, output_path)` — produces a self-contained dark-themed HTML file with dashboard stats, native `<details>/<summary>` accordions (collapsed by default, auto-expanded on failure), Flexbox step rows, and inline base64 screenshots. All artifacts (logs, HTML reports) are saved to `reports/` (auto-created by `cli.py`). The `reports/` directory is `.gitignored`.
 * **Screenshot capture:** `run_mission()` accepts `screenshot_mode` (`"none"`, `"on-fail"`, `"always"`). Screenshots are stored as base64 PNGs in `StepResult.screenshot`.
 
 ## Running tests
@@ -401,7 +438,7 @@ async def handle_datepicker(page, action_type: str, value: str | None) -> None:
 ```
 ```text
 # tests/checkout.hunt
-2. Fill 'React Datepicker' with '2026-12-25'
+Fill 'React Datepicker' with '2026-12-25'
 ```
 
 Example — WRONG (do not do this):
@@ -417,6 +454,21 @@ The page name in `@custom_control(page=...)` must match the value returned by `l
 ---
 
 ## Common pitfalls & Advanced Learnings
+
+* **Global Lifecycle Hooks — mandatory rule:** When a user asks to set up a database, perform a global login, seed test data, obtain an auth token, or do any pre-suite or pre-group environment setup, you **MUST** generate a `manul_hooks.py` file using `@before_all` or `@before_group(tag=...)` from `manul_engine`. **Never** add setup steps to individual `.hunt` files — that couples UI flows to infrastructure, slows each run, and makes teardown unreliable. The only correct pattern:
+  ```python
+  # tests/manul_hooks.py
+  from manul_engine import before_all, after_all, GlobalContext
+
+  @before_all
+  def setup(ctx: GlobalContext) -> None:
+      ctx.variables["TOKEN"] = auth_service.get_token()
+
+  @after_all
+  def teardown(ctx: GlobalContext) -> None:
+      auth_service.revoke_token(ctx.variables["TOKEN"])
+  ```
+  The token is then available as `{TOKEN}` in all `.hunt` files without any per-file declaration.
 
 * **Native Select vs Custom Dropdowns:** Playwright's `select_option()` crashes on non-`<select>` tags. If `mode == "select"` but the element is a `div`/`span`, gracefully fallback to a standard `click()`.
 * **Overlapped Elements:** Modern UIs use invisible overlays. The engine primarily uses Playwright with `force=True` plus retries/alternate candidates; JS helpers (`window.manulClick`, `window.manulType`) are mainly used for Shadow DOM elements.
@@ -442,7 +494,9 @@ The engine does not use a single fixed “chain constant”; it sums many heuris
 ## Element data shape
 
 Each element dict returned by `SNAPSHOT_JS` contains:
-`id, name, xpath, is_select, is_shadow, is_contenteditable, class_name, tag_name, input_type, data_qa, html_id, icon_classes, aria_label, placeholder, role, disabled, aria_disabled`.
+`id, name, xpath, is_select, is_shadow, is_contenteditable, class_name, tag_name, input_type, data_qa, html_id, icon_classes, aria_label, placeholder, role, disabled, aria_disabled, name_attr`.
+
+* `name_attr` — the HTML `name` attribute (e.g. `name="search"` on Wikipedia's Codex search input). Scoring treats it as a text signal: exact match +3,000; substring match +1,000. Always cast with `str(el.get("name_attr", ""))` before comparing.
 
 * `name` includes section context: `"Section -> Element Name input text"`.
 * For `<select>` elements, `name` embeds options: `"dropdown [Option A | Option B]"`.
@@ -483,7 +537,7 @@ When the version changes, **ALL** of the following files must be updated:
 |------|----------------|
 | `pyproject.toml` | `version = "X.Y.Z"` under `[project]` |
 | `README.md` | `**Version:** X.Y.Z` in the footer |
-| `README_DEV.md` | Title `# 😼 ManulEngine vX.Y.Z`, pyproject.toml ref, extension manifest ref, VS Code extension version ref, footer `**Version:** X.Y.Z` |
+| `README_DEV.md` | Title `# 😼 ManulEngine vX.Y.Z`, pyproject.toml ref, extension manifest ref, VS Code extension version ref, lifecycle/test suite lists, footer `**Version:** X.Y.Z` |
 | `vscode-extension/package.json` | `"version": "X.Y.Z"` (uses 3-digit semver, e.g. `"0.0.84"`) |
 | `vscode-extension/README.md` | Add `### X.Y.Z` release notes section above the previous entry |
 | `.github/copilot-instructions.md` | Version in the repo layout section (this file) |

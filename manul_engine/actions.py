@@ -608,6 +608,7 @@ class _ActionsMixin:
                     return True
 
             except Exception as ex:
+                print(f"    ⚠️  Element not actionable (attempt {attempt+1}/3), trying next candidate...")
                 failed_ids.add(el_id)
                 self.last_xpath = None
                 await asyncio.sleep(1)

@@ -97,11 +97,29 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         const elRole = (el.getAttribute('role') || '').toLowerCase();
         const st = window.getComputedStyle(el);
         const isHidden = st.display === 'none' || st.visibility === 'hidden' || parseFloat(st.opacity) === 0;
-        
-        if (isHidden) {
-            if (el.tagName !== 'INPUT' || (el.type !== 'file' && el.type !== 'checkbox' && el.type !== 'radio')) {
-                return; 
+
+        // Ancestor display:none detection — walk up the DOM tree and check
+        // each ancestor's computed display. getComputedStyle on the child
+        // does NOT propagate parent's display:none, so we must check
+        // ancestors explicitly. This is more reliable than offsetParent
+        // which can be null for valid reasons (no_viewport contexts, etc.).
+        let isAncestorHidden = false;
+        if (!isHidden) {
+            let p = el.parentElement;
+            while (p && p !== document.documentElement) {
+                if (window.getComputedStyle(p).display === 'none') {
+                    isAncestorHidden = true;
+                    break;
+                }
+                p = p.parentElement;
             }
+        }
+
+        const isSpecialInput = el.tagName === 'INPUT'
+            && (el.type === 'file' || el.type === 'checkbox' || el.type === 'radio');
+        
+        if (isHidden || isAncestorHidden) {
+            if (!isSpecialInput) return;
         }
         
         if (r.width < 2 || r.height < 2) {
@@ -129,7 +147,7 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             el.dataset.manulId  = id;
             window.manulElements[id] = el;
         }
-        results.push({el, inShadow});
+        results.push({el, inShadow, isHidden, isAncestorHidden});
     };
 
     const collect = (root, inShadow=false) => {
@@ -204,7 +222,7 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         return '';
     };
 
-    return results.map(({el, inShadow}) => {
+    return results.map(({el, inShadow, isHidden, isAncestorHidden}) => {
         let name, isSelect = false;
         const iconClasses = Array.from(el.querySelectorAll('i, svg, span[class*="icon"]'))
             .map(i => (typeof i.className === 'string' ? i.className : (i.getAttribute('class') || '')))
@@ -252,6 +270,12 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         if (el.getAttribute('aria-hidden') === 'true') isStructuralHidden = true;
         const rect = el.getBoundingClientRect();
         if (rect.left < -999) isStructuralHidden = true;
+        // Ancestor-hidden elements that slipped through (file/checkbox/radio
+        // exemption) should still be tagged for scoring penalty.
+        if (!isStructuralHidden && (isHidden || isAncestorHidden)) {
+            isStructuralHidden = true;
+        }
+
         const isScrollAbove = rect.top < -999 && !isStructuralHidden;
 
         if (isStructuralHidden) name += ' [HIDDEN]';
@@ -277,6 +301,7 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             role:          el.getAttribute('role') || '',
             disabled:      el.hasAttribute('disabled') || el.disabled || false,
             aria_disabled: el.getAttribute('aria-disabled') || '',
+            name_attr:     nameAttr,
         };
     });
 }"""

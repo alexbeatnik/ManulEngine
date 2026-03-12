@@ -18,6 +18,15 @@ Manul combines the blazing speed of **Playwright**, 20+ JavaScript DOM heuristic
 
 ---
 
+## 🚀 What's New: The Enterprise Update
+
+* **Clean, Unnumbered DSL:** The requirement for line numbers before actions has been completely dropped. Scripts now read exactly like plain English (`NAVIGATE to url` instead of `1. NAVIGATE to url`).
+* **Logical STEP Grouping:** `STEP [optional number]: [Description]` metadata blocks allow mapping manual QA cases directly into `.hunt` files. Unmatched quotes inside descriptions (e.g. `STEP: Pallas's cat`) are cleanly isolated.
+* **Enterprise HTML Reporter:** The reporter is now dual-mode and zero-dependency, featuring native HTML5 accordions (`<details>`), auto-expanding failures, and a clean Flexbox layout instead of old-school tables.
+* **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, and `@after_group` orchestrate complex DB seeding and auth logic. `ctx.variables` are securely serialized across parallel `--workers`.
+* **Bulletproof DOM Heuristics:** The updated `SNAPSHOT_JS` rigorously filters out invisible or hidden UI elements (like hidden sticky headers), and effortlessly handles deeply nested modern frameworks (e.g. Wikipedia Vector 2022 / Codex) by strongly prioritizing `aria-label` and `name_attr`.
+* **VS Code Extension Polish:** The Step Builder is now context-aware, verifying `vscode.window.activeTextEditor` to prevent accidental insertions in non-`.hunt` files, and provides robust syntax highlighting for the unnumbered DSL.
+
 ## ✨ Key Features
 
 ### ⚡ Heuristics-First Architecture
@@ -29,6 +38,10 @@ When the LLM picker is used, Manul passes the heuristic score as a **prior** (hi
 ### 🛡️ Ironclad JS Fallbacks
 
 Modern websites love to hide elements behind invisible overlays, custom dropdowns, and zero-pixel traps. Manul uses Playwright with `force=True` plus retries and self-healing; for Shadow DOM elements it falls back to direct JS helpers to keep execution moving.
+
+### 🧠 Deep Accessibility Heuristics
+
+Manul scores elements using 20+ signals including `aria-label`, `placeholder`, `name`, `data-qa`, `html_id`, semantic `input type`, and contextual section headings. This means it handles modern single-page apps (React, Vue, Angular) and complex design systems (like Wikipedia's Vector 2022 / Codex skin) without any tuning — accessibility attributes are treated as first-class identifiers.
 
 ### 🌑 Shadow DOM Awareness
 
@@ -67,9 +80,13 @@ manul tests/ --retries 3 --html-report  # retry + generate an HTML report
 
 Or set `"retries": 2` in `manul_engine_configuration.json` for a permanent default. Each retry is a full fresh run — no stale state carried over.
 
-### 📊 Standalone HTML Reports
+### 📊 Enterprise HTML Reporter
 
-One flag. One self-contained HTML file. Dark-themed dashboard with pass/fail stats, per-step accordion, inline base64 screenshots, and XSS-safe output — no external dependencies, no CDN, no server.
+One flag. One self-contained HTML file. Dark-themed dashboard with pass/fail stats, native HTML5 `<details>` step accordions, inline base64 screenshots, and XSS-safe output — zero external dependencies, zero CDN, zero server.
+
+**Enterprise Upgrades:**
+* **Dual-Mode Rendering:** If `STEP` blocks are used, steps are grouped into logical Accordions. Passing steps collapse by default; failing steps auto-expand to show exactly what broke.
+* **Flexbox Layout:** Dropped clunky tables for a sleek Flexbox design ensuring perfect text alignment and zero text mashing.
 
 ```bash
 manul tests/ --html-report                          # report saved to reports/manul_report.html
@@ -80,6 +97,26 @@ manul tests/ --screenshot on-fail --html-report     # screenshots only on failur
 All artifacts (logs, reports) are saved to the `reports/` directory — your workspace stays clean.
 
 > **Note:** Per-step details (accordion + embedded screenshots) require `--workers 1` (the default). When `--workers > 1`, the report aggregates per-hunt results only.
+
+### 📋 STEP Groups — Manual Test Cases Meet Automation
+
+ManulEngine bridges the gap between manual QA test cases ("Steps & Expected Results") and automation. Use `STEP N: Description` headers to mirror the structure of your manual test plan directly in the `.hunt` file. The engine renders each group as an accordion section in the HTML report — with its own pass/fail badge and action count — so stakeholders can read results without decoding raw step indices.
+
+```text
+STEP 1: Login
+NAVIGATE to https://myapp.com/login
+Fill 'Email' with '{email}'
+Fill 'Password' with '{password}'
+Click 'Sign In' button
+VERIFY that 'Dashboard' is present.
+
+STEP 2: Add item to cart
+Click 'Add to cart' near 'Laptop Pro'
+NAVIGATE to https://myapp.com/cart
+VERIFY that 'Laptop Pro' is present.
+```
+
+`STEP` headers produce zero browser actions — they are pure metadata. The `STEP N:` tag is optional but highly recommended: it maps 1:1 to manual QA test cases and gives the HTML report its accordion structure. Action lines that follow must be written as **plain text without leading numbers** — never prefix with `1.`, `2.`, etc.
 
 ---
 
@@ -101,7 +138,7 @@ async def handle_datepicker(page, action_type, value):
 
 ```text
 # tests/checkout.hunt  — no change needed for the QA author
-2. Fill 'React Datepicker' with '2026-12-25'
+Fill 'React Datepicker' with '2026-12-25'
 ```
 
 The engine loads every `.py` file in `controls/` at startup. No configuration required.
@@ -118,11 +155,12 @@ Declare all test data at the top of your `.hunt` file with `@var:`. Values are i
 @var: {email}    = admin@example.com
 @var: {password} = secret123
 
-1. NAVIGATE to https://myapp.com/login
-2. Fill 'Email' with '{email}'
-3. Fill 'Password' with '{password}'
-4. Click the 'Sign In' button
-5. VERIFY that 'Dashboard' is present.
+STEP 1: Login
+NAVIGATE to https://myapp.com/login
+Fill 'Email' with '{email}'
+Fill 'Password' with '{password}'
+Click the 'Sign In' button
+VERIFY that 'Dashboard' is present.
 ```
 
 Both `@var: {key} = value` and `@var: key = value` are accepted. Variables declared with `@var:` work identically to those created by `EXTRACT` and `CALL PYTHON ... into {var}`.
@@ -136,8 +174,8 @@ Tag any `.hunt` file and cherry-pick which tests to run — no directory jugglin
 ```text
 @tags: smoke, auth, regression
 
-1. NAVIGATE to https://example.com/login
-2. DONE.
+NAVIGATE to https://example.com/login
+DONE.
 ```
 
 ```bash
@@ -161,11 +199,12 @@ Stop wasting hours on brittle UI-based preconditions. With `[SETUP]` and `[TEARD
 CALL PYTHON db_helpers.seed_admin_user
 [END SETUP]
 
-1. NAVIGATE to https://myapp.com/login
-2. Fill 'Email' field with '{email}'
-3. Fill 'Password' field with '{password}'
-4. Click the 'Sign In' button
-5. VERIFY that 'Dashboard' is present.
+STEP 1: Login
+NAVIGATE to https://myapp.com/login
+Fill 'Email' field with '{email}'
+Fill 'Password' field with '{password}'
+Click the 'Sign In' button
+VERIFY that 'Dashboard' is present.
 
 [TEARDOWN]
 CALL PYTHON db_helpers.clean_database
@@ -183,15 +222,16 @@ The helper module is resolved relative to the `.hunt` file's directory first, th
 
 ### 🐍 Inline Python Calls
 
-Need to fetch an OTP from the database mid-test? Or trigger a backend job before clicking "Refresh"? You can now call Python functions **directly as standard numbered steps** — right in the middle of your UI flow.
+Need to fetch an OTP from the database mid-test? Or trigger a backend job before clicking "Refresh"? Call Python functions directly as action lines right in the middle of your UI flow.
 
 ```text
-1. FILL 'Email' field with 'test@manul.com'
-2. CLICK the 'Send OTP' button
-3. CALL PYTHON api_helpers.fetch_and_set_otp
-4. Fill 'OTP' field with '{otp}'
-5. CLICK the 'Login' button
-6. VERIFY that 'Dashboard' is present.
+STEP 2: OTP verification
+Fill 'Email' field with 'test@manul.com'
+Click the 'Send OTP' button
+CALL PYTHON api_helpers.fetch_and_set_otp
+Fill 'OTP' field with '{otp}'
+Click the 'Login' button
+VERIFY that 'Dashboard' is present.
 ```
 
 The same module resolution rules apply as for `[SETUP]`/`[TEARDOWN]`: hunt file directory → CWD → `sys.path`. Functions must be synchronous. If the call fails, the mission stops immediately — just like any other failed step. No special syntax or block wrapping required.
@@ -200,13 +240,69 @@ The same module resolution rules apply as for `[SETUP]`/`[TEARDOWN]`: hunt file 
 Append `into {var_name}` (or `to {var_name}`) to bind the function’s return value directly into an in-mission variable:
 
 ```text
-2. CALL PYTHON api_helpers.fetch_otp into {dynamic_otp}
-3. Fill 'Security Code' field with '{dynamic_otp}'
+CALL PYTHON api_helpers.fetch_otp into {dynamic_otp}
+Fill 'Security Code' field with '{dynamic_otp}'
 ```
 
 The raw return value is converted to a string (`str(return_value)`) and stored under the variable name. It is then available for `{placeholder}` substitution in every subsequent step, exactly like variables populated by `EXTRACT` or `@var:`.
 ---
+## 🌐 Global Lifecycle Hooks — Enterprise-Scale Test Orchestration
 
+For multi-file test suites that need shared state — a global auth token, a seeded database, a per-run environment flag — create a `manul_hooks.py` file in the same directory as your `.hunt` files. The engine discovers and loads it automatically.
+
+```python
+# tests/manul_hooks.py
+from manul_engine import before_all, after_all, before_group, after_group, GlobalContext
+
+@before_all
+def global_setup(ctx: GlobalContext) -> None:
+    """Runs once before any hunt file starts."""
+    ctx.variables["BASE_URL"] = "https://staging.example.com"
+    ctx.variables["API_TOKEN"] = fetch_token_from_vault()
+
+@after_all
+def global_teardown(ctx: GlobalContext) -> None:
+    """Always runs after all hunt files finish, pass or fail."""
+    db.rollback_all_test_data()
+
+@before_group(tag="smoke")
+def seed_smoke(ctx: GlobalContext) -> None:
+    """Runs before every hunt file tagged @tags: smoke."""
+    ctx.variables["ORDER_ID"] = db.create_temp_order()
+
+@after_group(tag="smoke")
+def clean_smoke(ctx: GlobalContext) -> None:
+    ctx.variables.pop("ORDER_ID", None)
+```
+
+Variables written to `ctx.variables` are injected into every matching mission as `{placeholder}`-ready data — identical to `@var:` declarations, but shared across all hunt files:
+
+```text
+# tests/checkout.hunt
+@tags: smoke
+
+STEP 1: Checkout
+NAVIGATE to '{BASE_URL}/checkout'
+Fill 'API Token' field with '{API_TOKEN}'
+DONE.
+```
+
+### Hook execution order and failure semantics
+
+| Hook | When it fires | Failure behaviour |
+|---|---|---|
+| `@before_all` | Once before the first hunt file | Aborts the entire suite; `@after_all` still runs |
+| `@after_all` | Once after all hunts finish | Always runs; failure logged, does not override suite result |
+| `@before_group(tag=)` | Before each hunt file whose `@tags:` contains `tag` | Failure skips that mission; `@after_group` still runs for it |
+| `@after_group(tag=)` | After each matching mission (pass or fail) | Always runs; failure logged, does not override mission result |
+
+### Parallel workers
+
+When running with `--workers N`, `@before_all` runs in the orchestrator process and its `ctx.variables` are serialised as JSON into the `MANUL_GLOBAL_VARS` environment variable before worker subprocesses are spawned. Each worker deserialises them at startup — `{placeholder}` substitution works identically in parallel and sequential modes.
+
+> **Rule for adding pre-test setup:** If a test scenario requires a database record, a seeded user, a valid auth token, or any per-suite environment state, **always** use `@before_all` or `@before_group` in `manul_hooks.py`. Never add setup steps to individual `.hunt` files — they are slow, brittle, and couple production UI flows to test infrastructure.
+
+---
 ## 💻 System Requirements
 
 | | Minimum | Recommended |
@@ -248,11 +344,12 @@ ollama serve
 
 @var: {name} = Ghost Manul
 
-1. NAVIGATE to https://demoqa.com/text-box
-2. Fill 'Full Name' field with '{name}'
-3. Click the 'Submit' button
-4. VERIFY that '{name}' is present.
-5. DONE.
+STEP 1: Fill text box form
+NAVIGATE to https://demoqa.com/text-box
+Fill 'Full Name' field with '{name}'
+Click the 'Submit' button
+VERIFY that '{name}' is present.
+DONE.
 ```
 
 ### 2. Run it
@@ -272,7 +369,7 @@ manul my_tests/ --browser firefox
 manul my_tests/ --headless --browser webkit
 
 # Run an inline one-liner
-manul "1. NAVIGATE to https://example.com  2. Click the 'More' link  3. DONE."
+manul "NAVIGATE to https://example.com  Click the 'More' link  DONE."
 
 # Run multiple hunt files in parallel (4 concurrent browsers)
 manul my_tests/ --workers 4
@@ -318,11 +415,12 @@ from manul_engine import ManulEngine
 async def main():
     manul = ManulEngine(headless=True)
     await manul.run_mission("""
-        1. NAVIGATE to https://demoqa.com/text-box
-        2. Fill 'Full Name' field with 'Ghost Manul'
-        3. Click the 'Submit' button
-        4. VERIFY that 'Ghost Manul' is present.
-        5. DONE.
+        STEP 1: Fill text box form
+        NAVIGATE to https://demoqa.com/text-box
+        Fill 'Full Name' field with 'Ghost Manul'
+        Click the 'Submit' button
+        VERIFY that 'Ghost Manul' is present.
+        DONE.
     """)
 
 asyncio.run(main())
@@ -379,10 +477,11 @@ Optional `[SETUP]`/`[TEARDOWN]` blocks (placed at the top/bottom of the file) an
 CALL PYTHON <module_path>.<function_name>
 [END SETUP]
 
-1. NAVIGATE to https://myapp.com
-2. CALL PYTHON api_helpers.fetch_otp into {dynamic_otp}
-3. Fill 'Security Code' with '{dynamic_otp}'
-4. VERIFY that 'Dashboard' is present.
+STEP 1: Authenticate
+NAVIGATE to https://myapp.com
+CALL PYTHON api_helpers.fetch_otp into {dynamic_otp}
+Fill 'Security Code' with '{dynamic_otp}'
+VERIFY that 'Dashboard' is present.
 
 [TEARDOWN]
 CALL PYTHON <module_path>.<function_name>
@@ -438,10 +537,11 @@ Declare static test data at the top of the file using `@var:`. These values are 
 @var: {email}    = admin@example.com
 @var: {password} = secret123
 
-1. NAVIGATE to https://myapp.com/login
-2. Fill 'Email' with '{email}'
-3. Fill 'Password' with '{password}'
-4. Click the 'Login' button
+STEP 1: Login
+NAVIGATE to https://myapp.com/login
+Fill 'Email' with '{email}'
+Fill 'Password' with '{password}'
+Click the 'Login' button
 ```
 
 The surrounding `{}` braces in the declaration are optional — `@var: email = ...` and `@var: {email} = ...` are equivalent. Values are stripped of leading/trailing whitespace. Declared variables behave exactly like variables populated by `EXTRACT` and can be used interchangeably with them in downstream steps.
@@ -560,7 +660,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 
 ## 🐾 Battle-Tested
 
-ManulEngine is verified against **1592+ synthetic DOM tests** covering:
+ManulEngine is verified against **1653+ synthetic DOM tests** covering:
 
 - Shadow DOM, invisible overlays, zero-pixel honeypots
 - Custom dropdowns, drag-and-drop, hover menus
@@ -570,4 +670,4 @@ ManulEngine is verified against **1592+ synthetic DOM tests** covering:
 
 ---
 
-**Version:** 0.0.8.7 · **Status:** Hunting...
+**Version:** 0.0.8.8 · **Status:** Hunting...

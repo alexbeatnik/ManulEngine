@@ -28,6 +28,15 @@ ManulEngine changes the economics of test automation. You don't write controls �
 
 > Hunt file language support, one-click test runner, interactive debug runner with gutter breakpoints, step builder, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) browser automation.
 
+## 🚀 What's New: The Enterprise Update
+
+* **Clean, Unnumbered DSL:** The requirement for line numbers before actions has been completely dropped. Scripts now read exactly like plain English (`NAVIGATE to url` instead of `1. NAVIGATE to url`).
+* **Logical STEP Grouping:** `STEP [optional number]: [Description]` metadata blocks allow mapping manual QA cases directly into `.hunt` files. Unmatched quotes inside descriptions (e.g. `STEP: Pallas's cat`) are cleanly isolated.
+* **Enterprise HTML Reporter:** The reporter is now dual-mode and zero-dependency, featuring native HTML5 accordions (`<details>`), auto-expanding failures, and a clean Flexbox layout instead of old-school tables.
+* **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, and `@after_group` orchestrate complex DB seeding and auth logic. `ctx.variables` are securely serialized across parallel `--workers`.
+* **Bulletproof DOM Heuristics:** The updated `SNAPSHOT_JS` rigorously filters out invisible or hidden UI elements (like hidden sticky headers), and effortlessly handles deeply nested modern frameworks (e.g. Wikipedia Vector 2022 / Codex) by strongly prioritizing `aria-label` and `name_attr`.
+* **VS Code Extension Polish:** The Step Builder is now context-aware, verifying `vscode.window.activeTextEditor` to prevent accidental insertions in non-`.hunt` files, and provides robust syntax highlighting for the unnumbered DSL.
+
 ## Features
 
 ### 🎨 Hunt File Language Support
@@ -66,7 +75,7 @@ Hunt files appear in the **VS Code Test Explorer** as top-level test items (one 
 - **Debug** — runs with gutter breakpoints and the floating QuickPick pause overlay (see Debug Mode above)
 
 For both profiles:
-- Each numbered step is shown as a child item with pass/fail status
+- Each step is shown as a child item with pass/fail status
 - Failed steps display the engine output as the failure message
 - Steps that were never reached are marked as skipped
 - The step tree is cleared after the run so the explorer shows the correct file-level count
@@ -103,12 +112,12 @@ A sidebar panel that lets you insert hunt steps with a single click — no typin
 - **＋ New Hunt File** button — prompts for a name, creates a `.hunt` file with a starter template in the `tests_home` directory (configured via `tests_home` in `manul_engine_configuration.json`, defaults to `tests/`), and opens it
 - **🔍 Live Page Scanner** — paste any URL into the sidebar text input and click **Run Scan**; the extension invokes `manul scan <URL>` as a child process with a progress notification, then automatically opens the freshly generated `tests_home/draft.hunt` in the editor — no terminal required
 - **Step buttons** — one button per step type: Navigate, Fill field, Click, Double Click, Right Click, Select, Check, Radio, Hover, Drag & Drop, Extract, Verify present/absent/state, Press Enter, Press Key, Upload File, Wait, Scroll Down, **Scan Page**, **🐍 Call Python**, **🐍 Call Python → Var**, **Debug / Pause**, Done
-- **🐍 Call Python** — appends a numbered `CALL PYTHON module_name.function_name` step to the end of the current `.hunt` file with a single click; rename the placeholders and your Python function runs inline as part of the test — no block wrappers needed
-- **🐍 Call Python → Var** — appends a numbered `CALL PYTHON module_name.function_name into {variable_name}` step; the function's return value is captured as a string and bound to `{variable_name}`, available for `{placeholder}` substitution in all subsequent steps
+- **🐍 Call Python** — appends `CALL PYTHON module_name.function_name` to the end of the current `.hunt` file with a single click; rename the placeholders and your Python function runs inline as part of the test — no block wrappers needed
+- **🐍 Call Python → Var** — appends `CALL PYTHON module_name.function_name into {variable_name}`; the function's return value is captured as a string and bound to `{variable_name}`, available for `{placeholder}` substitution in all subsequent steps
 - **Hooks buttons** — **🔧 Insert [SETUP]** and **🧹 Insert [TEARDOWN]** insert pre-filled hook blocks with `CALL PYTHON module.function` placeholders; **🎯 Generate Demo Test** scaffolds a complete hunt file with setup, UI steps, and teardown in one click
 - **Scan Page** — inserts `SCAN PAGE into draft.hunt`; when the engine executes this step it scans the current browser page for interactive elements and writes a ready-to-run draft hunt file to `tests_home/draft.hunt`
-- Each click appends the next numbered step to the currently open `.hunt` file and positions the cursor inside the first `''` pair for immediate editing
-- Works even when the sidebar has focus (the editor is not the active panel)
+- Each click appends to the currently open `.hunt` file and positions the cursor inside the first `''` pair for immediate editing
+- Requires the `.hunt` file to be the active editor tab.
 
 ---
 
@@ -196,12 +205,13 @@ The extension probes the following locations in order (platform-aware):
 @var: {user_email} = user@example.com
 @var: {password}   = secret
 
-1. NAVIGATE to https://example.com/login
-2. Fill 'Email' field with '{user_email}'
-3. Fill 'Password' field with '{password}'
-4. Click the 'Sign In' button
-5. VERIFY that 'Welcome' is present.
-6. DONE.
+STEP 1: Login
+NAVIGATE to https://example.com/login
+Fill 'Email' field with '{user_email}'
+Fill 'Password' field with '{password}'
+Click the 'Sign In' button
+VERIFY that 'Welcome' is present.
+DONE.
 ```
 
 See the [ManulEngine README](https://github.com/alexbeatnik/ManulEngine) for the full step reference.
@@ -227,7 +237,7 @@ Some UI elements cannot be reliably targeted by heuristics or AI: React virtual 
 3. Map the URL to `"Checkout Page"` in `pages.json` (editable via the Config Panel).
 4. Write a normal `.hunt` step — no special syntax required:
    ```text
-   2. Fill 'React Datepicker' with '2026-12-25'
+   Fill 'React Datepicker' with '2026-12-25'
    ```
 
 The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are loaded automatically on engine startup — no extension configuration needed. Debug breakpoints, Test Explorer integration, and live output streaming all work exactly the same whether a step uses a custom control or the standard heuristic pipeline.
@@ -237,6 +247,12 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 ---
 
 ## Release Notes
+
+### 0.0.88
+- **🌐 Global Lifecycle Hooks** — create `manul_hooks.py` alongside your `.hunt` files and use `@before_all`, `@after_all`, `@before_group(tag=)`, `@after_group(tag=)` decorators from `manul_engine` to wire up suite-level setup and teardown in pure Python. Variables written to `ctx.variables` in any hook are injected into every matching hunt as `{placeholder}` data — no per-file `@var:` needed. Works identically whether running with `--workers 1` (sequential) or `--workers N` (parallel subprocesses): the orchestrator serialises shared variables into `MANUL_GLOBAL_VARS` before spawning workers so every browser process inherits the same state
+- **🧠 Deep Accessibility Heuristics** — element scoring now uses the HTML `name` attribute as a first-class signal (`name_attr` exact match: +3,000 points; substring: +1,000 points). This resolves long-standing issues with modern SPA design systems (React, Vue, Wikipedia Vector 2022 / Codex) where inputs use `aria-label` and `name` as the primary identifiers instead of visible text. No configuration change required — the improvement is automatic
+- **Suite-level failure semantics** — `@before_all` failure aborts the entire suite (all remaining hunts recorded as failed); `@after_all` always fires in the `finally` block. `@before_group` failure skips only the matching mission; `@after_group` still runs for it. Cleanup hooks continue past individual errors so teardown is never partially skipped
+- Core engine bump to **0.0.8.8**
 
 ### 0.0.87
 - **📊 HTML Reports** — new `manulEngine.htmlReport` toggle in Config Panel (“📊 Reporting & Retries” section); generates a self-contained dark-themed HTML report with dashboard stats, per-step accordion, and inline base64 screenshots after each run. Report is saved to `reports/manul_report.html` in the workspace root
@@ -269,8 +285,8 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 - **Two separate cache controls in config panel** — `controls_cache_enabled` is now labelled **Persistent Controls Cache** (file-based, disk, per-site across runs) and `semantic_cache_enabled` is labelled **Semantic Cache** (in-session `learned_elements`, +200,000 score boost within a single run, resets when the process ends); both default to enabled and can be toggled independently
 
 ### 0.0.83
-- **Inline `CALL PYTHON` steps** — `CALL PYTHON module.function` now works as a standard numbered step anywhere in the mission body (not just in hook blocks); use it to fetch OTPs, trigger backend jobs, or seed data mid-test without leaving the `.hunt` file
-- **🐍 Call Python button in Step Builder** — inserts a numbered `CALL PYTHON module_name.function_name` scaffold with a single click; `ManulEngine: Insert Inline CALL PYTHON Step` command also available in the Command Palette
+- **Inline `CALL PYTHON` steps** — `CALL PYTHON module.function` now works as an action step anywhere in the mission body (not just in hook blocks); use it to fetch OTPs, trigger backend jobs, or seed data mid-test without leaving the `.hunt` file
+- **🐍 Call Python button in Step Builder** — inserts a `CALL PYTHON module_name.function_name` scaffold with a single click; `ManulEngine: Insert Inline CALL PYTHON Step` command also available in the Command Palette
 - **Python Hooks** — `[SETUP]` / `[TEARDOWN]` blocks in `.hunt` files now invoke synchronous Python functions before/after the browser mission via `CALL PYTHON module.function`; setup failure skips mission + teardown; teardown always runs in a `finally` block
 - **Hooks buttons in Step Builder** — **🔧 Insert [SETUP]**, **🧹 Insert [TEARDOWN]**, and **🎯 Generate Demo Test** buttons added to the Step Builder sidebar
 - **`ManulEngine: Insert [SETUP] Block`**, **`ManulEngine: Insert [TEARDOWN] Block`**, **`ManulEngine: Generate Demo Test`** commands available in the Command Palette

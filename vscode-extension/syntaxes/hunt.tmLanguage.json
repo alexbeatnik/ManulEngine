@@ -28,6 +28,16 @@
     "step": {
       "patterns": [
         {
+          "name": "meta.step-header.hunt",
+          "match": "^\\s*(?:\\d+\\.\\s*)?\\b(STEP)\\s*(\\d*)\\s*(:)\\s*(.*)",
+          "captures": {
+            "1": { "name": "keyword.control.step.hunt" },
+            "2": { "name": "constant.numeric.step-number.hunt" },
+            "3": { "name": "punctuation.separator.hunt" },
+            "4": { "name": "entity.name.section.hunt" }
+          }
+        },
+        {
           "name": "meta.step.hunt",
           "begin": "^\\s*(\\d+\\.)",
           "beginCaptures": {

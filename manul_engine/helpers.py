@@ -38,13 +38,16 @@ def detect_mode(step: str) -> str:
 
 # Compiled patterns for system keyword detection (order matters).
 _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
+    # STEP must precede other keywords so "STEP 1: NAVIGATE..." is classified correctly.
+    # Anchored to line start so that STEP inside quoted labels is not matched.
+    ("logical_step", re.compile(r'^\s*(?:\d+\.\s*)?STEP\s*\d*\s*:')),
     ("navigate",    re.compile(r'\bNAVIGATE\b')),
     ("wait",        re.compile(r'\bWAIT\b')),
     ("scroll",      re.compile(r'\bSCROLL\b')),
     ("extract",     re.compile(r'\bEXTRACT\b')),
     ("verify",      re.compile(r'\bVERIFY\b')),
-    ("press_enter", re.compile(r'\bPRESS\s+ENTER\b')),
-    ("press",       re.compile(r'\bPRESS\b')),
+    ("press_enter", re.compile(r'^\s*(?:\d+\.\s*)?PRESS\s+ENTER\b')),
+    ("press",       re.compile(r'^\s*(?:\d+\.\s*)?PRESS\b')),
     ("right_click", re.compile(r'\bRIGHT\s+CLICK\b')),
     ("upload",      re.compile(r'\bUPLOAD\b')),
     ("scan_page",   re.compile(r'\bSCAN\s+PAGE\b')),
@@ -56,8 +59,32 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
 # Legacy pre-compiled system-step pattern kept for backwards compatibility.
 # Prefer classify_step() for step classification.
 RE_SYSTEM_STEP = re.compile(
-    r'\b(?:NAVIGATE|WAIT|SCROLL|EXTRACT|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|DEBUG|PAUSE|DONE)\b'
+    r'\b(?:STEP\s*\d*\s*:|NAVIGATE|WAIT|SCROLL|EXTRACT|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|DEBUG|PAUSE|DONE)\b'
 )
+
+# Extracts the description from a STEP marker line.
+# Matches: "STEP 1: Description" and "STEP: Description" (case-insensitive).
+# The stripped 1-based numbering prefix is handled by the caller.
+_RE_LOGICAL_STEP = re.compile(r'\bSTEP\s*(\d*)\s*:\s*(.*)', re.IGNORECASE)
+
+
+def parse_logical_step(step: str) -> "tuple[str | None, str | None]":
+    """Extract (number_or_None, description) from a logical STEP marker.
+
+    Returns (None, None) if the step is not a STEP marker.
+
+    Examples::
+
+        parse_logical_step("1. STEP 2: Navigate")  -> ("2", "Navigate")
+        parse_logical_step("3. STEP: Fill form")   -> (None, "Fill form")
+        parse_logical_step("1. Click button")       -> (None, None)
+    """
+    m = _RE_LOGICAL_STEP.search(step)
+    if m is None:
+        return None, None
+    num = m.group(1).strip() or None
+    desc = m.group(2).strip()
+    return num, desc
 
 
 # Pattern to strip quoted text before classification.
@@ -70,14 +97,22 @@ def classify_step(step: str) -> str:
     Quoted strings are stripped before matching so that keywords inside
     element labels (e.g. ``Click 'Press Here'``) are not misclassified.
 
-    The returned string is one of: ``"navigate"``, ``"wait"``, ``"scroll"``,
-    ``"extract"``, ``"verify"``, ``"press_enter"``, ``"press"``,
-    ``"right_click"``, ``"upload"``, ``"scan_page"``,
-    ``"call_python"``, ``"debug"``, ``"done"``, or ``"action"``.
+    The returned string is one of: ``"logical_step"``, ``"navigate"``,
+    ``"wait"``, ``"scroll"``, ``"extract"``, ``"verify"``,
+    ``"press_enter"``, ``"press"``, ``"right_click"``, ``"upload"``,
+    ``"scan_page"``, ``"call_python"``, ``"debug"``, ``"done"``,
+    or ``"action"``.
     """
+    # Fast-path: STEP markers are checked on the raw text BEFORE quote
+    # stripping so that apostrophes in descriptions (e.g. "Pallas's cat")
+    # never interfere with classification.  The pattern is anchored to line
+    # start so "STEP 1:" inside a quoted label does not trigger a false match.
+    if _STEP_PATTERNS[0][1].search(step.upper()):  # logical_step
+        return "logical_step"
+
     # Remove quoted substrings so keywords inside labels are invisible.
     s_up = _RE_QUOTED.sub("", step).upper()
-    for kind, pattern in _STEP_PATTERNS:
+    for kind, pattern in _STEP_PATTERNS[1:]:
         if pattern.search(s_up):
             return kind
     return "action"

@@ -6,9 +6,10 @@
 # CALL PYTHON demo_helpers.inject_test_session
 # [END SETUP]
 
-1. NAVIGATE to "https://example.com"
-2. Click "More information..." link
-3. VERIFY that "IANA" is present
+STEP 1: Navigate and verify
+NAVIGATE to "https://example.com"
+Click "More information..." link
+VERIFY that "IANA" is present
 
 # [TEARDOWN]
 # CALL PYTHON demo_helpers.clean_database

@@ -105,7 +105,6 @@ async def run_tests(log_path: str) -> bool:
         if f.startswith("test_") and f.endswith(".py")
     )
 
-    all_ok = True
     suite_results: list[tuple[str, int, int]] = []
 
     try:
@@ -115,9 +114,7 @@ async def run_tests(log_path: str) -> bool:
             if runner is None:
                 continue
             before = len(score_lines)
-            ok = await runner()
-            if not ok:
-                all_ok = False
+            await runner()
             for sl in score_lines[before:]:
                 m = re.search(r"(\d+)/(\d+)", sl)
                 if m:
@@ -142,4 +139,4 @@ async def run_tests(log_path: str) -> bool:
         sys.stdout = real_stdout
         tee.close()
 
-    return all_ok
+    return total_tests > 0 and total_passed == total_tests
