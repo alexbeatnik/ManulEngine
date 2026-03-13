@@ -120,7 +120,7 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         const isSpecialInput = tag === 'INPUT'
             && (el.type === 'file' || el.type === 'checkbox' || el.type === 'radio');
 
-        // ── Visibility (zero layout thrashing — no getComputedStyle) ──
+        // ── Visibility (minimal getComputedStyle in fallback only) ────
         let hidden = false;
         if (hasCheckVis) {
             if (!el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) {
@@ -128,7 +128,10 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
                 hidden = true;
             }
         } else {
-            if (!(el.offsetWidth > 0 && el.offsetHeight > 0)) {
+            const cs = window.getComputedStyle(el);
+            const hasLayout = el.offsetWidth > 0 && el.offsetHeight > 0;
+            const styleHidden = cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0';
+            if (!hasLayout || styleHidden) {
                 if (!isSpecialInput) return;
                 hidden = true;
             }
@@ -150,7 +153,12 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
                 const lr = linked.getBoundingClientRect();
                 const vis = hasCheckVis
                     ? linked.checkVisibility()
-                    : (linked.offsetWidth > 0 || linked.offsetHeight > 0);
+                    : (() => {
+                        const cs = window.getComputedStyle(linked);
+                        const hasLayout = linked.offsetWidth > 0 || linked.offsetHeight > 0;
+                        const styleHidden = cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0';
+                        return hasLayout && !styleHidden;
+                    })();
                 if (lr.width > 2 && lr.height > 2 && vis) return;
             }
         }
@@ -258,7 +266,9 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             .map(i => (typeof i.className === 'string' ? i.className : (i.getAttribute('class') || '')))
             .join(' ').replace(/[-_]/g, ' ').toLowerCase();
 
-        const htmlId    = el.id || el.getAttribute('for') || '';
+        const htmlId    = el.tagName === 'LABEL'
+            ? (el.getAttribute('for') || el.id || '')
+            : (el.id || el.getAttribute('for') || '');
         let ariaLabel = el.getAttribute('aria-label') || el.getAttribute('title') || '';
         if (!ariaLabel) {
             const labelledBy = el.getAttribute('aria-labelledby');

@@ -389,21 +389,22 @@ class _ActionsMixin:
                 return False
         return False
 
-    async def _do_drag(self, page, step: str, expected: list[str], source_id: int) -> bool:
+    async def _do_drag(self, page, step: str, expected: list[str], source_el: dict) -> bool:
         step_l = step.lower()
         target_text = ""
         m_to = re.search(r"to\s+['\"](.+?)['\"]", step_l)
         if m_to: target_text = m_to.group(1)
         elif len(expected) >= 2: target_text = expected[-1]
 
+        _src_key = (source_el.get("frame_index", 0), source_el["id"])
         raw_els = await self._snapshot(page, "drag", [target_text])
-        dest = next((el for el in raw_els if el["id"] != source_id and target_text.lower() in el["name"].lower()), None)
+        dest = next((el for el in raw_els if (el.get("frame_index", 0), el["id"]) != _src_key and target_text.lower() in el["name"].lower()), None)
         if not dest: return False
 
-        src_el = next((el for el in raw_els if el["id"] == source_id), raw_els[0])
-        src_frame  = self._frame_for(page, src_el)
+        src_snap = next((el for el in raw_els if (el.get("frame_index", 0), el["id"]) == _src_key), raw_els[0])
+        src_frame  = self._frame_for(page, src_snap)
         dest_frame = self._frame_for(page, dest)
-        src_loc  = src_frame.locator(f"xpath={src_el['xpath']}").first
+        src_loc  = src_frame.locator(f"xpath={src_snap['xpath']}").first
         dest_loc = dest_frame.locator(f"xpath={dest['xpath']}").first
 
         try:
@@ -467,14 +468,15 @@ class _ActionsMixin:
                         print("    💀 SELF-HEALING FAILED: No valid elements found after retries.")
                     return False
 
-            if el["id"] in failed_ids: continue
+            _ek = (el.get("frame_index", 0), el["id"])
+            if _ek in failed_ids: continue
 
             self.last_xpath = el["xpath"]
             name, xpath, is_sel, is_shad, el_id, tag, itype = el["name"], el["xpath"], el.get("is_select"), el.get("is_shadow"), el["id"], el.get("tag_name", ""), el.get("input_type", "")
             frame = self._frame_for(page, el)
 
             if mode == "input" and itype in ("radio", "checkbox", "button", "submit", "image"):
-                failed_ids.add(el_id)
+                failed_ids.add(_ek)
                 self.last_xpath = None
                 continue
 
@@ -490,7 +492,7 @@ class _ActionsMixin:
                 print(f"    🔍 Located '{self._fmt_el_name(name)}'")
                 return True
 
-            if mode == "drag": return await self._do_drag(page, step, expected, el_id)
+            if mode == "drag": return await self._do_drag(page, step, expected, el)
 
             loc = frame.locator(f"xpath={xpath}").first
             _in_debug = getattr(self, "debug_mode", False) or step_idx in getattr(self, "break_steps", set())
@@ -617,7 +619,7 @@ class _ActionsMixin:
 
             except Exception as ex:
                 print(f"    ⚠️  Element not actionable (attempt {attempt+1}/3), trying next candidate...")
-                failed_ids.add(el_id)
+                failed_ids.add(_ek)
                 self.last_xpath = None
                 await asyncio.sleep(1)
 

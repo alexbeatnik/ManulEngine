@@ -221,10 +221,12 @@ class DOMScorer:
     def _score_cache_reuse(self, el: dict) -> float:
         """Semantic cache (1.0) and blind contextual reuse (0.05).
 
-        Returns a float in ``[0.0, 1.0]``.  Combined with
-        ``WEIGHTS["cache"] = 2.0`` and the module-level ``SCALE``, a full
-        cache hit contributes ``2 * SCALE`` (≈355,556 with
-        ``SCALE = 177_778``) to the final integer score.
+        Returns a float in ``[0.0, 1.05]``.  Combined with
+        ``WEIGHTS["cache"] = 2.0`` and the module-level ``SCALE``, a pure
+        semantic cache hit contributes ``2 * SCALE`` (≈355,556 with
+        ``SCALE = 177_778``) to the final integer score; with an additional
+        blind-context reuse signal the maximum contribution is
+        ``2.1 * SCALE``.
         """
         score = 0.0
         learned = self._learned_entry
@@ -232,7 +234,7 @@ class DOMScorer:
             score += 1.0
         if self._is_blind and self._last_xpath and el["xpath"] == self._last_xpath:
             score += 0.05
-        return min(score, 1.0)
+        return min(score, 1.05)
 
     def _score_text_match(self, el: dict) -> tuple[float, bool]:
         """Text matching across aria, placeholder, data-qa, name, icons, name_attr.

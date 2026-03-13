@@ -640,7 +640,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         els = []
         for attempt in range(5):
             raw_els = await self._snapshot(page, mode, [t.lower() for t in search_texts])
-            els = [e for e in raw_els if e["id"] not in _skip]
+            els = [e for e in raw_els if (e.get("frame_index", 0), e["id"]) not in _skip]
 
             if not els:
                 if attempt < 4:
@@ -719,7 +719,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             if idx is None:
                 if failed_ids is not None:
                     for c in top:
-                        failed_ids.add(c["id"])
+                        failed_ids.add((c.get("frame_index", 0), c["id"]))
                 return None
             ai_choice = top[idx]
 
@@ -768,7 +768,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         if idx is None:
             if failed_ids is not None:
                 for c in top:
-                    failed_ids.add(c["id"])
+                    failed_ids.add((c.get("frame_index", 0), c["id"]))
             return None
 
         ai_choice = top[idx]
