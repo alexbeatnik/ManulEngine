@@ -266,9 +266,8 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             .map(i => (typeof i.className === 'string' ? i.className : (i.getAttribute('class') || '')))
             .join(' ').replace(/[-_]/g, ' ').toLowerCase();
 
-        const htmlId    = el.tagName === 'LABEL'
-            ? (el.getAttribute('for') || el.id || '')
-            : (el.id || el.getAttribute('for') || '');
+        const htmlId    = el.id || el.getAttribute('for') || '';
+        const elLabelFor = el.tagName === 'LABEL' ? (el.getAttribute('for') || '') : '';
         let ariaLabel = el.getAttribute('aria-label') || el.getAttribute('title') || '';
         if (!ariaLabel) {
             const labelledBy = el.getAttribute('aria-labelledby');
@@ -336,6 +335,7 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             disabled:      el.hasAttribute('disabled') || el.disabled || false,
             aria_disabled: el.getAttribute('aria-disabled') || '',
             name_attr:     nameAttr,
+            label_for:     elLabelFor,
         };
     });
 }"""

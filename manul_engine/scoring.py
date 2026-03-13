@@ -7,11 +7,12 @@ Architecture:
                    caching, and modular scoring methods.
   score_elements — backward-compatible public function delegating to DOMScorer.
 
-Each ``_score_*`` method returns a non-negative float representing the
-strength of that heuristic category for a given element.  Most
-implementations are tuned so that a single strong signal is ≈1.0,
-but multiple sub-signals within the same category may **stack** and
-push the score above 1.0.
+Each ``_score_*`` method returns a float representing the strength of
+that heuristic category for a given element.  Most categories are
+non-negative and tuned so that a single strong signal is ≈1.0, but
+multiple sub-signals within the same category may **stack** and push
+the score above 1.0.  The semantics channel may be negative when used
+for cross-mode penalties.
 ``_calculate_penalties`` returns a **multiplier** in ``[0.0, 1.0]``.
 ``score_all()`` combines per-category scores via a ``WEIGHTS`` dictionary
 and converts the weighted total to the integer scale consumed by
@@ -180,6 +181,7 @@ class DOMScorer:
         el["_role"]       = sl(el.get("role", ""))
         el["_ph"]         = sl(el.get("placeholder", ""))
         el["_name_attr"]  = str(el.get("name_attr", "")).lower()
+        el["_label_for"]  = str(el.get("label_for", "")).lower()
         el["_dev_names"]  = f"{el['_html_id']} {el['_class_name']} {el['_data_qa']}"
 
         # Name decomposition
@@ -483,11 +485,11 @@ class DOMScorer:
 
         # ── File uploads ──────────────────────────────────────────
         if tag == "label":
-            linked_id = str(el.get("_html_id", ""))
-            if linked_id:
+            label_for = el.get("_label_for", "")
+            if label_for:
                 linked_el = next(
                     (e for e in all_els
-                     if str(e.get("_html_id", "")) == linked_id
+                     if str(e.get("_html_id", "")) == label_for
                      and str(e.get("input_type", "")).lower() == "file"),
                     None,
                 )
@@ -496,7 +498,7 @@ class DOMScorer:
         if itype == "file":
             has_label = any(
                 str(e.get("tag_name", "")).lower() == "label"
-                and str(e.get("_html_id", "")) == el["_html_id"]
+                and str(e.get("_label_for", "")) == el["_html_id"]
                 for e in all_els
             )
             if has_label:

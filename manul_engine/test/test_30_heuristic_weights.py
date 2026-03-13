@@ -5,7 +5,7 @@ from manul_engine import ManulEngine
 from manul_engine.scoring import DOMScorer, WEIGHTS, SCALE
 
 # ─────────────────────────────────────────────────────────────────────────────
-# HEURISTIC WEIGHTING LAB — DOMScorer Priority Hierarchy (30 Tests)
+# HEURISTIC WEIGHTING LAB — DOMScorer Priority Hierarchy
 #
 # Validates:
 # 1. data-qa exact match dominates over partial text/aria/placeholder
