@@ -7,13 +7,18 @@ Architecture:
                    caching, and modular scoring methods.
   score_elements — backward-compatible public function delegating to DOMScorer.
 
-Scoring categories (additive integer system):
-  1. Cache Reuse   — semantic cache (+200k) and blind context reuse (+10k)
-  2. Text Match    — aria/placeholder, data-qa, name, icons, name_attr
-  3. Attributes    — target_field, html_id variants, context words, target words
-  4. Semantics     — element type, role, mode synergy, cross-mode penalties
-  5. Penalties     — disabled, hidden/off-screen
-  6. Proximity     — DOM depth-based form context bonus
+Each ``_score_*`` method returns a **normalised float** in ``[0.0, 1.0]``.
+``_calculate_penalties`` returns a **multiplier** in ``[0.0, 1.0]``.
+``score_all()`` combines them via a ``WEIGHTS`` dictionary and converts to
+the integer scale consumed by ``core.py`` (via ``SCALE``).
+
+Scoring categories:
+  1. Cache Reuse  — semantic cache (1.0) and blind context reuse (0.05)
+  2. Text Match   — aria/placeholder, data-qa, name, icons, name_attr
+  3. Attributes   — target_field, html_id variants, context words
+  4. Semantics    — element type, role, mode synergy, cross-mode penalties
+  5. Penalties    — disabled (×0.0), hidden (×0.1) → multiplier
+  6. Proximity    — DOM depth-based form context bonus
 """
 
 from __future__ import annotations
@@ -73,22 +78,33 @@ class _SearchTerm:
         )
 
 
+# ── Weighting & scale constants ──────────────────────────────────────────────
+
+WEIGHTS: dict[str, float] = {
+    "cache":      2.0,
+    "text":       0.45,
+    "attributes": 0.25,
+    "semantics":  0.60,
+    "proximity":  0.10,
+}
+
+# Converts the weighted float into the integer range expected by
+# ``core.py`` thresholds (200k for semantic cache, 10k for confidence, etc.)
+# Derived: SCALE = 3000 / (name_attr_exact * W_text) = 3000 / (0.0375 * 0.45)
+SCALE: int = 177_778
+
+
 # ── DOMScorer class ───────────────────────────────────────────────────────────
 
 class DOMScorer:
     """Heuristic DOM element scorer.
 
     Instantiated once per ``score_elements()`` call with pre-computed step-level
-    features.  Provides modular scoring methods that each return an integer
-    score contribution (additive system preserving legacy thresholds).
-
-    Score ranges (current additive system):
-      Cache reuse:    up to +200,000
-      Text match:     up to +80,000 per search term
-      Attributes:     up to +15,000
-      Semantics:      up to +60,000 (mode synergy), down to -200,000 (cross-mode)
-      Penalties:      down to -50,000
-      Proximity:      up to +2,000
+    features.  Every ``_score_*`` method returns a **normalised float** —
+    ``1.0`` represents a single perfect signal; stacking multiple strong signals
+    can exceed ``1.0``.  ``_calculate_penalties`` returns a **multiplier** in
+    ``[0.0, 1.0]``.  ``score_all()`` combines them via ``WEIGHTS`` and applies
+    ``SCALE`` to produce the integer scores consumed by the rest of the engine.
     """
 
     def __init__(
@@ -194,24 +210,31 @@ class DOMScorer:
         el["_is_real_checkbox"] = (tag == "input" and itype == "checkbox") or el["_role"] == "checkbox"
         el["_is_real_radio"]    = (tag == "input" and itype == "radio")    or el["_role"] == "radio"
 
-    # ── Scoring methods ───────────────────────────────────────────────────
+    # ── Scoring methods (return normalised floats) ─────────────────────
 
-    def _score_cache_reuse(self, el: dict) -> int:
-        """Semantic cache reuse (+200k) and blind contextual reuse (+10k)."""
-        score = 0
+    def _score_cache_reuse(self, el: dict) -> float:
+        """Semantic cache (1.0) and blind contextual reuse (0.05).
+
+        Returns a float in ``[0.0, 1.0]``.  Combined with
+        ``WEIGHTS["cache"] = 2.0`` and ``SCALE = 100_000``, a full cache hit
+        contributes 200,000 to the final integer score.
+        """
+        score = 0.0
         learned = self._learned_entry
         if learned and el["name"] == learned["name"] and el["_tag"] == learned["tag"]:
-            score += 200_000
+            score += 1.0
         if self._is_blind and self._last_xpath and el["xpath"] == self._last_xpath:
-            score += 10_000
-        return score
+            score += 0.05
+        return min(score, 1.0)
 
-    def _score_text_match(self, el: dict) -> tuple[int, bool]:
+    def _score_text_match(self, el: dict) -> tuple[float, bool]:
         """Text matching across aria, placeholder, data-qa, name, icons, name_attr.
 
         Returns ``(score, is_perfect_text_match)``.
+        Scores are additive normalised floats (0.625 = strong single match,
+        can exceed 1.0 when multiple strong signals stack).
         """
-        score = 0
+        score = 0.0
         is_perfect = False
 
         name       = el["_name"]
@@ -233,55 +256,58 @@ class DOMScorer:
 
             # ── Aria / placeholder exact match ────────────────────
             if tl == aria or tl == ph:
-                score += 50_000
+                score += 0.625          # 50k / 80k
                 is_perfect = True
             elif len(tl) > 2 and aria.startswith(tl + " "):
-                score += 3_000
+                score += 0.0375         # 3k / 80k
 
             # ── data-qa match ─────────────────────────────────────
             if term.dashed == data_qa or tl == data_qa:
-                score += 80_000
+                score += 1.0            # perfect data-qa
                 is_perfect = True
             elif term.dashed in data_qa:
-                score += 5_000
+                score += 0.0625         # 5k / 80k
 
             # ── Name matching ─────────────────────────────────────
             if tl == name_core or tl == name or tl == name_cc or tl == ctx_prefix:
-                score += 50_000
+                score += 0.625          # 50k / 80k
                 is_perfect = True
             elif name_core.startswith(tl) or name_core.endswith(tl) or ctx_prefix.startswith(tl):
-                score += 2_000
+                score += 0.025          # 2k / 80k
             elif tl in name_core or tl in ctx_prefix:
                 extra_words = max(0, len(name_core.split()) - len(tl.split()))
-                score += max(200, 1_000 - extra_words * 150)
+                score += max(0.0025, 0.0125 - extra_words * 0.001875)
             elif tl in name:
                 extra_words = max(0, len(name.split()) - len(tl.split()))
-                score += max(100, 800 - extra_words * 100)
+                score += max(0.00125, 0.01 - extra_words * 0.00125)
             else:
                 overlap = term.words & name_words
                 if overlap:
-                    score += len(overlap) * 150
+                    score += len(overlap) * 0.001875
                 if term.words and all(w in html_id for w in term.words):
-                    score += 2_000
+                    score += 0.025
 
             # ── html_id / icon substring ──────────────────────────
             if tl in html_id:
-                score += 600
+                score += 0.0075         # 600 / 80k
             if any(w in icons for w in tl.split() if len(w) > 3):
-                score += 700
+                score += 0.00875        # 700 / 80k
 
             # ── HTML name attribute ───────────────────────────────
             if name_attr:
                 if tl == name_attr:
-                    score += 3_000
+                    score += 0.0375     # 3k / 80k
                 elif len(name_attr) >= 3 and name_attr in tl:
-                    score += 1_000
+                    score += 0.0125     # 1k / 80k
 
         return score, is_perfect
 
-    def _score_attributes(self, el: dict) -> int:
-        """Target-field matching, html_id variants, context words, target-word signals."""
-        score   = 0
+    def _score_attributes(self, el: dict) -> float:
+        """Target-field matching, html_id variants, context words, target-word signals.
+
+        Returns a normalised float (can exceed 1.0 with stacked signals).
+        """
+        score   = 0.0
         name    = el["_name"]
         html_id = el["_html_id"]
         ph      = el["_ph"]
@@ -291,16 +317,16 @@ class DOMScorer:
         # ── target_field matching ─────────────────────────────────
         tf = self._target_field
         if tf and (tf in name or tf == ph):
-            score += 5_000
+            score += 0.2
         if tf and html_id and html_id in (
             tf.replace(" ", "_"), tf.replace(" ", "-"), tf.replace(" ", ""),
         ):
-            score += 15_000
+            score += 0.6
 
         # ── Search-text → html_id variant matching ───────────────
         for term in self._terms:
             if term.text and html_id and html_id in term.id_variants:
-                score += 10_000
+                score += 0.4
 
         # ── Context words in developer names ──────────────────────
         if self._context_words:
@@ -310,19 +336,22 @@ class DOMScorer:
             dev_text = f"{cls_n} {id_n} {dqa_n}"
             ctx_hits = sum(1 for w in self._context_words if w in dev_text)
             if ctx_hits:
-                score += ctx_hits * 2_000
+                score += min(ctx_hits * 0.08, 0.4)
 
         # ── Target-word signals ───────────────────────────────────
-        score += sum(10 for w in self._target_words if w in name)
-        score += sum(8  for w in self._target_words if len(w) > 3 and w in icons)
-        score += sum(15 for w in self._target_words if len(w) > 3 and w in html_id)
-        score += sum(12 for w in self._target_words if len(w) > 3 and w in aria)
+        score += sum(0.004 for w in self._target_words if w in name)
+        score += sum(0.003 for w in self._target_words if len(w) > 3 and w in icons)
+        score += sum(0.006 for w in self._target_words if len(w) > 3 and w in html_id)
+        score += sum(0.005 for w in self._target_words if len(w) > 3 and w in aria)
 
         return score
 
-    def _score_semantics(self, el: dict, is_perfect: bool, all_els: list[dict]) -> int:
-        """Element type hints, mode synergy, cross-mode penalties, structural signals."""
-        score     = 0
+    def _score_semantics(self, el: dict, is_perfect: bool, all_els: list[dict]) -> float:
+        """Element type hints, mode synergy, cross-mode penalties, structural signals.
+
+        Returns a normalised float (negative = cross-mode penalty).
+        """
+        score     = 0.0
         tag       = el["_tag"]
         itype     = el["_itype"]
         role      = el["_role"]
@@ -330,71 +359,71 @@ class DOMScorer:
 
         # ── Shadow DOM bonus ──────────────────────────────────────
         if "shadow" in self._step_l and el.get("is_shadow"):
-            score += 50_000
+            score += 0.5
 
         # ── Element type hints ────────────────────────────────────
         if self._wants_button:
             if tag == "input" and itype == "submit":
-                score += 800
+                score += 0.016
             elif el["_is_native_button"]:
-                score += 500
+                score += 0.01
             elif el["_is_real_button"]:
-                score += 300
+                score += 0.006
             if el["_is_real_link"]:
-                score -= 300
+                score -= 0.006
             if _RE_BTN_DEV.search(dev_names):
-                score += 1500
+                score += 0.03
 
         if self._wants_image and tag == "img":
-            score += 3000
+            score += 0.06
 
         if "textarea" in self._step_l and tag == "textarea":
-            score += 5000
+            score += 0.1
 
         if self._wants_input:
             if el["_is_real_input"]:
-                score += 500
+                score += 0.01
             if el["_is_real_button"]:
-                score -= 300
+                score -= 0.006
             if itype:
                 if itype in self._step_l or (self._target_field and itype in self._target_field):
-                    score += 5000
+                    score += 0.1
             if _RE_INP_DEV.search(dev_names):
-                score += 1500
+                score += 0.03
 
         # ── Strict checkbox / radio filtering ─────────────────────
         if self._wants_checkbox:
             if el["_is_real_checkbox"]:
-                score += 50_000
+                score += 0.5
             elif _RE_CHK_DEV.search(dev_names):
-                score += 20_000
+                score += 0.2
             else:
-                score -= 50_000
+                score -= 1.0
         elif self._wants_radio:
             if el["_is_real_radio"]:
-                score += 50_000
+                score += 0.5
                 if el["_context_prefix"] and any(
                     term.text == el["_context_prefix"] for term in self._terms if term.text
                 ):
-                    score += 5_000
+                    score += 0.1
             elif _RE_RAD_DEV.search(dev_names):
-                score += 20_000
+                score += 0.2
             else:
-                score -= 50_000
+                score -= 1.0
 
         if self._wants_select:
             if _RE_SEL_DEV.search(dev_names):
-                score += 2000
+                score += 0.04
 
         # ── Native select options ─────────────────────────────────
         if self._mode == "select" and el.get("is_select"):
-            score += 5_000
+            score += 0.1
             m = _RE_OPTIONS.search(el["_name"])
             options_text = m.group(1) if m else el["_name"]
             for term in self._terms:
                 tl = term.text
                 if tl and tl not in ("dropdown", "select", "list", "menu") and tl in options_text:
-                    score += 60_000
+                    score += 0.6
                     break
 
         # ── Mode synergy ──────────────────────────────────────────
@@ -403,45 +432,45 @@ class DOMScorer:
                 el["_is_real_button"] or el["_is_real_link"]
                 or role in ("button", "link", "menuitem", "tab", "switch")
             ):
-                score += 50_000
+                score += 0.5
             elif self._mode == "input" and el["_is_real_input"]:
-                score += 50_000
+                score += 0.5
             elif self._mode == "select" and (
                 el.get("is_select") or tag == "option"
                 or role in ("option", "menuitem", "combobox", "button")
                 or tag == "li"
             ):
-                score += 50_000
+                score += 0.5
         else:
             if self._mode in ("clickable", "hover"):
                 if (el["_is_real_button"] or el["_is_real_link"]
                         or role in ("button", "link", "menuitem", "tab", "switch")):
-                    score += 1_000
+                    score += 0.02
                 elif tag in ("li", "summary", "td", "th", "tr"):
-                    score += 500
+                    score += 0.01
             elif self._mode == "input":
                 if el["_is_real_input"]:
-                    score += 1_000
+                    score += 0.02
             elif self._mode == "select":
                 if el.get("is_select"):
-                    score += 1_500
+                    score += 0.03
                 elif role in ("listbox", "combobox", "option", "menuitem", "button") or tag == "option":
-                    score += 1_000
+                    score += 0.02
                 elif tag == "li":
-                    score += 800
+                    score += 0.016
 
         # ── Cross-mode penalties ──────────────────────────────────
         if self._mode == "select":
             if el["_is_real_checkbox"] and not self._wants_checkbox:
-                score -= 50_000
+                score -= 1.0
             if el["_is_real_radio"] and not self._wants_radio:
-                score -= 50_000
+                score -= 1.0
         elif self._mode == "input":
             if el["_is_real_checkbox"] or el["_is_real_radio"]:
-                score -= 50_000
+                score -= 1.0
         elif self._mode == "clickable":
             if el["_is_real_input"] and not el["_is_native_button"] and self._wants_button:
-                score -= 200_000
+                score -= 1.0
 
         # ── File uploads ──────────────────────────────────────────
         if tag == "label":
@@ -454,7 +483,7 @@ class DOMScorer:
                     None,
                 )
                 if linked_el:
-                    score += 2_000
+                    score += 0.04
         if itype == "file":
             has_label = any(
                 str(e.get("tag_name")) == "label"
@@ -462,33 +491,41 @@ class DOMScorer:
                 for e in all_els
             )
             if has_label:
-                score -= 3_000
+                score -= 0.06
 
         # ── Blind icon clicks ─────────────────────────────────────
         if self._is_blind and not self._has_search_texts:
             for w in self._target_words:
                 if len(w) > 3 and w in el["_icons"]:
-                    score += 3_000
+                    score += 0.06
                 if len(w) > 3 and w in el["_html_id"]:
-                    score += 1_500
+                    score += 0.03
                 if len(w) > 3 and w in el["_aria"]:
-                    score += 1_500
+                    score += 0.03
 
         return score
 
-    def _calculate_penalties(self, el: dict) -> int:
-        """Penalties for disabled and off-screen (hidden) elements."""
-        score = 0
+    def _calculate_penalties(self, el: dict) -> float:
+        """Penalty multiplier for disabled and off-screen (hidden) elements.
+
+        Returns a float in ``[0.0, 1.0]``:
+        - ``1.0``  — normal element (no penalty)
+        - ``0.1``  — hidden / off-screen element
+        - ``0.0``  — disabled element (kills the score)
+        """
         if el.get("disabled") or el.get("aria_disabled") == "true":
-            score -= 50_000
+            return 0.0
         if el["_is_hidden"]:
-            score -= 5_000
-        return score
+            return 0.1
+        return 1.0
 
-    def _score_proximity(self, el: dict) -> int:
-        """DOM proximity bonus based on shared xpath depth with last resolved element."""
+    def _score_proximity(self, el: dict) -> float:
+        """DOM proximity bonus based on shared xpath depth with last resolved element.
+
+        Returns a float in ``[0.0, 1.0]``.
+        """
         if not self._last_xpath or not el.get("xpath"):
-            return 0
+            return 0.0
         last_parts = self._last_xpath.split("/")
         curr_parts = el["xpath"].split("/")
         common_depth = 0
@@ -497,12 +534,20 @@ class DOMScorer:
                 common_depth += 1
             else:
                 break
-        return min(common_depth, 5) * 400
+        return min(common_depth, 5) * 0.2
 
     # ── Orchestrator ──────────────────────────────────────────────────
 
     def score_all(self, els: list[dict]) -> list[dict]:
-        """Pre-process, score, and sort elements by score (descending)."""
+        """Pre-process, score, and sort elements by score (descending).
+
+        Combines normalised ``[0.0, 1.0]`` sub-scores via the ``WEIGHTS``
+        dictionary, applies the penalty multiplier, and scales the result
+        to the integer range expected by ``core.py``.
+        """
+        w = WEIGHTS
+        scale = SCALE
+
         # Phase 1: attach normalised strings (single pass)
         for el in els:
             self._preprocess(el)
@@ -513,17 +558,18 @@ class DOMScorer:
             text_score, is_perfect = self._score_text_match(el)
             attr_score             = self._score_attributes(el)
             sem_score              = self._score_semantics(el, is_perfect, els)
-            penalty_score          = self._calculate_penalties(el)
-            proximity_score        = self._score_proximity(el)
+            penalty_mult           = self._calculate_penalties(el)
+            prox_score             = self._score_proximity(el)
 
-            el["score"] = (
-                cache_score
-                + text_score
-                + attr_score
-                + sem_score
-                + penalty_score
-                + proximity_score
+            base = (
+                text_score * w["text"]
+                + attr_score * w["attributes"]
+                + sem_score * w["semantics"]
+                + prox_score * w["proximity"]
             )
+            weighted = (base + cache_score * w["cache"]) * penalty_mult
+
+            el["score"] = round(weighted * scale)
 
         return sorted(els, key=lambda x: x.get("score", 0), reverse=True)
 
