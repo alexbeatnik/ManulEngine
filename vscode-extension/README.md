@@ -248,6 +248,10 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 
 ## Release Notes
 
+### 0.0.89
+- **⚙️ Scoring Engine Refactoring** — heuristic scoring logic refactored into a modular `DOMScorer` class with pre-compiled regex patterns, per-element string pre-processing, and isolated scoring methods (`_score_text_match`, `_score_attributes`, `_score_semantics`, `_calculate_penalties`, `_score_proximity`). Zero behavioral changes — all 1726 tests pass identically
+- Core engine bump to **0.0.8.9**
+
 ### 0.0.88
 - **🌐 Global Lifecycle Hooks** — create `manul_hooks.py` alongside your `.hunt` files and use `@before_all`, `@after_all`, `@before_group(tag=)`, `@after_group(tag=)` decorators from `manul_engine` to wire up suite-level setup and teardown in pure Python. Variables written to `ctx.variables` in any hook are injected into every matching hunt as `{placeholder}` data — no per-file `@var:` needed. Works identically whether running with `--workers 1` (sequential) or `--workers N` (parallel subprocesses): the orchestrator serialises shared variables into `MANUL_GLOBAL_VARS` before spawning workers so every browser process inherits the same state
 - **🧠 Deep Accessibility Heuristics** — element scoring now uses the HTML `name` attribute as a first-class signal (`name_attr` exact match: +3,000 points; substring: +1,000 points). This resolves long-standing issues with modern SPA design systems (React, Vue, Wikipedia Vector 2022 / Codex) where inputs use `aria-label` and `name` as the primary identifiers instead of visible text. No configuration change required — the improvement is automatic

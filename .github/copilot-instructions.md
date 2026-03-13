@@ -22,7 +22,7 @@ Current operating mode in this repo is typically **mixed**:
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.8
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.9
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
@@ -31,7 +31,7 @@ manul_engine/
   reporting.py             StepResult, MissionResult, RunSummary dataclasses
   reporter.py              Self-contained HTML report generator (dark theme, native <details>/<summary> accordions, Flexbox step layout, base64 screenshots)
   prompts.py               JSON config loader, thresholds, LLM prompt templates
-  scoring.py               score_elements() — pure function, 20+ heuristic rules
+  scoring.py               DOMScorer class — pre-compiled regex, modular scoring methods, score_elements() backward-compatible API
   js_scripts.py            All JS injected into the browser (includes SCAN_JS)
   scanner.py               Smart Page Scanner — scan_page(), build_hunt(), scan_main()
   helpers.py               substitute_memory(), extract_quoted(), env_bool(), detect_mode(), classify_step(), timing constants
@@ -65,7 +65,7 @@ tests/
   demo_login.hunt         integration: login with @var: static variables
   demo_variables.hunt     integration: @var: + CALL PYTHON into {var} combined
 vscode-extension/
-  package.json              Extension manifest (v0.0.88)
+  package.json              Extension manifest (v0.0.89)
   src:
     extension.ts            Activation, command registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
@@ -289,7 +289,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 ## Code patterns to follow
 
 * Import: `from manul_engine import ManulEngine` (never `engine` or `framework`).
-* `scoring.py` is **stateless** — pure function, receives `learned_elements` and `last_xpath` as kwargs.
+* `scoring.py` owns `DOMScorer` class — stateless per invocation, pre-compiled regex at module level. `score_elements()` is the backward-compatible entry point that delegates to `DOMScorer.score_all()`. Receives `learned_elements` and `last_xpath` as kwargs.
 * **Safety first in `scoring.py`:** Always cast fetched attributes using `str(el.get("...", ""))`. JavaScript can pass objects (like `SVGAnimatedString` for SVG icons) instead of strings, which will crash Python's `.lower()`.
 * `actions.py` is a **mixin** (`_ActionsMixin`) inherited by `ManulEngine` in `core.py`.
 * `cache.py` is a **mixin** (`_ControlsCacheMixin`) inherited by `ManulEngine` in `core.py`. It owns all persistent per-site controls-cache logic.

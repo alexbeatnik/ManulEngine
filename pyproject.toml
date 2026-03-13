@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "manul-engine"
-version = "0.0.8.8"
+version = "0.0.8.9"
 description = "Resilient neuro-symbolic browser automation framework powered by Playwright and local LLMs (Ollama)"
 readme = "README.md"
 license = { text = "Apache-2.0" }
