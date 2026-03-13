@@ -575,7 +575,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
         Each element dict gets a ``frame_index`` so the action layer can
         route clicks / fills to the correct Playwright Frame object.
-        Cross-origin or detached frames are silently skipped.
+        Cross-origin or detached child frames are silently skipped;
+        unexpected errors in the main frame are surfaced to aid debugging.
         """
         args = [mode, texts or []]
         all_elements: list[dict] = []
@@ -592,7 +593,9 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                     if "closed" in str(exc).lower() and attempt < 2:
                         await asyncio.sleep(1.5)
                         continue
-                    break  # unreachable / cross-origin — skip frame
+                    if idx == 0:
+                        raise
+                    break  # child frame unreachable / cross-origin — skip
 
         return all_elements
 

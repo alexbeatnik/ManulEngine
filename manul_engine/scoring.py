@@ -7,13 +7,19 @@ Architecture:
                    caching, and modular scoring methods.
   score_elements — backward-compatible public function delegating to DOMScorer.
 
-Each ``_score_*`` method returns a **normalised float** in ``[0.0, 1.0]``.
+Each ``_score_*`` method returns a non-negative float representing the
+strength of that heuristic category for a given element.  Most
+implementations are tuned so that a single strong signal is ≈1.0,
+but multiple sub-signals within the same category may **stack** and
+push the score above 1.0.
 ``_calculate_penalties`` returns a **multiplier** in ``[0.0, 1.0]``.
-``score_all()`` combines them via a ``WEIGHTS`` dictionary and converts to
-the integer scale consumed by ``core.py`` (via ``SCALE``).
+``score_all()`` combines per-category scores via a ``WEIGHTS`` dictionary
+and converts the weighted total to the integer scale consumed by
+``core.py`` (via ``SCALE``).  There is no hard upper bound on the
+combined score beyond what ``WEIGHTS`` and ``SCALE`` imply.
 
 Scoring categories:
-  1. Cache Reuse  — semantic cache (1.0) and blind context reuse (0.05)
+  1. Cache Reuse  — semantic cache and blind context reuse signals
   2. Text Match   — aria/placeholder, data-qa, name, icons, name_attr
   3. Attributes   — target_field, html_id variants, context words
   4. Semantics    — element type, role, mode synergy, cross-mode penalties
@@ -216,8 +222,9 @@ class DOMScorer:
         """Semantic cache (1.0) and blind contextual reuse (0.05).
 
         Returns a float in ``[0.0, 1.0]``.  Combined with
-        ``WEIGHTS["cache"] = 2.0`` and ``SCALE = 100_000``, a full cache hit
-        contributes 200,000 to the final integer score.
+        ``WEIGHTS["cache"] = 2.0`` and the module-level ``SCALE``, a full
+        cache hit contributes ``2 * SCALE`` (≈355,556 with
+        ``SCALE = 177_778``) to the final integer score.
         """
         score = 0.0
         learned = self._learned_entry
@@ -297,7 +304,7 @@ class DOMScorer:
             if name_attr:
                 if tl == name_attr:
                     score += 0.0375     # 3k / 80k
-                elif len(name_attr) >= 3 and name_attr in tl:
+                elif len(name_attr) >= 3 and (tl in name_attr or name_attr in tl):
                     score += 0.0125     # 1k / 80k
 
         return score, is_perfect
