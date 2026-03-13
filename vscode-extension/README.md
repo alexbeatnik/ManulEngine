@@ -252,7 +252,7 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 ### 0.0.89
 - **🧮 Normalised Float Scoring** — `DOMScorer` rewritten with `0.0–1.0` floats across five weighted channels (`cache`, `text`, `attributes`, `semantics`, `proximity`), combined via `WEIGHTS` dict and `SCALE=177,778` for integer thresholds. Pre-compiled regex, single `_preprocess()` pass per element. Clean penalty multipliers: disabled ×0.0, hidden ×0.1
 - **🌲 TreeWalker DOM Scanner** — `SNAPSHOT_JS` replaced with `document.createTreeWalker()` traversal and a `PRUNE` set (`SCRIPT, STYLE, SVG, NOSCRIPT, TEMPLATE, META, PATH, G, BR, HR`). Subtrees rejected in one hop. Visibility via `checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })` with `offsetWidth/offsetHeight` fallback. Special exception: hidden checkbox/radio/file inputs remain discoverable
-- **🖼️ iframe Support** — `_snapshot()` iterates `page.frames`, injects snapshot JS per frame, tags elements with `frame_index`. `_frame_for()` routes all downstream locator calls to the correct Playwright `Frame`. Cross-origin frames silently skipped with 3-retry backoff
+- **🖼️ iframe Support** — `_snapshot()` iterates `page.frames`, injects snapshot JS per frame, tags elements with `frame_index`. `_frame_for()` routes all downstream locator calls to the correct Playwright `Frame`. Cross-origin frames are skipped; transient "frame closed" errors are retried up to 3 times with backoff
 - Core engine bump to **0.0.8.9**
 
 ### 0.0.88

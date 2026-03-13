@@ -483,20 +483,20 @@ class DOMScorer:
 
         # ── File uploads ──────────────────────────────────────────
         if tag == "label":
-            linked_id = el.get("html_id", "")
+            linked_id = str(el.get("_html_id", ""))
             if linked_id:
                 linked_el = next(
                     (e for e in all_els
-                     if str(e.get("html_id")) == linked_id
-                     and str(e.get("input_type")) == "file"),
+                     if str(e.get("_html_id", "")) == linked_id
+                     and str(e.get("input_type", "")).lower() == "file"),
                     None,
                 )
                 if linked_el:
                     score += 0.04
         if itype == "file":
             has_label = any(
-                str(e.get("tag_name")) == "label"
-                and str(e.get("html_id")) == el["_html_id"]
+                str(e.get("tag_name", "")).lower() == "label"
+                and str(e.get("_html_id", "")) == el["_html_id"]
                 for e in all_els
             )
             if has_label:

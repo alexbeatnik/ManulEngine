@@ -4,7 +4,7 @@ from playwright.async_api import async_playwright
 from manul_engine import ManulEngine
 
 # ─────────────────────────────────────────────────────────────────────────────
-# DOM: IFRAME ROUTING — Cross-Frame Element Resolution (20 Tests)
+# DOM: IFRAME ROUTING — Cross-Frame Element Resolution Tests
 #
 # Tests that _snapshot() iterates page.frames, tags elements with frame_index,
 # and _frame_for() routes actions to the correct Playwright Frame.

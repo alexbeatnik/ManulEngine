@@ -152,7 +152,7 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             if (linked && linked.type !== 'file') {
                 const lr = linked.getBoundingClientRect();
                 const vis = hasCheckVis
-                    ? linked.checkVisibility()
+                    ? linked.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })
                     : (() => {
                         const cs = window.getComputedStyle(linked);
                         const hasLayout = linked.offsetWidth > 0 || linked.offsetHeight > 0;

@@ -4,7 +4,7 @@ from playwright.async_api import async_playwright
 from manul_engine import ManulEngine
 
 # ─────────────────────────────────────────────────────────────────────────────
-# DOM: VISIBILITY & TREEWALKER — Scanner Filtering Gauntlet (25 Tests)
+# DOM: VISIBILITY & TREEWALKER — Scanner Filtering Gauntlet (20 Tests)
 #
 # Validates:
 # 1. TreeWalker PRUNE set skips SCRIPT/STYLE/SVG/TEMPLATE subtrees entirely
