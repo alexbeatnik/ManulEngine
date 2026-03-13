@@ -255,11 +255,12 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
     # ── Visual feedback ───────────────────────
 
-    async def _highlight(self, page, target, color="red", bg="#ffeb3b", *, by_js_id=False):
+    async def _highlight(self, page, target, color="red", bg="#ffeb3b", *, by_js_id=False, frame=None):
         """Flash a coloured border around an element for visual debugging."""
         try:
             if by_js_id:
-                await page.evaluate(f"window.manulHighlight({target}, '{color}', '{bg}')")
+                ctx = frame or page
+                await ctx.evaluate(f"window.manulHighlight({target}, '{color}', '{bg}')")
             else:
                 await target.evaluate(f"""el => {{
                     const oB=el.style.border, oBg=el.style.backgroundColor;
@@ -270,7 +271,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         except Exception:
             pass
 
-    async def _debug_highlight(self, page, loc_or_id, *, by_js_id: bool = False) -> None:
+    async def _debug_highlight(self, page, loc_or_id, *, by_js_id: bool = False, frame=None) -> None:
         """Apply a persistent magenta highlight on the target element.
         The highlight stays until _clear_debug_highlight() is called.
         Uses a <style id="manul-debug-style"> tag + data-manul-debug-highlight attribute
@@ -284,7 +285,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                       "z-index:999999 !important;}")
         try:
             if by_js_id:
-                await page.evaluate(
+                ctx = frame or page
+                await ctx.evaluate(
                     f"""
                     (id) => {{
                         const el = window.manulElements && window.manulElements[id];
@@ -554,16 +556,48 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
     # ── DOM snapshot ──────────────────────────
 
+    def _frame_for(self, page, el: dict):
+        """Return the Playwright Frame that owns *el*.
+
+        Elements discovered in child frames carry a ``frame_index`` key set
+        during ``_snapshot``.  Index 0 is always the main frame.  If the
+        stored index is stale (frame navigated away) we fall back to the
+        main frame so callers never get ``None``.
+        """
+        idx = el.get("frame_index", 0)
+        frames = page.frames
+        if 0 <= idx < len(frames):
+            return frames[idx]
+        return page  # main frame fallback
+
     async def _snapshot(self, page, mode: str, texts: list[str]) -> list[dict]:
-        """Inject SNAPSHOT_JS into the page and return a list of interactive elements."""
-        for attempt in range(3):
-            try:
-                return await page.evaluate(SNAPSHOT_JS, [mode, texts or []])
-            except Exception as exc:
-                if "closed" in str(exc).lower() and attempt < 2:
-                    await asyncio.sleep(1.5)
-                    continue
-                raise
+        """Inject SNAPSHOT_JS into every reachable frame and merge results.
+
+        Each element dict gets a ``frame_index`` so the action layer can
+        route clicks / fills to the correct Playwright Frame object.
+        Cross-origin or detached child frames are silently skipped;
+        unexpected errors in the main frame are surfaced to aid debugging.
+        """
+        args = [mode, texts or []]
+        all_elements: list[dict] = []
+
+        for idx, frame in enumerate(page.frames):
+            for attempt in range(3):
+                try:
+                    frame_els = await frame.evaluate(SNAPSHOT_JS, args)
+                    for el in frame_els:
+                        el["frame_index"] = idx
+                    all_elements.extend(frame_els)
+                    break  # success — stop retry loop
+                except Exception as exc:
+                    if "closed" in str(exc).lower() and attempt < 2:
+                        await asyncio.sleep(1.5)
+                        continue
+                    if idx == 0:
+                        raise
+                    break  # child frame unreachable / cross-origin — skip
+
+        return all_elements
 
     # ── Scoring (delegates to scoring module) ─
 
@@ -606,7 +640,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         els = []
         for attempt in range(5):
             raw_els = await self._snapshot(page, mode, [t.lower() for t in search_texts])
-            els = [e for e in raw_els if e["id"] not in _skip]
+            els = [e for e in raw_els if (e.get("frame_index", 0), e["id"]) not in _skip]
 
             if not els:
                 if attempt < 4:
@@ -685,7 +719,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             if idx is None:
                 if failed_ids is not None:
                     for c in top:
-                        failed_ids.add(c["id"])
+                        failed_ids.add((c.get("frame_index", 0), c["id"]))
                 return None
             ai_choice = top[idx]
 
@@ -734,7 +768,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         if idx is None:
             if failed_ids is not None:
                 for c in top:
-                    failed_ids.add(c["id"])
+                    failed_ids.add((c.get("frame_index", 0), c["id"]))
             return None
 
         ai_choice = top[idx]

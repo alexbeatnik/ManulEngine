@@ -22,7 +22,7 @@ Current operating mode in this repo is typically **mixed**:
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.8
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.9
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
@@ -31,8 +31,8 @@ manul_engine/
   reporting.py             StepResult, MissionResult, RunSummary dataclasses
   reporter.py              Self-contained HTML report generator (dark theme, native <details>/<summary> accordions, Flexbox step layout, base64 screenshots)
   prompts.py               JSON config loader, thresholds, LLM prompt templates
-  scoring.py               score_elements() — pure function, 20+ heuristic rules
-  js_scripts.py            All JS injected into the browser (includes SCAN_JS)
+  scoring.py               DOMScorer class — normalised 0.0–1.0 float scoring, WEIGHTS dict, SCALE=177,778, pre-compiled regex, score_elements() backward-compatible API
+  js_scripts.py            All JS injected into the browser (TreeWalker-based SNAPSHOT_JS with PRUNE set, SCAN_JS)
   scanner.py               Smart Page Scanner — scan_page(), build_hunt(), scan_main()
   helpers.py               substitute_memory(), extract_quoted(), env_bool(), detect_mode(), classify_step(), timing constants
   cli.py                   Public installed CLI entry point (manul command + manul scan subcommand); ParsedHunt NamedTuple
@@ -55,6 +55,12 @@ manul_engine/
     test_23_advanced_interactions.py  PRESS/RIGHT CLICK/UPLOAD commands (48 assertions, no browser)
     test_24_reporting.py       StepResult/MissionResult/RunSummary dataclasses (45 assertions)
     test_25_reporter.py        HTML report generator (42 assertions, no browser)
+    test_26_wikipedia_search.py  name_attr heuristic scoring (20 assertions, no browser)
+    test_27_lifecycle_hooks.py   Global Lifecycle Hook system (57 assertions, no browser)
+    test_28_logical_steps.py     Logical STEP ordering and parser (48 assertions, no browser)
+    test_29_iframe_routing.py    Cross-frame element resolution (25 assertions)
+    test_30_heuristic_weights.py DOMScorer priority hierarchy (32 assertions)
+    test_31_visibility_treewalker.py TreeWalker PRUNE/checkVisibility (20 assertions)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
@@ -65,7 +71,7 @@ tests/
   demo_login.hunt         integration: login with @var: static variables
   demo_variables.hunt     integration: @var: + CALL PYTHON into {var} combined
 vscode-extension/
-  package.json              Extension manifest (v0.0.88)
+  package.json              Extension manifest (v0.0.89)
   src:
     extension.ts            Activation, command registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
@@ -80,9 +86,9 @@ vscode-extension/
 
 ## How the engine works
 
-1. **Snapshot** — JS injects into the page and collects all interactive elements.
+1. **Snapshot** — `SNAPSHOT_JS` walks the DOM with `document.createTreeWalker()` and a `PRUNE` set (`SCRIPT, STYLE, SVG, NOSCRIPT, TEMPLATE, META, PATH, G, BR, HR`). Visibility is checked via `checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })` with `offsetWidth/offsetHeight` fallback. Hidden checkbox/radio/file inputs are kept (special-input exception). `_snapshot()` iterates `page.frames`, injects the script per frame, and tags each element with `frame_index`.
 2. **Exact-match pass** — quick filter by `name`, `aria-label`, `data-qa` substring.
-3. **Heuristic scoring** — `score_elements()` ranks candidates using many small-to-medium signals (exact text/aria/placeholder matches, `data_qa`/`html_id`, developer naming conventions, element-type alignment, context words, etc.). The biggest single boosts in the current implementation are semantic cache reuse (+200_000) and blind context reuse (+10_000).
+3. **Heuristic scoring** — `DOMScorer.score_all()` ranks candidates using normalised `0.0–1.0` floats across five weighted channels: `cache` (2.0), `semantics` (0.60), `text` (0.45), `attributes` (0.25), `proximity` (0.10). Final score = weighted sum × penalty multiplier × `SCALE` (177,778). The biggest single boosts are semantic cache reuse (+1.0 cache / 200k+ scaled) and `data-qa` exact match (+1.0 text / ~80k scaled). Penalties: disabled ×0.0, hidden ×0.1.
 4. **LLM fallback** — if best score < threshold, ask the LLM to pick the element.
 5. **AI Rejection & Anti-phantom guard** — LLM can return `{"id": null}` if no plausible target is found. Engine handles `null` by blacklisting the current candidates and triggering self-healing.
 6. **Action** — type / click / select / hover / drag. Non-shadow interactions primarily use Playwright with `force=True` plus retries; Shadow DOM interactions use a **JS fallback** (`window.manulClick`, `window.manulType`) to bypass elements that Playwright cannot target.
@@ -289,8 +295,10 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 ## Code patterns to follow
 
 * Import: `from manul_engine import ManulEngine` (never `engine` or `framework`).
-* `scoring.py` is **stateless** — pure function, receives `learned_elements` and `last_xpath` as kwargs.
+* `scoring.py` owns `DOMScorer` class — normalised `0.0–1.0` float scoring with five weighted channels (`WEIGHTS` dict: cache=2.0, text=0.45, attributes=0.25, semantics=0.60, proximity=0.10). `SCALE=177,778` maps the weighted float to integer thresholds expected by `core.py`. `score_elements()` is the backward-compatible entry point that delegates to `DOMScorer.score_all()`. Receives `learned_elements` and `last_xpath` as kwargs. Pre-compiled regex loaded at module import; per-element strings normalised in `_preprocess()`.
 * **Safety first in `scoring.py`:** Always cast fetched attributes using `str(el.get("...", ""))`. JavaScript can pass objects (like `SVGAnimatedString` for SVG icons) instead of strings, which will crash Python's `.lower()`.
+* **iframe routing in `core.py`:** `_snapshot()` iterates `page.frames`, evaluates `SNAPSHOT_JS` per frame, tags elements with `frame_index`. `_frame_for(page, el)` resolves the correct Playwright `Frame` by index with stale fallback to main frame. All 12+ locator call-sites in `actions.py` route through the resolved frame. Cross-origin frames are silently skipped (3-retry, 1.5s backoff on `closed` errors).
+* **TreeWalker in `js_scripts.py`:** `SNAPSHOT_JS` uses `document.createTreeWalker()` with a `PRUNE` set (`SCRIPT, STYLE, SVG, NOSCRIPT, TEMPLATE, META, PATH, G, BR, HR`). Visibility checked via `checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })` with `offsetWidth/offsetHeight` fallback. Hidden checkbox/radio/file inputs are kept (special-input exception). No `getComputedStyle` in the hot loop.
 * `actions.py` is a **mixin** (`_ActionsMixin`) inherited by `ManulEngine` in `core.py`.
 * `cache.py` is a **mixin** (`_ControlsCacheMixin`) inherited by `ManulEngine` in `core.py`. It owns all persistent per-site controls-cache logic.
 * `ManulEngine` MRO: `class ManulEngine(_ControlsCacheMixin, _ActionsMixin)` in `core.py`.
@@ -481,22 +489,24 @@ The page name in `@custom_control(page=...)` must match the value returned by `l
 
 ## Resolution fallback chain
 
-The engine does not use a single fixed “chain constant”; it sums many heuristic signals in [engine/scoring.py](../manul_engine/scoring.py). The *highest-signal* boosts (and the cutoffs used in [manul_engine/core.py](../manul_engine/core.py)) are:
+The engine uses normalised `0.0–1.0` float scoring in `DOMScorer` (see `scoring.py`). Final integer scores = weighted sum × `SCALE` (177,778). The *highest-signal* boosts (and the cutoffs used in `core.py`) are:
 
-1. Semantic cache reuse: +200_000 (and `core.py` short-circuits at score ≥ 200_000)
-2. Blind/context reuse (same xpath as last step): +10_000 (and `core.py` short-circuits at score ≥ 10_000)
-3. Exact `data_qa` match: +10_000 (substring: +3_000)
-4. Exact `html_id` match to target/search text: +10_000 (exact to `target_field` can be +15_000)
-5. Exact text/aria/placeholder/name match: typically +5_000 (partial matches are smaller)
-6. Element-type alignment & dev naming conventions: usually +300 … +15_000 depending on mode (e.g., checkbox/radio strictness)
-7. LLM fallback: used only when best score < `MANUL_AI_THRESHOLD` (unless AI is disabled via threshold ≤ 0)
+1. Semantic cache reuse: +1.0 cache × W_cache(2.0) → ~355k scaled (`core.py` short-circuits at score ≥ 200_000)
+2. Blind/context reuse (same xpath as last step): +0.05 cache → ~17k scaled (`core.py` short-circuits at score ≥ 10_000)
+3. Exact `data-qa` match: +1.0 text × W_text(0.45) → ~80k scaled (substring: +0.375 → ~30k)
+4. Exact `html_id` match: +0.6 attr × W_attr(0.25) → ~26k scaled (target_field exact: higher via multi-channel)
+5. Exact text/aria/placeholder match: +0.625 text → ~50k scaled; partial matches are smaller
+6. Element-type alignment & dev naming conventions: +0.05–0.30 semantics depending on mode (checkbox/radio strictness: -0.50 penalty)
+7. Penalties: disabled ×0.0 (zeroes entire score), hidden ×0.1
+8. LLM fallback: used only when best score < `MANUL_AI_THRESHOLD` (unless AI is disabled via threshold ≤ 0)
 
 ## Element data shape
 
 Each element dict returned by `SNAPSHOT_JS` contains:
-`id, name, xpath, is_select, is_shadow, is_contenteditable, class_name, tag_name, input_type, data_qa, html_id, icon_classes, aria_label, placeholder, role, disabled, aria_disabled, name_attr`.
+`id, name, xpath, is_select, is_shadow, is_contenteditable, class_name, tag_name, input_type, data_qa, html_id, icon_classes, aria_label, placeholder, role, disabled, aria_disabled, name_attr, frame_index`.
 
-* `name_attr` — the HTML `name` attribute (e.g. `name="search"` on Wikipedia's Codex search input). Scoring treats it as a text signal: exact match +3,000; substring match +1,000. Always cast with `str(el.get("name_attr", ""))` before comparing.
+* `frame_index` — integer index into `page.frames` (0 = main frame). `_frame_for(page, el)` uses this to route Playwright calls to the correct Frame. Stale indices fall back to main frame.
+* `name_attr` — the HTML `name` attribute (e.g. `name="search"` on Wikipedia's Codex search input). Scoring treats it as a text signal: exact match +0.0375 text / ~3k scaled; substring +0.0125 / ~1k scaled. Always cast with `str(el.get("name_attr", ""))` before comparing.
 
 * `name` includes section context: `"Section -> Element Name input text"`.
 * For `<select>` elements, `name` embeds options: `"dropdown [Option A | Option B]"`.

@@ -95,7 +95,8 @@ class _ActionsMixin:
             if el is None:
                 print(f"    ❌ PRESS: could not resolve target element")
                 return False
-            loc = page.locator(f"xpath={el['xpath']}").first
+            frame = self._frame_for(page, el)
+            loc = frame.locator(f"xpath={el['xpath']}").first
             await loc.press(key_combo, timeout=prompts.TIMEOUT)
             print(f"    ⌨️  Pressed '{key_combo}' on '{self._fmt_el_name(el['name'])}'")
         else:
@@ -120,18 +121,19 @@ class _ActionsMixin:
         if el is None:
             print("    ❌ RIGHT CLICK: could not resolve target element")
             return False
-        loc = page.locator(f"xpath={el['xpath']}").first
+        frame = self._frame_for(page, el)
+        loc = frame.locator(f"xpath={el['xpath']}").first
         is_shad = el.get("is_shadow")
         try:
             if not is_shad:
                 await loc.scroll_into_view_if_needed(timeout=2000)
                 await self._highlight(page, loc)
             else:
-                await self._highlight(page, el["id"], by_js_id=True)
+                await self._highlight(page, el["id"], by_js_id=True, frame=frame)
         except Exception:
             pass
         if is_shad:
-            await page.evaluate(
+            await frame.evaluate(
                 f"window.manulElements[{el['id']}].dispatchEvent("
                 f"new MouseEvent('contextmenu',{{bubbles:true,cancelable:true,button:2,view:window}}))"
             )
@@ -182,13 +184,14 @@ class _ActionsMixin:
         if el is None:
             print("    ❌ UPLOAD: could not resolve target element")
             return False
-        loc = page.locator(f"xpath={el['xpath']}").first
+        frame = self._frame_for(page, el)
+        loc = frame.locator(f"xpath={el['xpath']}").first
         try:
             if not el.get("is_shadow"):
                 await loc.scroll_into_view_if_needed(timeout=2000)
                 await self._highlight(page, loc)
             else:
-                await self._highlight(page, el["id"], by_js_id=True)
+                await self._highlight(page, el["id"], by_js_id=True, frame=frame)
         except Exception:
             pass
         tag = str(el.get("tag_name", "")).lower()
@@ -196,7 +199,7 @@ class _ActionsMixin:
         if tag == "label":
             linked_id = str(el.get("html_id", ""))
             if linked_id:
-                linked_loc = page.locator(f"#{linked_id}").first
+                linked_loc = frame.locator(f"#{linked_id}").first
                 try:
                     linked_tag = await linked_loc.evaluate("e => e.tagName.toLowerCase()")
                     linked_type = await linked_loc.evaluate("e => (e.type || '').toLowerCase()")
@@ -284,13 +287,14 @@ class _ActionsMixin:
                     scored  = self._score_elements(raw_els, step, "clickable", expected, None, False)
                     if scored:
                         best = scored[0]
-                        loc  = page.locator(f"xpath={best['xpath']}").first
+                        _vf = self._frame_for(page, best)
+                        loc  = _vf.locator(f"xpath={best['xpath']}").first
                         try:
                             if not best.get("is_shadow"):
                                 await loc.scroll_into_view_if_needed(timeout=2000)
                                 await self._debug_highlight(page, loc)
                             else:
-                                await self._debug_highlight(page, best["id"], by_js_id=True)
+                                await self._debug_highlight(page, best["id"], by_js_id=True, frame=_vf)
                         except Exception:
                             pass
                 else:
@@ -315,14 +319,15 @@ class _ActionsMixin:
                 if scored:
                     best   = scored[0]
                     xpath  = best["xpath"]
-                    loc    = page.locator(f"xpath={xpath}").first
+                    _cf    = self._frame_for(page, best)
+                    loc    = _cf.locator(f"xpath={xpath}").first
                     if _in_debug and not _debug_paused:
                         try:
                             if not best.get("is_shadow"):
                                 await loc.scroll_into_view_if_needed(timeout=2000)
                                 await self._debug_highlight(page, loc)
                             else:
-                                await self._debug_highlight(page, best["id"], by_js_id=True)
+                                await self._debug_highlight(page, best["id"], by_js_id=True, frame=_cf)
                         except Exception:
                             pass
                         await self._debug_prompt(page, step, step_idx)
@@ -384,20 +389,23 @@ class _ActionsMixin:
                 return False
         return False
 
-    async def _do_drag(self, page, step: str, expected: list[str], source_id: int) -> bool:
+    async def _do_drag(self, page, step: str, expected: list[str], source_el: dict) -> bool:
         step_l = step.lower()
         target_text = ""
         m_to = re.search(r"to\s+['\"](.+?)['\"]", step_l)
         if m_to: target_text = m_to.group(1)
         elif len(expected) >= 2: target_text = expected[-1]
 
+        _src_key = (source_el.get("frame_index", 0), source_el["id"])
         raw_els = await self._snapshot(page, "drag", [target_text])
-        dest = next((el for el in raw_els if el["id"] != source_id and target_text.lower() in el["name"].lower()), None)
+        dest = next((el for el in raw_els if (el.get("frame_index", 0), el["id"]) != _src_key and target_text.lower() in el["name"].lower()), None)
         if not dest: return False
 
-        src_el = next((el for el in raw_els if el["id"] == source_id), raw_els[0])
-        src_loc  = page.locator(f"xpath={src_el['xpath']}").first
-        dest_loc = page.locator(f"xpath={dest['xpath']}").first
+        src_snap = next((el for el in raw_els if (el.get("frame_index", 0), el["id"]) == _src_key), raw_els[0])
+        src_frame  = self._frame_for(page, src_snap)
+        dest_frame = self._frame_for(page, dest)
+        src_loc  = src_frame.locator(f"xpath={src_snap['xpath']}").first
+        dest_loc = dest_frame.locator(f"xpath={dest['xpath']}").first
 
         try:
             await src_loc.drag_to(dest_loc, timeout=5000)
@@ -460,43 +468,45 @@ class _ActionsMixin:
                         print("    💀 SELF-HEALING FAILED: No valid elements found after retries.")
                     return False
 
-            if el["id"] in failed_ids: continue
+            _ek = (el.get("frame_index", 0), el["id"])
+            if _ek in failed_ids: continue
 
             self.last_xpath = el["xpath"]
             name, xpath, is_sel, is_shad, el_id, tag, itype = el["name"], el["xpath"], el.get("is_select"), el.get("is_shadow"), el["id"], el.get("tag_name", ""), el.get("input_type", "")
+            frame = self._frame_for(page, el)
 
             if mode == "input" and itype in ("radio", "checkbox", "button", "submit", "image"):
-                failed_ids.add(el_id)
+                failed_ids.add(_ek)
                 self.last_xpath = None
                 continue
 
             if mode == "locate":
                 try:
-                    loc = page.locator(f"xpath={xpath}").first
+                    loc = frame.locator(f"xpath={xpath}").first
                     if not is_shad: 
                         await loc.scroll_into_view_if_needed(timeout=2000)
                         await self._highlight(page, loc)
                     else:
-                        await self._highlight(page, el_id, by_js_id=True)
+                        await self._highlight(page, el_id, by_js_id=True, frame=frame)
                 except Exception: pass
                 print(f"    🔍 Located '{self._fmt_el_name(name)}'")
                 return True
 
-            if mode == "drag": return await self._do_drag(page, step, expected, el_id)
+            if mode == "drag": return await self._do_drag(page, step, expected, el)
 
-            loc = page.locator(f"xpath={xpath}").first
+            loc = frame.locator(f"xpath={xpath}").first
             _in_debug = getattr(self, "debug_mode", False) or step_idx in getattr(self, "break_steps", set())
             try:
                 if not is_shad:
                     await loc.scroll_into_view_if_needed(timeout=2000)
                     await self._highlight(page, loc)
                 else:
-                    await self._highlight(page, el_id, by_js_id=True)
+                    await self._highlight(page, el_id, by_js_id=True, frame=frame)
                 if _in_debug:
                     if not is_shad:
                         await self._debug_highlight(page, loc)
                     else:
-                        await self._debug_highlight(page, el_id, by_js_id=True)
+                        await self._debug_highlight(page, el_id, by_js_id=True, frame=frame)
             except Exception: pass
 
             if _in_debug:
@@ -506,7 +516,7 @@ class _ActionsMixin:
             try:
                 if mode == "input":
                     print(f"    ⌨️  Typed '{txt_to_type}' → '{self._fmt_el_name(name)}'")
-                    if is_shad: await page.evaluate(f"window.manulType({el_id}, '{txt_to_type}')")
+                    if is_shad: await frame.evaluate(f"window.manulType({el_id}, '{txt_to_type}')")
                     else:
                         is_readonly = await loc.evaluate("el => el.readOnly || el.hasAttribute('readonly')")
                         if is_readonly:
@@ -539,18 +549,18 @@ class _ActionsMixin:
                         try:
                             await loc.click(force=True, timeout=3000)
                         except Exception:
-                            await page.evaluate(f"window.manulClick({el_id})")
+                            await frame.evaluate(f"window.manulClick({el_id})")
                         
                         if expected:
                             await asyncio.sleep(0.5) 
                             option_text = expected[0]
                             print(f"    🖱️  Selecting option '{option_text}'")
                             try:
-                                opt_loc = page.locator(f"[role='option']:has-text('{option_text}'), [role='menuitem']:has-text('{option_text}')").first
+                                opt_loc = frame.locator(f"[role='option']:has-text('{option_text}'), [role='menuitem']:has-text('{option_text}')").first
                                 await opt_loc.click(timeout=3000)
                             except Exception:
                                 try:
-                                    opt_loc = page.locator(f"text='{option_text}'").last
+                                    opt_loc = frame.locator(f"text='{option_text}'").last
                                     await opt_loc.click(timeout=3000)
                                 except Exception: pass
                                 
@@ -567,7 +577,7 @@ class _ActionsMixin:
 
                 elif mode == "hover":
                     print(f"    🚁  Hovered '{self._fmt_el_name(name)}'")
-                    if is_shad: await page.evaluate(f"window.manulElements[{el_id}].dispatchEvent(new MouseEvent('mouseover',{{bubbles:true,cancelable:true,view:window}}))")
+                    if is_shad: await frame.evaluate(f"window.manulElements[{el_id}].dispatchEvent(new MouseEvent('mouseover',{{bubbles:true,cancelable:true,view:window}}))")
                     else: await loc.hover(force=True, timeout=3000)
                     self._remember_resolved_control(
                         page=page,
@@ -584,7 +594,7 @@ class _ActionsMixin:
                     print(f"    🖱️  Clicked '{self._fmt_el_name(name)}'")
                     if is_shad:
                         fn = "manulDoubleClick" if "double" in step_l else "manulClick"
-                        await page.evaluate(f"window.{fn}({el_id})")
+                        await frame.evaluate(f"window.{fn}({el_id})")
                         await asyncio.sleep(ACTION_WAIT)
                     else:
                         if "double" in step_l:
@@ -609,7 +619,7 @@ class _ActionsMixin:
 
             except Exception as ex:
                 print(f"    ⚠️  Element not actionable (attempt {attempt+1}/3), trying next candidate...")
-                failed_ids.add(el_id)
+                failed_ids.add(_ek)
                 self.last_xpath = None
                 await asyncio.sleep(1)
 

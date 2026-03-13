@@ -28,14 +28,15 @@ ManulEngine changes the economics of test automation. You don't write controls �
 
 > Hunt file language support, one-click test runner, interactive debug runner with gutter breakpoints, step builder, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) browser automation.
 
-## 🚀 What's New: The Enterprise Update
+## 🚀 What's New: The Engine Overhaul
 
-* **Clean, Unnumbered DSL:** The requirement for line numbers before actions has been completely dropped. Scripts now read exactly like plain English (`NAVIGATE to url` instead of `1. NAVIGATE to url`).
-* **Logical STEP Grouping:** `STEP [optional number]: [Description]` metadata blocks allow mapping manual QA cases directly into `.hunt` files. Unmatched quotes inside descriptions (e.g. `STEP: Pallas's cat`) are cleanly isolated.
-* **Enterprise HTML Reporter:** The reporter is now dual-mode and zero-dependency, featuring native HTML5 accordions (`<details>`), auto-expanding failures, and a clean Flexbox layout instead of old-school tables.
-* **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, and `@after_group` orchestrate complex DB seeding and auth logic. `ctx.variables` are securely serialized across parallel `--workers`.
-* **Bulletproof DOM Heuristics:** The updated `SNAPSHOT_JS` rigorously filters out invisible or hidden UI elements (like hidden sticky headers), and effortlessly handles deeply nested modern frameworks (e.g. Wikipedia Vector 2022 / Codex) by strongly prioritizing `aria-label` and `name_attr`.
-* **VS Code Extension Polish:** The Step Builder is now context-aware, verifying `vscode.window.activeTextEditor` to prevent accidental insertions in non-`.hunt` files, and provides robust syntax highlighting for the unnumbered DSL.
+* **Normalised Heuristic Scoring (DOMScorer):** Scoring rewritten with `0.0–1.0` float arithmetic. Five weighted channels — `cache`, `semantics`, `text`, `attributes`, `proximity` — combined via `WEIGHTS` dict and `SCALE=177,778`. `data-qa` exact match is the single strongest signal. Penalties are clean multipliers: disabled ×0.0, hidden ×0.1.
+* **TreeWalker-Based DOM Scanner:** `SNAPSHOT_JS` walks the DOM with `document.createTreeWalker()` and a `PRUNE` set. Subtrees rejected in one hop — zero wasted traversal. Visibility via `checkVisibility()` API with `offsetWidth/offsetHeight` fallback.
+* **Safe iframe Support:** `_snapshot()` iterates `page.frames`, injects snapshot JS per frame, tags elements with `frame_index`. Cross-origin frames silently skipped; stale indices fall back to main frame.
+* **Clean, Unnumbered DSL:** Scripts read like plain English (`NAVIGATE to url` instead of `1. NAVIGATE to url`).
+* **Logical STEP Grouping:** `STEP [optional number]: [Description]` blocks map manual QA cases directly into `.hunt` files.
+* **Enterprise HTML Reporter:** Dual-mode, zero-dependency reporter with native HTML5 accordions, auto-expanding failures, and Flexbox layout.
+* **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, `@after_group` orchestrate DB seeding and auth. `ctx.variables` serialise across parallel `--workers`.
 
 ## Features
 
@@ -248,9 +249,15 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 
 ## Release Notes
 
+### 0.0.89
+- **🧮 Normalised Float Scoring** — `DOMScorer` rewritten with `0.0–1.0` floats across five weighted channels (`cache`, `text`, `attributes`, `semantics`, `proximity`), combined via `WEIGHTS` dict and `SCALE=177,778` for integer thresholds. Pre-compiled regex, single `_preprocess()` pass per element. Clean penalty multipliers: disabled ×0.0, hidden ×0.1
+- **🌲 TreeWalker DOM Scanner** — `SNAPSHOT_JS` replaced with `document.createTreeWalker()` traversal and a `PRUNE` set (`SCRIPT, STYLE, SVG, NOSCRIPT, TEMPLATE, META, PATH, G, BR, HR`). Subtrees rejected in one hop. Visibility via `checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })` with `offsetWidth/offsetHeight` fallback. Special exception: hidden checkbox/radio/file inputs remain discoverable
+- **🖼️ iframe Support** — `_snapshot()` iterates `page.frames`, injects snapshot JS per frame, tags elements with `frame_index`. `_frame_for()` routes all downstream locator calls to the correct Playwright `Frame`. Cross-origin frames are skipped; transient "frame closed" errors are retried up to 3 times with backoff
+- Core engine bump to **0.0.8.9**
+
 ### 0.0.88
 - **🌐 Global Lifecycle Hooks** — create `manul_hooks.py` alongside your `.hunt` files and use `@before_all`, `@after_all`, `@before_group(tag=)`, `@after_group(tag=)` decorators from `manul_engine` to wire up suite-level setup and teardown in pure Python. Variables written to `ctx.variables` in any hook are injected into every matching hunt as `{placeholder}` data — no per-file `@var:` needed. Works identically whether running with `--workers 1` (sequential) or `--workers N` (parallel subprocesses): the orchestrator serialises shared variables into `MANUL_GLOBAL_VARS` before spawning workers so every browser process inherits the same state
-- **🧠 Deep Accessibility Heuristics** — element scoring now uses the HTML `name` attribute as a first-class signal (`name_attr` exact match: +3,000 points; substring: +1,000 points). This resolves long-standing issues with modern SPA design systems (React, Vue, Wikipedia Vector 2022 / Codex) where inputs use `aria-label` and `name` as the primary identifiers instead of visible text. No configuration change required — the improvement is automatic
+- **🧠 Deep Accessibility Heuristics** — element scoring now uses the HTML `name` attribute as a first-class signal (`name_attr` exact match: +0.0375 text / ~3k scaled; substring: +0.0125 / ~1k scaled). This resolves long-standing issues with modern SPA design systems (React, Vue, Wikipedia Vector 2022 / Codex) where inputs use `aria-label` and `name` as the primary identifiers instead of visible text. No configuration change required — the improvement is automatic
 - **Suite-level failure semantics** — `@before_all` failure aborts the entire suite (all remaining hunts recorded as failed); `@after_all` always fires in the `finally` block. `@before_group` failure skips only the matching mission; `@after_group` still runs for it. Cleanup hooks continue past individual errors so teardown is never partially skipped
 - Core engine bump to **0.0.8.8**
 

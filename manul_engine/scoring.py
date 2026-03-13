@@ -1,10 +1,591 @@
 # manul_engine/scoring.py
 """
-Heuristic scoring logic for ManulEngine.
-Determines which element is the most likely target for a given step.
+Heuristic scoring logic for ManulEngine (v0.0.8.9).
+
+Architecture:
+  DOMScorer      — class with pre-compiled regex, per-invocation feature
+                   caching, and modular scoring methods.
+  score_elements — backward-compatible public function delegating to DOMScorer.
+
+Each ``_score_*`` method returns a float representing the strength of
+that heuristic category for a given element.  Most categories are
+non-negative and tuned so that a single strong signal is ≈1.0, but
+multiple sub-signals within the same category may **stack** and push
+the score above 1.0.  The semantics channel may be negative when used
+for cross-mode penalties.
+``_calculate_penalties`` returns a **multiplier** in ``[0.0, 1.0]``.
+``score_all()`` combines per-category scores via a ``WEIGHTS`` dictionary
+and converts the weighted total to the integer scale consumed by
+``core.py`` (via ``SCALE``).  There is no hard upper bound on the
+combined score beyond what ``WEIGHTS`` and ``SCALE`` imply.
+
+Scoring categories:
+  1. Cache Reuse  — semantic cache and blind context reuse signals
+  2. Text Match   — aria/placeholder, data-qa, name, icons, name_attr
+  3. Attributes   — target_field, html_id variants, context words
+  4. Semantics    — element type, role, mode synergy, cross-mode penalties
+  5. Penalties    — disabled (×0.0), hidden (×0.1) → multiplier
+  6. Proximity    — DOM depth-based form context bonus
 """
 
+from __future__ import annotations
+
 import re
+
+# ── Pre-compiled regex patterns (compiled once at module load) ────────────────
+
+_RE_WORD_BOUNDARY_3 = re.compile(r"\b[a-z0-9]{3,}\b")
+_RE_WORD_3          = re.compile(r"[a-z0-9]{3,}")
+_RE_WORD_BOUNDARY_4 = re.compile(r"\b[a-z]{4,}\b")
+_RE_QUOTES          = re.compile(r"'[^']*'|\"[^\"]*\"")
+_RE_HIDDEN          = re.compile(r"\[hidden\]", re.IGNORECASE)
+_RE_SUFFIX          = re.compile(r"(\s*\[(hidden|above|shadow_dom)\])+$")
+_RE_INPUT_SUFFIX    = re.compile(r"\s+input\s+\w*$")
+_RE_BTN_DEV         = re.compile(r"\bbtn\b|-btn|btn-|button")
+_RE_INP_DEV         = re.compile(r"\binp\b|-inp|inp-|input|\btxt\b|-txt|txt-|field")
+_RE_CHK_DEV         = re.compile(r"\bchk\b|-chk|chk-|checkbox")
+_RE_RAD_DEV         = re.compile(r"\brad\b|-rad|rad-|radio")
+_RE_SEL_DEV         = re.compile(r"\bsel\b|-sel|sel-|select|\bdrop\b|-drop|drop-|\bcmb\b|-cmb|cmb-|combo")
+_RE_OPTIONS         = re.compile(r"\[(.*?)\]")
+_RE_DELIMITERS      = re.compile(r"[-_]")
+_RE_BUTTON          = re.compile(r"\bbutton\b")
+_RE_LINK            = re.compile(r"\blink\b")
+_RE_IMAGE           = re.compile(r"\bimage\b|\bimg\b|\bpicture\b|\bphoto\b")
+_RE_WANTS_INPUT     = re.compile(r"\bfield\b|\binput\b|\btextarea\b|\btype\b|\bfill\b")
+
+# Context words stripped when extracting step context
+_STOP_WORDS = frozenset({
+    "click", "fill", "type", "enter", "select", "choose", "check", "uncheck",
+    "hover", "button", "field", "input", "link", "checkbox", "radio",
+    "from", "with", "into", "the", "that", "this", "step", "double",
+    "image", "dropdown", "textarea", "optional", "exists", "shadow", "root",
+})
+
+
+# ── Pre-computed search term ──────────────────────────────────────────────────
+
+class _SearchTerm:
+    """Pre-computed search-term data for efficient per-element matching."""
+    __slots__ = ("text", "dashed", "words", "id_variants")
+
+    def __init__(self, raw: str) -> None:
+        self.text: str = raw.lower().strip()
+        self.dashed: str = self.text.replace(" ", "-").replace("_", "-")
+        self.words: frozenset[str] = (
+            frozenset(_RE_WORD_3.findall(self.text)) if self.text else frozenset()
+        )
+        # Variants for html_id matching (preserves original order, deduped)
+        self.id_variants: tuple[str, ...] = (
+            tuple(dict.fromkeys(filter(None, (
+                self.text,
+                self.text.replace(" ", "_"),
+                self.text.replace(" ", "-"),
+                self.text.replace(" ", ""),
+            )))) if self.text else ()
+        )
+
+
+# ── Weighting & scale constants ──────────────────────────────────────────────
+
+WEIGHTS: dict[str, float] = {
+    "cache":      2.0,
+    "text":       0.45,
+    "attributes": 0.25,
+    "semantics":  0.60,
+    "proximity":  0.10,
+}
+
+# Converts the weighted float into the integer range expected by
+# ``core.py`` thresholds (200k for semantic cache, 10k for confidence, etc.)
+# Derived: SCALE = 3000 / (name_attr_exact * W_text) = 3000 / (0.0375 * 0.45)
+SCALE: int = 177_778
+
+
+# ── DOMScorer class ───────────────────────────────────────────────────────────
+
+class DOMScorer:
+    """Heuristic DOM element scorer.
+
+    Instantiated once per ``score_elements()`` call with pre-computed step-level
+    features.  Every ``_score_*`` method returns a **normalised float** —
+    ``1.0`` represents a single perfect signal; stacking multiple strong signals
+    can exceed ``1.0``.  ``_calculate_penalties`` returns a **multiplier** in
+    ``[0.0, 1.0]``.  ``score_all()`` combines them via ``WEIGHTS`` and applies
+    ``SCALE`` to produce the integer scores consumed by the rest of the engine.
+    """
+
+    def __init__(
+        self,
+        step: str,
+        mode: str,
+        search_texts: list[str],
+        target_field: str | None,
+        is_blind: bool,
+        learned_elements: dict,
+        last_xpath: str | None,
+    ) -> None:
+        self._step_l = step.lower()
+        self._mode = mode
+        self._target_field = target_field
+        self._is_blind = is_blind
+        self._last_xpath = last_xpath
+        self._has_search_texts = bool(search_texts)
+
+        # Pre-compute search terms once
+        self._terms: list[_SearchTerm] = [_SearchTerm(t) for t in search_texts]
+
+        # Pre-compute step-level features (once per invocation)
+        self._target_words:   frozenset[str] = frozenset(_RE_WORD_BOUNDARY_3.findall(self._step_l))
+        self._wants_button:   bool = bool(_RE_BUTTON.search(self._step_l))
+        self._wants_link:     bool = bool(_RE_LINK.search(self._step_l))
+        self._wants_image:    bool = bool(_RE_IMAGE.search(self._step_l))
+        self._wants_input:    bool = bool(_RE_WANTS_INPUT.search(self._step_l))
+        self._wants_checkbox: bool = "checkbox" in self._step_l
+        self._wants_radio:    bool = "radio" in self._step_l
+        self._wants_select:   bool = "select" in self._step_l or "dropdown" in self._step_l
+
+        # Context words outside quoted strings
+        step_no_quotes = _RE_QUOTES.sub("", self._step_l)
+        self._context_words: frozenset[str] = (
+            frozenset(_RE_WORD_BOUNDARY_4.findall(step_no_quotes)) - _STOP_WORDS
+        )
+
+        # Semantic cache lookup
+        cache_key = (mode, tuple(t.lower() for t in search_texts), target_field)
+        self._learned_entry = learned_elements.get(cache_key)
+
+    # ── Pre-processing ────────────────────────────────────────────────────
+
+    @staticmethod
+    def _safe_lower(val: object) -> str:
+        """Safely lowercase a value that might not be a string (e.g. SVGAnimatedString)."""
+        return val.lower() if isinstance(val, str) else ""
+
+    def _preprocess(self, el: dict) -> None:
+        """Attach normalised strings and type classifications to *el*.
+
+        Called once per element before any scoring method runs.
+        All computed keys use an underscore prefix to avoid collisions
+        with the original SNAPSHOT_JS payload.
+        """
+        sl = self._safe_lower
+
+        el["_name"]       = sl(el.get("name", ""))
+        el["_tag"]        = el.get("tag_name", "")
+        el["_itype"]      = el.get("input_type", "")
+        el["_data_qa"]    = sl(el.get("data_qa", ""))
+        el["_html_id"]    = sl(el.get("html_id", ""))
+        el["_class_name"] = sl(el.get("class_name", ""))
+        el["_icons"]      = sl(el.get("icon_classes", ""))
+        el["_aria"]       = sl(el.get("aria_label", ""))
+        el["_role"]       = sl(el.get("role", ""))
+        el["_ph"]         = sl(el.get("placeholder", ""))
+        el["_name_attr"]  = str(el.get("name_attr", "")).lower()
+        el["_label_for"]  = str(el.get("label_for", "")).lower()
+        el["_dev_names"]  = f"{el['_html_id']} {el['_class_name']} {el['_data_qa']}"
+
+        # Name decomposition
+        name = el["_name"]
+        if " -> " in name:
+            el["_name_core"]      = name.split(" -> ")[-1].strip()
+            el["_context_prefix"] = name.split(" -> ")[0].strip().lower()
+        else:
+            el["_name_core"]      = name
+            el["_context_prefix"] = ""
+
+        # Hidden/suffix detection and stripping
+        el["_is_hidden"]       = bool(_RE_HIDDEN.search(el["_name_core"]))
+        el["_name_core"]       = _RE_SUFFIX.sub("", el["_name_core"]).strip()
+        el["_name_core_clean"] = _RE_INPUT_SUFFIX.sub("", el["_name_core"]).strip()
+        el["_name_words"]      = frozenset(_RE_WORD_3.findall(el["_name"]))
+
+        # Element type classification
+        tag   = el["_tag"]
+        itype = el["_itype"]
+
+        el["_is_native_button"] = (
+            tag == "button"
+            or (tag == "input" and itype in ("submit", "button", "image", "reset"))
+        )
+        el["_is_real_button"]   = el["_is_native_button"] or el["_role"] == "button"
+        el["_is_real_link"]     = tag == "a" or el["_role"] == "link"
+        el["_is_real_input"]    = (
+            (tag in ("input", "textarea")
+             and itype not in ("submit", "button", "image", "reset", "radio", "checkbox"))
+            or el["_role"] in ("textbox", "searchbox", "spinbutton", "slider")
+            or el.get("is_contenteditable", False)
+        )
+        el["_is_real_checkbox"] = (tag == "input" and itype == "checkbox") or el["_role"] == "checkbox"
+        el["_is_real_radio"]    = (tag == "input" and itype == "radio")    or el["_role"] == "radio"
+
+    # ── Scoring methods (return normalised floats) ─────────────────────
+
+    def _score_cache_reuse(self, el: dict) -> float:
+        """Semantic cache (1.0) and blind contextual reuse (0.05).
+
+        Returns a float in ``[0.0, 1.05]``.  Combined with
+        ``WEIGHTS["cache"] = 2.0`` and the module-level ``SCALE``, a pure
+        semantic cache hit contributes ``2 * SCALE`` (≈355,556 with
+        ``SCALE = 177_778``) to the final integer score; with an additional
+        blind-context reuse signal the maximum contribution is
+        ``2.1 * SCALE``.
+        """
+        score = 0.0
+        learned = self._learned_entry
+        if learned and el["name"] == learned["name"] and el["_tag"] == learned["tag"]:
+            score += 1.0
+        if self._is_blind and self._last_xpath and el["xpath"] == self._last_xpath:
+            score += 0.05
+        return min(score, 1.05)
+
+    def _score_text_match(self, el: dict) -> tuple[float, bool]:
+        """Text matching across aria, placeholder, data-qa, name, icons, name_attr.
+
+        Returns ``(score, is_perfect_text_match)``.
+        Scores are additive normalised floats (0.625 = strong single match,
+        can exceed 1.0 when multiple strong signals stack).
+        """
+        score = 0.0
+        is_perfect = False
+
+        name       = el["_name"]
+        name_core  = el["_name_core"]
+        name_cc    = el["_name_core_clean"]
+        ctx_prefix = el["_context_prefix"]
+        aria       = el["_aria"]
+        ph         = el["_ph"]
+        html_id    = el["_html_id"]
+        icons      = el["_icons"]
+        name_attr  = el["_name_attr"]
+        data_qa    = el["_data_qa"]
+        name_words = el["_name_words"]
+
+        for term in self._terms:
+            tl = term.text
+            if not tl:
+                continue
+
+            # ── Aria / placeholder exact match ────────────────────
+            if tl == aria or tl == ph:
+                score += 0.625          # 50k / 80k
+                is_perfect = True
+            elif len(tl) > 2 and aria.startswith(tl + " "):
+                score += 0.0375         # 3k / 80k
+
+            # ── data-qa match ─────────────────────────────────────
+            if term.dashed == data_qa or tl == data_qa:
+                score += 1.0            # perfect data-qa
+                is_perfect = True
+            elif term.dashed in data_qa:
+                score += 0.0625         # 5k / 80k
+
+            # ── Name matching ─────────────────────────────────────
+            if tl == name_core or tl == name or tl == name_cc or tl == ctx_prefix:
+                score += 0.625          # 50k / 80k
+                is_perfect = True
+            elif name_core.startswith(tl) or name_core.endswith(tl) or ctx_prefix.startswith(tl):
+                score += 0.025          # 2k / 80k
+            elif tl in name_core or tl in ctx_prefix:
+                extra_words = max(0, len(name_core.split()) - len(tl.split()))
+                score += max(0.0025, 0.0125 - extra_words * 0.001875)
+            elif tl in name:
+                extra_words = max(0, len(name.split()) - len(tl.split()))
+                score += max(0.00125, 0.01 - extra_words * 0.00125)
+            else:
+                overlap = term.words & name_words
+                if overlap:
+                    score += len(overlap) * 0.001875
+                if term.words and all(w in html_id for w in term.words):
+                    score += 0.025
+
+            # ── html_id / icon substring ──────────────────────────
+            if tl in html_id:
+                score += 0.0075         # 600 / 80k
+            if any(w in icons for w in tl.split() if len(w) > 3):
+                score += 0.00875        # 700 / 80k
+
+            # ── HTML name attribute ───────────────────────────────
+            if name_attr:
+                if tl == name_attr:
+                    score += 0.0375     # 3k / 80k
+                elif len(name_attr) >= 3 and (tl in name_attr or name_attr in tl):
+                    score += 0.0125     # 1k / 80k
+
+        return score, is_perfect
+
+    def _score_attributes(self, el: dict) -> float:
+        """Target-field matching, html_id variants, context words, target-word signals.
+
+        Returns a normalised float (can exceed 1.0 with stacked signals).
+        """
+        score   = 0.0
+        name    = el["_name"]
+        html_id = el["_html_id"]
+        ph      = el["_ph"]
+        aria    = el["_aria"]
+        icons   = el["_icons"]
+
+        # ── target_field matching ─────────────────────────────────
+        tf = self._target_field
+        if tf and (tf in name or tf == ph):
+            score += 0.2
+        if tf and html_id and html_id in (
+            tf.replace(" ", "_"), tf.replace(" ", "-"), tf.replace(" ", ""),
+        ):
+            score += 0.6
+
+        # ── Search-text → html_id variant matching ───────────────
+        for term in self._terms:
+            if term.text and html_id and html_id in term.id_variants:
+                score += 0.4
+
+        # ── Context words in developer names ──────────────────────
+        if self._context_words:
+            cls_n = _RE_DELIMITERS.sub(" ", el["_class_name"])
+            id_n  = _RE_DELIMITERS.sub(" ", html_id)
+            dqa_n = _RE_DELIMITERS.sub(" ", el["_data_qa"])
+            dev_text = f"{cls_n} {id_n} {dqa_n}"
+            ctx_hits = sum(1 for w in self._context_words if w in dev_text)
+            if ctx_hits:
+                score += min(ctx_hits * 0.08, 0.4)
+
+        # ── Target-word signals ───────────────────────────────────
+        score += sum(0.004 for w in self._target_words if w in name)
+        score += sum(0.003 for w in self._target_words if len(w) > 3 and w in icons)
+        score += sum(0.006 for w in self._target_words if len(w) > 3 and w in html_id)
+        score += sum(0.005 for w in self._target_words if len(w) > 3 and w in aria)
+
+        return score
+
+    def _score_semantics(self, el: dict, is_perfect: bool, all_els: list[dict]) -> float:
+        """Element type hints, mode synergy, cross-mode penalties, structural signals.
+
+        Returns a normalised float (negative = cross-mode penalty).
+        """
+        score     = 0.0
+        tag       = el["_tag"]
+        itype     = el["_itype"]
+        role      = el["_role"]
+        dev_names = el["_dev_names"]
+
+        # ── Shadow DOM bonus ──────────────────────────────────────
+        if "shadow" in self._step_l and el.get("is_shadow"):
+            score += 0.5
+
+        # ── Element type hints ────────────────────────────────────
+        if self._wants_button:
+            if tag == "input" and itype == "submit":
+                score += 0.016
+            elif el["_is_native_button"]:
+                score += 0.01
+            elif el["_is_real_button"]:
+                score += 0.006
+            if el["_is_real_link"]:
+                score -= 0.006
+            if _RE_BTN_DEV.search(dev_names):
+                score += 0.03
+
+        if self._wants_image and tag == "img":
+            score += 0.06
+
+        if "textarea" in self._step_l and tag == "textarea":
+            score += 0.1
+
+        if self._wants_input:
+            if el["_is_real_input"]:
+                score += 0.01
+            if el["_is_real_button"]:
+                score -= 0.006
+            if itype:
+                if itype in self._step_l or (self._target_field and itype in self._target_field):
+                    score += 0.1
+            if _RE_INP_DEV.search(dev_names):
+                score += 0.03
+
+        # ── Strict checkbox / radio filtering ─────────────────────
+        if self._wants_checkbox:
+            if el["_is_real_checkbox"]:
+                score += 0.5
+            elif _RE_CHK_DEV.search(dev_names):
+                score += 0.2
+            else:
+                score -= 1.0
+        elif self._wants_radio:
+            if el["_is_real_radio"]:
+                score += 0.5
+                if el["_context_prefix"] and any(
+                    term.text == el["_context_prefix"] for term in self._terms if term.text
+                ):
+                    score += 0.1
+            elif _RE_RAD_DEV.search(dev_names):
+                score += 0.2
+            else:
+                score -= 1.0
+
+        if self._wants_select:
+            if _RE_SEL_DEV.search(dev_names):
+                score += 0.04
+
+        # ── Native select options ─────────────────────────────────
+        if self._mode == "select" and el.get("is_select"):
+            score += 0.1
+            m = _RE_OPTIONS.search(el["_name"])
+            options_text = m.group(1) if m else el["_name"]
+            for term in self._terms:
+                tl = term.text
+                if tl and tl not in ("dropdown", "select", "list", "menu") and tl in options_text:
+                    score += 0.6
+                    break
+
+        # ── Mode synergy ──────────────────────────────────────────
+        if is_perfect:
+            if self._mode in ("clickable", "hover") and (
+                el["_is_real_button"] or el["_is_real_link"]
+                or role in ("button", "link", "menuitem", "tab", "switch")
+            ):
+                score += 0.5
+            elif self._mode == "input" and el["_is_real_input"]:
+                score += 0.5
+            elif self._mode == "select" and (
+                el.get("is_select") or tag == "option"
+                or role in ("option", "menuitem", "combobox", "button")
+                or tag == "li"
+            ):
+                score += 0.5
+        else:
+            if self._mode in ("clickable", "hover"):
+                if (el["_is_real_button"] or el["_is_real_link"]
+                        or role in ("button", "link", "menuitem", "tab", "switch")):
+                    score += 0.02
+                elif tag in ("li", "summary", "td", "th", "tr"):
+                    score += 0.01
+            elif self._mode == "input":
+                if el["_is_real_input"]:
+                    score += 0.02
+            elif self._mode == "select":
+                if el.get("is_select"):
+                    score += 0.03
+                elif role in ("listbox", "combobox", "option", "menuitem", "button") or tag == "option":
+                    score += 0.02
+                elif tag == "li":
+                    score += 0.016
+
+        # ── Cross-mode penalties ──────────────────────────────────
+        if self._mode == "select":
+            if el["_is_real_checkbox"] and not self._wants_checkbox:
+                score -= 1.0
+            if el["_is_real_radio"] and not self._wants_radio:
+                score -= 1.0
+        elif self._mode == "input":
+            if el["_is_real_checkbox"] or el["_is_real_radio"]:
+                score -= 1.0
+        elif self._mode == "clickable":
+            if el["_is_real_input"] and not el["_is_native_button"] and self._wants_button:
+                score -= 1.0
+
+        # ── File uploads ──────────────────────────────────────────
+        if tag == "label":
+            label_for = el.get("_label_for", "")
+            if label_for:
+                linked_el = next(
+                    (e for e in all_els
+                     if str(e.get("_html_id", "")) == label_for
+                     and str(e.get("input_type", "")).lower() == "file"),
+                    None,
+                )
+                if linked_el:
+                    score += 0.04
+        if itype == "file":
+            has_label = any(
+                str(e.get("tag_name", "")).lower() == "label"
+                and str(e.get("_label_for", "")) == el["_html_id"]
+                for e in all_els
+            )
+            if has_label:
+                score -= 0.06
+
+        # ── Blind icon clicks ─────────────────────────────────────
+        if self._is_blind and not self._has_search_texts:
+            for w in self._target_words:
+                if len(w) > 3 and w in el["_icons"]:
+                    score += 0.06
+                if len(w) > 3 and w in el["_html_id"]:
+                    score += 0.03
+                if len(w) > 3 and w in el["_aria"]:
+                    score += 0.03
+
+        return score
+
+    def _calculate_penalties(self, el: dict) -> float:
+        """Penalty multiplier for disabled and off-screen (hidden) elements.
+
+        Returns a float in ``[0.0, 1.0]``:
+        - ``1.0``  — normal element (no penalty)
+        - ``0.1``  — hidden / off-screen element
+        - ``0.0``  — disabled element (kills the score)
+        """
+        if el.get("disabled") or el.get("aria_disabled") == "true":
+            return 0.0
+        if el["_is_hidden"]:
+            return 0.1
+        return 1.0
+
+    def _score_proximity(self, el: dict) -> float:
+        """DOM proximity bonus based on shared xpath depth with last resolved element.
+
+        Returns a float in ``[0.0, 1.0]``.
+        """
+        if not self._last_xpath or not el.get("xpath"):
+            return 0.0
+        last_parts = self._last_xpath.split("/")
+        curr_parts = el["xpath"].split("/")
+        common_depth = 0
+        for p1, p2 in zip(last_parts, curr_parts):
+            if p1 == p2:
+                common_depth += 1
+            else:
+                break
+        return min(common_depth, 5) * 0.2
+
+    # ── Orchestrator ──────────────────────────────────────────────────
+
+    def score_all(self, els: list[dict]) -> list[dict]:
+        """Pre-process, score, and sort elements by score (descending).
+
+        Combines normalised ``[0.0, 1.0]`` sub-scores via the ``WEIGHTS``
+        dictionary, applies the penalty multiplier, and scales the result
+        to the integer range expected by ``core.py``.
+        """
+        w = WEIGHTS
+        scale = SCALE
+
+        # Phase 1: attach normalised strings (single pass)
+        for el in els:
+            self._preprocess(el)
+
+        # Phase 2: score each element via modular methods
+        for el in els:
+            cache_score            = self._score_cache_reuse(el)
+            text_score, is_perfect = self._score_text_match(el)
+            attr_score             = self._score_attributes(el)
+            sem_score              = self._score_semantics(el, is_perfect, els)
+            penalty_mult           = self._calculate_penalties(el)
+            prox_score             = self._score_proximity(el)
+
+            base = (
+                text_score * w["text"]
+                + attr_score * w["attributes"]
+                + sem_score * w["semantics"]
+                + prox_score * w["proximity"]
+            )
+            weighted = (base + cache_score * w["cache"]) * penalty_mult
+
+            el["score"] = round(weighted * scale)
+
+        return sorted(els, key=lambda x: x.get("score", 0), reverse=True)
+
+
+# ── Backward-compatible public API ────────────────────────────────────────────
 
 def score_elements(
     els: list[dict],
@@ -14,288 +595,14 @@ def score_elements(
     target_field: str | None,
     is_blind: bool,
     learned_elements: dict,
-    last_xpath: "str | None"
+    last_xpath: "str | None",
 ) -> list[dict]:
-    
-    step_l = step.lower()
-    target_words = set(re.findall(r'\b[a-z0-9]{3,}\b', step_l))
-    wants_button = bool(re.search(r'\bbutton\b', step_l))
-    wants_link   = bool(re.search(r'\blink\b', step_l))
-    wants_image  = bool(re.search(r'\bimage\b|\bimg\b|\bpicture\b|\bphoto\b', step_l))
-    wants_input  = bool(re.search(r'\bfield\b|\binput\b|\btextarea\b|\btype\b|\bfill\b', step_l))
-    wants_checkbox = "checkbox" in step_l
-    wants_radio    = "radio" in step_l
-    wants_select   = "select" in step_l or "dropdown" in step_l
-    
-    # Extract context words OUTSIDE the quoted parts of the step
-    step_no_quotes = re.sub(r"'[^']*'|\"[^\"]*\"", "", step_l)
-    context_words = set(re.findall(r'\b[a-z]{4,}\b', step_no_quotes)) - {
-        "click", "fill", "type", "enter", "select", "choose", "check", "uncheck",
-        "hover", "button", "field", "input", "link", "checkbox", "radio",
-        "from", "with", "into", "the", "that", "this", "step", "double",
-        "image", "dropdown", "textarea", "optional", "exists", "shadow", "root"
-    }
-    
-    cache_key = (mode, tuple([t.lower() for t in search_texts]), target_field)
-    learned = learned_elements.get(cache_key)
+    """Score and rank DOM elements against a given step.
 
-    for el in els:
-        name       = el["name"].lower() if isinstance(el["name"], str) else ""
-        tag        = el.get("tag_name", "")
-        itype      = el.get("input_type", "")
-        data_qa    = el.get("data_qa", "").lower() if isinstance(el.get("data_qa", ""), str) else ""
-        html_id    = el.get("html_id", "").lower() if isinstance(el.get("html_id", ""), str) else ""
-        class_name = el.get("class_name", "")
-        class_name = class_name.lower() if isinstance(class_name, str) else ""
-        icons      = el.get("icon_classes", "").lower() if isinstance(el.get("icon_classes", ""), str) else ""
-        aria       = el.get("aria_label", "").lower() if isinstance(el.get("aria_label", ""), str) else ""
-        role       = el.get("role", "").lower() if isinstance(el.get("role", ""), str) else ""
-        ph         = el.get("placeholder", "").lower() if isinstance(el.get("placeholder", ""), str) else ""
-        name_attr  = str(el.get("name_attr", "")).lower()
-        
-        dev_names = f"{html_id} {class_name} {data_qa}"
-        score = 0
-
-        # Severely penalize natively disabled elements (unless verifying)
-        if el.get("disabled") or el.get("aria_disabled") == "true":
-            score -= 50_000
-
-        # 1. SEMANTIC CACHE
-        if learned and el["name"] == learned["name"] and tag == learned["tag"]:
-            score += 200_000
-
-        # 2. CONTEXTUAL REUSE
-        if is_blind and last_xpath and el["xpath"] == last_xpath:
-            score += 10_000
-
-        # Target field match
-        if target_field and (target_field in name or target_field == ph):
-            score += 5_000
-
-        if target_field and html_id and html_id in (target_field.replace(" ", "_"), target_field.replace(" ", "-"), target_field.replace(" ", "")):
-            score += 15_000
-            
-        for t in search_texts:
-            tl = t.lower().strip()
-            if tl and html_id and html_id in (tl, tl.replace(" ", "_"), tl.replace(" ", "-"), tl.replace(" ", "")):
-                score += 10_000
-
-        name_core = name.split(" -> ")[-1].strip() if " -> " in name else name
-        context_prefix = name.split(" -> ")[0].strip().lower() if " -> " in name else ""
-        # Track [HIDDEN] suffix before stripping so off-screen elements can
-        # still text-match but lose to visible alternatives (see penalty below).
-        # [ABOVE] (scroll-above) is stripped for matching but not penalised.
-        _name_is_hidden = bool(re.search(r'\[hidden\]', name_core, re.IGNORECASE))
-        # Strip JS-injected visibility/DOM suffixes so "Save [ABOVE]" / "Save [HIDDEN]"
-        # still exact-matches search text "Save".
-        name_core = re.sub(r'(\s*\[(hidden|above|shadow_dom)\])+$', '', name_core).strip()
-        name_core_clean = re.sub(r'\s+input\s+\w*$', '', name_core).strip()
-        
-        is_native_button = tag == "button" or (tag == "input" and itype in ("submit", "button", "image", "reset"))
-        is_real_button = is_native_button or role == "button"
-        is_real_link   = tag == "a" or role == "link"
-        is_real_input  = (
-            (tag in ("input", "textarea") and itype not in ("submit", "button", "image", "reset", "radio", "checkbox")) 
-            or role in ("textbox", "searchbox", "spinbutton", "slider")
-            or el.get("is_contenteditable", False)
-        )
-        is_real_checkbox = (tag == "input" and itype == "checkbox") or role == "checkbox"
-        is_real_radio    = (tag == "input" and itype == "radio")    or role == "radio"
-
-        is_perfect_text_match = False
-
-        # 3. TEXT MATCHING
-        for t in search_texts:
-            tl = t.lower().strip()
-            if not tl: continue
-
-            if tl == aria or tl == ph: 
-                score += 50_000 
-                is_perfect_text_match = True
-            elif len(tl) > 2 and aria.startswith(tl + " "):
-                score += 3_000
-                
-            t_dashed = tl.replace(" ", "-").replace("_", "-")
-            if t_dashed == data_qa or tl == data_qa: 
-                score += 80_000                  # Increased priority for QA attributes
-                is_perfect_text_match = True     # Main fix: activates synergy
-            elif t_dashed in data_qa: 
-                score += 5_000
-
-            if tl == name_core or tl == name or tl == name_core_clean or tl == context_prefix: 
-                score += 50_000 
-                is_perfect_text_match = True
-            elif name_core.startswith(tl) or name_core.endswith(tl) or context_prefix.startswith(tl): 
-                score += 2_000
-            elif tl in name_core or tl in context_prefix:
-                extra_words = max(0, len(name_core.split()) - len(tl.split()))
-                score += max(200, 1_000 - extra_words * 150)
-            elif tl in name:
-                extra_words = max(0, len(name.split()) - len(tl.split()))
-                score += max(100, 800 - extra_words * 100)
-            else:
-                t_words = set(re.findall(r'[a-z0-9]{3,}', tl))
-                n_words = set(re.findall(r'[a-z0-9]{3,}', name))
-                overlap = t_words & n_words
-                if overlap: score += len(overlap) * 150
-                if t_words and all(w in html_id for w in t_words):
-                    score += 2_000
-
-            if tl in html_id: score += 600
-            if any(w in icons for w in tl.split() if len(w) > 3): score += 700
-            # HTML 'name' attribute — form field identifiers (e.g. name="search", name="q")
-            if name_attr:
-                if tl == name_attr:
-                    score += 3_000
-                elif len(name_attr) >= 3 and name_attr in tl:
-                    score += 1_000
-
-        if context_words:
-            cls_normalized = re.sub(r'[-_]', ' ', class_name)
-            id_normalized = re.sub(r'[-_]', ' ', html_id)
-            dqa_normalized = re.sub(r'[-_]', ' ', data_qa)
-            dev_text = f"{cls_normalized} {id_normalized} {dqa_normalized}"
-            ctx_hits = sum(1 for w in context_words if w in dev_text)
-            if ctx_hits: score += ctx_hits * 2_000
-
-        score += sum(10 for w in target_words if w in name)
-        score += sum(8  for w in target_words if len(w) > 3 and w in icons)
-        score += sum(15 for w in target_words if len(w) > 3 and w in html_id)
-        score += sum(12 for w in target_words if len(w) > 3 and w in aria)
-
-        # 4. OFF-SCREEN PENALTY — deprioritise [HIDDEN] elements so they lose to
-        # visible alternatives when text matching is otherwise equal, but can
-        # still be resolved when every candidate shares the same penalty.
-        if _name_is_hidden:
-            score -= 5_000
-
-        # 5. SHADOW DOM BONUS
-        if "shadow" in step_l and el.get("is_shadow"):
-            score += 50_000
-
-        if wants_button:
-            if tag == "input" and itype == "submit": score += 800
-            elif is_native_button: score += 500
-            elif is_real_button: score += 300
-            if is_real_link:     score -= 300
-            if re.search(r'\bbtn\b|-btn|btn-|button', dev_names): score += 1500
-
-        if wants_image:
-            if tag == "img": score += 3000
-            
-        if "textarea" in step_l and tag == "textarea":
-            score += 5000
-
-        if wants_input:
-            if is_real_input:    score += 500
-            if is_real_button:   score -= 300
-            if itype:
-                if itype in step_l or (target_field and itype in target_field): score += 5000
-            if re.search(r'\binp\b|-inp|inp-|input|\btxt\b|-txt|txt-|field', dev_names): score += 1500
-
-        # 6. STRICT CHECKBOX/RADIO FILTERING
-        if wants_checkbox:
-            if is_real_checkbox: 
-                score += 50_000
-            elif re.search(r'\bchk\b|-chk|chk-|checkbox', dev_names): 
-                score += 20_000
-            else:
-                score -= 50_000
-                
-        elif wants_radio:
-            if is_real_radio: 
-                score += 50_000
-                if context_prefix and any(t.lower().strip() == context_prefix for t in search_texts if t.strip()):
-                    score += 5_000  # label text beats HTML name attribute
-            elif re.search(r'\brad\b|-rad|rad-|radio', dev_names): 
-                score += 20_000
-            else:
-                score -= 50_000
-
-        if wants_select:
-            if re.search(r'\bsel\b|-sel|sel-|select|\bdrop\b|-drop|drop-|\bcmb\b|-cmb|cmb-|combo', dev_names): score += 2000
-        
-        # MASSIVE BOOST FOR NATIVE SELECT OPTIONS
-        if mode == "select" and el.get("is_select"):
-            score += 5_000
-            m = re.search(r'\[(.*?)\]', name)
-            options_text = m.group(1) if m else name
-            for t in search_texts:
-                tl = t.lower().strip()
-                if tl and tl not in ("dropdown", "select", "list", "menu") and tl in options_text:
-                    score += 60_000
-                    break
-                    
-        # 7. MODE SYNERGY
-        if is_perfect_text_match:
-            if mode in ("clickable", "hover") and (is_real_button or is_real_link or role in ("button", "link", "menuitem", "tab", "switch")):
-                score += 50_000
-            elif mode == "input" and is_real_input:
-                score += 50_000
-            elif mode == "select" and (el.get("is_select") or tag == "option" or role in ("option", "menuitem", "combobox", "button") or tag == "li"):
-                score += 50_000
-        else:
-            if mode in ("clickable", "hover"):
-                if is_real_button or is_real_link or role in ("button", "link", "menuitem", "tab", "switch"):
-                    score += 1_000
-                elif tag in ("li", "summary", "td", "th", "tr"):
-                    score += 500
-            elif mode == "input":
-                if is_real_input:
-                    score += 1_000
-            elif mode == "select":
-                if el.get("is_select"):
-                    score += 1_500
-                elif role in ("listbox", "combobox", "option", "menuitem", "button") or tag == "option":
-                    score += 1_000
-                elif tag == "li":
-                    score += 800
-
-        # CROSS-MODE PENALTIES (Protects Dropdowns from Checkboxes)
-        if mode == "select":
-            if is_real_checkbox and not wants_checkbox:
-                score -= 50_000
-            if is_real_radio and not wants_radio:
-                score -= 50_000
-        elif mode == "input":
-            if is_real_checkbox or is_real_radio:
-                score -= 50_000
-        elif mode == "clickable":
-            if is_real_input and not is_native_button and wants_button:
-                score -= 200_000  # text input must never win over a button
-        
-        # 8. FILE UPLOADS
-        if tag == "label":
-            linked_id = el.get("html_id", "")
-            if linked_id:
-                linked_el = next((e for e in els if str(e.get("html_id")) == linked_id and str(e.get("input_type")) == "file"), None)
-                if linked_el: score += 2_000
-        if itype == "file":
-            has_label = any(str(e.get("tag_name")) == "label" and str(e.get("html_id")) == html_id for e in els)
-            if has_label: score -= 3_000
-
-        # 9. BLIND ICON CLICKS
-        if is_blind and not search_texts:
-            for w in target_words:
-                if len(w) > 3 and w in icons: score += 3_000
-                if len(w) > 3 and w in html_id: score += 1_500
-                if len(w) > 3 and w in aria: score += 1_500
-
-        # =====================================================================
-        # 10. DOM PROXIMITY BONUS (Form Context Awareness)
-        # =====================================================================
-        if last_xpath and el.get("xpath"):
-            last_parts = last_xpath.split('/')
-            curr_parts = el["xpath"].split('/')
-            common_depth = 0
-            for p1, p2 in zip(last_parts, curr_parts):
-                if p1 == p2:
-                    common_depth += 1
-                else:
-                    break
-            capped_depth = min(common_depth, 5)
-            score += (capped_depth * 400)
-
-        el["score"] = score
-
-    return sorted(els, key=lambda x: x.get("score", 0), reverse=True)
+    Backward-compatible entry point — delegates to :class:`DOMScorer`.
+    """
+    scorer = DOMScorer(
+        step, mode, search_texts, target_field,
+        is_blind, learned_elements, last_xpath,
+    )
+    return scorer.score_all(els)

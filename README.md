@@ -18,20 +18,23 @@ Manul combines the blazing speed of **Playwright**, 20+ JavaScript DOM heuristic
 
 ---
 
-## 🚀 What's New: The Enterprise Update
+## 🚀 What's New: The Engine Overhaul
 
-* **Clean, Unnumbered DSL:** The requirement for line numbers before actions has been completely dropped. Scripts now read exactly like plain English (`NAVIGATE to url` instead of `1. NAVIGATE to url`).
-* **Logical STEP Grouping:** `STEP [optional number]: [Description]` metadata blocks allow mapping manual QA cases directly into `.hunt` files. Unmatched quotes inside descriptions (e.g. `STEP: Pallas's cat`) are cleanly isolated.
-* **Enterprise HTML Reporter:** The reporter is now dual-mode and zero-dependency, featuring native HTML5 accordions (`<details>`), auto-expanding failures, and a clean Flexbox layout instead of old-school tables.
-* **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, and `@after_group` orchestrate complex DB seeding and auth logic. `ctx.variables` are securely serialized across parallel `--workers`.
-* **Bulletproof DOM Heuristics:** The updated `SNAPSHOT_JS` rigorously filters out invisible or hidden UI elements (like hidden sticky headers), and effortlessly handles deeply nested modern frameworks (e.g. Wikipedia Vector 2022 / Codex) by strongly prioritizing `aria-label` and `name_attr`.
-* **VS Code Extension Polish:** The Step Builder is now context-aware, verifying `vscode.window.activeTextEditor` to prevent accidental insertions in non-`.hunt` files, and provides robust syntax highlighting for the unnumbered DSL.
+* **Normalised Heuristic Scoring (DOMScorer):** The scoring engine now uses `0.0–1.0` float arithmetic under the hood. Five weighted channels — `cache` (2.0), `semantics` (0.60), `text` (0.45), `attributes` (0.25), `proximity` (0.10) — are combined via a `WEIGHTS` dict and multiplied by `SCALE=177,778` to produce the final integer score. Exact `data-qa` match is the single strongest heuristic signal (+1.0 text). Penalties are clean multipliers: disabled ×0.0, hidden ×0.1.
+* **TreeWalker-Based DOM Scanner:** `SNAPSHOT_JS` no longer calls `querySelectorAll` — it walks the DOM with a native `TreeWalker` and a `PRUNE` set (`SCRIPT, STYLE, SVG, NOSCRIPT, TEMPLATE, META, PATH, G, BR, HR`) that rejects entire subtrees in one hop. Visibility is checked via the zero-layout-thrash `checkVisibility()` API with automatic `offsetWidth/offsetHeight` fallback. Hidden file/checkbox/radio inputs are preserved as special exceptions.
+* **Safe iframe Support:** `_snapshot()` iterates `page.frames`, injects `SNAPSHOT_JS` into each same-origin frame, and tags every returned element with `frame_index`. `_frame_for(page, el)` routes all downstream `locator()` and `evaluate()` calls to the correct Playwright `Frame`. Cross-origin and detached frames are silently skipped with retry logic.
+* **Clean, Unnumbered DSL:** Scripts now read exactly like plain English (`NAVIGATE to url` instead of `1. NAVIGATE to url`).
+* **Logical STEP Grouping:** `STEP [optional number]: [Description]` metadata blocks map manual QA cases directly into `.hunt` files.
+* **Enterprise HTML Reporter:** Dual-mode, zero-dependency reporter with native HTML5 accordions, auto-expanding failures, and Flexbox layout.
+* **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, `@after_group` orchestrate DB seeding and auth. `ctx.variables` serialise across parallel `--workers`.
 
 ## ✨ Key Features
 
 ### ⚡ Heuristics-First Architecture
 
 95% of the heavy lifting (element finding, assertions, DOM parsing) is handled by ultra-fast JavaScript and Python heuristics. The AI steps in only when genuine ambiguity arises.
+
+The scoring engine (`DOMScorer`) uses normalised `0.0–1.0` floats across five weighted channels — `cache`, `semantics`, `text`, `attributes`, `proximity` — combined via a `WEIGHTS` dict and scaled to integer thresholds. Exact `data-qa` match (+1.0) is the single strongest signal; disabled elements are crushed by a ×0.0 multiplier.
 
 When the LLM picker is used, Manul passes the heuristic score as a **prior** (hint) by default — the model can override the ranking only with a clear, disqualifying reason.
 
@@ -43,9 +46,9 @@ Modern websites love to hide elements behind invisible overlays, custom dropdown
 
 Manul scores elements using 20+ signals including `aria-label`, `placeholder`, `name`, `data-qa`, `html_id`, semantic `input type`, and contextual section headings. This means it handles modern single-page apps (React, Vue, Angular) and complex design systems (like Wikipedia's Vector 2022 / Codex skin) without any tuning — accessibility attributes are treated as first-class identifiers.
 
-### 🌑 Shadow DOM Awareness
+### 🌑 Shadow DOM & iframe Awareness
 
-The DOM snapshotter recursively inspects shadow roots and can interact with elements inside the shadow tree.
+The DOM snapshotter recursively walks shadow roots via `TreeWalker` and scans same-origin iframes by iterating `page.frames`. Each element carries a `frame_index` that routes all downstream actions to the correct Playwright `Frame`. Cross-origin frames are silently skipped.
 
 ### 👻 Smart Anti-Phantom Guard & AI Rejection
 
@@ -660,9 +663,12 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 
 ## 🐾 Battle-Tested
 
-ManulEngine is verified against **1653+ synthetic DOM tests** covering:
+ManulEngine is verified against **1803+ synthetic DOM tests** covering:
 
 - Shadow DOM, invisible overlays, zero-pixel honeypots
+- Same-origin iframe element routing and cross-frame resolution
+- Normalised DOMScorer weighting hierarchy (data-qa > text > attributes)
+- TreeWalker PRUNE-set filtering and `checkVisibility()` visibility gating
 - Custom dropdowns, drag-and-drop, hover menus
 - Legacy HTML (tables, fieldsets, unlabelled inputs)
 - AI rejection & self-healing loops
@@ -670,4 +676,4 @@ ManulEngine is verified against **1653+ synthetic DOM tests** covering:
 
 ---
 
-**Version:** 0.0.8.8 · **Status:** Hunting...
+**Version:** 0.0.8.9 · **Status:** Hunting...

@@ -33,6 +33,7 @@ VISIBLE_TEXT_JS = """() => {
 }"""
 
 SNAPSHOT_JS = r"""([mode, expected_texts]) => {
+    // ── Global element registry (idempotent) ──────────────────────────
     if (!window.manulElements) {
         window.manulElements = {};
         window.manulIdCounter = 0;
@@ -41,140 +42,176 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
     window.manulHighlight = (id, color, bg) => {
         const el = window.manulElements[id]; if (!el) return;
         el.scrollIntoView({ behavior:'smooth', block:'center' });
-        const oB=el.style.border, oBg=el.style.backgroundColor;
-        el.style.border=`4px solid ${color}`; el.style.backgroundColor=bg;
-        setTimeout(()=>{el.style.border=oB;el.style.backgroundColor=oBg;},2000);
+        const oB = el.style.border, oBg = el.style.backgroundColor;
+        el.style.border = `4px solid ${color}`; el.style.backgroundColor = bg;
+        setTimeout(() => { el.style.border = oB; el.style.backgroundColor = oBg; }, 2000);
     };
     window.manulClick = id => {
-        const el=window.manulElements[id];
-        if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.click();}
+        const el = window.manulElements[id];
+        if (el) { el.scrollIntoView({behavior:'smooth',block:'center'}); el.click(); }
     };
     window.manulDoubleClick = id => {
-        const el=window.manulElements[id];
-        if(el) el.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));
+        const el = window.manulElements[id];
+        if (el) el.dispatchEvent(new MouseEvent('dblclick', {bubbles:true}));
     };
     window.manulType = (id, text) => {
-        const el=window.manulElements[id];
-        if(!el) return;
+        const el = window.manulElements[id];
+        if (!el) return;
         el.scrollIntoView({behavior:'smooth',block:'center'});
         if (el.isContentEditable || el.getAttribute('contenteditable') === 'true') {
             el.innerText = text;
         } else {
-            el.value=text;
+            el.value = text;
         }
-        el.dispatchEvent(new Event('input',{bubbles:true}));
-        el.dispatchEvent(new Event('change',{bubbles:true}));
+        el.dispatchEvent(new Event('input', {bubbles:true}));
+        el.dispatchEvent(new Event('change', {bubbles:true}));
     };
 
-    const INTERACTIVE_INPUT = "input,textarea,[contenteditable='true'],[role='textbox'],[role='slider'],[role='spinbutton']";
-    const INTERACTIVE_CLICK = [
-        "button","a","input[type='radio']","input[type='checkbox']",
-        "select",".dropbtn","summary",
-        ".ui-draggable",".ui-droppable","input",
-        "label",
-        "[role='button']","[role='checkbox']","[role='radio']",
-        "[role='tab']","[role='option']","[role='menuitem']","[role='switch']",
-        "[role='slider']","[role='application']","[role='link']",
-        "[class*='btn']","[class*='button']","[class*='swatch']","[class*='card']","[class*='tab']",
-        "[class*='option']",
-        "[data-qa]","[data-testid]",
-        "[aria-label]","[title]",
-        "div[id]","span[id]",
-        "[onclick]",
-    ].join(",");
+    // ── Tags to prune at traversal level (subtrees skipped entirely) ──
+    const PRUNE = new Set([
+        'SCRIPT','STYLE','NOSCRIPT','SVG','TEMPLATE',
+        'META','PATH','G','BR','HR'
+    ]);
 
-    const INTERACTIVE = (mode === "input") ? INTERACTIVE_INPUT : INTERACTIVE_CLICK;
+    const isInputMode = mode === 'input';
+    const hasCheckVis = typeof Element.prototype.checkVisibility === 'function';
 
+    // ── Mode-dependent interactivity predicate ────────────────────────
+    const ROLES = new Set([
+        'button','checkbox','radio','tab','option','menuitem',
+        'switch','slider','application','link','textbox','spinbutton'
+    ]);
+    const RE_CLS = /btn|button|swatch|card|tab|option|ui-drag|ui-drop/i;
+
+    const isInteractive = isInputMode
+        ? (el) => {
+            const t = el.tagName;
+            if (t === 'INPUT' || t === 'TEXTAREA') return true;
+            if (el.getAttribute('contenteditable') === 'true') return true;
+            const r = el.getAttribute('role');
+            return r === 'textbox' || r === 'slider' || r === 'spinbutton';
+        }
+        : (el) => {
+            const t = el.tagName;
+            if (t === 'BUTTON' || t === 'A' || t === 'INPUT' || t === 'SELECT' ||
+                t === 'TEXTAREA' || t === 'SUMMARY' || t === 'LABEL') return true;
+            if (t === 'IMG') return !!el.getAttribute('alt');
+            if (t.includes('-')) return true;
+            const r = el.getAttribute('role');
+            if (r && ROLES.has(r)) return true;
+            if (el.hasAttribute('data-qa') || el.hasAttribute('data-testid')) return true;
+            if (el.hasAttribute('aria-label') || el.hasAttribute('title')) return true;
+            if (el.hasAttribute('onclick')) return true;
+            if (el.id && (t === 'DIV' || t === 'SPAN')) return true;
+            const cn = typeof el.className === 'string' ? el.className : '';
+            if (cn && RE_CLS.test(cn)) return true;
+            return false;
+        };
+
+    // ── Collection ────────────────────────────────────────────────────
     const seen    = new Set();
     const results = [];
 
-    // Helper to process and filter elements
     const processElement = (el, inShadow) => {
         if (seen.has(el)) return;
         seen.add(el);
 
-        const r  = el.getBoundingClientRect();
-        const elRole = (el.getAttribute('role') || '').toLowerCase();
-        const st = window.getComputedStyle(el);
-        const isHidden = st.display === 'none' || st.visibility === 'hidden' || parseFloat(st.opacity) === 0;
+        const tag = el.tagName;
+        const isSpecialInput = tag === 'INPUT'
+            && (el.type === 'file' || el.type === 'checkbox' || el.type === 'radio');
 
-        // Ancestor display:none detection — walk up the DOM tree and check
-        // each ancestor's computed display. getComputedStyle on the child
-        // does NOT propagate parent's display:none, so we must check
-        // ancestors explicitly. This is more reliable than offsetParent
-        // which can be null for valid reasons (no_viewport contexts, etc.).
-        let isAncestorHidden = false;
-        if (!isHidden) {
-            let p = el.parentElement;
-            while (p && p !== document.documentElement) {
-                if (window.getComputedStyle(p).display === 'none') {
-                    isAncestorHidden = true;
-                    break;
-                }
-                p = p.parentElement;
+        // ── Visibility (minimal getComputedStyle in fallback only) ────
+        let hidden = false;
+        if (hasCheckVis) {
+            if (!el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) {
+                if (!isSpecialInput) return;
+                hidden = true;
+            }
+        } else {
+            const cs = window.getComputedStyle(el);
+            const hasLayout = el.offsetWidth > 0 && el.offsetHeight > 0;
+            const styleHidden = cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0';
+            if (!hasLayout || styleHidden) {
+                if (!isSpecialInput) return;
+                hidden = true;
             }
         }
 
-        const isSpecialInput = el.tagName === 'INPUT'
-            && (el.type === 'file' || el.type === 'checkbox' || el.type === 'radio');
-        
-        if (isHidden || isAncestorHidden) {
-            if (!isSpecialInput) return;
-        }
-        
-        if (r.width < 2 || r.height < 2) {
-            if (elRole !== 'switch' && el.tagName !== 'INPUT') return;
+        // ── Size gate ─────────────────────────────────────────────────
+        const rect = el.getBoundingClientRect();
+        if (rect.width < 2 || rect.height < 2) {
+            const elRole = (el.getAttribute('role') || '').toLowerCase();
+            if (elRole !== 'switch' && tag !== 'INPUT') return;
         }
 
-        if (el.tagName === 'LABEL') {
+        // ── Label deduplication (skip label when linked input visible) ─
+        if (tag === 'LABEL') {
             const linked = el.htmlFor
                 ? document.getElementById(el.htmlFor)
                 : el.querySelector('input');
-            if (linked) {
-                if (linked.type === 'file') {
-                    // Keep this label — don't skip it
-                } else {
-                    const lr = linked.getBoundingClientRect();
-                    if (lr.width > 2 && lr.height > 2 && window.getComputedStyle(linked).display !== 'none') {
-                        return;
-                    }
-                }
+            if (linked && linked.type !== 'file') {
+                const lr = linked.getBoundingClientRect();
+                const vis = hasCheckVis
+                    ? linked.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })
+                    : (() => {
+                        const cs = window.getComputedStyle(linked);
+                        const hasLayout = linked.offsetWidth > 0 || linked.offsetHeight > 0;
+                        const styleHidden = cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0';
+                        return hasLayout && !styleHidden;
+                    })();
+                if (lr.width > 2 && lr.height > 2 && vis) return;
             }
         }
 
+        // ── Assign stable runtime ID ──────────────────────────────────
         if (!el.dataset.manulId) {
             const id = window.manulIdCounter++;
-            el.dataset.manulId  = id;
+            el.dataset.manulId = id;
             window.manulElements[id] = el;
         }
-        results.push({el, inShadow, isHidden, isAncestorHidden});
+
+        results.push({ el, inShadow, hidden, rect });
     };
 
-    const collect = (root, inShadow=false) => {
-        root.querySelectorAll(INTERACTIVE).forEach(el => processElement(el, inShadow));
-        
-        root.querySelectorAll('*').forEach(el => {
-            if (el.tagName.includes('-')) processElement(el, inShadow);
-            if (el.tagName === 'IMG' && el.getAttribute('alt')) processElement(el, inShadow);
-            if(el.shadowRoot) collect(el.shadowRoot, true);
+    // ── TreeWalker traversal (single pass, subtree pruning) ───────────
+    const walk = (root, inShadow) => {
+        const tw = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+            acceptNode(n) {
+                return PRUNE.has(n.tagName)
+                    ? NodeFilter.FILTER_REJECT
+                    : NodeFilter.FILTER_ACCEPT;
+            }
         });
+        let n;
+        while ((n = tw.nextNode())) {
+            if (n.shadowRoot) walk(n.shadowRoot, true);
+            if (isInteractive(n)) processElement(n, inShadow);
+        }
     };
-    
-    collect(document);
 
-    results.sort((a,b) => a.el.getBoundingClientRect().top - b.el.getBoundingClientRect().top);
+    walk(document.body || document.documentElement, false);
 
+    // ── Sort by vertical position (cached rects — no extra reflows) ───
+    results.sort((a, b) => a.rect.top - b.rect.top);
+
+    // ── XPath generator (sibling walk, no Array.from) ─────────────────
     const getXPath = el => {
-        if(el.id) return `//*[@id="${el.id}"]`;
+        if (el.id) return `//*[@id="${el.id}"]`;
         const parts = [];
-        while(el && el.nodeType === Node.ELEMENT_NODE) {
-            const idx = Array.from(el.parentNode?.children || []).filter(s => s.tagName === el.tagName).indexOf(el) + 1;
+        while (el && el.nodeType === Node.ELEMENT_NODE) {
+            let idx = 1;
+            let sib = el.previousElementSibling;
+            while (sib) {
+                if (sib.tagName === el.tagName) idx++;
+                sib = sib.previousElementSibling;
+            }
             parts.unshift(`${el.tagName.toLowerCase()}[${idx}]`);
             el = el.parentNode;
         }
         return `/${parts.join('/')}`;
     };
 
+    // ── Label / context resolver ──────────────────────────────────────
     const labelFor = el => {
         if (el.tagName === 'INPUT' && (el.type === 'checkbox' || el.type === 'radio')) {
             const tr = el.closest('tr');
@@ -194,7 +231,7 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         if (['INPUT','SELECT','TEXTAREA'].includes(el.tagName)) {
             const lbl = document.querySelector(`label[for="${el.id}"]`);
             if (lbl) return lbl.innerText.trim();
-            
+
             const fieldset = el.closest('fieldset');
             if (fieldset) {
                 const leg = fieldset.querySelector('legend');
@@ -222,13 +259,15 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         return '';
     };
 
-    return results.map(({el, inShadow, isHidden, isAncestorHidden}) => {
+    // ── Build output payload ──────────────────────────────────────────
+    return results.map(({ el, inShadow, hidden, rect }) => {
         let name, isSelect = false;
         const iconClasses = Array.from(el.querySelectorAll('i, svg, span[class*="icon"]'))
             .map(i => (typeof i.className === 'string' ? i.className : (i.getAttribute('class') || '')))
             .join(' ').replace(/[-_]/g, ' ').toLowerCase();
 
         const htmlId    = el.id || el.getAttribute('for') || '';
+        const elLabelFor = el.tagName === 'LABEL' ? (el.getAttribute('for') || '') : '';
         let ariaLabel = el.getAttribute('aria-label') || el.getAttribute('title') || '';
         if (!ariaLabel) {
             const labelledBy = el.getAttribute('aria-labelledby');
@@ -237,7 +276,7 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
                 if (lblEl) ariaLabel = lblEl.innerText.trim();
             }
         }
-        
+
         let altText = '';
         if (['IMG', 'SVG', 'AREA'].includes(el.tagName)) {
             altText = el.getAttribute('alt') || '';
@@ -261,20 +300,14 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
         if (ctx)      name = `${ctx} -> ${name}`;
         if (inShadow) name += ' [SHADOW_DOM]';
 
-        // Distinguish structural hiding (aria-hidden, off-screen LEFT via CSS)
+        // Distinguish structural hiding (aria-hidden, off-screen LEFT)
         // from scroll-above (element scrolled above the viewport).
         // [HIDDEN] = intentionally hidden → scored with a penalty.
-        // [ABOVE]  = temporarily off-screen due to scroll → stripped for
-        //            text matching but not penalised (sort order breaks ties).
+        // [ABOVE]  = temporarily off-screen → stripped for text matching.
         let isStructuralHidden = false;
         if (el.getAttribute('aria-hidden') === 'true') isStructuralHidden = true;
-        const rect = el.getBoundingClientRect();
         if (rect.left < -999) isStructuralHidden = true;
-        // Ancestor-hidden elements that slipped through (file/checkbox/radio
-        // exemption) should still be tagged for scoring penalty.
-        if (!isStructuralHidden && (isHidden || isAncestorHidden)) {
-            isStructuralHidden = true;
-        }
+        if (!isStructuralHidden && hidden) isStructuralHidden = true;
 
         const isScrollAbove = rect.top < -999 && !isStructuralHidden;
 
@@ -302,6 +335,7 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             disabled:      el.hasAttribute('disabled') || el.disabled || false,
             aria_disabled: el.getAttribute('aria-disabled') || '',
             name_attr:     nameAttr,
+            label_for:     elLabelFor,
         };
     });
 }"""
