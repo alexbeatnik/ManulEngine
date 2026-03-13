@@ -61,6 +61,8 @@ manul_engine/
     test_29_iframe_routing.py    Cross-frame element resolution (25 assertions)
     test_30_heuristic_weights.py DOMScorer priority hierarchy (32 assertions)
     test_31_visibility_treewalker.py TreeWalker PRUNE/checkVisibility (20 assertions)
+    test_32_verify_enabled.py    VERIFY ENABLED/DISABLED state verification (20 assertions)
+    test_33_call_python_args.py  CALL PYTHON with positional arguments (44 assertions, no browser)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
@@ -156,7 +158,7 @@ Rules for STEP-grouped files:
 * `UPLOAD 'File' to 'Target'` — Uploads a file to a file-input element. Path is resolved relative to the `.hunt` file's directory, then CWD. Both file path and target must be quoted.
 * `SCROLL DOWN` or `SCROLL DOWN inside the list`
 * `EXTRACT [target] into {variable_name}`
-* `VERIFY that [target] is present` / `is NOT present` / `is DISABLED` / `is checked`
+* `VERIFY that [target] is present` / `is NOT present` / `is DISABLED` / `is ENABLED` / `is checked`
 * `SCAN PAGE` — scans the current page for interactive elements and prints a draft `.hunt` to the console.
 * `SCAN PAGE into {filename}` — same, but also writes the draft to `{filename}`. Default output dir is `tests_home` from config.
 * `DEBUG` / `PAUSE` — pauses execution at that step. In interactive terminal mode (`--debug`), draws a dashed red border around the resolved element and prompts the user; when run via VS Code extension, emits the debug pause protocol marker (see below).
@@ -209,14 +211,14 @@ These keywords are detected via word-boundary regex, bypass heuristics, and are 
 * `UPLOAD 'File' to 'Target'` — Uploads a file to a file-input element (e.g. `UPLOAD 'avatar.png' to 'Profile Picture'`). Both file path and target must be quoted. File path is resolved relative to the `.hunt` file's directory first, then CWD. Mapped to `locator.set_input_files(path)`.
 * `SCROLL DOWN` — Scrolls the main page down by one viewport height. `SCROLL DOWN inside the list` — scrolls the first dropdown-style scroll container (e.g., `#dropdown` or any element whose class name contains `dropdown`) all the way to the bottom (by setting `scrollTop = scrollHeight`). Phrases like `SCROLL DOWN to the very bottom` are accepted but currently behave the same as a single `SCROLL DOWN` on the main page (they do not auto-scroll the page all the way to the bottom).
 * `EXTRACT [target] into {variable_name}` — Extracts text data into memory.
-* `VERIFY that [target] is present` (or `is NOT present`, `is DISABLED`, `is checked`)
+* `VERIFY that [target] is present` (or `is NOT present`, `is DISABLED`, `is ENABLED`, `is checked`)
 * `SCAN PAGE` — Runs `SCAN_JS` on the current page, maps results to hunt steps, prints a draft to console.
 * `SCAN PAGE into {filename}` — Same, but also writes the draft to `{filename}`. Output defaults to `{tests_home}/draft.hunt` (reads `tests_home` from `manul_engine_configuration.json`, defaults to `tests/`).
 * `DONE.` — Explicitly ends the mission.
 * `[SETUP]` / `[END SETUP]` — Block wrapping `CALL PYTHON <module>.<function>` lines. Runs **before** the browser launches. If any line fails, the mission is skipped and teardown is not called.
 * `[TEARDOWN]` / `[END TEARDOWN]` — Cleanup block. Runs in a `finally` block **after** the mission (pass or fail). Only executed if `[SETUP]` succeeded. Failure is logged but does not override the mission result.
-* Inside hook blocks, each non-blank non-comment line must have the form: `CALL PYTHON <module>.<function>`. The module is resolved in this order: the `.hunt` file's directory → `CWD` → standard `importlib.import_module`. Target functions must be **synchronous**.
-* **Inline `CALL PYTHON` steps** — `CALL PYTHON <module>.<function>` is also valid as a standard numbered step anywhere in the main mission body (outside hook blocks). It uses the identical module resolution, state isolation, and sync-only rules as hook blocks. A failure stops the mission immediately.
+* Inside hook blocks, each non-blank non-comment line must have the form: `CALL PYTHON <module>.<function>` (optionally with positional arguments — see Section 7b). The module is resolved in this order: the `.hunt` file's directory → `CWD` → standard `importlib.import_module`. Target functions must be **synchronous**.
+* **Inline `CALL PYTHON` steps** — `CALL PYTHON <module>.<function>` (with optional positional arguments) is also valid as a standard numbered step anywhere in the main mission body (outside hook blocks). It uses the identical module resolution, state isolation, and sync-only rules as hook blocks. A failure stops the mission immediately.
 
 ### 6. Interaction Actions (Parsed Modes)
 If not a System Keyword, the engine detects the interaction mode based on verbs:
@@ -257,13 +259,23 @@ Fill 'Password' with 'secret123'
 ```
 
 ### 7b. Dynamic Variable Capture (`CALL PYTHON ... into {var}`)
-`CALL PYTHON <module>.<function> into {variable_name}` captures the **return value** of the function as a string and stores it in the engine's runtime memory, available for `{placeholder}` substitution in all subsequent steps. The `to` keyword is accepted as an alias for `into`.
+`CALL PYTHON <module>.<function> [args...] into {variable_name}` captures the **return value** of the function as a string and stores it in the engine's runtime memory, available for `{placeholder}` substitution in all subsequent steps. The `to` keyword is accepted as an alias for `into`.
 * The function must be **synchronous** and return any value; the engine calls `str()` on the result before storing it.
+* **Positional arguments** can be passed after the dotted function name, before the optional `into {var}` clause. Arguments are tokenised with `shlex.split()` — single-quoted, double-quoted, and unquoted tokens are all accepted. `{var}` placeholders inside arguments are resolved from the engine's runtime memory (or the `parsed_vars`/`variables` dict for hook blocks).
+* Calls without arguments remain fully backward-compatible — `CALL PYTHON mod.func` and `CALL PYTHON mod.func into {var}` work exactly as before.
 * **MANDATORY rule for AI-generated hunt files:** Whenever a step needs data that comes from a backend call, API, OTP service, or any computed value, capture it with `CALL PYTHON ... into {var}` and reference the result via `{var}` in following steps. Never hardcode computed or runtime values directly in steps.
+
+Full syntax variants:
+```text
+CALL PYTHON <module>.<function>
+CALL PYTHON <module>.<function> "arg1" 'arg2' {var}
+CALL PYTHON <module>.<function> "arg1" {var} into {result}
+CALL PYTHON <module>.<function> into {result}
+```
 
 Correct:
 ```text
-3. CALL PYTHON helpers.api.get_otp into {otp_code}
+3. CALL PYTHON helpers.api.get_otp "{email}" into {otp_code}
 4. Fill 'OTP' field with '{otp_code}'
 ```
 
@@ -285,7 +297,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * **CRITICAL — Inline Python for mid-test backend interaction:** When a step requires interacting with a backend, database, or API mid-test — such as fetching an OTP, a magic link, a confirmation token, or triggering a backend job before a UI action — **DO NOT simulate it via the UI**. Use an inline `CALL PYTHON <module>.<func>` step directly in the numbered sequence. This is faster, more reliable, and immune to UI timing issues.
   ```text
   2. CLICK the 'Send OTP' button
-  3. CALL PYTHON api_helpers.fetch_and_set_otp
+  3. CALL PYTHON api_helpers.fetch_otp "{email}" into {otp}
   4. Fill 'OTP' field with '{otp}'
   ```
 * `[TEARDOWN]` cleanup runs whether the mission passed or failed. Use it to delete test records and reset state.

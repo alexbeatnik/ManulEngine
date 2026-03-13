@@ -280,7 +280,7 @@ async def _run_hunt_file(
     # ── [SETUP] ───────────────────────────────────────────────────────────────
     # If setup fails, we skip the mission and teardown entirely — there is
     # nothing to clean up because setup never completed.
-    if not run_hooks(hunt.setup_lines, label="SETUP", hunt_dir=hunt_dir):
+    if not run_hooks(hunt.setup_lines, label="SETUP", hunt_dir=hunt_dir, variables=hunt.parsed_vars):
         print(f"\n❌ SETUP failed — skipping mission and teardown for {filename}")
         return MissionResult(file=path, name=filename, status="fail", error="SETUP failed")
 
@@ -312,7 +312,7 @@ async def _run_hunt_file(
         # ── [TEARDOWN] ────────────────────────────────────────────────────────
         # Always runs after setup succeeds, regardless of mission outcome.
         # Teardown failures are logged but do not override the mission result.
-        run_hooks(hunt.teardown_lines, label="TEARDOWN", hunt_dir=hunt_dir)
+        run_hooks(hunt.teardown_lines, label="TEARDOWN", hunt_dir=hunt_dir, variables=hunt.parsed_vars)
 
 
 # ── Collect .hunt files from a path ──────────────────────────────────────────
