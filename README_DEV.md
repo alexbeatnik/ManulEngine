@@ -63,7 +63,10 @@ ManulEngine/
 │       ├── test_25_reporter.py       Unit: HTML report generator (42 assertions, no browser)
 │       ├── test_26_wikipedia_search.py Unit: name_attr heuristic scoring (20 assertions, no browser)
 │       ├── test_27_lifecycle_hooks.py  Unit: Global Lifecycle Hook system (57 assertions, no browser)
-│       └── test_28_logical_steps.py    Unit: Logical STEP ordering and parser (48 assertions, no browser)
+│       ├── test_28_logical_steps.py    Unit: Logical STEP ordering and parser (48 assertions, no browser)
+│       ├── test_29_iframe_routing.py   Synthetic: Cross-frame element resolution (25 assertions)
+│       ├── test_30_heuristic_weights.py Synthetic+Unit: DOMScorer priority hierarchy (32 assertions)
+│       └── test_31_visibility_treewalker.py Synthetic+Unit: TreeWalker PRUNE/checkVisibility (20 assertions)
 ├── controls/                         User-owned custom Python handlers (auto-loaded at engine startup)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
@@ -95,14 +98,15 @@ ManulEngine/
 
 ---
 
-## 🚀 What's New: The Enterprise Update
+## 🚀 What's New: The Engine Overhaul
 
-* **Clean, Unnumbered DSL:** The requirement for line numbers before actions has been completely dropped. Scripts now read exactly like plain English (`NAVIGATE to url` instead of `1. NAVIGATE to url`).
-* **Logical STEP Grouping:** `STEP [optional number]: [Description]` metadata blocks allow mapping manual QA cases directly into `.hunt` files. Unmatched quotes inside descriptions (e.g. `STEP: Pallas's cat`) are cleanly isolated.
-* **Enterprise HTML Reporter:** The reporter is now dual-mode and zero-dependency, featuring native HTML5 accordions (`<details>`), auto-expanding failures, and a clean Flexbox layout instead of old-school tables.
-* **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, and `@after_group` orchestrate complex DB seeding and auth logic. `ctx.variables` are securely serialized across parallel `--workers`.
-* **Bulletproof DOM Heuristics:** The updated `SNAPSHOT_JS` rigorously filters out invisible or hidden UI elements (like hidden sticky headers), and effortlessly handles deeply nested modern frameworks (e.g. Wikipedia Vector 2022 / Codex) by strongly prioritizing `aria-label` and `name_attr`.
-* **VS Code Extension Polish:** The Step Builder is now context-aware, verifying `vscode.window.activeTextEditor` to prevent accidental insertions in non-`.hunt` files, and provides robust syntax highlighting for the unnumbered DSL.
+* **Normalised Heuristic Scoring (DOMScorer):** Scoring engine rewritten with `0.0–1.0` float arithmetic. Five weighted channels — `cache` (2.0), `semantics` (0.60), `text` (0.45), `attributes` (0.25), `proximity` (0.10) — combined via `WEIGHTS` dict and multiplied by `SCALE=177,778` for integer thresholds. `data-qa` exact match is the single strongest heuristic signal (+1.0 text). Penalties are clean multipliers: disabled ×0.0, hidden ×0.1. Pre-compiled regex patterns loaded once at module import; per-element strings normalised in a single `_preprocess()` pass.
+* **TreeWalker-Based DOM Scanner:** `SNAPSHOT_JS` now walks the DOM with `document.createTreeWalker()` and a `PRUNE` set (`SCRIPT, STYLE, SVG, NOSCRIPT, TEMPLATE, META, PATH, G, BR, HR`). Subtrees rejected in one hop — zero wasted traversal. Visibility checked via `checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })` with `offsetWidth/offsetHeight` fallback. No `getComputedStyle` in the hot loop.
+* **Safe iframe Support:** `_snapshot()` iterates `page.frames`, injects `SNAPSHOT_JS` per frame, tags elements with `frame_index`. `_frame_for(page, el)` routes `locator()`/`evaluate()` to the correct Playwright `Frame`. Cross-origin frames silently skipped; stale indices fall back to main frame. All 12+ locator call-sites in `actions.py` route through `frame`.
+* **Clean, Unnumbered DSL:** Scripts read like plain English (`NAVIGATE to url` instead of `1. NAVIGATE to url`).
+* **Logical STEP Grouping:** `STEP [optional number]: [Description]` metadata blocks map manual QA cases directly into `.hunt` files.
+* **Enterprise HTML Reporter:** Dual-mode, zero-dependency reporter with native HTML5 accordions, auto-expanding failures, and Flexbox layout.
+* **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, `@after_group` orchestrate DB seeding and auth. `ctx.variables` serialise across parallel `--workers`.
 
 ## ✨ Key Features
 
@@ -110,11 +114,23 @@ ManulEngine/
 
 95% of the heavy lifting (element finding, assertions, DOM parsing) is handled by ultra-fast JavaScript and Python heuristics. The AI steps in only when genuine ambiguity arises.
 
+The `DOMScorer` class in `scoring.py` uses normalised `0.0–1.0` floats across five weighted channels:
+
+| Channel | Weight | What it covers |
+|---|---|---|
+| `cache` | 2.0 | Semantic cache reuse (+1.0), blind context reuse (+0.05) |
+| `semantics` | 0.60 | Element-type alignment, role synergy, Shadow DOM bonus |
+| `text` | 0.45 | aria/placeholder exact (+0.625), data-qa exact (+1.0), name matching |
+| `attributes` | 0.25 | target_field → html_id (+0.6), context words in dev names |
+| `proximity` | 0.10 | DOM depth-based form context |
+
+Final score: `(text×W_text + attr×W_attr + sem×W_sem + prox×W_prox + cache×W_cache) × penalty_mult × SCALE`. `SCALE=177,778` maps the weighted float to the integer range expected by `core.py` thresholds (200k for semantic cache, 10k for confidence short-circuit).
+
 When the LLM picker is used, Manul passes the heuristic `score` as a **prior** (hint) by default (`MANUL_AI_POLICY=prior`) — the model can override the ranking only with a clear, disqualifying reason.
 
 ### 🧠 Deep Accessibility Heuristics
 
-Manul scores elements using 20+ signals including `aria-label`, `placeholder`, `name` attribute, `data-qa`, `html_id`, semantic `input type`, and contextual section headings. This makes it reliable on modern SPAs and complex design systems (React, Vue, Angular, Wikipedia Vector 2022 / Codex) without any configuration — accessibility attributes are treated as first-class identifiers at the scoring level (`name_attr` exact match: +3,000; substring: +1,000).
+Manul scores elements using 20+ signals including `aria-label`, `placeholder`, `name` attribute, `data-qa`, `html_id`, semantic `input type`, and contextual section headings. This makes it reliable on modern SPAs and complex design systems (React, Vue, Angular, Wikipedia Vector 2022 / Codex) without any configuration — accessibility attributes are treated as first-class identifiers at the scoring level (`name_attr` exact match: +0.0375 text / ~3k scaled; `data-qa` exact: +1.0 text / ~80k scaled).
 
 ### 🌐 Global Lifecycle Hooks (`manul_hooks.py`)
 
@@ -330,9 +346,9 @@ DONE.
 
 Modern websites love to hide elements behind invisible overlays, custom dropdowns, and zero-pixel traps. Manul primarily uses Playwright interactions with `force=True` plus retries/self-healing; for Shadow DOM elements it falls back to direct JS helpers (`window.manulClick`, `window.manulType`) to keep execution moving.
 
-### 🪝 Shadow DOM Awareness
+### 🪢 Shadow DOM & iframe Awareness
 
-The DOM snapshotter recursively inspects shadow roots and can interact with elements in the shadow tree.
+The DOM snapshotter walks shadow roots via `TreeWalker` and scans same-origin iframes by iterating `page.frames`. Every element dict carries a `frame_index`; `_frame_for(page, el)` routes all downstream Playwright calls to the correct `Frame`. Cross-origin frames are silently skipped with retry logic (3 attempts, 1.5s backoff on `closed` errors).
 
 ### 👻 Smart Anti-Phantom Guard & AI Rejection
 
@@ -549,9 +565,9 @@ manul tests/mission.hunt
 
 ---
 
-## 🐾 Chaos Chamber Verified (1466+ Tests)
+## 🐾 Chaos Chamber Verified (1803+ Tests)
 
-The engine is battle-tested with **1653+** synthetic DOM/unit tests covering the web's most annoying UI patterns.
+The engine is battle-tested with **1803+** synthetic DOM/unit tests covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, and visibility edge cases.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).
@@ -567,6 +583,9 @@ The engine is battle-tested with **1653+** synthetic DOM/unit tests covering the
 * **Wikipedia Search Input unit suite:** `manul_engine/test/test_26_wikipedia_search.py` (`name_attr` heuristic scoring for `<input name="search">` on Vector 2022 skin, 20 assertions, no browser).
 * **Lifecycle Hooks unit suite:** `manul_engine/test/test_27_lifecycle_hooks.py` (`@before_all`, `@after_all`, `@before_group`, `@after_group`, `GlobalContext`, `load_hooks_file`, serialize/deserialize, 57 assertions, no browser).
 * **Logical Steps unit suite:** `manul_engine/test/test_28_logical_steps.py` (Unnumbered DSL, STEP grouping, snippet injection logic, 48 assertions, no browser).
+* **iframe Routing synthetic suite:** `manul_engine/test/test_29_iframe_routing.py` (`_snapshot` frame iteration, `frame_index` tagging, `_frame_for` routing and stale fallback, 25 assertions).
+* **Heuristic Weights synthetic+unit suite:** `manul_engine/test/test_30_heuristic_weights.py` (DOMScorer float scoring, WEIGHTS/SCALE constants, `data-qa` dominance, disabled/hidden penalties, mode synergy, 32 assertions).
+* **Visibility & TreeWalker synthetic+unit suite:** `manul_engine/test/test_31_visibility_treewalker.py` (PRUNE set subtree skipping, `checkVisibility` filtering, special hidden inputs, snapshot element counts, 20 assertions).
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
 Run the synthetic suite:
