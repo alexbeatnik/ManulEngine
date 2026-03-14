@@ -18,7 +18,7 @@ class StepResult:
     """Outcome of a single numbered step within a mission."""
     index:         int                     # 1-based step number
     text:          str                     # step text after variable substitution
-    status:        str = "pass"            # "pass" | "fail" | "skip"
+    status:        str = "pass"            # "pass" | "fail" | "skip" | "warning"
     duration_ms:   float = 0.0
     error:         str | None = None       # traceback / message on failure
     screenshot:    str | None = None       # base64-encoded PNG, or None
@@ -30,12 +30,13 @@ class MissionResult:
     """Outcome of executing a single ``.hunt`` file (possibly with retries)."""
     file:        str                     # absolute path to the .hunt file
     name:        str                     # basename, e.g. "saucedemo.hunt"
-    status:      str = "pass"            # "pass" | "fail" | "flaky"
+    status:      str = "pass"            # "pass" | "fail" | "flaky" | "warning"
     attempts:    int = 1                 # total attempts (1 = no retries used)
     duration_ms: float = 0.0            # wall clock ms (total, including retries)
     error:       str | None = None       # last error message when status == "fail"
     steps:       list[StepResult] = field(default_factory=list)
     tags:        list[str] = field(default_factory=list)   # @tags from .hunt file
+    soft_errors: list[str] = field(default_factory=list)   # collected VERIFY SOFTLY failures
 
     def __bool__(self) -> bool:         # truthy ⇔ not failed
         return self.status != "fail"
@@ -50,5 +51,6 @@ class RunSummary:
     passed:      int = 0
     failed:      int = 0
     flaky:       int = 0
+    warning:     int = 0
     duration_ms: float = 0.0
     missions:    list[MissionResult] = field(default_factory=list)

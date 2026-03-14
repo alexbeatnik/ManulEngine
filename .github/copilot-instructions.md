@@ -22,7 +22,7 @@ Current operating mode in this repo is typically **mixed**:
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.0
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.1
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
@@ -66,6 +66,7 @@ manul_engine/
     test_34_verify_checked.py    VERIFY checked/NOT checked state verification (20 assertions, no browser)
     test_35_scanner.py           Smart Page Scanner build_hunt() (44 assertions, no browser)
     test_36_scoring_math.py      Exact numerical scoring validation (29 assertions, no browser)
+    test_37_enterprise_dsl.py    Enterprise DSL: @data:, MOCK, VERIFY VISUAL/SOFTLY, reporter warnings (68 assertions, no browser)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
@@ -76,7 +77,7 @@ tests/
   demo_login.hunt         integration: login with @var: static variables
   demo_variables.hunt     integration: @var: + CALL PYTHON into {var} combined
 vscode-extension/
-  package.json              Extension manifest (v0.0.90)
+  package.json              Extension manifest (v0.0.91)
   src:
     extension.ts            Activation, command registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
@@ -162,6 +163,10 @@ Rules for STEP-grouped files:
 * `SCROLL DOWN` or `SCROLL DOWN inside the list`
 * `EXTRACT [target] into {variable_name}`
 * `VERIFY that [target] is present` / `is NOT present` / `is DISABLED` / `is ENABLED` / `is checked`
+* `VERIFY VISUAL 'Element'` — Takes an element screenshot and compares against a baseline in `visual_baselines/`. Saves baseline on first run. Uses PIL/Pillow threshold comparison (default 1%) or raw byte fallback.
+* `VERIFY SOFTLY that [target] is present` — Same as VERIFY but does **not** stop execution on failure. Failures are collected as soft errors and surfaced as `"warning"` status.
+* `MOCK METHOD "url_pattern" with 'mock_file'` — Intercepts matching network requests via `page.route()` and fulfills from a local file. METHOD: GET, POST, PUT, PATCH, DELETE. Mock file resolved relative to hunt dir → CWD.
+* `WAIT FOR RESPONSE "url_pattern"` — Blocks until a network response matching the URL pattern arrives (substring match via `page.wait_for_response()`). Uses `nav_timeout`.
 * `SCAN PAGE` — scans the current page for interactive elements and prints a draft `.hunt` to the console.
 * `SCAN PAGE into {filename}` — same, but also writes the draft to `{filename}`. Default output dir is `tests_home` from config.
 * `DEBUG` / `PAUSE` — pauses execution at that step. In interactive terminal mode (`--debug`), draws a dashed red border around the resolved element and prompts the user; when run via VS Code extension, emits the debug pause protocol marker (see below).
@@ -184,6 +189,7 @@ Placed at the top of the file. Used by the engine for logging and LLM context.
 * `@context: [description]` — Strategic context passed to the engine.
 * `@title: [short_title]` — Short title representing the test suite. `@blueprint:` is also accepted for backward compatibility.
 * `@tags: tag1, tag2` — Arbitrary comma-separated run tags. Used with `manul --tags smoke tests/` to filter which files execute.
+* `@data: path/to/file.json` — Data-driven testing. Points to a JSON (array-of-objects) or CSV file. The engine loads each row and reruns the entire mission with row values injected as `{placeholders}`. Path resolved relative to hunt file directory, then CWD.
 
 ### 3. Comments
 * Use `#` at the beginning of a line for comments. Any line whose trimmed text starts with `#` is ignored during execution; `#` appearing after a step on the same line is treated as part of the step text, not a comment.
@@ -215,6 +221,10 @@ These keywords are detected via word-boundary regex, bypass heuristics, and are 
 * `SCROLL DOWN` — Scrolls the main page down by one viewport height. `SCROLL DOWN inside the list` — scrolls the first dropdown-style scroll container (e.g., `#dropdown` or any element whose class name contains `dropdown`) all the way to the bottom (by setting `scrollTop = scrollHeight`). Phrases like `SCROLL DOWN to the very bottom` are accepted but currently behave the same as a single `SCROLL DOWN` on the main page (they do not auto-scroll the page all the way to the bottom).
 * `EXTRACT [target] into {variable_name}` — Extracts text data into memory.
 * `VERIFY that [target] is present` (or `is NOT present`, `is DISABLED`, `is ENABLED`, `is checked`)
+* `VERIFY VISUAL 'Element'` — Takes an element screenshot and compares against a baseline in `visual_baselines/`. Saves baseline on first run. Uses PIL/Pillow threshold comparison (default 1%) or raw byte fallback.
+* `VERIFY SOFTLY that [target] is present` — Same as VERIFY but does **not** stop execution on failure. Failures are collected as soft errors and surfaced as `"warning"` status.
+* `MOCK METHOD "url_pattern" with 'mock_file'` — Intercepts matching network requests via `page.route()` and fulfills from a local file. METHOD: GET, POST, PUT, PATCH, DELETE. Mock file resolved relative to hunt dir → CWD.
+* `WAIT FOR RESPONSE "url_pattern"` — Blocks until a network response matching the URL pattern arrives (substring match via `page.wait_for_response()`). Uses `nav_timeout`.
 * `SCAN PAGE` — Runs `SCAN_JS` on the current page, maps results to hunt steps, prints a draft to console.
 * `SCAN PAGE into {filename}` — Same, but also writes the draft to `{filename}`. Output defaults to `{tests_home}/draft.hunt` (reads `tests_home` from `manul_engine_configuration.json`, defaults to `tests/`).
 * `DONE.` — Explicitly ends the mission.
@@ -325,7 +335,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
 * **Debug mode:** `ManulEngine(debug_mode=True, break_steps={N,...})`. `debug_mode=True` (from `--debug`) highlights the resolved element and pauses before every step using `input()` in TTY or Playwright's `page.pause()`. `break_steps` (from `--break-lines`) pauses only at listed step indices using the stdout/stdin panel protocol when stdout is not a TTY. The two are mutually exclusive in practice — the extension only ever sets `break_steps` via `--break-lines`.
 * **Element highlight in debug mode:** When `debug_mode=True` (or a `break_steps` pause fires), the engine calls `highlight_element(page, locator)` which injects `<style id="manul-debug-style">` (once) and sets `data-manul-debug-highlight="true"` on the target element, producing a persistent 4px magenta outline + glow that stays until `clear_highlight(page)` is called just before the action executes. A separate `_highlight()` method draws a short 2-second flash (non-debug, `setTimeout` inside JS) for non-pausing visual feedback.
-* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). `parse_hunt_file()` in `cli.py` returns a `ParsedHunt` NamedTuple with 8 fields: `mission`, `context`, `title`, `step_file_lines`, `setup_lines`, `teardown_lines`, `parsed_vars`, `tags`. `parsed_vars` is a `dict[str, str]` populated from `@var: {key} = value` header lines. `tags` is a `list[str]` populated from `@tags: tag1, tag2` header lines; empty list when absent. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
+* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). `parse_hunt_file()` in `cli.py` returns a `ParsedHunt` NamedTuple with 9 fields: `mission`, `context`, `title`, `step_file_lines`, `setup_lines`, `teardown_lines`, `parsed_vars`, `tags`, `data_file`. `parsed_vars` is a `dict[str, str]` populated from `@var: {key} = value` header lines. `tags` is a `list[str]` populated from `@tags: tag1, tag2` header lines; empty list when absent. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
 * **Auto-Nav annotation:** When `auto_annotate` is enabled, `run_mission()` captures `url_before = page.url` before every step. For `NAVIGATE` steps, the annotation is written above the step itself. For all other steps, `url_after` is checked in the `finally` block — if the URL changed, `_auto_annotate_navigate(page, hunt_file, step_file_lines, i+1)` is called to insert a comment above the *next* step line. The comment uses the mapped page name when found in `pages.json`, or the full URL when the lookup returns an `"Auto:"` placeholder.
 * **`pages.json` — nested per-site format:** `{ "<site_root_url>": { "Domain": "<display_name>", "<regex_or_exact_url>": "<page_name>" } }`. `lookup_page_name(url)` in `prompts.py` re-reads this file from disk on **every call** (live edits take effect immediately with no restart). Resolution order: exact URL key → regex/substring patterns (skipping `"Domain"` key) → `"Domain"` fallback. When no site block matches, a new nested entry is auto-generated. The longest-prefix site block wins when multiple blocks could match.
 * **`_debug_prompt()` `debug-stop` token:** When Python receives `"debug-stop"` on stdin from the VS Code extension (user pressed ⏹ Debug Stop), it clears **both** `self._user_break_steps = set()` and `self.break_steps = set()`, then breaks the pause loop. The test run continues to completion without any further pauses.

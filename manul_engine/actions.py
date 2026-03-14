@@ -673,4 +673,190 @@ class _ActionsMixin:
             except OSError as exc:
                 print(f"    ⚠️  SCAN PAGE: could not write '{output_abs}': {exc}")
 
+    # ── MOCK GET/POST/… handler ───────────────────────────────────────────────
+    async def _handle_mock(self, page, step: str, hunt_dir: str | None = None) -> bool:
+        """Handle ``MOCK GET "/api/path" with 'mocks/data.json'``.
+
+        Uses Playwright ``page.route()`` to intercept matching requests and
+        fulfill them with the content of a local JSON file.
+        """
+        import json as _json
+        m = re.match(
+            r'^\s*(?:\d+\.\s*)?MOCK\s+(GET|POST|PUT|PATCH|DELETE)\s+'
+            r'["\']([^"\']+)["\']\s+with\s+["\']([^"\']+)["\']',
+            step, re.IGNORECASE,
+        )
+        if not m:
+            print("    ❌ MOCK: invalid syntax — expected MOCK <METHOD> \"<path>\" with '<file>'")
+            return False
+
+        method = m.group(1).upper()
+        url_pattern = m.group(2)
+        mock_file = m.group(3)
+
+        # Resolve mock file path: hunt dir → CWD
+        candidates = []
+        if hunt_dir:
+            candidates.append(os.path.join(hunt_dir, mock_file))
+        candidates.append(os.path.join(os.getcwd(), mock_file))
+        resolved: str | None = None
+        for c in candidates:
+            if os.path.isfile(c):
+                resolved = c
+                break
+        if resolved is None:
+            print(f"    ❌ MOCK: file not found: {mock_file}")
+            return False
+
+        with open(resolved, "r", encoding="utf-8") as f:
+            body = f.read()
+        # Detect content type
+        content_type = "application/json" if resolved.endswith(".json") else "text/plain"
+
+        async def _route_handler(route):
+            if route.request.method.upper() == method or method == "GET":
+                await route.fulfill(
+                    status=200,
+                    content_type=content_type,
+                    body=body,
+                )
+            else:
+                await route.continue_()
+
+        # Use glob pattern matching — the user's path is treated as a suffix
+        await page.route(f"**{url_pattern}", _route_handler)
+        print(f"    🔀 MOCK {method} *{url_pattern} → {mock_file}")
         return True
+
+    # ── WAIT FOR RESPONSE handler ─────────────────────────────────────────────
+    async def _handle_wait_for_response(self, page, step: str) -> bool:
+        """Handle ``WAIT FOR RESPONSE "/api/path"``.
+
+        Uses Playwright ``page.wait_for_response()`` with a wildcard match.
+        """
+        m = re.search(r'WAIT\s+FOR\s+RESPONSE\s+["\']([^"\']+)["\']', step, re.IGNORECASE)
+        if not m:
+            print("    ❌ WAIT FOR RESPONSE: no URL pattern found")
+            return False
+
+        url_pattern = m.group(1)
+        timeout_ms = prompts.NAV_TIMEOUT  # reuse navigation timeout
+
+        print(f"    ⏳ Waiting for response matching *{url_pattern}...")
+        try:
+            await page.wait_for_response(
+                lambda resp: url_pattern in resp.url,
+                timeout=timeout_ms,
+            )
+            print(f"    ✅ Response received for *{url_pattern}")
+            return True
+        except Exception as exc:
+            print(f"    ❌ WAIT FOR RESPONSE timed out: {exc}")
+            return False
+
+    # ── VERIFY VISUAL handler ─────────────────────────────────────────────────
+    async def _handle_verify_visual(self, page, step: str, strategic_context: str = "",
+                                     step_idx: int = 0, hunt_dir: str | None = None) -> bool:
+        """Handle ``VERIFY VISUAL 'Element Name'``.
+
+        Takes an element screenshot and compares it against a baseline in
+        ``visual_baselines/``. If no baseline exists, saves it and passes.
+        Uses pixel comparison with a configurable threshold.
+        """
+        expected = extract_quoted(step)
+        if not expected:
+            print("    ❌ VERIFY VISUAL: no element name specified in quotes")
+            return False
+
+        target_name = expected[0]
+        # Resolve element via heuristics
+        el = await self._resolve_element(
+            page, step, "locate",
+            [t.lower() for t in expected],
+            None, strategic_context, failed_ids=set(),
+        )
+        if el is None:
+            print(f"    ❌ VERIFY VISUAL: could not find element '{target_name}'")
+            return False
+
+        frame = self._frame_for(page, el)
+        loc = frame.locator(f"xpath={el['xpath']}").first
+
+        # Take element screenshot
+        try:
+            screenshot_bytes = await loc.screenshot(type="png")
+        except Exception as exc:
+            print(f"    ❌ VERIFY VISUAL: screenshot failed: {exc}")
+            return False
+
+        # Determine baseline directory and filename
+        baseline_dir = os.path.join(hunt_dir or os.getcwd(), "visual_baselines")
+        os.makedirs(baseline_dir, exist_ok=True)
+        # Sanitise element name for filename
+        safe_name = re.sub(r'[^\w\-]', '_', target_name.lower()).strip('_')
+        baseline_path = os.path.join(baseline_dir, f"{safe_name}.png")
+
+        if not os.path.exists(baseline_path):
+            # First run — save baseline and pass
+            with open(baseline_path, "wb") as f:
+                f.write(screenshot_bytes)
+            print(f"    📸 VERIFY VISUAL: baseline saved → {baseline_path}")
+            return True
+
+        # Compare against baseline
+        return self._compare_images(baseline_path, screenshot_bytes, target_name)
+
+    @staticmethod
+    def _compare_images(baseline_path: str, actual_bytes: bytes, label: str,
+                        threshold: float = 0.01) -> bool:
+        """Compare a baseline PNG with actual screenshot bytes.
+
+        Uses PIL if available, falls back to raw byte comparison.
+        Returns True if images match within threshold.
+        """
+        try:
+            from PIL import Image, ImageChops  # type: ignore
+            import io
+            baseline_img = Image.open(baseline_path).convert("RGBA")
+            actual_img = Image.open(io.BytesIO(actual_bytes)).convert("RGBA")
+
+            if baseline_img.size != actual_img.size:
+                print(f"    ❌ VERIFY VISUAL '{label}': size mismatch "
+                      f"(baseline={baseline_img.size}, actual={actual_img.size})")
+                return False
+
+            diff = ImageChops.difference(baseline_img, actual_img)
+            # Calculate the fraction of differing pixels
+            diff_data = diff.getdata()
+            total_pixels = len(diff_data)
+            diff_pixels = sum(1 for px in diff_data if sum(px) > 0)
+            diff_ratio = diff_pixels / total_pixels if total_pixels else 0
+
+            if diff_ratio > threshold:
+                print(f"    ❌ VERIFY VISUAL '{label}': {diff_ratio:.2%} pixels differ "
+                      f"(threshold: {threshold:.2%})")
+                return False
+
+            print(f"    ✅ VERIFY VISUAL '{label}': match ({diff_ratio:.2%} diff)")
+            return True
+        except ImportError:
+            # PIL not available — fall back to raw byte comparison
+            with open(baseline_path, "rb") as f:
+                baseline_bytes = f.read()
+            if baseline_bytes == actual_bytes:
+                print(f"    ✅ VERIFY VISUAL '{label}': exact byte match")
+                return True
+            else:
+                print(f"    ❌ VERIFY VISUAL '{label}': bytes differ (install Pillow for threshold comparison)")
+                return False
+
+    # ── VERIFY SOFTLY handler ─────────────────────────────────────────────────
+    async def _handle_verify_softly(self, page, step: str, step_idx: int = 0) -> bool:
+        """Handle ``VERIFY SOFTLY that 'Element' is present/absent/enabled/disabled``.
+
+        Delegates to ``_handle_verify`` but strips the ``SOFTLY`` keyword first.
+        Returns the verification result without raising or breaking.
+        """
+        # Transform "VERIFY SOFTLY that ..." → "VERIFY that ..."
+        clean_step = re.sub(r'\bVERIFY\s+SOFTLY\b', 'VERIFY', step, flags=re.IGNORECASE)
+        return await self._handle_verify(page, clean_step, step_idx=step_idx)
