@@ -2,7 +2,7 @@
   "name": "manul-engine",
   "displayName": "ManulEngine",
   "description": "Hunt file language support, test runner and configuration UI for ManulEngine browser automation",
-  "version": "0.0.91",
+  "version": "0.0.92",
   "publisher": "manul-engine",
   "icon": "images/icon128.png",
   "repository": {
@@ -148,6 +148,11 @@
         "command": "manul.debugHighlight",
         "title": "ManulEngine: Highlight Target Element",
         "icon": "$(eye)"
+      },
+      {
+        "command": "manul.formatHuntFile",
+        "title": "ManulEngine: Format Hunt File",
+        "icon": "$(list-flat)"
       }
     ],
     "menus": {
@@ -166,6 +171,11 @@
           "command": "manul.debugHighlight",
           "when": "resourceExtname == .hunt && manulDebugSessionActive",
           "group": "navigation@3"
+        },
+        {
+          "command": "manul.formatHuntFile",
+          "when": "resourceExtname == .hunt",
+          "group": "navigation@4"
         }
       ],
       "explorer/context": [

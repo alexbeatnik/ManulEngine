@@ -1,18 +1,29 @@
 
 # Copilot Instructions — ManulEngine
 
+## AI Identity Directive
+
+**CRITICAL — Read this first.**
+ManulEngine is a **deterministic, DSL-first browser automation platform**. It is NOT an AI-first tool. When generating tests, answering questions, or suggesting solutions:
+
+1. **Prioritise deterministic actions.** Always default to the plain-English DSL (`CLICK`, `FILL`, `VERIFY`, `NAVIGATE`, `EXTRACT`, `PRESS`, etc.) and the built-in `DOMScorer` heuristics. These are the primary resolution mechanism.
+2. **Do not overly rely on the LLM fallback mechanism.** ManulEngine is designed to be 100% stable using its native `TreeWalker` and `0.0–1.0` float scoring system. The LLM is a last-resort safety net for genuinely ambiguous elements — not a default path.
+3. **Understand the Dual Persona Workflow.** Manual QA writes plain English `.hunt` DSL — no code required. SDETs extend the same files with Python hooks (`[SETUP]`/`[TEARDOWN]`, `CALL PYTHON`, `@before_all`/`@after_all`), Custom Controls (`@custom_control`), and data-driven parameters (`@data:`). Both personas work on the same artifact.
+4. **When suggesting config**, always recommend `"model": null` (heuristics-only) as the default. Only suggest enabling an Ollama model when the user explicitly needs AI self-healing.
+5. **Never describe ManulEngine as "AI-powered" or "neuro-symbolic".** The correct framing is: "a deterministic, DSL-based E2E browser automation platform with optional local AI for self-healing."
+
 ## What is this project?
 
-ManulEngine is a highly resilient, neuro-symbolic browser automation framework.
-It drives Chromium (and optionally Firefox or WebKit) via Playwright, scores DOM elements with 20+ heuristic rules,
-and falls back to a local LLM (Ollama) when the heuristics are ambiguous.
+ManulEngine is a deterministic, DSL-first E2E browser automation platform.
+It drives Chromium (and optionally Firefox or WebKit) via Playwright, resolves DOM elements with a mathematically sound `DOMScorer` (normalised 0.0–1.0 float scoring across 20+ heuristic signals and a native JavaScript `TreeWalker`),
+and optionally falls back to a local LLM (Ollama) as a self-healing safety net when the heuristics are genuinely ambiguous.
 It is designed to bypass modern web traps (Shadow DOM, invisible overlays, zero-pixel honeypots, custom dropdowns) entirely locally — no cloud APIs.
 
-Current operating mode in this repo is typically **mixed**:
-- Heuristics rank candidates first.
-- LLM is called only when heuristics are not confident (best score < `MANUL_AI_THRESHOLD`).
+Current operating mode in this repo is typically **heuristics-only** (recommended default):
+- The `DOMScorer` and `TreeWalker` handle element resolution deterministically.
+- LLM is called only when explicitly enabled AND heuristics confidence is below `MANUL_AI_THRESHOLD`.
 - When LLM is used, heuristic `score` is treated as a *prior* (hint), not a hard constraint (`MANUL_AI_POLICY=prior`).
-- If `model` is `null` or not set, the engine runs in **heuristics-only mode** (AI fully disabled, threshold = 0).
+- If `model` is `null` or not set (the default), the engine runs in **heuristics-only mode** (AI fully disabled, threshold = 0).
 
 **Stack:** Python 3.11 · Playwright async · Ollama (qwen2.5:0.5b, optional) · stdlib only (no dotenv)
 
@@ -22,7 +33,7 @@ Current operating mode in this repo is typically **mixed**:
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.1
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.2
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
@@ -67,6 +78,8 @@ manul_engine/
     test_35_scanner.py           Smart Page Scanner build_hunt() (44 assertions, no browser)
     test_36_scoring_math.py      Exact numerical scoring validation (29 assertions, no browser)
     test_37_enterprise_dsl.py    Enterprise DSL: @data:, MOCK, VERIFY VISUAL/SOFTLY, reporter warnings (68 assertions, no browser)
+    test_38_set_and_indent.py    SET command & indentation robustness (v0.0.9.2)
+    test_39_open_app.py          OPEN APP command — classify_step, _handle_open_app (32 assertions, no browser)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
@@ -77,14 +90,15 @@ tests/
   demo_login.hunt         integration: login with @var: static variables
   demo_variables.hunt     integration: @var: + CALL PYTHON into {var} combined
 vscode-extension/
-  package.json              Extension manifest (v0.0.91)
+  package.json              Extension manifest (v0.0.92)
   src:
-    extension.ts            Activation, command registration
+    extension.ts            Activation, command registration, formatter registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
     huntTestController.ts   VS Code Test Explorer integration (step-level reporting)
     configPanel.ts          Webview sidebar: config editor + Ollama model discovery
     cacheTreeProvider.ts    Sidebar tree: controls cache browser
     stepBuilderPanel.ts     Sidebar webview: step-insertion buttons + new hunt file (incl. Scan Page)
+    formatter.ts            DocumentFormattingEditProvider for .hunt files (4-space action indent)
     debugControlPanel.ts    Singleton QuickPick overlay for interactive debug stepping
     constants.ts            Shared constants (DEFAULT_CONFIG_FILENAME, PAUSE_MARKER, terminal names, getConfigFileName())
   syntaxes/hunt.tmLanguage.json  Hunt file syntax grammar
@@ -169,6 +183,7 @@ Rules for STEP-grouped files:
 * `WAIT FOR RESPONSE "url_pattern"` — Blocks until a network response matching the URL pattern arrives (substring match via `page.wait_for_response()`). Uses `nav_timeout`.
 * `SCAN PAGE` — scans the current page for interactive elements and prints a draft `.hunt` to the console.
 * `SCAN PAGE into {filename}` — same, but also writes the draft to `{filename}`. Default output dir is `tests_home` from config.
+* `SET {variable_name} = value` — Sets a runtime variable mid-flight. Both `{braced}` and bare key forms accepted. Quoted values (`'...'` / `"..."`) are auto-unquoted. The variable is immediately available for `{placeholder}` substitution in all subsequent steps.
 * `DEBUG` / `PAUSE` — pauses execution at that step. In interactive terminal mode (`--debug`), draws a dashed red border around the resolved element and prompts the user; when run via VS Code extension, emits the debug pause protocol marker (see below).
 * `DONE.`
 
@@ -208,10 +223,12 @@ Placed at the top of the file. Used by the engine for logging and LLM context.
 > When generating or suggesting `.hunt` files:
 > 1. You MUST use the **Clean, Unnumbered DSL Syntax**. NEVER prepend numbers (`1. `, `2. `) to execution actions.
 > 2. You MUST use **Logical `STEP` Grouping** (`STEP [optional number]: [Description]`) to structure E2E flows, matching manual QA test cases. These map perfectly to the Enterprise HTML Reporter's accordions.
+> 3. You MUST use **4-space indentation** for all action lines under `STEP` headers; comments inside a `STEP` or hook block follow the same 4-space indentation. `STEP` headers themselves, metadata lines (`@context:`, `@var:`, `@tags:`, `@data:`), hook block markers (`[SETUP]`/`[TEARDOWN]`), top-level comments (`#` before the first `STEP`), and `DONE.` must remain flush-left (zero indentation). This matches the VS Code Auto-Formatter output (`Shift+Alt+F`).
 
 ### 5. System Keywords (parser-detected)
 These keywords are detected via word-boundary regex, bypass heuristics, and are handled directly by the engine parser:
 * `NAVIGATE to [url]` — Loads a URL and waits for DOM settlement.
+* `OPEN APP` — Attaches to an Electron/Desktop app's default window instead of navigating to a URL. Use as the first step in `.hunt` files targeting `executable_path` apps. The handler checks `ctx.pages` for an existing window, falls back to `ctx.wait_for_event("page")`, waits for DOM settlement. Returns `(success, page)` — the `page` variable in `run_mission()` is reassigned.
 * `WAIT [seconds]` — Hard sleep (e.g., `WAIT 2`).
 * `PRESS ENTER` — Presses the Enter key on the currently focused element (useful to submit forms after filling a field).
 * `PRESS [Key]` — Presses any key or combination globally (e.g. `PRESS Escape`, `PRESS Control+A`). Mapped to `page.keyboard.press(key)`.
@@ -227,6 +244,7 @@ These keywords are detected via word-boundary regex, bypass heuristics, and are 
 * `WAIT FOR RESPONSE "url_pattern"` — Blocks until a network response matching the URL pattern arrives (substring match via `page.wait_for_response()`). Uses `nav_timeout`.
 * `SCAN PAGE` — Runs `SCAN_JS` on the current page, maps results to hunt steps, prints a draft to console.
 * `SCAN PAGE into {filename}` — Same, but also writes the draft to `{filename}`. Output defaults to `{tests_home}/draft.hunt` (reads `tests_home` from `manul_engine_configuration.json`, defaults to `tests/`).
+* `SET {variable_name} = value` — Sets a runtime variable mid-flight. Both `{braced}` and bare key forms accepted. Quoted values are auto-unquoted. Available for `{placeholder}` substitution in subsequent steps.
 * `DONE.` — Explicitly ends the mission.
 * `[SETUP]` / `[END SETUP]` — Block wrapping `CALL PYTHON <module>.<function>` lines. Runs **before** the browser launches. If any line fails, the mission is skipped and teardown is not called.
 * `[TEARDOWN]` / `[END TEARDOWN]` — Cleanup block. Runs in a `finally` block **after** the mission (pass or fail). Only executed if `[SETUP]` succeeded. Failure is logged but does not override the mission result.
@@ -330,7 +348,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * `prompts.py` loads config from `manul_engine_configuration.json` (CWD first, then package root fallback). No dotenv dependency.
 * `js_scripts.py` owns **all** JavaScript constants injected into the browser — no inline JS in Python files. This includes `SCAN_JS` (Smart Page Scanner).
 * `scanner.py` owns the standalone scan logic: `SCAN_JS` is imported from `js_scripts.py`; `build_hunt()` maps raw element dicts to hunt steps; `scan_page()` is the async Playwright runner; `scan_main()` is the async CLI entry called by `cli.py`. `_default_output()` reads `tests_home` from the config to derive the default output path.
-* `helpers.py` provides `env_bool(name, default)` for parsing boolean env vars; `detect_mode(step)` returns the interaction mode string (`"input"`, `"clickable"`, `"select"`, `"hover"`, `"drag"`, `"locate"`); `classify_step(step)` returns a step kind string (`"navigate"`, `"wait"`, `"scroll"`, `"extract"`, `"verify"`, `"press_enter"`, `"press"`, `"right_click"`, `"upload"`, `"scan_page"`, `"call_python"`, `"debug"`, `"done"`, or `"action"`) — used by `run_mission()` and `_execute_step()` to avoid duplicated regex dispatches.
+* `helpers.py` provides `env_bool(name, default)` for parsing boolean env vars; `detect_mode(step)` returns the interaction mode string (`"input"`, `"clickable"`, `"select"`, `"hover"`, `"drag"`, `"locate"`); `classify_step(step)` returns a step kind string (`"navigate"`, `"open_app"`, `"wait"`, `"scroll"`, `"extract"`, `"verify"`, `"press_enter"`, `"press"`, `"right_click"`, `"upload"`, `"scan_page"`, `"call_python"`, `"set_var"`, `"debug"`, `"done"`, or `"action"`) — used by `run_mission()` and `_execute_step()` to avoid duplicated regex dispatches.
 * **Null model = heuristics-only:** When `model` is `None`, `_llm_json()` returns `None` immediately. `get_threshold(None)` returns `0`. No Ollama calls are made.
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
 * **Debug mode:** `ManulEngine(debug_mode=True, break_steps={N,...})`. `debug_mode=True` (from `--debug`) highlights the resolved element and pauses before every step using `input()` in TTY or Playwright's `page.pause()`. `break_steps` (from `--break-lines`) pauses only at listed step indices using the stdout/stdin panel protocol when stdout is not a TTY. The two are mutually exclusive in practice — the extension only ever sets `break_steps` via `--break-lines`.
@@ -380,14 +398,14 @@ manul tests/ --retries 2 --screenshot on-fail --html-report  # full CI combo
 manul tests/ --screenshot always --html-report    # every-step forensic report
 ```
 
-Ollama is optional, but required for:
-- free-text tasks (AI planner)
+Ollama is optional — only needed as a last-resort self-healing fallback:
 - AI element-picker fallback when heuristics confidence is below `ai_threshold`
+- free-text tasks (AI planner) — rarely used in practice
 
 To use Ollama: install the [Ollama app](https://ollama.com), run `pip install ollama` (Python client), pull a model (`ollama pull qwen2.5:0.5b`), and start the server (`ollama serve`).
 
 **Rule:** after any engine change, `python manul.py test` must exit with code **0**.
-Tip: Set `"ai_threshold": 0` (or `"model": null`) in `manul_engine_configuration.json` to force heuristics-only. Ensures deterministic unit tests without LLM calls.
+Tip: `"model": null` (the default) forces heuristics-only mode. This is the recommended configuration for deterministic tests and CI pipelines.
 Note: `python manul.py test` disables persistent controls cache by default for deterministic synthetic suites. `test_13_controls_cache.py` explicitly enables cache in a temporary `cache/run_<datetime>` folder and removes it after the test.
 
 ## Configuration (manul_engine_configuration.json)
@@ -413,12 +431,62 @@ Environment variables (`MANUL_*`) always override JSON values.
 | `nav_timeout` | `30000` | Navigation timeout (ms) |
 | `tests_home` | `"tests"` | Default directory for new hunt files and `SCAN PAGE` / `manul scan` output |
 | `auto_annotate` | `false` | If `true`, engine automatically inserts `# 📍 Auto-Nav: <name>` comments into `.hunt` files whenever the page URL changes during a run. Page names come from `pages.json`; falls back to full URL for unmapped pages. Overridable via `MANUL_AUTO_ANNOTATE` env var |
+| `channel` | `null` | Playwright browser channel — use an installed browser instead of the bundled one. E.g. `"chrome"`, `"chrome-beta"`, `"msedge"`. Overridable via `MANUL_CHANNEL` |
+| `executable_path` | `null` | Absolute path to a custom browser executable (e.g. Electron). Overridable via `MANUL_EXECUTABLE_PATH` |
 | `retries` | `0` | Number of times to retry a failed hunt file before marking it as failed (0 = no retries) |
 | `screenshot` | `"on-fail"` | Screenshot capture mode: `"on-fail"` (default — failed steps only), `"always"` (every step), `"none"` (disabled) |
 | `html_report` | `false` | Generate a self-contained HTML report after the run (`reports/manul_report.html`) |
 Threshold auto-calculation by model size: `<1b → 500`, `1-4b → 750`, `5-9b → 1000`, `10-19b → 1500`, `20b+ → 2000`, `null → 0`.
 
-Suggested config for mixed mode:
+Suggested config for heuristics-only (recommended default — no Ollama needed):
+
+```json
+{
+  "model": null,
+  "browser": "chromium",
+  "controls_cache_enabled": true
+}
+```
+
+Suggested config for enterprise browser (e.g. Chrome stable or Edge):
+
+```json
+{
+  "model": null,
+  "browser": "chromium",
+  "channel": "chrome",
+  "controls_cache_enabled": true
+}
+```
+
+Suggested config for Electron app testing:
+
+```json
+{
+  "model": null,
+  "browser": "chromium",
+  "executable_path": "/path/to/electron",
+  "controls_cache_enabled": true
+}
+```
+
+Electron `.hunt` file example (use `OPEN APP` instead of `NAVIGATE`):
+
+```text
+@context: Testing an Electron desktop application
+@title: Electron App Smoke Test
+
+STEP 1: Attach to the app window
+    OPEN APP
+    VERIFY that 'Welcome' is present
+
+STEP 2: Interact with app UI
+    Click the 'Settings' button
+    VERIFY that 'Preferences' is present
+    DONE.
+```
+
+Suggested config for mixed mode (optional AI self-healing fallback):
 
 ```json
 {
@@ -426,16 +494,6 @@ Suggested config for mixed mode:
   "browser": "chromium",
   "browser_args": [],
   "ai_policy": "prior",
-  "controls_cache_enabled": true
-}
-```
-
-Suggested config for heuristics-only (no Ollama needed):
-
-```json
-{
-  "model": null,
-  "browser": "chromium",
   "controls_cache_enabled": true
 }
 ```

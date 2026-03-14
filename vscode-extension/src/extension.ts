@@ -17,6 +17,7 @@ import {
   clearSiteCacheCommand,
 } from "./cacheTreeProvider";
 import { DEFAULT_CONFIG_FILENAME, DEBUG_TERMINAL_NAME, TERMINAL_NAME, getConfigFileName } from "./constants";
+import { HuntDocumentFormatter } from "./formatter";
 
 export function activate(context: vscode.ExtensionContext): void {
   // Output channel reused across debug runs from the editor button / context menu.
@@ -231,6 +232,21 @@ export function activate(context: vscode.ExtensionContext): void {
   );
   context.subscriptions.push(configWatcher);
   configWatcher.onDidChange(() => cacheProvider.refresh());
+
+  // ── Hunt file formatter ────────────────────────────────────────────────────
+  context.subscriptions.push(
+    vscode.languages.registerDocumentFormattingEditProvider(
+      { language: "hunt" },
+      new HuntDocumentFormatter()
+    )
+  );
+
+  // ── Format button (editor title bar) ───────────────────────────────────────
+  context.subscriptions.push(
+    vscode.commands.registerCommand("manul.formatHuntFile", () =>
+      vscode.commands.executeCommand("editor.action.formatDocument")
+    )
+  );
 }
 
 export function deactivate(): void {

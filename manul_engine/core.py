@@ -62,6 +62,16 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         _b = (browser or prompts.BROWSER).strip().lower()
         self.browser: str = _b if _b in _VALID_BROWSERS else "chromium"
         self.browser_args: list[str] = list(browser_args) if browser_args is not None else list(prompts.BROWSER_ARGS)
+        # channel / executable_path: accept via **_kwargs with fallback to config/env.
+        _ch = _kwargs.pop("channel", None)
+        self.channel: str | None = (str(_ch).strip() or None) if _ch is not None else prompts.CHANNEL
+        _ep = _kwargs.pop("executable_path", None)
+        self.executable_path: str | None = str(_ep) if _ep is not None else prompts.EXECUTABLE_PATH
+        if self.channel is not None and self.browser != "chromium":
+            raise ValueError(
+                f"Playwright 'channel' is only supported for Chromium, "
+                f"but got browser={self.browser!r} with channel={self.channel!r}."
+            )
         self.memory:          dict = {}
         self.last_xpath:      "str | None" = None
         self.learned_elements: dict = {}        # semantic cache: cache_key → {name, tag}
@@ -850,10 +860,17 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         async with async_playwright() as p:
             _launch_args = ["--no-sandbox", "--start-maximized"] if self.browser == "chromium" else []
             _launch_args = _launch_args + [a for a in self.browser_args if a not in _launch_args]
-            browser = await getattr(p, self.browser).launch(
-                headless=self.headless,
-                args=_launch_args,
-            )
+            _launch_opts: dict = dict(headless=self.headless, args=_launch_args)
+            if self.channel:
+                if self.browser != "chromium":
+                    raise ValueError(
+                        f"'channel' is only supported for Chromium; "
+                        f"got browser={self.browser!r}, channel={self.channel!r}"
+                    )
+                _launch_opts["channel"] = self.channel
+            if self.executable_path:
+                _launch_opts["executable_path"] = self.executable_path
+            browser = await getattr(p, self.browser).launch(**_launch_opts)
             ctx  = await browser.new_context(
                 no_viewport=True
             ) if not self.headless else await browser.new_context(
@@ -954,6 +971,12 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             if _auto_annotate_live and hunt_file and step_file_lines:
                                 await self._auto_annotate_navigate(page, hunt_file, step_file_lines, i)
 
+                        elif step_kind == "open_app":
+                            _app_ok, page = await self._handle_open_app(page, ctx)
+                            if not _app_ok:
+                                _step_error = "OPEN APP failed"
+                                _step_ok = False; ok = False; break
+
                         elif step_kind == "mock":
                             if not await self._handle_mock(page, step, hunt_dir=hunt_dir):
                                 _step_error = "MOCK command failed"
@@ -1043,6 +1066,32 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                     _step_error = "Action failed"
                                     print("    ❌ ACTION FAILED")
                                     _step_ok = False; ok = False; break
+
+                        elif step_kind == "set_var":
+                            # SET {var} = value — assign a variable mid-flight.
+                            # Parse var name from raw_step so {var} on LHS isn't
+                            # replaced by substitute_memory() before we read it.
+                            _set_m = re.match(
+                                r"(?:\d+\.\s*)?SET\s+\{?(\w+)\}?\s*=\s*(.+)",
+                                raw_step, re.IGNORECASE,
+                            )
+                            if _set_m:
+                                _sv_name = _set_m.group(1)
+                                # RHS: use the substituted step so placeholders resolve.
+                                _rhs_m = re.match(
+                                    r"(?:\d+\.\s*)?SET\s+\S+\s*=\s*(.+)",
+                                    step, re.IGNORECASE,
+                                )
+                                _sv_raw = (_rhs_m.group(1) if _rhs_m else _set_m.group(2)).strip()
+                                # Strip surrounding quotes if present.
+                                if len(_sv_raw) >= 2 and _sv_raw[0] in ("'", '"') and _sv_raw[-1] == _sv_raw[0]:
+                                    _sv_raw = _sv_raw[1:-1]
+                                self.memory[_sv_name] = _sv_raw
+                                print(f"    📝 SET {{{_sv_name}}} = {_sv_raw}")
+                            else:
+                                _step_error = f"Malformed SET command: {step}"
+                                print(f"    ❌ {_step_error}")
+                                _step_ok = False; ok = False; break
 
                         elif step_kind == "debug":
                             # In debug_mode the pre-step _debug_prompt() above already

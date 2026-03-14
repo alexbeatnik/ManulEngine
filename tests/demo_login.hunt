@@ -7,10 +7,10 @@
 # [END SETUP]
 
 STEP 1: Navigate and verify
-NAVIGATE to "https://example.com"
-Click "More information..." link
-VERIFY that "IANA" is present
+    NAVIGATE to "https://example.com"
+    Click "More information..." link
+    VERIFY that "IANA" is present
 
-# [TEARDOWN]
-# CALL PYTHON demo_helpers.clean_database
-# [END TEARDOWN]
+    # [TEARDOWN]
+    # CALL PYTHON demo_helpers.clean_database
+    # [END TEARDOWN]

@@ -76,6 +76,12 @@ const STEP_TEMPLATES: StepTemplate[] = [
   { label: "Call Python + Args", icon: "🐍", template: "CALL PYTHON module_name.function_name 'arg1' {var}" },
   { label: "Call Python → Var", icon: "🐍", template: "CALL PYTHON module_name.function_name into {variable_name}" },
   { label: "Call Python Args → Var", icon: "🐍", template: "CALL PYTHON module_name.function_name 'arg1' {var} into {result}" },
+  { label: "Open App",      icon: "📦", template: "OPEN APP" },
+  { label: "Set Variable",  icon: "📝", template: "SET {variable} = 'value'" },
+  { label: "Verify Softly", icon: "⚠️",  template: "VERIFY SOFTLY that '' is present" },
+  { label: "Verify Visual", icon: "📸", template: "VERIFY VISUAL ''" },
+  { label: "Mock Request",  icon: "🎭", template: "MOCK GET \"\" with ''" },
+  { label: "Wait Response", icon: "📡", template: "WAIT FOR RESPONSE \"\"" },
   { label: "Debug / Pause", icon: "🐛", template: "DEBUG" },
   { label: "Done",          icon: "🏁", template: "DONE." },
 ];

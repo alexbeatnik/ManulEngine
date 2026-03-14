@@ -4,65 +4,65 @@
 # 🐾 WIKIPEDIA HUNT: The 50-Step Marathon
 
 STEP 1: Land on Wikipedia home
-NAVIGATE to https://en.wikipedia.org/wiki/Main_Page
-VERIFY that 'Welcome to Wikipedia' is present.
+    NAVIGATE to https://en.wikipedia.org/wiki/Main_Page
+    VERIFY that 'Welcome to Wikipedia' is present.
 
 STEP 2: Research — Pallas's cat
-Fill 'Search Wikipedia' field with "Pallas's cat" and press Enter
-VERIFY that 'Otocolobus manul' is present.
-EXTRACT the text of 'Order:' into {manul_order}
-EXTRACT the text of 'Family:' into {manul_family}
-Click on the 'Taxonomy' link
-VERIFY that 'Peter Simon Pallas' is present.
-SCROLL DOWN
-Click on the 'Characteristics' link
-VERIFY that 'rounded ears' is present.
-Click on the 'Distribution and habitat' link
-VERIFY that 'Caucasus' is present.
-SCROLL DOWN
+    Fill 'Search Wikipedia' field with "Pallas's cat" and press Enter
+    VERIFY that 'Otocolobus manul' is present.
+    EXTRACT the text of 'Order:' into {manul_order}
+    EXTRACT the text of 'Family:' into {manul_family}
+    Click on the 'Taxonomy' link
+    VERIFY that 'Peter Simon Pallas' is present.
+    SCROLL DOWN
+    Click on the 'Characteristics' link
+    VERIFY that 'rounded ears' is present.
+    Click on the 'Distribution and habitat' link
+    VERIFY that 'Caucasus' is present.
+    SCROLL DOWN
 
 STEP 3: Research — Software Testing
-Fill 'Search Wikipedia' field with "Software testing" and press Enter
-VERIFY that 'software quality' is present.
-Click on the 'History' link
-VERIFY that 'Glenford J. Myers' is present.
-VERIFY that 'Black-box' is present.
-SCROLL DOWN
+    Fill 'Search Wikipedia' field with "Software testing" and press Enter
+    VERIFY that 'software quality' is present.
+    Click on the 'History' link
+    VERIFY that 'Glenford J. Myers' is present.
+    VERIFY that 'Black-box' is present.
+    SCROLL DOWN
 
 STEP 4: Research — Selenium
-Fill 'Search Wikipedia' field with "Selenium (software)" and press Enter
-VERIFY that 'Jason Huggins' is present.
-EXTRACT the text of 'Stable release' into {selenium_release}
-EXTRACT the text of 'License' into {selenium_license}
-Click on the 'Selenium WebDriver' link
-VERIFY that 'browser automation' is present.
-SCROLL DOWN
+    Fill 'Search Wikipedia' field with "Selenium (software)" and press Enter
+    VERIFY that 'Jason Huggins' is present.
+    EXTRACT the text of 'Stable release' into {selenium_release}
+    EXTRACT the text of 'License' into {selenium_license}
+    Click on the 'Selenium WebDriver' link
+    VERIFY that 'browser automation' is present.
+    SCROLL DOWN
 
 STEP 5: Research — Playwright and Microsoft
-Fill 'Search Wikipedia' field with "Playwright (software)" and press Enter
-VERIFY that 'Microsoft' is present.
-EXTRACT the text of 'Initial release' into {playwright_release}
-EXTRACT the text of 'Repository' into {playwright_repo}
-Click on the 'Microsoft' link
-VERIFY that 'Bill Gates' is present.
-EXTRACT the text of 'Traded as' into {msft_stock}
-EXTRACT the text of 'Headquarters' into {msft_hq}
-Click on the 'History' link
-VERIFY that 'Paul Allen' is present.
-SCROLL DOWN
-Click on the 'Corporate affairs' link
-VERIFY that 'Board of directors' is present.
+    Fill 'Search Wikipedia' field with "Playwright (software)" and press Enter
+    VERIFY that 'Microsoft' is present.
+    EXTRACT the text of 'Initial release' into {playwright_release}
+    EXTRACT the text of 'Repository' into {playwright_repo}
+    Click on the 'Microsoft' link
+    VERIFY that 'Bill Gates' is present.
+    EXTRACT the text of 'Traded as' into {msft_stock}
+    EXTRACT the text of 'Headquarters' into {msft_hq}
+    Click on the 'History' link
+    VERIFY that 'Paul Allen' is present.
+    SCROLL DOWN
+    Click on the 'Corporate affairs' link
+    VERIFY that 'Board of directors' is present.
 
 STEP 6: Research — Python
-Fill 'Search Wikipedia' field with "Python (programming language)" and press Enter
-VERIFY that 'Guido van Rossum' is present.
-EXTRACT the text of 'Typing discipline' into {python_typing}
-EXTRACT the text of 'OS' into {python_os}
-Click on the 'Syntax and semantics' link
-VERIFY that 'Indentation' is present.
+    Fill 'Search Wikipedia' field with "Python (programming language)" and press Enter
+    VERIFY that 'Guido van Rossum' is present.
+    EXTRACT the text of 'Typing discipline' into {python_typing}
+    EXTRACT the text of 'OS' into {python_os}
+    Click on the 'Syntax and semantics' link
+    VERIFY that 'Indentation' is present.
 
 STEP 7: Return to home
-Click on the 'Main menu' button
-Click on the 'Main page' link
-VERIFY that 'Welcome to Wikipedia' is present.
+    Click on the 'Main menu' button
+    Click on the 'Main page' link
+    VERIFY that 'Welcome to Wikipedia' is present.
 DONE.

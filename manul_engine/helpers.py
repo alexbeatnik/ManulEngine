@@ -42,6 +42,7 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
     # Anchored to line start so that STEP inside quoted labels is not matched.
     ("logical_step", re.compile(r'^\s*(?:\d+\.\s*)?STEP\s*\d*\s*:')),
     ("navigate",    re.compile(r'\bNAVIGATE\b')),
+    ("open_app",    re.compile(r'\bOPEN\s+APP\b')),
     ("mock",        re.compile(r'\bMOCK\s+(?:GET|POST|PUT|PATCH|DELETE)\b')),
     ("wait_for_response", re.compile(r'\bWAIT\s+FOR\s+RESPONSE\b')),
     ("wait",        re.compile(r'\bWAIT\b')),
@@ -56,6 +57,7 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
     ("upload",      re.compile(r'\bUPLOAD\b')),
     ("scan_page",   re.compile(r'\bSCAN\s+PAGE\b')),
     ("call_python", re.compile(r'\bCALL\s+PYTHON\b')),
+    ("set_var",     re.compile(r'^\s*(?:\d+\.\s*)?SET\b')),
     ("debug",       re.compile(r'\b(?:DEBUG|PAUSE)\b')),
     ("done",        re.compile(r'\bDONE\b')),
 ]
@@ -63,7 +65,8 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
 # Legacy pre-compiled system-step pattern kept for backwards compatibility.
 # Prefer classify_step() for step classification.
 RE_SYSTEM_STEP = re.compile(
-    r'\b(?:STEP\s*\d*\s*:|NAVIGATE|MOCK\s+(?:GET|POST|PUT|PATCH|DELETE)|WAIT\s+FOR\s+RESPONSE|WAIT|SCROLL|EXTRACT|VERIFY\s+VISUAL|VERIFY\s+SOFTLY|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|DEBUG|PAUSE|DONE)\b'
+    r'\b(?:STEP\s*\d*\s*:|NAVIGATE|OPEN\s+APP|MOCK\s+(?:GET|POST|PUT|PATCH|DELETE)|WAIT\s+FOR\s+RESPONSE|WAIT|SCROLL|EXTRACT|VERIFY\s+VISUAL|VERIFY\s+SOFTLY|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|SET|DEBUG|PAUSE|DONE)\b',
+    re.IGNORECASE,
 )
 
 # Extracts the description from a STEP marker line.
@@ -102,11 +105,11 @@ def classify_step(step: str) -> str:
     element labels (e.g. ``Click 'Press Here'``) are not misclassified.
 
     The returned string is one of: ``"logical_step"``, ``"navigate"``,
-    ``"mock"``, ``"wait_for_response"``, ``"wait"``, ``"scroll"``,
+    ``"open_app"``, ``"mock"``, ``"wait_for_response"``, ``"wait"``, ``"scroll"``,
     ``"extract"``, ``"verify_visual"``, ``"verify_softly"``,
     ``"verify"``, ``"press_enter"``, ``"press"``, ``"right_click"``,
-    ``"upload"``, ``"scan_page"``, ``"call_python"``, ``"debug"``,
-    ``"done"``, or ``"action"``.
+    ``"upload"``, ``"scan_page"``, ``"call_python"``, ``"set_var"``,
+    ``"debug"``, ``"done"``, or ``"action"``.
     """
     # Fast-path: STEP markers are checked on the raw text BEFORE quote
     # stripping so that apostrophes in descriptions (e.g. "Pallas's cat")

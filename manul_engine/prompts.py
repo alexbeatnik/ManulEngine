@@ -48,6 +48,8 @@ _KEY_MAP: dict[str, str] = {
     "log_thought_maxlen":     "MANUL_LOG_THOUGHT_MAXLEN",
     "workers":                "MANUL_WORKERS",
     "auto_annotate":          "MANUL_AUTO_ANNOTATE",
+    "channel":                "MANUL_CHANNEL",
+    "executable_path":        "MANUL_EXECUTABLE_PATH",
     "retries":                "MANUL_RETRIES",
     "screenshot":             "MANUL_SCREENSHOT",
     "html_report":            "MANUL_HTML_REPORT",
@@ -94,6 +96,15 @@ if "MANUL_BROWSER_ARGS" in os.environ:
         BROWSER_ARGS: "list[str]" = []
 else:
     BROWSER_ARGS = _json_cfg_browser_args
+
+# channel: Playwright browser channel (e.g. "chrome", "chrome-beta", "msedge").
+# Allows testing against branded browser builds instead of the bundled Chromium.
+_raw_channel = (os.getenv("MANUL_CHANNEL") or "").strip()
+CHANNEL: "str | None" = _raw_channel or None
+# executable_path: absolute path to a custom browser executable (e.g. Electron).
+_raw_executable_path = (os.getenv("MANUL_EXECUTABLE_PATH") or "").strip()
+EXECUTABLE_PATH: "str | None" = _raw_executable_path or None
+
 TIMEOUT       = int(os.getenv("MANUL_TIMEOUT",     "5000"))
 NAV_TIMEOUT   = int(os.getenv("MANUL_NAV_TIMEOUT", "30000"))
 
