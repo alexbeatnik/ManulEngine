@@ -104,7 +104,7 @@
     },
     "modifier": {
       "name": "keyword.other.modifier.hunt",
-      "match": "\\b(if exists|optional|NOT|DISABLED|ENABLED|is present|is checked|is NOT present|into|from|that|the|field|button|link|checkbox|radio|dropdown|input)\\b"
+      "match": "\\b(if exists|optional|NOT|DISABLED|ENABLED|is present|is checked|is NOT checked|is NOT present|into|from|that|the|field|button|link|checkbox|radio|dropdown|input)\\b"
     }
   }
 }

@@ -380,6 +380,7 @@ details.lstep-block[open] .lstep-chevron { transform: rotate(90deg); }
   flex-wrap: wrap;
 }
 .tag-chip {
+  font-family: inherit;
   font-size: 0.72rem;
   padding: 3px 10px;
   border-radius: 12px;
@@ -632,7 +633,7 @@ def _render_html(summary: RunSummary) -> str:
     tag_chips_html = ""
     if all_tags:
         chips = "".join(
-            f'<span class="tag-chip" data-tag="{_esc(t)}">{_esc(t)}</span>'
+            f'<button type="button" class="tag-chip" data-tag="{_esc(t)}">{_esc(t)}</button>'
             for t in all_tags
         )
         tag_chips_html = f'<span class="tag-divider"></span><div class="tag-chips">{chips}</div>'
