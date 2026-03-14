@@ -1,5 +1,6 @@
 ﻿# manul_engine/actions.py
 import asyncio
+import os
 import re
 from .helpers import extract_quoted, compact_log_field, SCROLL_WAIT, ACTION_WAIT, NAV_WAIT, detect_mode
 from .js_scripts import VISIBLE_TEXT_JS, EXTRACT_DATA_JS, DEEP_TEXT_JS, STATE_CHECK_JS, SCAN_JS
@@ -672,6 +673,7 @@ class _ActionsMixin:
                 print(f"    ✅ SCAN PAGE: draft saved → {output_abs}")
             except OSError as exc:
                 print(f"    ⚠️  SCAN PAGE: could not write '{output_abs}': {exc}")
+        return True
 
     # ── MOCK GET/POST/… handler ───────────────────────────────────────────────
     async def _handle_mock(self, page, step: str, hunt_dir: str | None = None) -> bool:
@@ -714,7 +716,7 @@ class _ActionsMixin:
         content_type = "application/json" if resolved.endswith(".json") else "text/plain"
 
         async def _route_handler(route):
-            if route.request.method.upper() == method or method == "GET":
+            if route.request.method.upper() == method:
                 await route.fulfill(
                     status=200,
                     content_type=content_type,

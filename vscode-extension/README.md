@@ -274,8 +274,6 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 - **🟡 Reporter Warning Status** — amber Warning stat card, `badge-warning` badges, `step-warning` row styling, soft-errors block, and "Show Warnings" filter checkbox in control panel
 - Core engine bump to **0.0.9.1**
 
-- Core engine bump to **0.0.9.1**
-
 ### 0.0.90
 - **🔓 `VERIFY ... is ENABLED`** — state verification now supports `ENABLED` alongside `DISABLED`. Assert that interactive elements (buttons, inputs, selects, ARIA-role elements) are active before proceeding. `ENABLED` keyword highlighted in `.hunt` syntax. Step Builder adds a dedicated 🔓 **Verify enabled** button
 - **🐍 `CALL PYTHON` with Arguments** — hook functions and inline `CALL PYTHON` steps now accept optional positional arguments: `CALL PYTHON helpers.multiply "6" "7" into {product}`. Arguments are tokenised with `shlex.split()`; `{var}` placeholders are resolved from the engine's runtime memory. Step Builder adds two new buttons: **Call Python + Args** and **Call Python Args → Var** with full tabstop snippet support

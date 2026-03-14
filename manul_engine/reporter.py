@@ -122,9 +122,10 @@ h1 .logo { font-size: 1.8rem; }
   height: 22px;
   display: flex;
 }
-.pass-bar .seg-pass  { background: var(--green); }
-.pass-bar .seg-flaky { background: var(--yellow); }
-.pass-bar .seg-fail  { background: var(--red); }
+.pass-bar .seg-pass    { background: var(--green); }
+.pass-bar .seg-flaky   { background: var(--yellow); }
+.pass-bar .seg-warning { background: var(--yellow); }
+.pass-bar .seg-fail    { background: var(--red); }
 
 /* ── Mission list ─────────────────────── */
 
@@ -757,7 +758,7 @@ def _render_html(summary: RunSummary) -> str:
   <div class="pass-bar">
     <div class="seg-pass" style="width:{pass_pct:.1f}%"></div>
     <div class="seg-flaky" style="width:{flaky_pct:.1f}%"></div>
-    <div class="seg-flaky" style="width:{warning_pct:.1f}%"></div>
+    <div class="seg-warning" style="width:{warning_pct:.1f}%"></div>
     <div class="seg-fail" style="width:{fail_pct:.1f}%"></div>
   </div>
 </div>
