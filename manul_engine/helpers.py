@@ -65,7 +65,8 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
 # Legacy pre-compiled system-step pattern kept for backwards compatibility.
 # Prefer classify_step() for step classification.
 RE_SYSTEM_STEP = re.compile(
-    r'\b(?:STEP\s*\d*\s*:|NAVIGATE|OPEN\s+APP|MOCK\s+(?:GET|POST|PUT|PATCH|DELETE)|WAIT\s+FOR\s+RESPONSE|WAIT|SCROLL|EXTRACT|VERIFY\s+VISUAL|VERIFY\s+SOFTLY|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|SET|DEBUG|PAUSE|DONE)\b'
+    r'\b(?:STEP\s*\d*\s*:|NAVIGATE|OPEN\s+APP|MOCK\s+(?:GET|POST|PUT|PATCH|DELETE)|WAIT\s+FOR\s+RESPONSE|WAIT|SCROLL|EXTRACT|VERIFY\s+VISUAL|VERIFY\s+SOFTLY|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|SET|DEBUG|PAUSE|DONE)\b',
+    re.IGNORECASE,
 )
 
 # Extracts the description from a STEP marker line.

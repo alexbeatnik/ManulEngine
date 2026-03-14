@@ -85,8 +85,8 @@ def _test_re_system_step() -> None:
 
     _assert(bool(RE_SYSTEM_STEP.search("OPEN APP")),
             "RE_SYSTEM_STEP matches OPEN APP")
-    _assert(not RE_SYSTEM_STEP.search("open app"),
-            "RE_SYSTEM_STEP is case-sensitive (uppercase DSL only)")
+    _assert(bool(RE_SYSTEM_STEP.search("open app")),
+            "RE_SYSTEM_STEP matches lowercase open app (case-insensitive)")
     _assert(bool(RE_SYSTEM_STEP.search("1. OPEN APP")),
             "RE_SYSTEM_STEP matches 1. OPEN APP")
 

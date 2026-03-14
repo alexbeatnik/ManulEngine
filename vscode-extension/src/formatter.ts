@@ -66,8 +66,8 @@ export class HuntDocumentFormatter implements vscode.DocumentFormattingEditProvi
         // Comments: indent only when inside a block
         desired = insideBlock ? INDENT + stripped : stripped;
       } else {
-        // ── Action lines — always 4-space indent ─────────────────────
-        desired = INDENT + stripped;
+        // ── Action lines — indent only when inside a block ───────────
+        desired = insideBlock ? INDENT + stripped : stripped;
       }
 
       if (raw !== desired) {
