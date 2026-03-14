@@ -4,7 +4,7 @@
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
 
 **A deterministic, DSL-first E2E browser automation platform.**
-Write unbreakable tests in plain English — powered by blazing-fast heuristics, with optional local AI for self-healing.
+Write unbreakable tests in plain English — powered by blazing-fast heuristics (`TreeWalker`), with optional local AI for self-healing.
 
 No CSS selectors. No XPath fragility. No cloud API bills.
 ManulEngine resolves elements using a mathematically sound `DOMScorer` (normalised 0.0–1.0 float scoring across 20+ signals) and a native JavaScript `TreeWalker` — deterministic, reproducible, and fast enough to run on any machine.
