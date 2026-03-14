@@ -1,5 +1,6 @@
 ﻿# manul_engine/actions.py
 import asyncio
+import hashlib
 import os
 import re
 from .helpers import extract_quoted, compact_log_field, SCROLL_WAIT, ACTION_WAIT, NAV_WAIT, detect_mode
@@ -682,7 +683,6 @@ class _ActionsMixin:
         Uses Playwright ``page.route()`` to intercept matching requests and
         fulfill them with the content of a local JSON file.
         """
-        import json as _json
         m = re.match(
             r'^\s*(?:\d+\.\s*)?MOCK\s+(GET|POST|PUT|PATCH|DELETE)\s+'
             r'["\']([^"\']+)["\']\s+with\s+["\']([^"\']+)["\']',
@@ -794,9 +794,10 @@ class _ActionsMixin:
         # Determine baseline directory and filename
         baseline_dir = os.path.join(hunt_dir or os.getcwd(), "visual_baselines")
         os.makedirs(baseline_dir, exist_ok=True)
-        # Sanitise element name for filename
+        # Sanitise element name for filename; include step hash to avoid collisions
         safe_name = re.sub(r'[^\w\-]', '_', target_name.lower()).strip('_')
-        baseline_path = os.path.join(baseline_dir, f"{safe_name}.png")
+        hash_suffix = hashlib.sha1(step.encode('utf-8')).hexdigest()[:8]
+        baseline_path = os.path.join(baseline_dir, f"{safe_name}_{hash_suffix}.png")
 
         if not os.path.exists(baseline_path):
             # First run — save baseline and pass

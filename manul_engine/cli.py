@@ -309,6 +309,7 @@ async def _run_hunt_file(
         all_step_results: list["StepResult"] = []
         all_soft_errors: list[str] = []
         overall_ok = True
+        first_fail_error: str | None = None
         for row_idx, row_data in enumerate(data_rows):
             if len(data_rows) > 1:
                 print(f"\n{'─'*40}")
@@ -329,6 +330,8 @@ async def _run_hunt_file(
             all_soft_errors.extend(mission_result.soft_errors)
             if mission_result.status == "fail":
                 overall_ok = False
+                if first_fail_error is None and mission_result.error:
+                    first_fail_error = f"Data row {row_idx + 1}: {mission_result.error}"
         # Build combined result for data-driven runs
         mission_result.file = path
         mission_result.name = filename
@@ -336,6 +339,8 @@ async def _run_hunt_file(
         mission_result.soft_errors = all_soft_errors
         if not overall_ok:
             mission_result.status = "fail"
+            if not mission_result.error and first_fail_error:
+                mission_result.error = first_fail_error
         elif all_soft_errors:
             mission_result.status = "warning"
         return mission_result

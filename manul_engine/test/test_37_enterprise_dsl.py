@@ -422,7 +422,9 @@ async def run_suite() -> tuple[int, int]:
     # F: ParsedHunt compatibility
     _test_parsed_hunt_compat()
 
+    total = _PASS + _FAIL
     print(f"\n  {'='*50}")
     print(f"  RESULTS: {_PASS} passed, {_FAIL} failed")
     print(f"  {'='*50}")
+    print(f"  \U0001f4ca SCORE: {_PASS}/{total}")
     return _PASS, _FAIL
