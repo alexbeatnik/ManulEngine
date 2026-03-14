@@ -710,8 +710,12 @@ class _ActionsMixin:
             print(f"    ❌ MOCK: file not found: {mock_file}")
             return False
 
-        with open(resolved, "r", encoding="utf-8") as f:
-            body = f.read()
+        try:
+            with open(resolved, "r", encoding="utf-8") as f:
+                body = f.read()
+        except (OSError, UnicodeError) as e:
+            print(f"    ❌ MOCK: failed to read mock file {mock_file}: {e}")
+            return False
         # Detect content type
         content_type = "application/json" if resolved.endswith(".json") else "text/plain"
 

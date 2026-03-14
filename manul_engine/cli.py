@@ -92,7 +92,7 @@ class _Tee:
 class ParsedHunt(NamedTuple):
     """Structured result of parsing a ``.hunt`` file.
 
-    Behaves exactly like an 9-tuple for backward compatibility
+    Behaves exactly like a 9-tuple for backward compatibility
     (positional indexing and unpacking both work), but also
     supports named attribute access.
     """
@@ -327,7 +327,9 @@ async def _run_hunt_file(
                 screenshot_mode=screenshot_mode,
             )
             all_step_results.extend(mission_result.steps)
-            all_soft_errors.extend(mission_result.soft_errors)
+            all_soft_errors.extend(
+                [f"Data row {row_idx + 1}: {msg}" for msg in mission_result.soft_errors]
+            )
             if mission_result.status == "fail":
                 overall_ok = False
                 if first_fail_error is None and mission_result.error:
@@ -777,7 +779,7 @@ async def main() -> None:
                 # "WARNING" in the child summary output.
                 if status == "PASS" and "marked FLAKY" in output:
                     _child_status = "flaky"
-                elif status == "PASS" and "⚠️" in output and "SOFT ASSERTION FAILED" in output.upper():
+                elif status == "PASS" and "SOFT ASSERTION FAILED" in output.upper():
                     _child_status = "warning"
                 else:
                     _child_status = "pass" if status == "PASS" else "fail"
