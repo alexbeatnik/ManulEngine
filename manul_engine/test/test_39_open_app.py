@@ -139,7 +139,7 @@ async def _test_handle_open_app_existing_page() -> None:
     _assert(success is True,
             "Returns success=True when page exists")
     _assert(returned_page is mock_page,
-            "Returns the first context page")
+            "Returns the non-blank context page")
     _assert(engine.last_xpath is None,
             "Resets last_xpath to None")
     mock_page.wait_for_load_state.assert_awaited_once_with(
@@ -210,6 +210,42 @@ async def _test_handle_open_app_failure() -> None:
             "Returns success=False on timeout")
     _assert(returned_page is mock_original_page,
             "Returns the original page on failure")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Section F2: _handle_open_app() skips about:blank pages
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def _test_handle_open_app_skips_blank() -> None:
+    print("\n  ── _handle_open_app(): skips about:blank page ────────────────")
+
+    from manul_engine.actions import _ActionsMixin
+
+    class FakeEngine(_ActionsMixin):
+        def __init__(self):
+            self.last_xpath = None
+
+    engine = FakeEngine()
+
+    blank_page = AsyncMock()
+    blank_page.url = "about:blank"
+
+    real_page = AsyncMock()
+    real_page.url = "app://electron-window"
+    real_page.wait_for_load_state = AsyncMock()
+
+    mock_ctx = MagicMock()
+    mock_ctx.pages = [blank_page, real_page]
+
+    success, returned_page = await engine._handle_open_app(MagicMock(), mock_ctx)
+
+    _assert(success is True,
+            "Returns success when non-blank page found")
+    _assert(returned_page is real_page,
+            "Returns the real app page, not about:blank")
+    real_page.wait_for_load_state.assert_awaited_once()
+    _assert(blank_page.wait_for_load_state.await_count == 0,
+            "Does not wait on the blank page")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -293,6 +329,7 @@ async def run_suite() -> tuple[int, int]:
     await _test_handle_open_app_existing_page()
     await _test_handle_open_app_wait_for_page()
     await _test_handle_open_app_failure()
+    await _test_handle_open_app_skips_blank()
 
     print(f"\n  RESULTS: {_PASS} passed, {_FAIL} failed")
     total = _PASS + _FAIL

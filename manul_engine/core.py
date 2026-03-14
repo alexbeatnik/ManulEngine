@@ -854,6 +854,11 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             _launch_args = _launch_args + [a for a in self.browser_args if a not in _launch_args]
             _launch_opts: dict = dict(headless=self.headless, args=_launch_args)
             if self.channel:
+                if self.browser != "chromium":
+                    raise ValueError(
+                        f"'channel' is only supported for Chromium; "
+                        f"got browser={self.browser!r}, channel={self.channel!r}"
+                    )
                 _launch_opts["channel"] = self.channel
             if self.executable_path:
                 _launch_opts["executable_path"] = self.executable_path

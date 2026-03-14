@@ -56,7 +56,14 @@ class _ActionsMixin:
         """
         try:
             if ctx.pages:
-                page = ctx.pages[0]
+                # Filter out initial about:blank pages created by ctx.new_page()
+                real = [p for p in ctx.pages if getattr(p, "url", None) not in ("", "about:blank")]
+                if real:
+                    page = real[-1]
+                elif len(ctx.pages) == 1:
+                    page = await ctx.wait_for_event("page", timeout=prompts.NAV_TIMEOUT)
+                else:
+                    page = ctx.pages[-1]
             else:
                 page = await ctx.wait_for_event("page", timeout=prompts.NAV_TIMEOUT)
             await page.wait_for_load_state("domcontentloaded", timeout=prompts.NAV_TIMEOUT)

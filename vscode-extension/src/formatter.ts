@@ -52,6 +52,7 @@ export class HuntDocumentFormatter implements vscode.DocumentFormattingEditProvi
         insideBlock = true;
         desired = stripped;
       } else if (RE_DONE.test(stripped)) {
+        insideBlock = false;
         desired = stripped;
       } else if (RE_HOOK_OPEN.test(stripped)) {
         // [SETUP] / [TEARDOWN]
