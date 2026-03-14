@@ -130,8 +130,8 @@ def _test_parser() -> None:
             "@tags: with no value produces empty list",
             f"got={result5[7]!r}")
 
-    # 1h. return tuple has length 8.
-    _assert(len(result) == 8, "parse_hunt_file now returns an 8-tuple", f"len={len(result)}")
+    # 1h. return tuple has length 9.
+    _assert(len(result) == 9, "parse_hunt_file now returns a 9-tuple", f"len={len(result)}")
 
 
 # ── Section 2: _read_tags fast scanner ───────────────────────────────────────

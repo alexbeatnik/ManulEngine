@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.0.9.0 — The Mastermind
+# 😼 ManulEngine v0.0.9.1 — The Mastermind
 
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 
@@ -24,7 +24,7 @@ Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristi
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                        Build config — package: manul-engine 0.0.9.0
+├── pyproject.toml                        Build config — package: manul-engine 0.0.9.1
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
@@ -71,7 +71,8 @@ ManulEngine/
 │       ├── test_33_call_python_args.py Unit: CALL PYTHON with positional arguments (44 assertions, no browser)
 │       ├── test_34_verify_checked.py Synthetic: VERIFY checked/NOT checked (20 assertions)
 │       ├── test_35_scanner.py       Synthetic+Unit: Smart Page Scanner build_hunt() (44 assertions)
-│       └── test_36_scoring_math.py   Unit: exact numerical scoring validation (29 assertions, no browser)
+│       ├── test_36_scoring_math.py   Unit: exact numerical scoring validation (29 assertions, no browser)
+│       └── test_37_enterprise_dsl.py Unit: Enterprise DSL — @data:, MOCK, VERIFY VISUAL/SOFTLY, reporter warnings (68 assertions, no browser)
 ├── controls/                         User-owned custom Python handlers (auto-loaded at engine startup)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
@@ -89,7 +90,7 @@ ManulEngine/
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 └── vscode-extension/                 VS Code extension (language support + UI)
-    └── package.json                  Extension manifest (v0.0.90)
+    └── package.json                  Extension manifest (v0.0.91)
     ├── src/
     │   ├── extension.ts              Activation, command registration
     │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
@@ -102,6 +103,16 @@ ManulEngine/
 ```
 
 ---
+
+## 🚀 What's New in v0.0.9.1 — Enterprise DSL
+
+* **Data-Driven Testing (`@data:`):** Declare `@data: users.csv` or `@data: data.json` in any `.hunt` file header. The engine loads each row (JSON array-of-objects or CSV via `DictReader`) and reruns the entire mission with row values injected as `{placeholders}`. Implemented in `cli.py` — `parse_hunt_file()` extracts the path into `ParsedHunt.data_file`; `_load_data_file()` resolves the path relative to hunt dir → CWD; `_run_hunt_file()` iterates rows, calls `manul.reset_session_state()` between iterations, and aggregates step results and soft errors.
+* **Network Interception (`MOCK` / `WAIT FOR RESPONSE`):** `MOCK GET "/api/users" with 'mocks/users.json'` intercepts matching requests via Playwright `page.route()` with glob pattern `**{path}` and fulfills them from a local JSON file. `WAIT FOR RESPONSE "/api/data"` blocks until a matching network response arrives (uses `page.wait_for_response()` with substring match). Handlers in `actions.py`: `_handle_mock()`, `_handle_wait_for_response()`.
+* **Visual Regression (`VERIFY VISUAL`):** `VERIFY VISUAL 'Logo'` resolves the element via heuristics, takes `loc.screenshot()`, saves a baseline PNG in `visual_baselines/` next to the hunt file on first run, and pixel-compares on subsequent runs. Uses PIL/Pillow `ImageChops.difference` when available (configurable threshold, default 1%), falls back to raw byte comparison. Handler: `_handle_verify_visual()`, static helper: `_compare_images()`.
+* **Soft Assertions (`VERIFY SOFTLY`):** `VERIFY SOFTLY that 'Warning' is present` delegates to `_handle_verify()` (strips `SOFTLY` keyword) but does **not** break the step loop on failure. Failures are recorded in `_soft_errors: list[str]` and surfaced as `"warning"` status in `MissionResult`. The run continues to completion. Handler: `_handle_verify_softly()`.
+* **HTML Reporter — Warning Status:** New amber `⚠️ Warning` stat card, `badge-warning` / `step-warning` / `status-warning` CSS classes, `soft-errors` block with `<ul>` list inside mission details, and a "Show Warnings" filter checkbox in the control panel (mutual exclusion with "Show Only Failed"). `RunSummary.warning` counter; pass-rate includes warnings.
+
+### Previous Engine Overhaul
 
 ## 🚀 What's New: The Engine Overhaul
 
@@ -227,7 +238,7 @@ run_hooks(lines, label, hunt_dir, variables)  → bool
 
 **`HookResult` fields:** `success: bool`, `message: str`, `return_value: str | None`, `var_name: str | None`. The last two fields are populated when the step used the `into {var}` / `to {var}` capture syntax (see *Dynamic Variables* below); they are `None` for plain `CALL PYTHON` steps. When `into/to` is present, `return_value` is **always** set to `str(ret)` — even when the function returns `None` (yielding the string `"None"`). This guarantees that `{var}` is always bound after a capture step.
 
-**Positional arguments (v0.0.9.0):** `CALL PYTHON` now accepts optional positional arguments between the dotted function name and the optional `into {var}` clause. Arguments are tokenised with `shlex.split()` — single-quoted, double-quoted, and unquoted tokens are all accepted. `{var}` placeholders inside arguments are resolved from the engine’s runtime memory (`self.memory` for inline steps, `parsed_vars`/`variables` dict for hook blocks). Unresolved placeholders are kept as-is.
+**Positional arguments (v0.0.9.1):** `CALL PYTHON` now accepts optional positional arguments between the dotted function name and the optional `into {var}` clause. Arguments are tokenised with `shlex.split()` — single-quoted, double-quoted, and unquoted tokens are all accepted. `{var}` placeholders inside arguments are resolved from the engine’s runtime memory (`self.memory` for inline steps, `parsed_vars`/`variables` dict for hook blocks). Unresolved placeholders are kept as-is.
 
 Full syntax variants:
 
@@ -250,7 +261,7 @@ Fill 'Security Code' with '{dynamic_otp}'
 
 `execute_hook_line` captures the return value from `func()`, converts it to a string, and stores it in `HookResult.return_value`. `run_mission` then writes it to `self.memory[var_name]`, making it available for `{placeholder}` substitution in every subsequent step — exactly like `EXTRACT` or `@var:` variables. Both `into` and `to` are accepted as the keyword. Dynamic-variable unit tests live in `manul_engine/test/test_21_dynamic_vars.py`.
 
-`parse_hunt_file()` in `cli.py` returns an **8-tuple** `(mission, context, title, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags)`. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
+`parse_hunt_file()` in `cli.py` returns a **9-field `ParsedHunt` NamedTuple** `(mission, context, title, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags, data_file)`. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
 
 The full hook unit test suite (`41 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
 
@@ -267,7 +278,7 @@ Fill 'Email' with '{user_email}'
 Fill 'Password' with '{password}'
 ```
 
-**How it works:** `parse_hunt_file()` scans for `@var: {key} = value` header lines and returns them as `parsed_vars` (the 7th element of the 8-tuple). `_run_hunt_file()` passes `parsed_vars` to `run_mission(initial_vars=...)`, which pre-populates `self.memory` before the step loop starts. Both brace and bare-key forms are accepted (`@var: {key} = val` and `@var: key = val` are equivalent). Values are stripped of leading/trailing whitespace. Malformed `@var:` lines (no `=`) are silently skipped.
+**How it works:** `parse_hunt_file()` scans for `@var: {key} = value` header lines and returns them as `parsed_vars` (the 7th element of the 9-field NamedTuple). `_run_hunt_file()` passes `parsed_vars` to `run_mission(initial_vars=...)`, which pre-populates `self.memory` before the step loop starts. Both brace and bare-key forms are accepted (`@var: {key} = val` and `@var: key = val` are equivalent). Values are stripped of leading/trailing whitespace. Malformed `@var:` lines (no `=`) are silently skipped.
 
 **Design rule:** When generating or suggesting `.hunt` test files, **never** hardcode test data (emails, passwords, usernames, search queries, IDs, etc.) directly into `Fill` or `Type` steps. Always declare them at the top via `@var:` and reference them via `{placeholder}`. This keeps test logic separate from test data.
 
@@ -609,6 +620,7 @@ The engine is battle-tested with **1983** synthetic DOM/unit tests across 37 tes
 * **VERIFY checked/NOT checked synthetic suite:** `manul_engine/test/test_34_verify_checked.py` (checkbox state verification via JS checked property, ARIA checked, mixed states, 20 assertions).
 * **Smart Page Scanner synthetic+unit suite:** `manul_engine/test/test_35_scanner.py` (`build_hunt()` element-to-step mapping, keyword generation, metadata headers, edge cases, 44 assertions).
 * **Scoring Math unit suite:** `manul_engine/test/test_36_scoring_math.py` (exact numerical scoring validation, WEIGHTS/SCALE constants, channel arithmetic, penalty multipliers, 29 assertions, no browser).
+* **Enterprise DSL unit suite:** `manul_engine/test/test_37_enterprise_dsl.py` (`@data:` parsing, `_load_data_file` JSON/CSV loading, MOCK/WAIT FOR RESPONSE/VERIFY VISUAL/VERIFY SOFTLY classification, `ParsedHunt` 9-field compat, reporter warning HTML, `RunSummary.warning`, 68 assertions, no browser).
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
 Run the synthetic suite:
@@ -651,7 +663,7 @@ The `prompts/` directory contains ready-to-use LLM prompt templates that let you
 
 ## 🖱️ VS Code Extension
 
-The `vscode-extension/` directory contains a companion VS Code extension (v0.0.90) that provides:
+The `vscode-extension/` directory contains a companion VS Code extension (v0.0.91) that provides:
 
 | Feature | Details |
 | --- | --- |
@@ -687,7 +699,7 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 ---
 
-**Version:** 0.0.9.0
+**Version:** 0.0.9.1
 
 **Codename:** The Mastermind
 

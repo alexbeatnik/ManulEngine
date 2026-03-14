@@ -28,6 +28,16 @@ ManulEngine changes the economics of test automation. You don't write controls �
 
 > Hunt file language support, one-click test runner, interactive debug runner with gutter breakpoints, step builder, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) browser automation.
 
+## 🚀 What's New in v0.0.9.1 — Enterprise DSL
+
+* **Data-Driven Testing (`@data:`):** Declare `@data: users.csv` or `@data: data.json` in hunt file headers. The engine loads each row and reruns the mission with row values injected as `{placeholders}`. Supports JSON and CSV.
+* **Network Interception:** `MOCK GET "/api/users" with 'mocks/users.json'` intercepts requests via Playwright `page.route()`. `WAIT FOR RESPONSE "/api/data"` blocks until a matching response arrives. Syntax-highlighted in `.hunt` files.
+* **Visual Regression:** `VERIFY VISUAL 'Logo'` takes an element screenshot and compares it against a stored baseline. Baselines saved in `visual_baselines/` next to the hunt file.
+* **Soft Assertions:** `VERIFY SOFTLY that 'Warning' is present` records a failure but continues execution. Soft failures surface as `"warning"` status in CLI and HTML reporter.
+* **Reporter Warning Status:** Amber `⚠️ Warning` badges, step-level warning styling, soft-errors block, and a "Show Warnings" filter checkbox.
+
+### Previous highlights (v0.0.9.0)
+
 ## 🚀 What's New in v0.0.9.0 — The Power User Update
 
 * **`VERIFY ... is ENABLED`:** State verification now supports both `ENABLED` and `DISABLED` checks. The Step Builder includes a dedicated 🔓 **Verify enabled** button alongside the existing 🔒 **Verify disabled** button.
@@ -255,6 +265,14 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 ---
 
 ## Release Notes
+
+### 0.0.91
+- **📊 Data-Driven Testing (`@data:`)** — declare `@data: users.csv` or `@data: data.json` in hunt file headers. The engine reruns the mission for each row with values injected as `{placeholders}`. Supports JSON (array-of-objects) and CSV (DictReader)
+- **🔀 Network Interception (`MOCK` / `WAIT FOR RESPONSE`)** — `MOCK GET "/api/users" with 'mocks/users.json'` intercepts requests via `page.route()`. `WAIT FOR RESPONSE "/api/data"` blocks until a matching response arrives. Supports GET, POST, PUT, PATCH, DELETE
+- **📸 Visual Regression (`VERIFY VISUAL`)** — `VERIFY VISUAL 'Logo'` takes an element screenshot, saves a baseline on first run, and pixel-compares on subsequent runs. Uses PIL/Pillow threshold comparison or raw byte fallback
+- **⚠️ Soft Assertions (`VERIFY SOFTLY`)** — `VERIFY SOFTLY that 'Warning' is present` records a failure but continues execution. All soft failures are aggregated and surfaced as `"warning"` status
+- **🟡 Reporter Warning Status** — amber Warning stat card, `badge-warning` badges, `step-warning` row styling, soft-errors block, and "Show Warnings" filter checkbox in control panel
+- Core engine bump to **0.0.9.1**
 
 ### 0.0.90
 - **🔓 `VERIFY ... is ENABLED`** — state verification now supports `ENABLED` alongside `DISABLED`. Assert that interactive elements (buttons, inputs, selects, ARIA-role elements) are active before proceeding. `ENABLED` keyword highlighted in `.hunt` syntax. Step Builder adds a dedicated 🔓 **Verify enabled** button

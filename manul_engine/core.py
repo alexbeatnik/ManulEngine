@@ -885,6 +885,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             ok = True
             done = False
             _step_results: list[StepResult] = []
+            _soft_errors: list[str] = []
             _screenshot_mode = screenshot_mode
             _current_logical_step: str | None = None  # active STEP label
             # Pre-populate runtime memory with static variables declared via
@@ -953,6 +954,16 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             if _auto_annotate_live and hunt_file and step_file_lines:
                                 await self._auto_annotate_navigate(page, hunt_file, step_file_lines, i)
 
+                        elif step_kind == "mock":
+                            if not await self._handle_mock(page, step, hunt_dir=hunt_dir):
+                                _step_error = "MOCK command failed"
+                                _step_ok = False; ok = False; break
+
+                        elif step_kind == "wait_for_response":
+                            if not await self._handle_wait_for_response(page, step):
+                                _step_error = "WAIT FOR RESPONSE timed out"
+                                _step_ok = False; ok = False; break
+
                         elif step_kind == "wait":
                             n = re.search(r'(\d+)', step)
                             await asyncio.sleep(int(n.group(1)) if n else 2)
@@ -969,6 +980,20 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             if not await self._handle_verify(page, step, step_idx=i):
                                 _step_error = "Verification failed"
                                 _step_ok = False; ok = False; break
+
+                        elif step_kind == "verify_visual":
+                            if not await self._handle_verify_visual(page, step, strategic_context, step_idx=i, hunt_dir=hunt_dir):
+                                _step_error = "Visual regression check failed"
+                                _step_ok = False; ok = False; break
+
+                        elif step_kind == "verify_softly":
+                            _soft_ok = await self._handle_verify_softly(page, step, step_idx=i)
+                            if not _soft_ok:
+                                _soft_msg = f"Soft assertion failed at step {i}: {step}"
+                                _soft_errors.append(_soft_msg)
+                                _step_error = _soft_msg
+                                _step_ok = False  # mark step as warning, but do NOT break
+                                print(f"    ⚠️  SOFT ASSERTION FAILED — continuing execution")
 
                         elif step_kind == "press_enter":
                             await self._handle_press_enter(page)
@@ -1114,10 +1139,18 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             except Exception:
                                 pass
                         # ── Collect step result ───────────────────────────────────
+                        # Soft assertion failures are recorded as "warning" status
+                        # rather than "fail" so the run continues.
+                        if _step_ok:
+                            _sr_status = "pass"
+                        elif step_kind == "verify_softly":
+                            _sr_status = "warning"
+                        else:
+                            _sr_status = "fail"
                         _step_results.append(StepResult(
                             index=i,
                             text=re.sub(r'^\s*\d+\.\s*', '', step),
-                            status="pass" if _step_ok else "fail",
+                            status=_sr_status,
                             duration_ms=duration_ms,
                             error=_step_error,
                             screenshot=_ss_b64,
@@ -1140,10 +1173,13 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                 await browser.close()
 
         _status = "pass" if (done or ok) else "fail"
+        if _status == "pass" and _soft_errors:
+            _status = "warning"
         return MissionResult(
             file=hunt_file or "",
             name=os.path.basename(hunt_file) if hunt_file else "",
             status=_status,
             steps=_step_results,
             error=_step_results[-1].error if _step_results and _status == "fail" else None,
+            soft_errors=_soft_errors,
         )

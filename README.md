@@ -18,6 +18,16 @@ Manul combines the blazing speed of **Playwright**, 20+ JavaScript DOM heuristic
 
 ---
 
+## 🚀 What's New in v0.0.9.1 — Enterprise DSL
+
+* **Data-Driven Testing (`@data:`):** Declare `@data: users.csv` or `@data: data.json` in any `.hunt` file header. The engine loads each row and reruns the entire mission with row values injected as `{placeholders}`. Supports JSON (array-of-objects) and CSV (DictReader). Zero code changes — same hunt file, *N* executions.
+* **Network Interception (`MOCK` / `WAIT FOR RESPONSE`):** `MOCK GET "/api/users" with 'mocks/users.json'` intercepts matching requests via Playwright `page.route()` and fulfills them from a local file. `WAIT FOR RESPONSE "/api/data"` blocks until a matching network response arrives. Supports GET, POST, PUT, PATCH, DELETE.
+* **Visual Regression (`VERIFY VISUAL`):** `VERIFY VISUAL 'Logo'` takes an element screenshot, saves a baseline on first run, and pixel-compares on subsequent runs. Baselines live in `visual_baselines/` next to the hunt file. Uses PIL/Pillow when available (threshold-based diff), falls back to raw byte comparison.
+* **Soft Assertions (`VERIFY SOFTLY`):** `VERIFY SOFTLY that 'Warning' is present` records a failure but does **not** stop the mission. All soft failures are collected and surfaced as a `"warning"` status in both the CLI summary and the HTML reporter (amber badges, dedicated filter chip, soft-errors block).
+* **HTML Reporter — Warning Status:** New amber `⚠️ Warning` stat card, `badge-warning` badges, `step-warning` row styling, `soft-errors` block with itemised list, and a "Show Warnings" filter checkbox in the control panel.
+
+### Previous highlights (v0.0.9.0)
+
 ## 🚀 What's New in v0.0.9.0 — The Power User Update
 
 * **`VERIFY ... is ENABLED`:** State verification now supports both `ENABLED` and `DISABLED` checks. Assert that interactive elements are truly active before attempting actions — `VERIFY that 'Submit' is ENABLED`.
@@ -707,4 +717,4 @@ ManulEngine is verified against **1983 synthetic DOM tests** across 37 test suit
 
 ---
 
-**Version:** 0.0.9.0 · **Status:** Hunting...
+**Version:** 0.0.9.1 · **Status:** Hunting...

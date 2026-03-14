@@ -92,7 +92,7 @@ class _Tee:
 class ParsedHunt(NamedTuple):
     """Structured result of parsing a ``.hunt`` file.
 
-    Behaves exactly like an 8-tuple for backward compatibility
+    Behaves exactly like a 9-tuple for backward compatibility
     (positional indexing and unpacking both work), but also
     supports named attribute access.
     """
@@ -104,6 +104,7 @@ class ParsedHunt(NamedTuple):
     teardown_lines: list[str]
     parsed_vars: dict[str, str]
     tags: list[str]
+    data_file: str  # @data: path (empty string if not declared)
 
 
 # ── Parse .hunt file ─────────────────────────────────────────────────────────
@@ -139,6 +140,7 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
     title = ""
     parsed_vars: dict[str, str] = {}
     tags: list[str] = []
+    data_file: str = ""
     mission_lines:  list[str] = []
     step_file_lines: list[int] = []
     setup_lines:    list[str] = []
@@ -186,6 +188,8 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
                 m = re.match(r"\{?([^}=\s]+)\}?\s*=\s*(.*)", var_part)
                 if m:
                     parsed_vars[m.group(1).strip()] = m.group(2).strip()
+            elif stripped.startswith("@data:"):
+                data_file = stripped.split(":", 1)[1].strip()
             elif not stripped.startswith("#") and stripped:
                 mission_lines.append(line)
                 step_file_lines.append(lineno)
@@ -199,6 +203,7 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
         teardown_lines=teardown_lines,
         parsed_vars=parsed_vars,
         tags=tags,
+        data_file=data_file,
     )
 
 
@@ -289,18 +294,57 @@ async def _run_hunt_file(
     # Merge global lifecycle vars (lower priority) with per-file @var: declarations
     # so that @var: can always override a global default.
     merged_vars: dict[str, str] = {**(global_vars or {}), **hunt.parsed_vars}
+
+    # ── Data-Driven Testing (@data:) ──────────────────────────────────────
+    data_rows: list[dict[str, str]] = [{}]
+    if hunt.data_file:
+        data_rows = _load_data_file(hunt.data_file, hunt_dir)
+        if not data_rows:
+            print(f"⚠️  @data: file '{hunt.data_file}' is empty or unreadable — running once with no extra vars.")
+            data_rows = [{}]
+        elif len(data_rows) > 1:
+            print(f"📊 Data-Driven: {len(data_rows)} rows loaded from '{hunt.data_file}'")
+
     try:
-        mission_result = await manul.run_mission(
-            hunt.mission,
-            strategic_context=context,
-            hunt_dir=hunt_dir,
-            hunt_file=path,
-            step_file_lines=hunt.step_file_lines,
-            initial_vars=merged_vars,
-            screenshot_mode=screenshot_mode,
-        )
+        all_step_results: list["StepResult"] = []
+        all_soft_errors: list[str] = []
+        overall_ok = True
+        first_fail_error: str | None = None
+        for row_idx, row_data in enumerate(data_rows):
+            if len(data_rows) > 1:
+                print(f"\n{'─'*40}")
+                print(f"📊 Data row {row_idx + 1}/{len(data_rows)}: {row_data}")
+                print(f"{'─'*40}")
+            row_vars = {**merged_vars, **{str(k): str(v) for k, v in row_data.items()}}
+            manul.reset_session_state()
+            mission_result = await manul.run_mission(
+                hunt.mission,
+                strategic_context=context,
+                hunt_dir=hunt_dir,
+                hunt_file=path,
+                step_file_lines=hunt.step_file_lines,
+                initial_vars=row_vars,
+                screenshot_mode=screenshot_mode,
+            )
+            all_step_results.extend(mission_result.steps)
+            all_soft_errors.extend(
+                [f"Data row {row_idx + 1}: {msg}" for msg in mission_result.soft_errors]
+            )
+            if mission_result.status == "fail":
+                overall_ok = False
+                if first_fail_error is None and mission_result.error:
+                    first_fail_error = f"Data row {row_idx + 1}: {mission_result.error}"
+        # Build combined result for data-driven runs
         mission_result.file = path
         mission_result.name = filename
+        mission_result.steps = all_step_results
+        mission_result.soft_errors = all_soft_errors
+        if not overall_ok:
+            mission_result.status = "fail"
+            if not mission_result.error and first_fail_error:
+                mission_result.error = first_fail_error
+        elif all_soft_errors:
+            mission_result.status = "warning"
         return mission_result
     except Exception as exc:
         print(f"\n💥 CRASH: {exc}")
@@ -313,6 +357,48 @@ async def _run_hunt_file(
         # Always runs after setup succeeds, regardless of mission outcome.
         # Teardown failures are logged but do not override the mission result.
         run_hooks(hunt.teardown_lines, label="TEARDOWN", hunt_dir=hunt_dir, variables=hunt.parsed_vars)
+
+
+# ── Load @data: file (JSON or CSV) ───────────────────────────────────────────
+def _load_data_file(data_path: str, hunt_dir: str) -> list[dict[str, str]]:
+    """Load a JSON array-of-objects or CSV file for data-driven testing.
+
+    Resolution order: relative to hunt file directory, then CWD.
+    Returns a list of dicts (one per row). Returns [] on error.
+    """
+    import csv
+    import json
+
+    candidates = [
+        os.path.join(hunt_dir, data_path),
+        os.path.join(os.getcwd(), data_path),
+    ]
+    resolved: str | None = None
+    for c in candidates:
+        if os.path.isfile(c):
+            resolved = c
+            break
+    if resolved is None:
+        print(f"    ⚠️  @data: file not found: {data_path}")
+        return []
+
+    try:
+        if resolved.endswith(".json"):
+            with open(resolved, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+            if isinstance(raw, list):
+                return [{str(k): str(v) for k, v in item.items()} for item in raw if isinstance(item, dict)]
+            return []
+        elif resolved.endswith(".csv"):
+            with open(resolved, "r", encoding="utf-8", newline="") as f:
+                reader = csv.DictReader(f)
+                return [{str(k): str(v) for k, v in row.items()} for row in reader]
+        else:
+            print(f"    ⚠️  @data: unsupported file type: {data_path} (use .json or .csv)")
+            return []
+    except Exception as exc:
+        print(f"    ⚠️  @data: failed to load {data_path}: {exc}")
+        return []
 
 
 # ── Collect .hunt files from a path ──────────────────────────────────────────
@@ -689,8 +775,12 @@ async def main() -> None:
                 print(output, end="")
                 # Detect flaky status: child prints "marked FLAKY" when
                 # a hunt passes on retry. Exit code is still 0 (pass).
+                # Detect warning status: soft assertion failures produce
+                # "WARNING" in the child summary output.
                 if status == "PASS" and "marked FLAKY" in output:
                     _child_status = "flaky"
+                elif status == "PASS" and "SOFT ASSERTION FAILED" in output.upper():
+                    _child_status = "warning"
                 else:
                     _child_status = "pass" if status == "PASS" else "fail"
                 _mr = MissionResult(
@@ -709,13 +799,16 @@ async def main() -> None:
         run_summary.passed = sum(1 for _, s, _ in results if s == "PASS")
         run_summary.failed = sum(1 for _, s, _ in results if s == "FAIL")
         run_summary.flaky  = sum(1 for _, s, _ in results if s == "FLAKY")
-        passed = run_summary.passed + run_summary.flaky  # flaky counts as passed overall
+        run_summary.warning = sum(1 for _, s, _ in results if s == "WARNING")
+        passed = run_summary.passed + run_summary.flaky + run_summary.warning  # flaky/warning count as passed overall
 
         print(f"\n\n{'='*20} HUNT SUMMARY {'='*20}")
         for name, status, secs in results:
             if status == "PASS":
                 icon = "✅"
             elif status == "FLAKY":
+                icon = "⚠️ "
+            elif status == "WARNING":
                 icon = "⚠️ "
             else:
                 icon = "❌"
@@ -746,6 +839,7 @@ async def main() -> None:
                 run_summary.passed = sum(1 for _, s, _ in results if s == "PASS")
                 run_summary.failed = sum(1 for _, s, _ in results if s == "FAIL")
                 run_summary.flaky  = sum(1 for _, s, _ in results if s == "FLAKY")
+                run_summary.warning = sum(1 for _, s, _ in results if s == "WARNING")
             try:
                 from .reporter import generate_report
                 report_path = os.path.join(_reports_dir, "manul_report.html")

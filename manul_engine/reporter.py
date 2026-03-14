@@ -103,6 +103,7 @@ h1 .logo { font-size: 1.8rem; }
 .stat-card.passed .value  { color: var(--green); }
 .stat-card.failed .value  { color: var(--red); }
 .stat-card.flaky  .value  { color: var(--yellow); }
+.stat-card.warning .value { color: var(--yellow); }
 
 /* ── Pass-rate bar ────────────────────── */
 
@@ -121,9 +122,10 @@ h1 .logo { font-size: 1.8rem; }
   height: 22px;
   display: flex;
 }
-.pass-bar .seg-pass  { background: var(--green); }
-.pass-bar .seg-flaky { background: var(--yellow); }
-.pass-bar .seg-fail  { background: var(--red); }
+.pass-bar .seg-pass    { background: var(--green); }
+.pass-bar .seg-flaky   { background: var(--yellow); }
+.pass-bar .seg-warning { background: var(--yellow); }
+.pass-bar .seg-fail    { background: var(--red); }
 
 /* ── Mission list ─────────────────────── */
 
@@ -168,6 +170,7 @@ h1 .logo { font-size: 1.8rem; }
 .badge-pass  { background: rgba(166,227,161,0.15); color: var(--green); }
 .badge-fail  { background: rgba(243,139,168,0.15); color: var(--red); }
 .badge-flaky { background: rgba(249,226,175,0.15); color: var(--yellow); }
+.badge-warning { background: rgba(249,226,175,0.15); color: var(--yellow); }
 
 .mission-header .meta {
   font-size: 0.8rem;
@@ -211,6 +214,10 @@ h1 .logo { font-size: 1.8rem; }
   background: rgba(243,139,168,0.05);
 }
 .step-row.step-skip { border-left: 3px solid var(--text-dim); }
+.step-row.step-warning {
+  border-left: 3px solid var(--yellow);
+  background: rgba(249,226,175,0.05);
+}
 
 .step-status {
   width: 60px;
@@ -274,6 +281,7 @@ h1 .logo { font-size: 1.8rem; }
 .status-pass { color: var(--green); }
 .status-fail { color: var(--red); }
 .status-skip { color: var(--text-dim); }
+.status-warning { color: var(--yellow); }
 
 .step-duration {
   font-size: 0.8rem;
@@ -334,6 +342,33 @@ details.lstep-block[open] .lstep-chevron { transform: rotate(90deg); }
 }
 .lstep-status-pass  { color: var(--green); }
 .lstep-status-fail  { color: var(--red); }
+.lstep-status-warning { color: var(--yellow); }
+
+/* ── Soft errors block ────────────────── */
+
+.soft-errors {
+  margin: 8px 16px 12px;
+  padding: 10px 14px;
+  background: rgba(249,226,175,0.08);
+  border: 1px solid rgba(249,226,175,0.25);
+  border-radius: 6px;
+}
+.soft-errors-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--yellow);
+  margin-bottom: 6px;
+}
+.soft-errors ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.75rem;
+  color: var(--yellow);
+  list-style: disc;
+}
+.soft-errors li {
+  margin-bottom: 3px;
+}
 
 /* ── Footer ───────────────────────────── */
 
@@ -425,19 +460,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ── Control panel: Show Only Failed ─────────── */
   var failCb = document.getElementById('filter-failed');
+  var warnCb = document.getElementById('filter-warnings');
   var activeTag = null;
   function applyFilters() {
     var onlyFailed = failCb && failCb.checked;
+    var showWarnings = warnCb && warnCb.checked;
     document.querySelectorAll('.mission').forEach(function(m) {
       var status = m.getAttribute('data-status');
       var tags = (m.getAttribute('data-tags') || '').split(',').filter(Boolean);
       var show = true;
-      if (onlyFailed && status === 'pass') show = false;
+      if (onlyFailed && status !== 'fail') show = false;
+      if (showWarnings && status !== 'warning' && status !== 'fail') show = false;
       if (activeTag && tags.indexOf(activeTag) === -1) show = false;
       m.style.display = show ? '' : 'none';
     });
   }
-  if (failCb) failCb.addEventListener('change', applyFilters);
+  if (failCb) failCb.addEventListener('change', function() { if (failCb.checked && warnCb) warnCb.checked = false; applyFilters(); });
+  if (warnCb) warnCb.addEventListener('change', function() { if (warnCb.checked && failCb) failCb.checked = false; applyFilters(); });
 
   /* ── Control panel: Tag chips ────────────────── */
   document.querySelectorAll('.tag-chip').forEach(function(chip) {
@@ -548,8 +587,16 @@ def _render_lstep_group(label: str | None, steps: list[StepResult], index: int) 
     are immediately visible.
     """
     has_failure = any(s.status == "fail" for s in steps)
-    status_text = "FAIL" if has_failure else "PASS"
-    status_class = "lstep-status-fail" if has_failure else "lstep-status-pass"
+    has_warning = any(s.status == "warning" for s in steps)
+    if has_failure:
+        status_text = "FAIL"
+        status_class = "lstep-status-fail"
+    elif has_warning:
+        status_text = "WARNING"
+        status_class = "lstep-status-warning"
+    else:
+        status_text = "PASS"
+        status_class = "lstep-status-pass"
     display_label = _esc(label) if label else "Default"
     open_attr = " open" if has_failure else ""
     # Use 1-based local indices so the # column reads 1, 2, 3… within each
@@ -572,7 +619,7 @@ def _render_lstep_group(label: str | None, steps: list[StepResult], index: int) 
 def _render_mission(mission: MissionResult) -> str:
     """Render one mission accordion block, with optional logical-step grouping."""
     status = mission.status
-    icon = {"pass": "\u2705", "fail": "\u274c", "flaky": "\u26a0\ufe0f"}.get(status, "\u2753")
+    icon = {"pass": "\u2705", "fail": "\u274c", "flaky": "\u26a0\ufe0f", "warning": "\u26a0\ufe0f"}.get(status, "\u2753")
     badge_class = f"badge-{status}"
     tags_attr = _esc(",".join(mission.tags)) if mission.tags else ""
 
@@ -599,6 +646,15 @@ def _render_mission(mission: MissionResult) -> str:
         if mission.attempts > 1:
             label_txt = "passed on retry" if status == "flaky" else "after retries"
             steps_html += f'<div class="attempts-note">\U0001f504 {label_txt} (attempt {mission.attempts})</div>'
+        # Render soft assertion warnings
+        if mission.soft_errors:
+            items = "".join(f"<li>{_esc(e)}</li>" for e in mission.soft_errors)
+            steps_html += (
+                f'<div class="soft-errors">'
+                f'<div class="soft-errors-title">\u26a0\ufe0f Soft Assertion Warnings ({len(mission.soft_errors)})</div>'
+                f'<ul>{items}</ul>'
+                f'</div>'
+            )
     elif mission.error:
         steps_html = f'<div class="step-error" style="margin:12px 16px;">{_esc(mission.error)}</div>'
 
@@ -619,9 +675,10 @@ def _render_mission(mission: MissionResult) -> str:
 def _render_html(summary: RunSummary) -> str:
     """Build the complete HTML document from a RunSummary."""
     total = summary.total or 1  # avoid division by zero
-    pass_rate = ((summary.passed + summary.flaky) / total) * 100
+    pass_rate = ((summary.passed + summary.flaky + summary.warning) / total) * 100
     pass_pct = (summary.passed / total) * 100
     flaky_pct = (summary.flaky / total) * 100
+    warning_pct = (summary.warning / total) * 100
     fail_pct = (summary.failed / total) * 100
 
     # Collect unique tags across all missions for the filter UI
@@ -641,6 +698,7 @@ def _render_html(summary: RunSummary) -> str:
     control_panel_html = (
         f'<div class="control-panel">'
         f'<label><input type="checkbox" id="filter-failed"> Show only failed</label>'
+        f'<label><input type="checkbox" id="filter-warnings"> Show warnings</label>'
         f'{tag_chips_html}'
         f'</div>'
     )
@@ -678,6 +736,10 @@ def _render_html(summary: RunSummary) -> str:
     <div class="value">{summary.flaky}</div>
     <div class="label">Flaky</div>
   </div>
+  <div class="stat-card warning">
+    <div class="value">{summary.warning}</div>
+    <div class="label">Warning</div>
+  </div>
   <div class="stat-card">
     <div class="value">{pass_rate:.0f}%</div>
     <div class="label">Pass Rate</div>
@@ -691,11 +753,12 @@ def _render_html(summary: RunSummary) -> str:
 <!-- Pass-rate bar -->
 <div class="pass-bar-container">
   <div class="pass-bar-label">
-    {summary.passed} passed \u00b7 {summary.flaky} flaky \u00b7 {summary.failed} failed
+    {summary.passed} passed \u00b7 {summary.flaky} flaky \u00b7 {summary.warning} warning \u00b7 {summary.failed} failed
   </div>
   <div class="pass-bar">
     <div class="seg-pass" style="width:{pass_pct:.1f}%"></div>
     <div class="seg-flaky" style="width:{flaky_pct:.1f}%"></div>
+    <div class="seg-warning" style="width:{warning_pct:.1f}%"></div>
     <div class="seg-fail" style="width:{fail_pct:.1f}%"></div>
   </div>
 </div>
