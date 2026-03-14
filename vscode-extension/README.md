@@ -29,7 +29,7 @@ ManulEngine bridges the gap between Manual QA and Engineering. You don't write c
 
 ## 🚀 What's New in v0.0.9.2 — The Mastermind
 
-* **🎨 Auto-Formatter for `.hunt` Files:** Press `Shift+Alt+F` (or enable Format on Save) to auto-format any `.hunt` file. Action lines under `STEP` blocks are indented with 4 spaces; metadata headers (`@context:`, `@var:`, `@tags:`, `@data:`), hook blocks (`[SETUP]`/`[TEARDOWN]`), `STEP` headers, comments, and `DONE.` remain flush-left.
+* **🎨 Auto-Formatter for `.hunt` Files:** Press `Shift+Alt+F` (or enable Format on Save) to auto-format any `.hunt` file. Action lines and inline comments under `STEP` or hook blocks are indented with 4 spaces; metadata headers (`@context:`, `@var:`, `@tags:`, `@data:`), `STEP` headers, hook block markers (`[SETUP]`/`[TEARDOWN]`), top-level comments, and `DONE.` remain flush-left.
 * **`SET` Command:** `SET {variable} = value` assigns or overrides a runtime variable mid-flight. Both `{braced}` and bare-key forms accepted. Syntax-highlighted in `.hunt` files.
 * **YAML-Like Indentation:** Hunt files now support clean hierarchical formatting — action lines can be indented under `STEP` headers. The parser strips all leading whitespace before processing.
 * **Enterprise Browser & Electron Support:** New `channel` and `executable_path` config keys in the Config Panel — target installed browser channels (`"chrome"`, `"msedge"`) or custom executables (Electron). Env var overrides: `MANUL_CHANNEL`, `MANUL_EXECUTABLE_PATH`.
@@ -276,7 +276,7 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 ## Release Notes
 
 ### 0.0.92
-- **🎨 Auto-Formatter** — `Shift+Alt+F` (or Format on Save) auto-indents `.hunt` files: 4-space indent for action lines under `STEP` blocks; metadata, hooks, comments, and `DONE.` stay flush-left. Registered via `DocumentFormattingEditProvider`
+- **🎨 Auto-Formatter** — `Shift+Alt+F` (or Format on Save) auto-indents `.hunt` files: 4-space indent for action lines and inline comments under `STEP`/hook blocks; metadata, top-level comments, and `DONE.` stay flush-left. Registered via `DocumentFormattingEditProvider`
 - **`SET` command** — `SET {variable} = value` mid-flight variable assignment; syntax-highlighted
 - **YAML-like indentation** — action lines under `STEP` headers can be indented with spaces or tabs; parser strips leading whitespace
 - **Enterprise browser support** — `channel` (e.g. `"chrome"`, `"msedge"`) and `executable_path` (custom browser/Electron) config keys

@@ -1061,13 +1061,20 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
                         elif step_kind == "set_var":
                             # SET {var} = value — assign a variable mid-flight.
+                            # Parse var name from raw_step so {var} on LHS isn't
+                            # replaced by substitute_memory() before we read it.
                             _set_m = re.match(
                                 r"(?:\d+\.\s*)?SET\s+\{?(\w+)\}?\s*=\s*(.+)",
-                                step, re.IGNORECASE,
+                                raw_step, re.IGNORECASE,
                             )
                             if _set_m:
                                 _sv_name = _set_m.group(1)
-                                _sv_raw = _set_m.group(2).strip()
+                                # RHS: use the substituted step so placeholders resolve.
+                                _rhs_m = re.match(
+                                    r"(?:\d+\.\s*)?SET\s+\S+\s*=\s*(.+)",
+                                    step, re.IGNORECASE,
+                                )
+                                _sv_raw = (_rhs_m.group(1) if _rhs_m else _set_m.group(2)).strip()
                                 # Strip surrounding quotes if present.
                                 if len(_sv_raw) >= 2 and _sv_raw[0] in ("'", '"') and _sv_raw[-1] == _sv_raw[0]:
                                     _sv_raw = _sv_raw[1:-1]

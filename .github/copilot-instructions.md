@@ -223,7 +223,7 @@ Placed at the top of the file. Used by the engine for logging and LLM context.
 > When generating or suggesting `.hunt` files:
 > 1. You MUST use the **Clean, Unnumbered DSL Syntax**. NEVER prepend numbers (`1. `, `2. `) to execution actions.
 > 2. You MUST use **Logical `STEP` Grouping** (`STEP [optional number]: [Description]`) to structure E2E flows, matching manual QA test cases. These map perfectly to the Enterprise HTML Reporter's accordions.
-> 3. You MUST use **4-space indentation** for all action lines under `STEP` headers. `STEP` headers themselves, metadata lines (`@context:`, `@var:`, `@tags:`, `@data:`), hook blocks (`[SETUP]`/`[TEARDOWN]`), comments (`#`), and `DONE.` must remain flush-left (zero indentation). This matches the VS Code Auto-Formatter output (`Shift+Alt+F`).
+> 3. You MUST use **4-space indentation** for all action lines under `STEP` headers; comments inside a `STEP` or hook block follow the same 4-space indentation. `STEP` headers themselves, metadata lines (`@context:`, `@var:`, `@tags:`, `@data:`), hook block markers (`[SETUP]`/`[TEARDOWN]`), top-level comments (`#` before the first `STEP`), and `DONE.` must remain flush-left (zero indentation). This matches the VS Code Auto-Formatter output (`Shift+Alt+F`).
 
 ### 5. System Keywords (parser-detected)
 These keywords are detected via word-boundary regex, bypass heuristics, and are handled directly by the engine parser:
