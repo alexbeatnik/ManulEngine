@@ -99,9 +99,11 @@ else:
 
 # channel: Playwright browser channel (e.g. "chrome", "chrome-beta", "msedge").
 # Allows testing against branded browser builds instead of the bundled Chromium.
-CHANNEL: "str | None" = os.getenv("MANUL_CHANNEL") or None
+_raw_channel = (os.getenv("MANUL_CHANNEL") or "").strip()
+CHANNEL: "str | None" = _raw_channel or None
 # executable_path: absolute path to a custom browser executable (e.g. Electron).
-EXECUTABLE_PATH: "str | None" = os.getenv("MANUL_EXECUTABLE_PATH") or None
+_raw_executable_path = (os.getenv("MANUL_EXECUTABLE_PATH") or "").strip()
+EXECUTABLE_PATH: "str | None" = _raw_executable_path or None
 
 TIMEOUT       = int(os.getenv("MANUL_TIMEOUT",     "5000"))
 NAV_TIMEOUT   = int(os.getenv("MANUL_NAV_TIMEOUT", "30000"))

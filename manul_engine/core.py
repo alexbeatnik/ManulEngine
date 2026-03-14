@@ -62,8 +62,16 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         _b = (browser or prompts.BROWSER).strip().lower()
         self.browser: str = _b if _b in _VALID_BROWSERS else "chromium"
         self.browser_args: list[str] = list(browser_args) if browser_args is not None else list(prompts.BROWSER_ARGS)
-        self.channel: str | None = prompts.CHANNEL
-        self.executable_path: str | None = prompts.EXECUTABLE_PATH
+        # channel / executable_path: accept via **_kwargs with fallback to config/env.
+        _ch = _kwargs.pop("channel", None)
+        self.channel: str | None = (str(_ch).strip() or None) if _ch is not None else prompts.CHANNEL
+        _ep = _kwargs.pop("executable_path", None)
+        self.executable_path: str | None = str(_ep) if _ep is not None else prompts.EXECUTABLE_PATH
+        if self.channel is not None and self.browser != "chromium":
+            raise ValueError(
+                f"Playwright 'channel' is only supported for Chromium, "
+                f"but got browser={self.browser!r} with channel={self.channel!r}."
+            )
         self.memory:          dict = {}
         self.last_xpath:      "str | None" = None
         self.learned_elements: dict = {}        # semantic cache: cache_key → {name, tag}
