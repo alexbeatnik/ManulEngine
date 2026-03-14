@@ -310,11 +310,11 @@ async function insertStep(template: string): Promise<void> {
   } else if (template === "CALL PYTHON module_name.function_name") {
     snippetString = "CALL PYTHON ${1:module_name}.${2:function_name}";
   } else if (template === "CALL PYTHON module_name.function_name 'arg1' {var}") {
-    snippetString = "CALL PYTHON ${1:module_name}.${2:function_name} ${3:'arg1'} ${4:{var}}";
+    snippetString = "CALL PYTHON ${1:module_name}.${2:function_name} ${3:'arg1'} {${4:var}}";
   } else if (template === "CALL PYTHON module_name.function_name into {variable_name}") {
     snippetString = "CALL PYTHON ${1:module_name}.${2:function_name} into {${3:variable_name}}";
   } else if (template === "CALL PYTHON module_name.function_name 'arg1' {var} into {result}") {
-    snippetString = "CALL PYTHON ${1:module_name}.${2:function_name} ${3:'arg1'} ${4:{var}} into {${5:result}}";
+    snippetString = "CALL PYTHON ${1:module_name}.${2:function_name} ${3:'arg1'} {${4:var}} into {${5:result}}";
   } else {
     let counter = 1;
     snippetString = snippetString.replace(/''/g, () => `'$\{${counter++}}'`);

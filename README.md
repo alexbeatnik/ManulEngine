@@ -525,7 +525,9 @@ Rules:
 - Functions must be **synchronous** (async functions are explicitly rejected).
 - A single `[SETUP]`/`[TEARDOWN]` block may contain multiple `CALL PYTHON` lines; they run sequentially — first failure stops the block.
 - An inline `CALL PYTHON` step that fails stops the mission immediately, just like any other failed step.
-- Append `into {var_name}` (or `to {var_name}`) to a `CALL PYTHON` step to bind the function’s return value into a variable: `CALL PYTHON api.fetch_otp into {otp}`. The value is converted to a string and available for `{placeholder}` substitution in all subsequent steps.- Pass positional arguments after the dotted function name: `CALL PYTHON helpers.multiply "6" "7" into {product}`. Arguments are tokenised with `shlex.split()` and `{var}` placeholders are resolved from runtime memory.- The module is searched in: hunt file directory → CWD → `sys.path`. No import configuration needed.
+- Append `into {var_name}` (or `to {var_name}`) to a `CALL PYTHON` step to bind the function's return value into a variable: `CALL PYTHON api.fetch_otp into {otp}`. The value is converted to a string and available for `{placeholder}` substitution in all subsequent steps.
+- Pass positional arguments after the dotted function name: `CALL PYTHON helpers.multiply "6" "7" into {product}`. Arguments are tokenised with `shlex.split()` and `{var}` placeholders are resolved from runtime memory.
+- The module is searched in: hunt file directory → CWD → `sys.path`. No import configuration needed.
 
 ### Interaction Steps
 

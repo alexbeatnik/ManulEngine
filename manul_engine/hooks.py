@@ -154,7 +154,7 @@ def _resolve_module(module_path: str, hunt_dir: str | None) -> ModuleType:
 
 # ── Single-line executor ──────────────────────────────────────────────────────
 
-def _parse_call_args(raw_args: str, variables: dict[str, str] | None = None) -> list[str]:
+def _parse_call_args(raw_args: str | None, variables: dict[str, str] | None = None) -> list[str]:
     """Parse and resolve positional arguments from a CALL PYTHON instruction.
 
     Handles single/double-quoted strings and ``{var}`` placeholders.

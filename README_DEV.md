@@ -24,7 +24,7 @@ Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristi
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-│   ├── pyproject.toml                    Build config — package: manul-engine 0.0.9.0
+├── pyproject.toml                        Build config — package: manul-engine 0.0.9.0
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
@@ -67,10 +67,10 @@ ManulEngine/
 │       ├── test_29_iframe_routing.py   Synthetic: Cross-frame element resolution (25 assertions)
 │       ├── test_30_heuristic_weights.py Synthetic+Unit: DOMScorer priority hierarchy (32 assertions)
 │       ├── test_31_visibility_treewalker.py Synthetic+Unit: TreeWalker PRUNE/checkVisibility (20 assertions)
-│       ├── test_32_verify_enabled.py VERIFY ENABLED/DISABLED state verification (20 assertions, no browser)
-│       ├── test_33_call_python_args.py CALL PYTHON with positional arguments (44 assertions, no browser)
-│       ├── test_34_verify_checked.py Unit: VERIFY checked/NOT checked (20 assertions, no browser)
-│       ├── test_35_scanner.py       Unit: Smart Page Scanner build_hunt() (44 assertions, no browser)
+│       ├── test_32_verify_enabled.py Synthetic: VERIFY ENABLED/DISABLED state verification (20 assertions)
+│       ├── test_33_call_python_args.py Unit: CALL PYTHON with positional arguments (44 assertions, no browser)
+│       ├── test_34_verify_checked.py Synthetic: VERIFY checked/NOT checked (20 assertions)
+│       ├── test_35_scanner.py       Synthetic+Unit: Smart Page Scanner build_hunt() (44 assertions)
 │       └── test_36_scoring_math.py   Unit: exact numerical scoring validation (29 assertions, no browser)
 ├── controls/                         User-owned custom Python handlers (auto-loaded at engine startup)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
@@ -604,10 +604,10 @@ The engine is battle-tested with **1983** synthetic DOM/unit tests across 37 tes
 * **iframe Routing synthetic suite:** `manul_engine/test/test_29_iframe_routing.py` (`_snapshot` frame iteration, `frame_index` tagging, `_frame_for` routing and stale fallback, 25 assertions).
 * **Heuristic Weights synthetic+unit suite:** `manul_engine/test/test_30_heuristic_weights.py` (DOMScorer float scoring, WEIGHTS/SCALE constants, `data-qa` dominance, disabled/hidden penalties, mode synergy, 32 assertions).
 * **Visibility & TreeWalker synthetic+unit suite:** `manul_engine/test/test_31_visibility_treewalker.py` (PRUNE set subtree skipping, `checkVisibility` filtering, special hidden inputs, snapshot element counts, 20 assertions).
-* **VERIFY ENABLED/DISABLED unit suite:** `manul_engine/test/test_32_verify_enabled.py` (STATE_CHECK_JS enabled/disabled logic, buttons, inputs, selects, textareas, ARIA roles, CSS-based states, 20 assertions, no browser).
+* **VERIFY ENABLED/DISABLED synthetic suite:** `manul_engine/test/test_32_verify_enabled.py` (STATE_CHECK_JS enabled/disabled logic, buttons, inputs, selects, textareas, ARIA roles, CSS-based states, 20 assertions).
 * **CALL PYTHON with arguments unit suite:** `manul_engine/test/test_33_call_python_args.py` (`_parse_call_args`, variable resolution, file-based helper execution, engine integration with memory, backward compatibility, 44 assertions, no browser).
-* **VERIFY checked/NOT checked unit suite:** `manul_engine/test/test_34_verify_checked.py` (checkbox state verification via JS checked property, ARIA checked, mixed states, 20 assertions, no browser).
-* **Smart Page Scanner unit suite:** `manul_engine/test/test_35_scanner.py` (`build_hunt()` element-to-step mapping, keyword generation, metadata headers, edge cases, 44 assertions, no browser).
+* **VERIFY checked/NOT checked synthetic suite:** `manul_engine/test/test_34_verify_checked.py` (checkbox state verification via JS checked property, ARIA checked, mixed states, 20 assertions).
+* **Smart Page Scanner synthetic+unit suite:** `manul_engine/test/test_35_scanner.py` (`build_hunt()` element-to-step mapping, keyword generation, metadata headers, edge cases, 44 assertions).
 * **Scoring Math unit suite:** `manul_engine/test/test_36_scoring_math.py` (exact numerical scoring validation, WEIGHTS/SCALE constants, channel arithmetic, penalty multipliers, 29 assertions, no browser).
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 

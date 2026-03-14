@@ -72,7 +72,7 @@
     },
     "system-keyword": {
       "name": "keyword.control.hunt",
-      "match": "(?i)\\b(NAVIGATE to|NAVIGATE|VERIFY that|VERIFY|EXTRACT|SCROLL DOWN inside the list|SCROLL DOWN|SCROLL|PRESS ENTER|PRESS|RIGHT CLICK|UPLOAD|WAIT|DONE|DOUBLE CLICK|HOVER|CALL PYTHON)\\b"
+      "match": "(?i)\\b(NAVIGATE to|NAVIGATE|VERIFY that|VERIFY|EXTRACT|SCROLL DOWN inside the list|SCROLL DOWN|SCROLL|PRESS ENTER|PRESS|RIGHT CLICK|UPLOAD|WAIT|DONE|DOUBLE CLICK|HOVER|CALL PYTHON|SCAN PAGE(?: into)?)\\b"
     },
     "action-verb": {
       "name": "keyword.operator.action.hunt",
