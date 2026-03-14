@@ -16,11 +16,29 @@
       "patterns": [
         {
           "name": "meta.annotation.hunt",
-          "match": "^(@context|@title|@blueprint)(:)(.*)$",
+          "match": "^(@context|@title|@blueprint|@tags|@data)(:)(.*)$",
           "captures": {
             "1": { "name": "keyword.other.metadata.hunt" },
             "2": { "name": "punctuation.separator.hunt" },
             "3": { "name": "string.unquoted.metadata.value.hunt" }
+          }
+        },
+        {
+          "name": "meta.variable-declaration.hunt",
+          "match": "^(@var)(:)\\s*(\\{?\\w+\\}?)\\s*(=)\\s*(.*)",
+          "captures": {
+            "1": { "name": "keyword.other.metadata.hunt" },
+            "2": { "name": "punctuation.separator.hunt" },
+            "3": { "name": "variable.other.hunt" },
+            "4": { "name": "keyword.operator.assignment.hunt" },
+            "5": { "name": "string.unquoted.metadata.value.hunt" }
+          }
+        },
+        {
+          "name": "meta.hook-marker.hunt",
+          "match": "^\\s*(\\[(?:END\\s+)?(?:SETUP|TEARDOWN)\\])\\s*$",
+          "captures": {
+            "1": { "name": "keyword.control.hook.hunt" }
           }
         }
       ]
@@ -45,6 +63,7 @@
           },
           "end": "$",
           "patterns": [
+            { "include": "#set-command" },
             { "include": "#system-keyword" },
             { "include": "#action-verb" },
             { "include": "#quoted-single" },
@@ -59,6 +78,7 @@
           "begin": "^\\s*(?!#|@|\\d+\\.)",
           "end": "$",
           "patterns": [
+            { "include": "#set-command" },
             { "include": "#system-keyword" },
             { "include": "#action-verb" },
             { "include": "#quoted-single" },
@@ -70,9 +90,19 @@
         }
       ]
     },
+    "set-command": {
+      "name": "meta.set-command.hunt",
+      "match": "(?i)\\b(SET)\\s+(\\{?\\w+\\}?)\\s*(=)\\s*(.*)",
+      "captures": {
+        "1": { "name": "keyword.control.hunt" },
+        "2": { "name": "variable.other.hunt" },
+        "3": { "name": "keyword.operator.assignment.hunt" },
+        "4": { "name": "string.unquoted.value.hunt" }
+      }
+    },
     "system-keyword": {
       "name": "keyword.control.hunt",
-      "match": "(?i)\\b(NAVIGATE to|NAVIGATE|VERIFY that|VERIFY|EXTRACT|SCROLL DOWN inside the list|SCROLL DOWN|SCROLL|PRESS ENTER|PRESS|RIGHT CLICK|UPLOAD|WAIT|DONE|DOUBLE CLICK|HOVER|CALL PYTHON|SCAN PAGE(?: into)?)\\b"
+      "match": "(?i)\\b(NAVIGATE to|NAVIGATE|OPEN APP|VERIFY VISUAL|VERIFY SOFTLY|VERIFY that|VERIFY|EXTRACT|SCROLL DOWN inside the list|SCROLL DOWN|SCROLL|PRESS ENTER|PRESS|RIGHT CLICK|UPLOAD|MOCK\\s+(?:GET|POST|PUT|PATCH|DELETE)|WAIT FOR RESPONSE|WAIT|DONE|DOUBLE CLICK|HOVER|CALL PYTHON|SCAN PAGE(?: into)?|SET|DEBUG|PAUSE)\\b"
     },
     "action-verb": {
       "name": "keyword.operator.action.hunt",
@@ -104,7 +134,7 @@
     },
     "modifier": {
       "name": "keyword.other.modifier.hunt",
-      "match": "\\b(if exists|optional|NOT|DISABLED|ENABLED|is present|is checked|is NOT checked|is NOT present|into|from|that|the|field|button|link|checkbox|radio|dropdown|input)\\b"
+      "match": "\\b(if exists|optional|NOT|DISABLED|ENABLED|SOFTLY|VISUAL|is present|is checked|is NOT checked|is NOT present|into|from|that|the|field|button|link|checkbox|radio|dropdown|input)\\b"
     }
   }
 }

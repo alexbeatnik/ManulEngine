@@ -27,6 +27,16 @@ ManulEngine bridges the gap between Manual QA and Engineering. You don't write c
 
 > Hunt file language support, one-click test runner, interactive debug runner with gutter breakpoints, Step Builder for plain-English `.hunt` files, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) — deterministic DSL-based browser automation.
 
+## 🚀 What's New in v0.0.9.2 — The Mastermind
+
+* **🎨 Auto-Formatter for `.hunt` Files:** Press `Shift+Alt+F` (or enable Format on Save) to auto-format any `.hunt` file. Action lines under `STEP` blocks are indented with 4 spaces; metadata headers (`@context:`, `@var:`, `@tags:`, `@data:`), hook blocks (`[SETUP]`/`[TEARDOWN]`), `STEP` headers, comments, and `DONE.` remain flush-left.
+* **`SET` Command:** `SET {variable} = value` assigns or overrides a runtime variable mid-flight. Both `{braced}` and bare-key forms accepted. Syntax-highlighted in `.hunt` files.
+* **YAML-Like Indentation:** Hunt files now support clean hierarchical formatting — action lines can be indented under `STEP` headers. The parser strips all leading whitespace before processing.
+* **Enterprise Browser & Electron Support:** New `channel` and `executable_path` config keys in the Config Panel — target installed browser channels (`"chrome"`, `"msedge"`) or custom executables (Electron). Env var overrides: `MANUL_CHANNEL`, `MANUL_EXECUTABLE_PATH`.
+* **`OPEN APP` Command:** New DSL command for Electron/Desktop app testing — attaches to the app's default window instead of navigating to a URL. Syntax-highlighted in `.hunt` files.
+
+### Previous highlights (v0.0.9.1)
+
 ## 🚀 What's New in v0.0.9.1 — Enterprise DSL
 
 * **Data-Driven Testing (`@data:`):** Declare `@data: users.csv` or `@data: data.json` in hunt file headers. The engine loads each row and reruns the mission with row values injected as `{placeholders}`. Supports JSON and CSV.
@@ -264,6 +274,13 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 ---
 
 ## Release Notes
+
+### 0.0.92
+- **🎨 Auto-Formatter** — `Shift+Alt+F` (or Format on Save) auto-indents `.hunt` files: 4-space indent for action lines under `STEP` blocks; metadata, hooks, comments, and `DONE.` stay flush-left. Registered via `DocumentFormattingEditProvider`
+- **`SET` command** — `SET {variable} = value` mid-flight variable assignment; syntax-highlighted
+- **YAML-like indentation** — action lines under `STEP` headers can be indented with spaces or tabs; parser strips leading whitespace
+- **Enterprise browser support** — `channel` (e.g. `"chrome"`, `"msedge"`) and `executable_path` (custom browser/Electron) config keys
+- Core engine bump to **0.0.9.2**
 
 ### 0.0.91
 - **📊 Data-Driven Testing (`@data:`)** — declare `@data: users.csv` or `@data: data.json` in hunt file headers. The engine reruns the mission for each row with values injected as `{placeholders}`. Supports JSON (array-of-objects) and CSV (DictReader)

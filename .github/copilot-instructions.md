@@ -79,6 +79,7 @@ manul_engine/
     test_36_scoring_math.py      Exact numerical scoring validation (29 assertions, no browser)
     test_37_enterprise_dsl.py    Enterprise DSL: @data:, MOCK, VERIFY VISUAL/SOFTLY, reporter warnings (68 assertions, no browser)
     test_38_set_and_indent.py    SET command & indentation robustness (v0.0.9.2)
+    test_39_open_app.py          OPEN APP command — classify_step, _handle_open_app (32 assertions, no browser)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
@@ -222,10 +223,12 @@ Placed at the top of the file. Used by the engine for logging and LLM context.
 > When generating or suggesting `.hunt` files:
 > 1. You MUST use the **Clean, Unnumbered DSL Syntax**. NEVER prepend numbers (`1. `, `2. `) to execution actions.
 > 2. You MUST use **Logical `STEP` Grouping** (`STEP [optional number]: [Description]`) to structure E2E flows, matching manual QA test cases. These map perfectly to the Enterprise HTML Reporter's accordions.
+> 3. You MUST use **4-space indentation** for all action lines under `STEP` headers. `STEP` headers themselves, metadata lines (`@context:`, `@var:`, `@tags:`, `@data:`), hook blocks (`[SETUP]`/`[TEARDOWN]`), comments (`#`), and `DONE.` must remain flush-left (zero indentation). This matches the VS Code Auto-Formatter output (`Shift+Alt+F`).
 
 ### 5. System Keywords (parser-detected)
 These keywords are detected via word-boundary regex, bypass heuristics, and are handled directly by the engine parser:
 * `NAVIGATE to [url]` — Loads a URL and waits for DOM settlement.
+* `OPEN APP` — Attaches to an Electron/Desktop app's default window instead of navigating to a URL. Use as the first step in `.hunt` files targeting `executable_path` apps. The handler checks `ctx.pages` for an existing window, falls back to `ctx.wait_for_event("page")`, waits for DOM settlement. Returns `(success, page)` — the `page` variable in `run_mission()` is reassigned.
 * `WAIT [seconds]` — Hard sleep (e.g., `WAIT 2`).
 * `PRESS ENTER` — Presses the Enter key on the currently focused element (useful to submit forms after filling a field).
 * `PRESS [Key]` — Presses any key or combination globally (e.g. `PRESS Escape`, `PRESS Control+A`). Mapped to `page.keyboard.press(key)`.
@@ -345,7 +348,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * `prompts.py` loads config from `manul_engine_configuration.json` (CWD first, then package root fallback). No dotenv dependency.
 * `js_scripts.py` owns **all** JavaScript constants injected into the browser — no inline JS in Python files. This includes `SCAN_JS` (Smart Page Scanner).
 * `scanner.py` owns the standalone scan logic: `SCAN_JS` is imported from `js_scripts.py`; `build_hunt()` maps raw element dicts to hunt steps; `scan_page()` is the async Playwright runner; `scan_main()` is the async CLI entry called by `cli.py`. `_default_output()` reads `tests_home` from the config to derive the default output path.
-* `helpers.py` provides `env_bool(name, default)` for parsing boolean env vars; `detect_mode(step)` returns the interaction mode string (`"input"`, `"clickable"`, `"select"`, `"hover"`, `"drag"`, `"locate"`); `classify_step(step)` returns a step kind string (`"navigate"`, `"wait"`, `"scroll"`, `"extract"`, `"verify"`, `"press_enter"`, `"press"`, `"right_click"`, `"upload"`, `"scan_page"`, `"call_python"`, `"set_var"`, `"debug"`, `"done"`, or `"action"`) — used by `run_mission()` and `_execute_step()` to avoid duplicated regex dispatches.
+* `helpers.py` provides `env_bool(name, default)` for parsing boolean env vars; `detect_mode(step)` returns the interaction mode string (`"input"`, `"clickable"`, `"select"`, `"hover"`, `"drag"`, `"locate"`); `classify_step(step)` returns a step kind string (`"navigate"`, `"open_app"`, `"wait"`, `"scroll"`, `"extract"`, `"verify"`, `"press_enter"`, `"press"`, `"right_click"`, `"upload"`, `"scan_page"`, `"call_python"`, `"set_var"`, `"debug"`, `"done"`, or `"action"`) — used by `run_mission()` and `_execute_step()` to avoid duplicated regex dispatches.
 * **Null model = heuristics-only:** When `model` is `None`, `_llm_json()` returns `None` immediately. `get_threshold(None)` returns `0`. No Ollama calls are made.
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
 * **Debug mode:** `ManulEngine(debug_mode=True, break_steps={N,...})`. `debug_mode=True` (from `--debug`) highlights the resolved element and pauses before every step using `input()` in TTY or Playwright's `page.pause()`. `break_steps` (from `--break-lines`) pauses only at listed step indices using the stdout/stdin panel protocol when stdout is not a TTY. The two are mutually exclusive in practice — the extension only ever sets `break_steps` via `--break-lines`.
@@ -428,6 +431,8 @@ Environment variables (`MANUL_*`) always override JSON values.
 | `nav_timeout` | `30000` | Navigation timeout (ms) |
 | `tests_home` | `"tests"` | Default directory for new hunt files and `SCAN PAGE` / `manul scan` output |
 | `auto_annotate` | `false` | If `true`, engine automatically inserts `# 📍 Auto-Nav: <name>` comments into `.hunt` files whenever the page URL changes during a run. Page names come from `pages.json`; falls back to full URL for unmapped pages. Overridable via `MANUL_AUTO_ANNOTATE` env var |
+| `channel` | `null` | Playwright browser channel — use an installed browser instead of the bundled one. E.g. `"chrome"`, `"chrome-beta"`, `"msedge"`. Overridable via `MANUL_CHANNEL` |
+| `executable_path` | `null` | Absolute path to a custom browser executable (e.g. Electron). Overridable via `MANUL_EXECUTABLE_PATH` |
 | `retries` | `0` | Number of times to retry a failed hunt file before marking it as failed (0 = no retries) |
 | `screenshot` | `"on-fail"` | Screenshot capture mode: `"on-fail"` (default — failed steps only), `"always"` (every step), `"none"` (disabled) |
 | `html_report` | `false` | Generate a self-contained HTML report after the run (`reports/manul_report.html`) |
@@ -441,6 +446,44 @@ Suggested config for heuristics-only (recommended default — no Ollama needed):
   "browser": "chromium",
   "controls_cache_enabled": true
 }
+```
+
+Suggested config for enterprise browser (e.g. Chrome stable or Edge):
+
+```json
+{
+  "model": null,
+  "browser": "chromium",
+  "channel": "chrome",
+  "controls_cache_enabled": true
+}
+```
+
+Suggested config for Electron app testing:
+
+```json
+{
+  "model": null,
+  "browser": "chromium",
+  "executable_path": "/path/to/electron",
+  "controls_cache_enabled": true
+}
+```
+
+Electron `.hunt` file example (use `OPEN APP` instead of `NAVIGATE`):
+
+```text
+@context: Testing an Electron desktop application
+@title: Electron App Smoke Test
+
+STEP 1: Attach to the app window
+    OPEN APP
+    VERIFY that 'Welcome' is present
+
+STEP 2: Interact with app UI
+    Click the 'Settings' button
+    VERIFY that 'Preferences' is present
+    DONE.
 ```
 
 Suggested config for mixed mode (optional AI self-healing fallback):

@@ -71,7 +71,8 @@ ManulEngine/
 │       ├── test_35_scanner.py       Synthetic+Unit: Smart Page Scanner build_hunt() (44 assertions)
 │       ├── test_36_scoring_math.py   Unit: exact numerical scoring validation (29 assertions, no browser)
 │       ├── test_37_enterprise_dsl.py Unit: Enterprise DSL — @data:, MOCK, VERIFY VISUAL/SOFTLY, reporter warnings (68 assertions, no browser)
-│       └── test_38_set_and_indent.py Unit: SET command & indentation robustness (v0.0.9.2)
+│       ├── test_38_set_and_indent.py Unit: SET command & indentation robustness (v0.0.9.2)
+│       └── test_39_open_app.py       Unit: OPEN APP command — classify_step, RE_SYSTEM_STEP, _handle_open_app (32 assertions, no browser)
 ├── controls/                         User-owned custom Python handlers (auto-loaded at engine startup)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
@@ -103,6 +104,16 @@ ManulEngine/
 ```
 
 ---
+
+## 🚀 What's New in v0.0.9.2 — The Mastermind
+
+* **YAML-Like Indentation:** The step parser (`run_mission()`) now strips all leading whitespace from every step line before classification. Hunt files can use clean hierarchical formatting — action lines indented under `STEP` headers — without affecting execution. Tabs and mixed indentation are handled identically. The VS Code extension ships a built-in **Auto-Formatter** (registered as a `DocumentFormattingEditProvider` in `formatter.ts`) that enforces 4-space indentation for action lines under `STEP` blocks.
+* **`SET` Command — Mid-Flight Variable Assignment:** `SET {variable} = value` is classified by `classify_step()` as `"set_var"` and handled directly in the step loop. Regex: `^SET\s+\{?(\w+)\}?\s*=\s*(.+)$`. Both `{braced}` and bare-key forms accepted. Quoted values are auto-unquoted via `strip('"').strip("'")`. The variable is written to `self.memory[key]` immediately. Works alongside `@var:` (pre-populated via `initial_vars` before step 1) and `EXTRACT` (populated mid-flight from DOM text).
+* **Enterprise Browser & Electron Support:** New `channel` and `executable_path` config keys in `prompts.py` (`_KEY_MAP` entries + module constants). `core.py` `__init__` reads `prompts.CHANNEL` / `prompts.EXECUTABLE_PATH`; `run_mission()` builds a `_launch_opts` dict and conditionally adds `channel` / `executable_path` kwargs to `browser.launch()`. Enables targeting installed browser channels (`"chrome"`, `"msedge"`) or custom executables (Electron). Env var overrides: `MANUL_CHANNEL`, `MANUL_EXECUTABLE_PATH`.
+* **`OPEN APP` — Desktop/Electron Attachment:** New step kind `"open_app"` in `classify_step()` (regex: `\bOPEN\s+APP\b`). Handler `_handle_open_app(page, ctx)` in `actions.py` returns `tuple[bool, page]` — checks `ctx.pages` for an existing Electron window, falls back to `ctx.wait_for_event("page")`, then calls `wait_for_load_state("domcontentloaded")`. The `page` variable in `run_mission()` is reassigned from the returned tuple because the handler returns the Electron app's actual window (different from the initially-created empty page).
+* **VS Code Auto-Formatter (`formatter.ts`):** New `DocumentFormattingEditProvider` for `.hunt` files. Classifies each line as metadata (`@context:`, `@var:`, `@tags:`, `@data:`, `@blueprint:`), hook block (`[SETUP]`, `[TEARDOWN]`, `[END SETUP]`, `[END TEARDOWN]`), comment (`#`), STEP header, `DONE.`, or action — and indents actions with 4 spaces. All other line types remain flush-left. Registered via `vscode.languages.registerDocumentFormattingEditProvider('hunt', ...)`.
+
+### Previous highlights (v0.0.9.1)
 
 ## 🚀 What's New in v0.0.9.1 — Enterprise DSL
 
@@ -474,6 +485,9 @@ Environment variables (`MANUL_*`) always override JSON values — useful for CI/
   "tests_home": "tests",
   "auto_annotate": false,
 
+  "channel": null,
+  "executable_path": null,
+
   "retries": 0,
   "screenshot": "on-fail",
   "html_report": false
@@ -570,7 +584,7 @@ manul tests/mission.hunt
 
 | Category | Command Syntax |
 | --- | --- |
-| **Navigation** | `NAVIGATE to [URL]` |
+| **Navigation** | `NAVIGATE to [URL]`, `OPEN APP` |
 | **Input** | `Fill [Field] with [Text]`, `Type [Text] into [Field]` |
 | **Click** | `Click [Element]`, `DOUBLE CLICK [Element]`, `RIGHT CLICK [Element]` |
 | **Selection** | `Select [Option] from [Dropdown]`, `Check [Checkbox]`, `Uncheck [Checkbox]` |
@@ -581,6 +595,7 @@ manul tests/mission.hunt
 | **Debug** | `DEBUG` / `PAUSE` — pause execution at that step (use with `--debug` or VS Code gutter breakpoints) |
 | **Keyboard** | `PRESS ENTER`, `PRESS [Key]`, `PRESS [Key] on [Element]` |
 | **File Upload** | `UPLOAD 'File' to 'Element'` |
+| **Variables** | `SET {variable} = value`, `@var: {name} = value` (header declaration) |
 | **Flow Control** | `WAIT [seconds]`, `SCROLL DOWN` |
 | **Finish** | `DONE.` |
 
@@ -588,9 +603,9 @@ manul tests/mission.hunt
 
 ---
 
-## 🐾 Chaos Chamber Verified (1983 Tests)
+## 🐾 Chaos Chamber Verified (2106 Tests)
 
-The engine is battle-tested with **1983** synthetic DOM/unit tests across 37 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, and visibility edge cases.
+The engine is battle-tested with **2138** synthetic DOM/unit tests across 40 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, and visibility edge cases.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).
@@ -616,6 +631,7 @@ The engine is battle-tested with **1983** synthetic DOM/unit tests across 37 tes
 * **Scoring Math unit suite:** `manul_engine/test/test_36_scoring_math.py` (exact numerical scoring validation, WEIGHTS/SCALE constants, channel arithmetic, penalty multipliers, 29 assertions, no browser).
 * **Enterprise DSL unit suite:** `manul_engine/test/test_37_enterprise_dsl.py` (`@data:` parsing, `_load_data_file` JSON/CSV loading, MOCK/WAIT FOR RESPONSE/VERIFY VISUAL/VERIFY SOFTLY classification, `ParsedHunt` 9-field compat, reporter warning HTML, `RunSummary.warning`, 68 assertions, no browser).
 * **SET & Indentation unit suite:** `manul_engine/test/test_38_set_and_indent.py` (SET command parsing, regex validation, `substitute_memory` integration, `@var:`+SET coexistence, indentation stripping robustness, tab handling, no browser).
+* **OPEN APP unit suite:** `manul_engine/test/test_39_open_app.py` (`classify_step` detection, `RE_SYSTEM_STEP` matching, `_handle_open_app` mock tests — existing pages, wait_for_event, failure path, parse_hunt_file integration, 32 assertions, no browser).
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
 Run the synthetic suite:
@@ -658,7 +674,7 @@ The `prompts/` directory contains ready-to-use LLM prompt templates that let you
 
 ## 🖱️ VS Code Extension
 
-The `vscode-extension/` directory contains a companion VS Code extension (v0.0.91) that provides:
+The `vscode-extension/` directory contains a companion VS Code extension (v0.0.92) that provides:
 
 | Feature | Details |
 | --- | --- |

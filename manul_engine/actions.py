@@ -47,6 +47,27 @@ class _ActionsMixin:
         await asyncio.sleep(NAV_WAIT)
         return True
 
+    async def _handle_open_app(self, page, ctx) -> "tuple[bool, object]":
+        """Attach to an Electron/Desktop app's default window.
+
+        Instead of navigating to a URL, waits for the application to open
+        its first window, assigns that page, and waits for DOM settlement.
+        Returns ``(success, resolved_page)``.
+        """
+        try:
+            if ctx.pages:
+                page = ctx.pages[0]
+            else:
+                page = await ctx.wait_for_event("page", timeout=prompts.NAV_TIMEOUT)
+            await page.wait_for_load_state("domcontentloaded", timeout=prompts.NAV_TIMEOUT)
+            self.last_xpath = None
+            await asyncio.sleep(NAV_WAIT)
+            print(f"    \U0001f4e6 Attached to app window: {page.url or '(no URL)'}")
+            return True, page
+        except Exception as exc:
+            print(f"    \u274c OPEN APP failed: {exc}")
+            return False, page
+
     async def _handle_scroll(self, page, step: str):
         step_l = step.lower()
         if "inside" in step_l or "list" in step_l:

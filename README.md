@@ -16,6 +16,16 @@ ManulEngine resolves elements using a mathematically sound `DOMScorer` (normalis
 
 ---
 
+## 🚀 What's New in v0.0.9.2 — The Mastermind
+
+* **YAML-Like Indentation:** Hunt files now support clean hierarchical formatting — action lines under `STEP` headers can be indented with spaces or tabs. The parser strips all leading whitespace before processing. The VS Code extension ships a built-in **Auto-Formatter** (`Shift+Alt+F`) that enforces 4-space indentation for action lines under each `STEP` block.
+* **`SET` Command — Mid-Flight Variable Assignment:** `SET {variable} = value` assigns or overrides a runtime variable at any point during execution. Both `{braced}` and bare-key forms are accepted. Quoted values are auto-unquoted. The variable is immediately available for `{placeholder}` substitution in all subsequent steps — works alongside `@var:` (static) and `EXTRACT` (dynamic) variables.
+* **Enterprise Browser & Electron Support:** New `channel` and `executable_path` config keys let you target installed browser channels (`"chrome"`, `"chrome-beta"`, `"msedge"`) or point to a custom browser executable (e.g. Electron). Overridable via `MANUL_CHANNEL` and `MANUL_EXECUTABLE_PATH` environment variables.
+* **`OPEN APP` — Desktop/Electron Attachment:** New DSL command that attaches to an Electron or desktop application's default window instead of navigating to a URL. Use `OPEN APP` as the first step in `.hunt` files targeting `executable_path` apps — the engine waits for the app's window, attaches to it, and waits for DOM settlement. No `NAVIGATE` needed.
+* **VS Code Auto-Formatter:** The extension now registers a `DocumentFormattingEditProvider` for `.hunt` files. Press `Shift+Alt+F` (or enable Format on Save) to auto-indent action lines with 4 spaces under each `STEP` block. `STEP` headers, metadata (`@context:`, `@var:`, `@tags:`), hook blocks, and comments remain flush-left.
+
+### Previous highlights (v0.0.9.1)
+
 ## 🚀 What's New in v0.0.9.1 — Enterprise DSL
 
 * **Data-Driven Testing (`@data:`):** Declare `@data: users.csv` or `@data: data.json` in any `.hunt` file header. The engine loads each row and reruns the entire mission with row values injected as `{placeholders}`. Supports JSON (array-of-objects) and CSV (DictReader). Zero code changes — same hunt file, *N* executions.
@@ -517,6 +527,7 @@ Lines starting with `#` are ignored.
 | Keyword | Description |
 |---|---|
 | `NAVIGATE to [URL]` | Load a URL and wait for DOM settlement |
+| `OPEN APP` | Attach to an Electron/Desktop app's default window (use instead of `NAVIGATE` when `executable_path` is set) |
 | `WAIT [seconds]` | Hard sleep |
 | `PRESS ENTER` | Press Enter on the currently focused element (submit forms after filling a field) |
 | `PRESS [Key]` | Press any key or combination globally (e.g. `PRESS Escape`, `PRESS Control+A`) |
@@ -660,6 +671,9 @@ Create `manul_engine_configuration.json` in your project root — all settings a
   "tests_home": "tests",
   "auto_annotate": false,
 
+  "channel": null,
+  "executable_path": null,
+
   "retries": 0,
   "screenshot": "on-fail",
   "html_report": false
@@ -697,6 +711,8 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 | `workers` | `1` | Number of hunt files to run concurrently (each gets its own browser) |
 | `tests_home` | `"tests"` | Default directory for new hunt files and `SCAN PAGE` / `manul scan` output |
 | `auto_annotate` | `false` | Automatically insert `# 📍 Auto-Nav:` comments in hunt files whenever the browser URL changes (not only on `NAVIGATE` steps). Page names are resolved from `pages.json`; unmapped URLs fall back to the full URL |
+| `channel` | `null` | Playwright browser channel — use an installed browser instead of the bundled one. E.g. `"chrome"`, `"chrome-beta"`, `"msedge"`. Overridable via `MANUL_CHANNEL` |
+| `executable_path` | `null` | Absolute path to a custom browser executable (e.g. Electron). Overridable via `MANUL_EXECUTABLE_PATH` |
 | `retries` | `0` | Number of times to retry a failed hunt file before marking it as failed (0 = no retries) |
 | `screenshot` | `"on-fail"` | Screenshot capture mode: `"none"` (no screenshots), `"on-fail"` (default — failed steps only), `"always"` (every step) |
 | `html_report` | `false` | Generate a self-contained HTML report after the run (`reports/manul_report.html`) |
@@ -707,7 +723,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 
 | Category | Command Syntax |
 |---|---|
-| **Navigation** | `NAVIGATE to [URL]` |
+| **Navigation** | `NAVIGATE to [URL]`, `OPEN APP` |
 | **Input** | `Fill [Field] with [Text]`, `Type [Text] into [Field]` |
 | **Click** | `Click [Element]`, `DOUBLE CLICK [Element]`, `RIGHT CLICK [Element]` |
 | **Selection** | `Select [Option] from [Dropdown]`, `Check [Checkbox]`, `Uncheck [Checkbox]` |
@@ -718,6 +734,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 | **Debug** | `DEBUG` / `PAUSE` — pause execution at that step (use with `--debug` or VS Code gutter breakpoints) |
 | **Keyboard** | `PRESS ENTER`, `PRESS [Key]`, `PRESS [Key] on [Element]` |
 | **File Upload** | `UPLOAD 'File' to 'Element'` |
+| **Variables** | `SET {variable} = value`, `@var: {name} = value` (header declaration) |
 | **Flow Control** | `WAIT [seconds]`, `SCROLL DOWN` |
 | **Finish** | `DONE.` |
 
@@ -728,7 +745,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 
 ## 🐾 Battle-Tested
 
-ManulEngine is verified against **1983 synthetic DOM tests** across 37 test suites covering:
+ManulEngine is verified against **2138 synthetic DOM tests** across 40 test suites covering:
 
 - Shadow DOM, invisible overlays, zero-pixel honeypots
 - Same-origin iframe element routing and cross-frame resolution

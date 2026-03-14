@@ -62,6 +62,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         _b = (browser or prompts.BROWSER).strip().lower()
         self.browser: str = _b if _b in _VALID_BROWSERS else "chromium"
         self.browser_args: list[str] = list(browser_args) if browser_args is not None else list(prompts.BROWSER_ARGS)
+        self.channel: str | None = prompts.CHANNEL
+        self.executable_path: str | None = prompts.EXECUTABLE_PATH
         self.memory:          dict = {}
         self.last_xpath:      "str | None" = None
         self.learned_elements: dict = {}        # semantic cache: cache_key → {name, tag}
@@ -850,10 +852,12 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         async with async_playwright() as p:
             _launch_args = ["--no-sandbox", "--start-maximized"] if self.browser == "chromium" else []
             _launch_args = _launch_args + [a for a in self.browser_args if a not in _launch_args]
-            browser = await getattr(p, self.browser).launch(
-                headless=self.headless,
-                args=_launch_args,
-            )
+            _launch_opts: dict = dict(headless=self.headless, args=_launch_args)
+            if self.channel:
+                _launch_opts["channel"] = self.channel
+            if self.executable_path:
+                _launch_opts["executable_path"] = self.executable_path
+            browser = await getattr(p, self.browser).launch(**_launch_opts)
             ctx  = await browser.new_context(
                 no_viewport=True
             ) if not self.headless else await browser.new_context(
@@ -953,6 +957,12 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                 _step_ok = False; ok = False; break
                             if _auto_annotate_live and hunt_file and step_file_lines:
                                 await self._auto_annotate_navigate(page, hunt_file, step_file_lines, i)
+
+                        elif step_kind == "open_app":
+                            _app_ok, page = await self._handle_open_app(page, ctx)
+                            if not _app_ok:
+                                _step_error = "OPEN APP failed"
+                                _step_ok = False; ok = False; break
 
                         elif step_kind == "mock":
                             if not await self._handle_mock(page, step, hunt_dir=hunt_dir):
