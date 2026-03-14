@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import os
 import re
 import shlex
 from dataclasses import dataclass
@@ -164,7 +165,8 @@ def _parse_call_args(raw_args: str | None, variables: dict[str, str] | None = No
     if not raw_args or not raw_args.strip():
         return []
     try:
-        tokens = shlex.split(raw_args)
+        # On Windows, use posix=False so backslashes in paths are preserved.
+        tokens = shlex.split(raw_args, posix=(os.name != "nt"))
     except ValueError:
         # Malformed quoting — fall back to simple whitespace split.
         tokens = raw_args.split()
@@ -312,6 +314,7 @@ def execute_hook_line(
 
     # ── Parse positional arguments ─────────────────────────────────────────────
     call_args = _parse_call_args(raw_args_str or "", variables)
+    args_repr = ", ".join(repr(a) for a in call_args)
 
     # ── Execute ───────────────────────────────────────────────────────────────
     try:
@@ -321,7 +324,6 @@ def execute_hook_line(
             # Always stringify — even None → "None" — so that a variable binding
             # is guaranteed when 'into {var}' / 'to {var}' was explicitly requested.
             ret_str = str(ret)
-        args_repr = ", ".join(repr(a) for a in call_args)
         suffix = f" → {{{var_name}}} = {ret_str!r}" if var_name and ret_str is not None else ""
         return HookResult(
             success=True,
@@ -333,7 +335,7 @@ def execute_hook_line(
         return HookResult(
             success=False,
             message=(
-                f"ManulEngine Error: '{dotted}()' raised "
+                f"ManulEngine Error: '{dotted}({args_repr})' raised "
                 f"{type(exc).__name__}: {exc}"
             ),
         )
