@@ -3,18 +3,16 @@
 
 # 😼 ManulEngine v0.0.9.1 — The Mastermind
 
-ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
+**A deterministic, DSL-first E2E browser automation platform.**
+Write unbreakable tests in plain English — powered by blazing-fast heuristics, with optional local AI for self-healing.
 
-Forget brittle CSS/XPath locators that break on every UI update—write tests in plain English.
-Stop paying for expensive cloud APIs and waiting seconds for every click—leverage local micro-LLMs via Ollama.
-
-Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristics, and the reasoning of local neural networks. It is fast, private, and highly resilient to UI changes.
+No CSS selectors. No XPath fragility. No cloud API bills.
+ManulEngine resolves elements using a mathematically sound `DOMScorer` (normalised 0.0–1.0 float scoring across 20+ signals) and a native JavaScript `TreeWalker` — deterministic, reproducible, and fast enough to run on any machine.
 
 > The Manul goes hunting and never returns without its prey.
 
-> **ManulEngine runs on a potato.**
-> No GPU. No cloud APIs. No $0.02 per click.
-> Just Playwright, heuristics, and optional tiny local models.
+> **Zero AI required. Zero cloud dependency. Zero flakiness by design.**
+> Playwright speed. Heuristic precision. Optional local micro-LLMs via Ollama — only when you need them.
 
 ---
 
@@ -126,11 +124,19 @@ ManulEngine/
 
 ## ✨ Key Features
 
-### ⚡ Heuristics-First Architecture
+### 🔍 Why ManulEngine?
 
-95% of the heavy lifting (element finding, assertions, DOM parsing) is handled by ultra-fast JavaScript and Python heuristics. The AI steps in only when genuine ambiguity arises.
+Most "AI testing" tools are cloud-dependent wrappers that trade speed and reliability for hype. ManulEngine takes the opposite approach.
 
-The `DOMScorer` class in `scoring.py` uses normalised `0.0–1.0` floats across five weighted channels:
+**Deterministic First — Not an AI Wrapper.** The core engine is a lightning-fast JavaScript `TreeWalker` paired with a mathematically sound `DOMScorer`. Every element resolution is a pure function of DOM state and weighted heuristic signals — no randomness, no token limits, no API latency. Same page, same step, same outcome. Every time.
+
+**Dual Persona Workflow — Testing for Humans, Power for Engineers.** QA engineers write `.hunt` files in a plain-English DSL — no programming required. SDETs extend the same files with Python hooks, Custom Controls, and data-driven parameters. Both personas work on the same artifact.
+
+**Optional AI Fallback — Off by Default.** AI (Ollama / local micro-LLMs) is **turned off by default** (`"model": null`). When enabled, it acts as a self-healing fallback — only invoked when heuristic confidence drops below a threshold. No cloud calls. No per-click charges. No flaky non-determinism in your CI pipeline.
+
+### ⚡ Heuristics Engine — The Mathematical Core
+
+Element resolution is driven entirely by the `DOMScorer` — a normalised `0.0–1.0` float scoring system across five weighted channels:
 
 | Channel | Weight | What it covers |
 |---|---|---|
@@ -379,17 +385,13 @@ Modern websites love to hide elements behind invisible overlays, custom dropdown
 
 The DOM snapshotter walks shadow roots via `TreeWalker` and scans same-origin iframes by iterating `page.frames`. Every element dict carries a `frame_index`; `_frame_for(page, el)` routes all downstream Playwright calls to the correct `Frame`. Cross-origin frames are silently skipped with retry logic (3 attempts, 1.5s backoff on `closed` errors).
 
-### 👻 Smart Anti-Phantom Guard & AI Rejection
+### 👻 Anti-Phantom Guard & AI Rejection
 
-Strict protection against LLM hallucinations. If the model is unsure it can return `{"id": null}`; the engine treats that as a rejection and retries with self-healing.
+When the optional AI fallback is enabled, strict protection against LLM hallucinations is enforced. If the model is unsure it returns `{"id": null}`; the engine treats that as a rejection, blacklists the candidates, and retries with self-healing.
 
-### 🎛️ Adjustable AI Threshold (Paranoia Level)
+### 🤖 Optional AI Fallback (Ollama)
 
-Control how quickly Manul falls back to the local LLM via `manul_engine_configuration.json` or `MANUL_AI_THRESHOLD` env var:
-
-* **Low (200–500):** Blazing speed. Manul trusts heuristics.
-* **Default (auto):** Derived from model size (e.g., `qwen2.5:0.5b` → 500).
-* **High (2,000+):** More AI involvement on ambiguous steps.
+When enabled via `"model": "qwen2.5:0.5b"` in config, the local LLM acts purely as a self-healing safety net — only invoked when heuristic confidence drops below a configurable threshold. The heuristic `score` is passed as a **prior** (hint) — the model can override only with a clear reason.
 
 If `ai_threshold` is `null` (default) and a model is set, Manul auto-calculates from the model size:
 
@@ -401,17 +403,7 @@ If `ai_threshold` is `null` (default) and a model is set, Manul auto-calculates 
 | `10b – 19b` | `1500` |
 | `20b+` | `2000` |
 
-You can always override auto-threshold by setting `"ai_threshold"` in `manul_engine_configuration.json` or via `MANUL_AI_THRESHOLD` env var.
-
-### 📴 Heuristics-Only Mode (no Ollama needed)
-
-Set `"model": null` in `manul_engine_configuration.json` (or omit the key entirely):
-
-```json
-{ "model": null }
-```
-
-This disables the LLM element-picker and planner completely (`threshold = 0`). No Ollama process needed. The engine relies entirely on deterministic heuristics — fastest, most reproducible mode.
+Set `"model": null` (the default) to run in **heuristics-only mode** — no Ollama, no AI, fully deterministic. This is the recommended mode for CI pipelines.
 
 ---
 

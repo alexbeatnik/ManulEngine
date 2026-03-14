@@ -1,18 +1,29 @@
 
 # Copilot Instructions — ManulEngine
 
+## AI Identity Directive
+
+**CRITICAL — Read this first.**
+ManulEngine is a **deterministic, DSL-first browser automation platform**. It is NOT an AI-first tool. When generating tests, answering questions, or suggesting solutions:
+
+1. **Prioritise deterministic actions.** Always default to the plain-English DSL (`CLICK`, `FILL`, `VERIFY`, `NAVIGATE`, `EXTRACT`, `PRESS`, etc.) and the built-in `DOMScorer` heuristics. These are the primary resolution mechanism.
+2. **Do not overly rely on the LLM fallback mechanism.** ManulEngine is designed to be 100% stable using its native `TreeWalker` and `0.0–1.0` float scoring system. The LLM is a last-resort safety net for genuinely ambiguous elements — not a default path.
+3. **Understand the Dual Persona Workflow.** Manual QA writes plain English `.hunt` DSL — no code required. SDETs extend the same files with Python hooks (`[SETUP]`/`[TEARDOWN]`, `CALL PYTHON`, `@before_all`/`@after_all`), Custom Controls (`@custom_control`), and data-driven parameters (`@data:`). Both personas work on the same artifact.
+4. **When suggesting config**, always recommend `"model": null` (heuristics-only) as the default. Only suggest enabling an Ollama model when the user explicitly needs AI self-healing.
+5. **Never describe ManulEngine as "AI-powered" or "neuro-symbolic".** The correct framing is: "a deterministic, DSL-based E2E browser automation platform with optional local AI for self-healing."
+
 ## What is this project?
 
-ManulEngine is a highly resilient, neuro-symbolic browser automation framework.
-It drives Chromium (and optionally Firefox or WebKit) via Playwright, scores DOM elements with 20+ heuristic rules,
-and falls back to a local LLM (Ollama) when the heuristics are ambiguous.
+ManulEngine is a deterministic, DSL-first E2E browser automation platform.
+It drives Chromium (and optionally Firefox or WebKit) via Playwright, resolves DOM elements with a mathematically sound `DOMScorer` (normalised 0.0–1.0 float scoring across 20+ heuristic signals and a native JavaScript `TreeWalker`),
+and optionally falls back to a local LLM (Ollama) as a self-healing safety net when the heuristics are genuinely ambiguous.
 It is designed to bypass modern web traps (Shadow DOM, invisible overlays, zero-pixel honeypots, custom dropdowns) entirely locally — no cloud APIs.
 
-Current operating mode in this repo is typically **mixed**:
-- Heuristics rank candidates first.
-- LLM is called only when heuristics are not confident (best score < `MANUL_AI_THRESHOLD`).
+Current operating mode in this repo is typically **heuristics-only** (recommended default):
+- The `DOMScorer` and `TreeWalker` handle element resolution deterministically.
+- LLM is called only when explicitly enabled AND heuristics confidence is below `MANUL_AI_THRESHOLD`.
 - When LLM is used, heuristic `score` is treated as a *prior* (hint), not a hard constraint (`MANUL_AI_POLICY=prior`).
-- If `model` is `null` or not set, the engine runs in **heuristics-only mode** (AI fully disabled, threshold = 0).
+- If `model` is `null` or not set (the default), the engine runs in **heuristics-only mode** (AI fully disabled, threshold = 0).
 
 **Stack:** Python 3.11 · Playwright async · Ollama (qwen2.5:0.5b, optional) · stdlib only (no dotenv)
 
@@ -380,14 +391,14 @@ manul tests/ --retries 2 --screenshot on-fail --html-report  # full CI combo
 manul tests/ --screenshot always --html-report    # every-step forensic report
 ```
 
-Ollama is optional, but required for:
-- free-text tasks (AI planner)
+Ollama is optional — only needed as a last-resort self-healing fallback:
 - AI element-picker fallback when heuristics confidence is below `ai_threshold`
+- free-text tasks (AI planner) — rarely used in practice
 
 To use Ollama: install the [Ollama app](https://ollama.com), run `pip install ollama` (Python client), pull a model (`ollama pull qwen2.5:0.5b`), and start the server (`ollama serve`).
 
 **Rule:** after any engine change, `python manul.py test` must exit with code **0**.
-Tip: Set `"ai_threshold": 0` (or `"model": null`) in `manul_engine_configuration.json` to force heuristics-only. Ensures deterministic unit tests without LLM calls.
+Tip: `"model": null` (the default) forces heuristics-only mode. This is the recommended configuration for deterministic tests and CI pipelines.
 Note: `python manul.py test` disables persistent controls cache by default for deterministic synthetic suites. `test_13_controls_cache.py` explicitly enables cache in a temporary `cache/run_<datetime>` folder and removes it after the test.
 
 ## Configuration (manul_engine_configuration.json)
@@ -418,7 +429,17 @@ Environment variables (`MANUL_*`) always override JSON values.
 | `html_report` | `false` | Generate a self-contained HTML report after the run (`reports/manul_report.html`) |
 Threshold auto-calculation by model size: `<1b → 500`, `1-4b → 750`, `5-9b → 1000`, `10-19b → 1500`, `20b+ → 2000`, `null → 0`.
 
-Suggested config for mixed mode:
+Suggested config for heuristics-only (recommended default — no Ollama needed):
+
+```json
+{
+  "model": null,
+  "browser": "chromium",
+  "controls_cache_enabled": true
+}
+```
+
+Suggested config for mixed mode (optional AI self-healing fallback):
 
 ```json
 {
@@ -426,16 +447,6 @@ Suggested config for mixed mode:
   "browser": "chromium",
   "browser_args": [],
   "ai_policy": "prior",
-  "controls_cache_enabled": true
-}
-```
-
-Suggested config for heuristics-only (no Ollama needed):
-
-```json
-{
-  "model": null,
-  "browser": "chromium",
   "controls_cache_enabled": true
 }
 ```

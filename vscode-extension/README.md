@@ -1,32 +1,31 @@
-# 😼 ManulEngine — The Mastermind
+# 😼 ManulEngine — VS Code Extension
 
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
 
-ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing. **Built to bridge the gap between Manual QA and Engineering** — write tests in plain English, run them on any machine, and never touch a CSS selector again.
+The official VS Code extension for **ManulEngine** — a deterministic, DSL-based E2E browser automation platform.
 
-Forget brittle locators that break on every UI update. Stop paying for cloud APIs. Manul combines the speed of **Playwright**, 20+ JavaScript DOM heuristics, and optional local LLM reasoning (via **Ollama**) — entirely on your machine, entirely private.
+Write tests in plain English `.hunt` files. Run them at Playwright speed. Resolve elements with a mathematically sound `DOMScorer` (0.0–1.0 float scoring, 20+ heuristic signals) and a native `TreeWalker` — no CSS selectors, no XPath, no cloud APIs.
 
 > The Manul goes hunting and never returns without its prey.
 
-> **ManulEngine runs on a potato.**
-> No GPU. No cloud APIs. No $0.02 per click.
-> Just Playwright, heuristics, and optional tiny local models.
+> **Zero AI required. Zero cloud dependency. Zero flakiness by design.**
+> Playwright speed. Heuristic precision. Optional local micro-LLMs via Ollama — only when you need them.
 
 ---
 
-## 🤝 The Team Workflow (Why managers love it)
+## 🤝 Dual Persona Workflow — Testing for Humans, Power for Engineers
 
-ManulEngine changes the economics of test automation. You don't write controls — you write tests.
+ManulEngine bridges the gap between Manual QA and Engineering. You don't write controls — you write tests.
 
-* **For Manual QA:** You don't need to know Python, CSS, or XPath. You open a `.hunt` file and write scenarios in plain English. If the UI changes, you get a green run anyway because the engine heals itself.
-* **For Developers / SDETs:** No more maintaining thousands of brittle `page.locator()` calls. If your app has a crazy custom React virtual-table that baffles the AI, you can write a custom Python control hook in two minutes. The QA team keeps writing plain English, and your hook handles the heavy lifting behind the scenes.
+* **For Manual QA:** Open a `.hunt` file and write scenarios in plain English — no Python, CSS, or XPath needed. The deterministic heuristics engine resolves elements reliably across UI changes.
+* **For Developers / SDETs:** No more maintaining thousands of brittle `page.locator()` calls. For complex custom UI elements, write a Python control hook with the full Playwright API. The QA team keeps writing plain English — your hook handles the Playwright logic behind the scenes.
 
 ---
 
 ## VS Code Extension Features
 
-> Hunt file language support, one-click test runner, interactive debug runner with gutter breakpoints, step builder, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) browser automation.
+> Hunt file language support, one-click test runner, interactive debug runner with gutter breakpoints, Step Builder for plain-English `.hunt` files, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) — deterministic DSL-based browser automation.
 
 ## 🚀 What's New in v0.0.9.1 — Enterprise DSL
 
@@ -99,10 +98,10 @@ For both profiles:
 ### ⚙️ Configuration Panel
 An interactive sidebar panel for editing `manul_engine_configuration.json` without touching the file directly.
 
-- **Model** — Ollama model name (leave blank for heuristics-only mode)
-- **AI Policy** — `prior` (heuristic as hint) or `strict`
-- **AI Threshold** — score cutoff before LLM fallback (`null` = auto)
-- **AI Always** — always call the LLM picker (automatically disabled when no model is set)
+- **Model** — Ollama model name (leave blank for **heuristics-only mode** — the recommended default)
+- **AI Policy** — `prior` (heuristic as hint) or `strict` — only relevant when a model is set
+- **AI Threshold** — score cutoff before optional LLM fallback (`null` = auto)
+- **AI Always** — always call the LLM picker (automatically disabled when no model is set; not recommended)
 - **Browser** — browser engine: Chromium, Firefox, or WebKit
 - **Browser Args** — extra launch flags for the browser (comma-separated)
 - **Headless** — run browser headless
@@ -158,7 +157,7 @@ A sidebar panel that lets you insert hunt steps with a single click — no typin
   ```
 - **Python 3.11+**
 - **Playwright** browsers (installed by ManulEngine's setup)
-- **Ollama** (optional) — only needed for AI-assisted element picking
+- **Ollama** (optional) — only needed as a last-resort self-healing fallback when the deterministic heuristics engine cannot confidently resolve an element
   ```bash
   pip install ollama   # Python client library
   ```

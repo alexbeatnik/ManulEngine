@@ -3,18 +3,16 @@
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
 
-ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
+**A deterministic, DSL-first E2E browser automation platform.**
+Write unbreakable tests in plain English — powered by blazing-fast heuristics, with optional local AI for self-healing.
 
-Forget brittle CSS/XPath locators that break on every UI update — write tests in plain English.
-Stop paying for expensive cloud APIs — leverage local micro-LLMs via **Ollama**, entirely on your machine.
-
-Manul combines the blazing speed of **Playwright**, 20+ JavaScript DOM heuristics, and the reasoning of local neural networks. It is fast, private, and highly resilient to UI changes.
+No CSS selectors. No XPath fragility. No cloud API bills.
+ManulEngine resolves elements using a mathematically sound `DOMScorer` (normalised 0.0–1.0 float scoring across 20+ signals) and a native JavaScript `TreeWalker` — deterministic, reproducible, and fast enough to run on any machine.
 
 > The Manul goes hunting and never returns without its prey.
 
-> **ManulEngine runs on a potato.**
-> No GPU. No cloud APIs. No $0.02 per click.
-> Just Playwright, heuristics, and optional tiny local models.
+> **Zero AI required. Zero cloud dependency. Zero flakiness by design.**
+> Playwright speed. Heuristic precision. Optional local micro-LLMs via Ollama — only when you need them.
 
 ---
 
@@ -45,35 +43,65 @@ Manul combines the blazing speed of **Playwright**, 20+ JavaScript DOM heuristic
 * **Interactive Enterprise HTML Reporter:** Dual-mode, zero-dependency reporter with native HTML5 accordions, auto-expanding failures, Flexbox layout, **"Show Only Failed" toggle**, and **tag-based filtering chips** — all powered by inline Vanilla JS with zero external dependencies.
 * **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, `@after_group` orchestrate DB seeding and auth. `ctx.variables` serialise across parallel `--workers`.
 
+---
+
+## 🔍 Why ManulEngine?
+
+Most "AI testing" tools are cloud-dependent wrappers that trade speed and reliability for hype. ManulEngine takes the opposite approach.
+
+### Deterministic First — Not an AI Wrapper
+
+The core engine is a **lightning-fast JavaScript `TreeWalker`** paired with a **mathematically sound `DOMScorer`**. Every element resolution is a pure function of DOM state and weighted heuristic signals — no randomness, no token limits, no API latency. The result is 100% predictable: same page, same step, same outcome. Every time.
+
+### Dual Persona Workflow — Testing for Humans, Power for Engineers
+
+QA engineers write `.hunt` files in a plain-English DSL — no programming required. SDETs extend the same files with Python hooks (`[SETUP]`/`[TEARDOWN]`, `CALL PYTHON`, `@before_all`), Custom Controls, and data-driven parameters. Both personas work on the same artifact. No translation layer, no framework lock-in.
+
+### Optional AI Fallback — Off by Default
+
+AI (Ollama / local micro-LLMs) is **turned off by default** (`"model": null`). The heuristics engine handles the vast majority of real-world UIs on its own. When you do enable a model, it acts as a self-healing fallback — only invoked when heuristic confidence drops below a threshold. No cloud calls. No per-click charges. No flaky non-determinism in your CI pipeline.
+
+---
+
 ## ✨ Key Features
 
-### ⚡ Heuristics-First Architecture
+### ⚡ Heuristics Engine — The Mathematical Core
 
-95% of the heavy lifting (element finding, assertions, DOM parsing) is handled by ultra-fast JavaScript and Python heuristics. The AI steps in only when genuine ambiguity arises.
+Element resolution is driven entirely by the `DOMScorer` — a normalised `0.0–1.0` float scoring system across five weighted channels:
 
-The scoring engine (`DOMScorer`) uses normalised `0.0–1.0` floats across five weighted channels — `cache`, `semantics`, `text`, `attributes`, `proximity` — combined via a `WEIGHTS` dict and scaled to integer thresholds. Exact `data-qa` match (+1.0) is the single strongest signal; disabled elements are crushed by a ×0.0 multiplier.
+| Channel | Weight | Purpose |
+|---|---|---|
+| `cache` | 2.0 | Reuse previously resolved elements |
+| `semantics` | 0.60 | Element-type alignment, role synergy |
+| `text` | 0.45 | Text, aria-label, placeholder, data-qa matching |
+| `attributes` | 0.25 | html_id, dev naming conventions |
+| `proximity` | 0.10 | DOM depth-based form context |
 
-When the LLM picker is used, Manul passes the heuristic score as a **prior** (hint) by default — the model can override the ranking only with a clear, disqualifying reason.
+Final score = weighted sum × penalty multiplier × `SCALE` (177,778). An exact `data-qa` match scores +1.0 text (~80k scaled) — the single strongest signal. Disabled elements are crushed by a ×0.0 multiplier. No guesswork, no randomness.
+
+### 🌳 TreeWalker — Zero-Waste DOM Traversal
+
+`SNAPSHOT_JS` walks the DOM with a native `document.createTreeWalker()` and a `PRUNE` set that rejects entire irrelevant subtrees (`SCRIPT`, `STYLE`, `SVG`, `NOSCRIPT`, `TEMPLATE`, etc.) in a single hop. Visibility is checked via the zero-layout-thrash `checkVisibility()` API. No `querySelectorAll`. No `getComputedStyle` in the hot loop.
+
+### 🧠 20+ Accessibility Signals
+
+Manul scores elements using `aria-label`, `placeholder`, `name`, `data-qa`, `html_id`, semantic `input type`, contextual section headings, and more. Modern SPAs (React, Vue, Angular) and complex design systems (Wikipedia Vector 2022 / Codex) work without any tuning — accessibility attributes are first-class identifiers.
 
 ### 🛡️ Ironclad JS Fallbacks
 
-Modern websites love to hide elements behind invisible overlays, custom dropdowns, and zero-pixel traps. Manul uses Playwright with `force=True` plus retries and self-healing; for Shadow DOM elements it falls back to direct JS helpers to keep execution moving.
-
-### 🧠 Deep Accessibility Heuristics
-
-Manul scores elements using 20+ signals including `aria-label`, `placeholder`, `name`, `data-qa`, `html_id`, semantic `input type`, and contextual section headings. This means it handles modern single-page apps (React, Vue, Angular) and complex design systems (like Wikipedia's Vector 2022 / Codex skin) without any tuning — accessibility attributes are treated as first-class identifiers.
+Modern websites hide elements behind invisible overlays, custom dropdowns, and zero-pixel traps. Manul uses Playwright with `force=True` plus retries and self-healing; for Shadow DOM elements it falls back to direct JS helpers to keep execution moving.
 
 ### 🌑 Shadow DOM & iframe Awareness
 
 The DOM snapshotter recursively walks shadow roots via `TreeWalker` and scans same-origin iframes by iterating `page.frames`. Each element carries a `frame_index` that routes all downstream actions to the correct Playwright `Frame`. Cross-origin frames are silently skipped.
 
-### 👻 Smart Anti-Phantom Guard & AI Rejection
+### 🗂️ Persistent Controls Cache
 
-Strict protection against LLM hallucinations. If the model is unsure, it returns `{"id": null}`; the engine treats that as a rejection and retries with self-healing.
+Successful element resolutions are stored per-site and reused on subsequent runs — making repeated test flows dramatically faster.
 
-### 🎛️ Adjustable AI Threshold
+### 🤖 Optional AI Fallback (Ollama)
 
-Control how aggressively Manul falls back to the local LLM via `manul_engine_configuration.json` (`ai_threshold` key) or the `MANUL_AI_THRESHOLD` environment variable. If not set, Manul auto-calculates it from the model size:
+When enabled, the local LLM acts as a self-healing safety net — only invoked when heuristic confidence drops below a configurable threshold. The heuristic `score` is passed as a **prior** (hint) — the model can override only with a clear reason. AI rejection (`{"id": null}`) triggers scroll-and-retry self-healing.
 
 | Model size | Auto threshold |
 |---|---|
@@ -83,11 +111,7 @@ Control how aggressively Manul falls back to the local LLM via `manul_engine_con
 | `10b – 19b` | `1500` |
 | `20b+` | `2000` |
 
-Set `MANUL_AI_THRESHOLD=0` to disable the LLM entirely and run fully on deterministic heuristics.
-
-### 🗂️ Persistent Controls Cache
-
-Successful element resolutions are stored per-site and reused on subsequent runs — making repeated test flows dramatically faster.
+Set `"model": null` (the default) to run in **heuristics-only mode** — no Ollama, no AI, fully deterministic.
 
 ### 🔄 Automatic Retries — Tame Flaky Tests
 
