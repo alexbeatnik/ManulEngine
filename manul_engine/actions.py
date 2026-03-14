@@ -719,18 +719,28 @@ class _ActionsMixin:
         # Detect content type
         content_type = "application/json" if resolved.endswith(".json") else "text/plain"
 
-        async def _route_handler(route):
-            if route.request.method.upper() == method:
-                await route.fulfill(
-                    status=200,
-                    content_type=content_type,
-                    body=body,
-                )
-            else:
-                await route.continue_()
+        # Maintain a single Playwright route handler per URL pattern so that
+        # multiple MOCK steps for the same path but different methods coexist.
+        pattern_key = f"**{url_pattern}"
+        mock_routes: dict = getattr(page, "_manul_mock_routes", None) or {}
+        if not hasattr(page, "_manul_mock_routes"):
+            setattr(page, "_manul_mock_routes", mock_routes)
 
-        # Use glob pattern matching — the user's path is treated as a suffix
-        await page.route(f"**{url_pattern}", _route_handler)
+        if pattern_key not in mock_routes:
+            mock_routes[pattern_key] = {}
+
+            async def _route_handler(route, _pk=pattern_key):
+                routes = getattr(page, "_manul_mock_routes", {})
+                method_map = routes.get(_pk, {})
+                mock = method_map.get(route.request.method.upper())
+                if mock:
+                    await route.fulfill(status=200, content_type=mock[0], body=mock[1])
+                else:
+                    await route.continue_()
+
+            await page.route(pattern_key, _route_handler)
+
+        mock_routes[pattern_key][method] = (content_type, body)
         print(f"    🔀 MOCK {method} *{url_pattern} → {mock_file}")
         return True
 

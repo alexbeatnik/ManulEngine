@@ -7,7 +7,7 @@ Unit-test suite for v0.0.9.1 Enterprise DSL features:
   D. Soft Assertions (VERIFY SOFTLY)
 
 No network, no live browser, no Ollama required.
-All tests run against synthetic data, in-memory state, or local HTML via Playwright.
+All tests run against synthetic data, in-memory state, and parsed ``.hunt`` files (no Playwright).
 
 Entry point ``run_suite()`` is picked up by the dev test runner
 (``python manul.py test``) and must remain async.
@@ -15,18 +15,15 @@ Entry point ``run_suite()`` is picked up by the dev test runner
 
 from __future__ import annotations
 
-import asyncio
 import csv
-import inspect
 import json
 import os
-import re
 import sys
 import tempfile
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from manul_engine.helpers import classify_step, detect_mode
+from manul_engine.helpers import classify_step
 from manul_engine.reporting import StepResult, MissionResult, RunSummary
 from manul_engine.cli import parse_hunt_file
 
