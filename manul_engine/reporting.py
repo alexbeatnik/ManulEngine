@@ -34,6 +34,7 @@ class MissionResult:
     attempts:    int = 1                 # total attempts (1 = no retries used)
     duration_ms: float = 0.0            # wall clock ms (total, including retries)
     error:       str | None = None       # last error message when status == "fail"
+    tags:        list[str] = field(default_factory=list)   # @tags from .hunt file
     steps:       list[StepResult] = field(default_factory=list)
 
     def __bool__(self) -> bool:         # truthy ⇔ not failed

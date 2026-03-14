@@ -22,14 +22,14 @@ Current operating mode in this repo is typically **mixed**:
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.8.9
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.0
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
   cache.py                 _ControlsCacheMixin (persistent per-site controls cache)
   actions.py               _ActionsMixin (navigate, scroll, extract, verify, drag, press, right_click, upload, _execute_step, scan_page)
   reporting.py             StepResult, MissionResult, RunSummary dataclasses
-  reporter.py              Self-contained HTML report generator (dark theme, native <details>/<summary> accordions, Flexbox step layout, base64 screenshots)
+  reporter.py              Self-contained HTML report generator (dark theme, native <details>/<summary> accordions, Flexbox step layout, base64 screenshots, control panel with Show Only Failed toggle and tag filter chips)
   prompts.py               JSON config loader, thresholds, LLM prompt templates
   scoring.py               DOMScorer class — normalised 0.0–1.0 float scoring, WEIGHTS dict, SCALE=177,778, pre-compiled regex, score_elements() backward-compatible API
   js_scripts.py            All JS injected into the browser (TreeWalker-based SNAPSHOT_JS with PRUNE set, SCAN_JS)
@@ -54,7 +54,7 @@ manul_engine/
     test_22_tags.py            @tags: / --tags CLI filter (20 assertions, no browser)
     test_23_advanced_interactions.py  PRESS/RIGHT CLICK/UPLOAD commands (48 assertions, no browser)
     test_24_reporting.py       StepResult/MissionResult/RunSummary dataclasses (45 assertions)
-    test_25_reporter.py        HTML report generator (42 assertions, no browser)
+    test_25_reporter.py        HTML report generator (65 assertions, no browser)
     test_26_wikipedia_search.py  name_attr heuristic scoring (20 assertions, no browser)
     test_27_lifecycle_hooks.py   Global Lifecycle Hook system (57 assertions, no browser)
     test_28_logical_steps.py     Logical STEP ordering and parser (48 assertions, no browser)
@@ -73,7 +73,7 @@ tests/
   demo_login.hunt         integration: login with @var: static variables
   demo_variables.hunt     integration: @var: + CALL PYTHON into {var} combined
 vscode-extension/
-  package.json              Extension manifest (v0.0.89)
+  package.json              Extension manifest (v0.0.90)
   src:
     extension.ts            Activation, command registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
@@ -326,7 +326,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * **Auto-Nav annotation:** When `auto_annotate` is enabled, `run_mission()` captures `url_before = page.url` before every step. For `NAVIGATE` steps, the annotation is written above the step itself. For all other steps, `url_after` is checked in the `finally` block — if the URL changed, `_auto_annotate_navigate(page, hunt_file, step_file_lines, i+1)` is called to insert a comment above the *next* step line. The comment uses the mapped page name when found in `pages.json`, or the full URL when the lookup returns an `"Auto:"` placeholder.
 * **`pages.json` — nested per-site format:** `{ "<site_root_url>": { "Domain": "<display_name>", "<regex_or_exact_url>": "<page_name>" } }`. `lookup_page_name(url)` in `prompts.py` re-reads this file from disk on **every call** (live edits take effect immediately with no restart). Resolution order: exact URL key → regex/substring patterns (skipping `"Domain"` key) → `"Domain"` fallback. When no site block matches, a new nested entry is auto-generated. The longest-prefix site block wins when multiple blocks could match.
 * **`_debug_prompt()` `debug-stop` token:** When Python receives `"debug-stop"` on stdin from the VS Code extension (user pressed ⏹ Debug Stop), it clears **both** `self._user_break_steps = set()` and `self.break_steps = set()`, then breaks the pause loop. The test run continues to completion without any further pauses.
-* **Reporting & HTML reports:** `reporting.py` owns `StepResult`, `MissionResult` (with `__bool__` — truthy if all steps passed), and `RunSummary` dataclasses. `reporter.py` owns `generate_report(summary, output_path)` — produces a self-contained dark-themed HTML file with dashboard stats, native `<details>/<summary>` accordions (collapsed by default, auto-expanded on failure), Flexbox step rows, and inline base64 screenshots. All artifacts (logs, HTML reports) are saved to `reports/` (auto-created by `cli.py`). The `reports/` directory is `.gitignored`.
+* **Reporting & HTML reports:** `reporting.py` owns `StepResult`, `MissionResult` (with `__bool__` — truthy if all steps passed; has `tags: list[str]` for `@tags` from `.hunt` files), and `RunSummary` dataclasses. `reporter.py` owns `generate_report(summary, output_path)` — produces a self-contained dark-themed HTML file with dashboard stats, native `<details>/<summary>` accordions (collapsed by default, auto-expanded on failure), Flexbox step rows, inline base64 screenshots, a **control panel** with "Show Only Failed" checkbox toggle, and **tag filter chips** (dynamically collected from all missions' `tags`). Each `<div class="mission">` carries `data-status` and `data-tags` attributes for JS filtering. All artifacts (logs, HTML reports) are saved to `reports/` (auto-created by `cli.py`). The `reports/` directory is `.gitignored`.
 * **Screenshot capture:** `run_mission()` accepts `screenshot_mode` (`"none"`, `"on-fail"`, `"always"`). Screenshots are stored as base64 PNGs in `StepResult.screenshot`.
 
 ## Running tests

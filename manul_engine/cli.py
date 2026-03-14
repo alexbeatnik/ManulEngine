@@ -598,6 +598,7 @@ async def main() -> None:
                     screenshot_mode=screenshot_mode,
                     global_vars=_lc_ctx.variables,
                 )
+                mission_result.tags = file_tags
                 # ── Retry loop ────────────────────────────────────────────
                 if not mission_result and retries > 0:
                     for attempt in range(2, retries + 2):

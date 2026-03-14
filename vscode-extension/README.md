@@ -28,14 +28,19 @@ ManulEngine changes the economics of test automation. You don't write controls �
 
 > Hunt file language support, one-click test runner, interactive debug runner with gutter breakpoints, step builder, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) browser automation.
 
-## 🚀 What's New: The Engine Overhaul
+## 🚀 What's New in v0.0.9.0 — The Power User Update
 
+* **`VERIFY ... is ENABLED`:** State verification now supports both `ENABLED` and `DISABLED` checks. The Step Builder includes a dedicated 🔓 **Verify enabled** button alongside the existing 🔒 **Verify disabled** button.
+* **`CALL PYTHON` with Arguments:** Hook functions and inline `CALL PYTHON` steps now accept positional arguments — static strings, unquoted tokens, and `{var}` placeholders resolved at runtime. The Step Builder offers four Python step variants: plain call, call with args, call with capture, and call with args + capture.
+* **`ENABLED` Syntax Highlighting:** The `ENABLED` keyword is now highlighted in `.hunt` files alongside `DISABLED`, `NOT`, and other state modifiers.
+
+### Previous highlights
 * **Normalised Heuristic Scoring (DOMScorer):** Scoring rewritten with `0.0–1.0` float arithmetic. Five weighted channels — `cache`, `semantics`, `text`, `attributes`, `proximity` — combined via `WEIGHTS` dict and `SCALE=177,778`. `data-qa` exact match is the single strongest signal. Penalties are clean multipliers: disabled ×0.0, hidden ×0.1.
 * **TreeWalker-Based DOM Scanner:** `SNAPSHOT_JS` walks the DOM with `document.createTreeWalker()` and a `PRUNE` set. Subtrees rejected in one hop — zero wasted traversal. Visibility via `checkVisibility()` API with `offsetWidth/offsetHeight` fallback.
 * **Safe iframe Support:** `_snapshot()` iterates `page.frames`, injects snapshot JS per frame, tags elements with `frame_index`. Cross-origin frames silently skipped; stale indices fall back to main frame.
 * **Clean, Unnumbered DSL:** Scripts read like plain English (`NAVIGATE to url` instead of `1. NAVIGATE to url`).
 * **Logical STEP Grouping:** `STEP [optional number]: [Description]` blocks map manual QA cases directly into `.hunt` files.
-* **Enterprise HTML Reporter:** Dual-mode, zero-dependency reporter with native HTML5 accordions, auto-expanding failures, and Flexbox layout.
+* **Interactive Enterprise HTML Reporter:** Dual-mode, zero-dependency reporter with native HTML5 accordions, auto-expanding failures, Flexbox layout, **"Show Only Failed" toggle**, and **tag filter chips**.
 * **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, `@after_group` orchestrate DB seeding and auth. `ctx.variables` serialise across parallel `--workers`.
 
 ## Features
@@ -112,9 +117,11 @@ A sidebar panel that lets you insert hunt steps with a single click — no typin
 
 - **＋ New Hunt File** button — prompts for a name, creates a `.hunt` file with a starter template in the `tests_home` directory (configured via `tests_home` in `manul_engine_configuration.json`, defaults to `tests/`), and opens it
 - **🔍 Live Page Scanner** — paste any URL into the sidebar text input and click **Run Scan**; the extension invokes `manul scan <URL>` as a child process with a progress notification, then automatically opens the freshly generated `tests_home/draft.hunt` in the editor — no terminal required
-- **Step buttons** — one button per step type: Navigate, Fill field, Click, Double Click, Right Click, Select, Check, Radio, Hover, Drag & Drop, Extract, Verify present/absent/state, Press Enter, Press Key, Upload File, Wait, Scroll Down, **Scan Page**, **🐍 Call Python**, **🐍 Call Python → Var**, **Debug / Pause**, Done
+- **Step buttons** — one button per step type: Navigate, Fill field, Click, Double Click, Right Click, Select, Check, Radio, Hover, Drag & Drop, Extract, Verify present/absent/disabled/enabled, Press Enter, Press Key, Upload File, Wait, Scroll Down, **Scan Page**, **🐍 Call Python**, **🐍 Call Python + Args**, **🐍 Call Python → Var**, **🐍 Call Python Args → Var**, **Debug / Pause**, Done
 - **🐍 Call Python** — appends `CALL PYTHON module_name.function_name` to the end of the current `.hunt` file with a single click; rename the placeholders and your Python function runs inline as part of the test — no block wrappers needed
+- **🐍 Call Python + Args** — appends `CALL PYTHON module_name.function_name 'arg1' {var}` with tabstop placeholders for the module, function, and arguments
 - **🐍 Call Python → Var** — appends `CALL PYTHON module_name.function_name into {variable_name}`; the function's return value is captured as a string and bound to `{variable_name}`, available for `{placeholder}` substitution in all subsequent steps
+- **🐍 Call Python Args → Var** — appends `CALL PYTHON module_name.function_name 'arg1' {var} into {result}` with tabstop placeholders for the full syntax; combines arguments and return value capture in one step
 - **Hooks buttons** — **🔧 Insert [SETUP]** and **🧹 Insert [TEARDOWN]** insert pre-filled hook blocks with `CALL PYTHON module.function` placeholders; **🎯 Generate Demo Test** scaffolds a complete hunt file with setup, UI steps, and teardown in one click
 - **Scan Page** — inserts `SCAN PAGE into draft.hunt`; when the engine executes this step it scans the current browser page for interactive elements and writes a ready-to-run draft hunt file to `tests_home/draft.hunt`
 - Each click appends to the currently open `.hunt` file and positions the cursor inside the first `''` pair for immediate editing
@@ -248,6 +255,13 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 ---
 
 ## Release Notes
+
+### 0.0.90
+- **🔓 `VERIFY ... is ENABLED`** — state verification now supports `ENABLED` alongside `DISABLED`. Assert that interactive elements (buttons, inputs, selects, ARIA-role elements) are active before proceeding. `ENABLED` keyword highlighted in `.hunt` syntax. Step Builder adds a dedicated 🔓 **Verify enabled** button
+- **🐍 `CALL PYTHON` with Arguments** — hook functions and inline `CALL PYTHON` steps now accept optional positional arguments: `CALL PYTHON helpers.multiply "6" "7" into {product}`. Arguments are tokenised with `shlex.split()`; `{var}` placeholders are resolved from the engine's runtime memory. Step Builder adds two new buttons: **Call Python + Args** and **Call Python Args → Var** with full tabstop snippet support
+- **📊 Interactive HTML Reporter** — control panel with **"Show Only Failed" checkbox** and **tag filter chips**. All `@tags` are auto-collected and rendered as clickable chips; missions carry `data-status` and `data-tags` attributes for instant JS-powered filtering. Zero external dependencies
+- **Dual Persona Workflow** — QA writes plain English, SDETs write Python hooks that accept dynamic `{variable}` arguments directly from `.hunt` files. The Step Builder now covers all four CALL PYTHON variants: plain, with args, with capture, and with args + capture
+- Core engine bump to **0.0.9.0**
 
 ### 0.0.89
 - **🧮 Normalised Float Scoring** — `DOMScorer` rewritten with `0.0–1.0` floats across five weighted channels (`cache`, `text`, `attributes`, `semantics`, `proximity`), combined via `WEIGHTS` dict and `SCALE=177,778` for integer thresholds. Pre-compiled regex, single `_preprocess()` pass per element. Clean penalty multipliers: disabled ×0.0, hidden ×0.1

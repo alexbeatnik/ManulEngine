@@ -56,17 +56,20 @@ def _make_summary() -> RunSummary:
 
     m_pass = MissionResult(
         file="/tmp/smoke.hunt", name="smoke.hunt", status="pass",
-        duration_ms=1200, steps=[step_pass, StepResult(index=2, text="DONE.")]
+        duration_ms=1200, steps=[step_pass, StepResult(index=2, text="DONE.")],
+        tags=["smoke", "fast"],
     )
     m_fail = MissionResult(
         file="/tmp/login.hunt", name="login.hunt", status="fail",
         duration_ms=8500, error="Step 2 failed",
-        steps=[step_pass, step_fail, step_skip]
+        steps=[step_pass, step_fail, step_skip],
+        tags=["smoke", "login"],
     )
     m_flaky = MissionResult(
         file="/tmp/flaky.hunt", name="flaky.hunt", status="flaky",
         duration_ms=3200, attempts=3,
-        steps=[step_pass, StepResult(index=2, text="DONE.")]
+        steps=[step_pass, StepResult(index=2, text="DONE.")],
+        tags=["regression"],
     )
 
     rs = RunSummary()
@@ -266,6 +269,84 @@ def _test_esc_helper() -> None:
     _assert("&lt;" in _esc("<b>bold</b>"), "_esc escapes angle brackets")
 
 
+# ── Section 9: Control panel — Show Only Failed toggle ────────────────────────
+
+def _test_control_panel_failed_toggle() -> None:
+    print("\n  ── Control panel: Show Only Failed toggle ────────────────")
+
+    summary = _make_summary()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        out = os.path.join(tmpdir, "report.html")
+        generate_report(summary, out)
+        content = open(out, encoding="utf-8").read()
+
+    _assert("control-panel" in content, "control-panel class present")
+    _assert('id="filter-failed"' in content, "filter-failed checkbox present")
+    _assert("Show only failed" in content, "toggle label text present")
+    _assert("applyFilters" in content, "JS applyFilters function present")
+    _assert('data-status="pass"' in content, "mission has data-status=pass attr")
+    _assert('data-status="fail"' in content, "mission has data-status=fail attr")
+    _assert('data-status="flaky"' in content, "mission has data-status=flaky attr")
+
+
+# ── Section 10: Control panel — Tag filtering ────────────────────────────────
+
+def _test_control_panel_tag_filtering() -> None:
+    print("\n  ── Control panel: Tag filtering ──────────────────────────")
+
+    summary = _make_summary()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        out = os.path.join(tmpdir, "report.html")
+        generate_report(summary, out)
+        content = open(out, encoding="utf-8").read()
+
+    # Tags from fixture: smoke, fast, login, regression
+    _assert("tag-chip" in content, "tag-chip class present in HTML")
+    _assert('data-tag="smoke"' in content, "smoke tag chip rendered")
+    _assert('data-tag="fast"' in content, "fast tag chip rendered")
+    _assert('data-tag="login"' in content, "login tag chip rendered")
+    _assert('data-tag="regression"' in content, "regression tag chip rendered")
+    _assert("tag-divider" in content, "tag divider between checkbox and chips")
+
+    # data-tags attribute on missions
+    _assert('data-tags="smoke,fast"' in content, "smoke.hunt has correct data-tags")
+    _assert('data-tags="smoke,login"' in content, "login.hunt has correct data-tags")
+    _assert('data-tags="regression"' in content, "flaky.hunt has correct data-tags")
+
+    # JS handles tag clicks
+    _assert("activeTag" in content, "JS activeTag variable exists")
+    _assert("tag-chip" in content, "JS references tag-chip class")
+
+
+# ── Section 11: No tags — graceful fallback ──────────────────────────────────
+
+def _test_no_tags_graceful() -> None:
+    print("\n  ── No tags: graceful fallback ────────────────────────────")
+
+    m = MissionResult(
+        file="/tmp/bare.hunt", name="bare.hunt", status="pass",
+        steps=[StepResult(index=1, text="DONE.")]
+    )
+    rs = RunSummary()
+    rs.total = 1
+    rs.passed = 1
+    rs.started_at = "2025-01-01"
+    rs.ended_at = "2025-01-01"
+    rs.missions = [m]
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        out = os.path.join(tmpdir, "report.html")
+        generate_report(rs, out)
+        content = open(out, encoding="utf-8").read()
+
+    _assert("control-panel" in content, "control panel still rendered without tags")
+    _assert('id="filter-failed"' in content, "failed toggle present without tags")
+    _assert('data-tag=' not in content, "no tag chip elements when missions have no tags")
+    _assert('<span class="tag-divider">' not in content,
+            "no tag divider element when no tags exist")
+    _assert('data-tags=""' in content, "data-tags is empty string when no tags")
+
+
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 async def run_suite() -> bool:
@@ -285,6 +366,9 @@ async def run_suite() -> bool:
     _test_edge_cases()
     _test_duration_formatting()
     _test_esc_helper()
+    _test_control_panel_failed_toggle()
+    _test_control_panel_tag_filtering()
+    _test_no_tags_graceful()
 
     total = _PASS + _FAIL
     print(f"\n📊 SCORE: {_PASS}/{total}")

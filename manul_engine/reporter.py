@@ -343,6 +343,69 @@ details.lstep-block[open] .lstep-chevron { transform: rotate(90deg); }
   font-size: 0.75rem;
   color: var(--text-dim);
 }
+
+/* ── Control Panel ────────────────────── */
+
+.control-panel {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  margin-bottom: 16px;
+}
+.control-panel label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.control-panel input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.tag-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.tag-chip {
+  font-size: 0.72rem;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.15s;
+}
+.tag-chip:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.tag-chip.active {
+  background: rgba(137,180,250,0.18);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+.tag-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  flex-shrink: 0;
+}
 """
 
 
@@ -357,6 +420,40 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.querySelectorAll('.step-screenshot img').forEach(img => {
     img.addEventListener('click', () => img.classList.toggle('expanded'));
+  });
+
+  /* ── Control panel: Show Only Failed ─────────── */
+  var failCb = document.getElementById('filter-failed');
+  var activeTag = null;
+  function applyFilters() {
+    var onlyFailed = failCb && failCb.checked;
+    document.querySelectorAll('.mission').forEach(function(m) {
+      var status = m.getAttribute('data-status');
+      var tags = (m.getAttribute('data-tags') || '').split(',').filter(Boolean);
+      var show = true;
+      if (onlyFailed && status === 'pass') show = false;
+      if (activeTag && tags.indexOf(activeTag) === -1) show = false;
+      m.style.display = show ? '' : 'none';
+    });
+  }
+  if (failCb) failCb.addEventListener('change', applyFilters);
+
+  /* ── Control panel: Tag chips ────────────────── */
+  document.querySelectorAll('.tag-chip').forEach(function(chip) {
+    chip.addEventListener('click', function() {
+      var tag = chip.getAttribute('data-tag');
+      if (activeTag === tag) {
+        activeTag = null;
+        chip.classList.remove('active');
+      } else {
+        document.querySelectorAll('.tag-chip.active').forEach(function(c) {
+          c.classList.remove('active');
+        });
+        activeTag = tag;
+        chip.classList.add('active');
+      }
+      applyFilters();
+    });
   });
 });
 """
@@ -476,6 +573,7 @@ def _render_mission(mission: MissionResult) -> str:
     status = mission.status
     icon = {"pass": "\u2705", "fail": "\u274c", "flaky": "\u26a0\ufe0f"}.get(status, "\u2753")
     badge_class = f"badge-{status}"
+    tags_attr = _esc(",".join(mission.tags)) if mission.tags else ""
 
     meta_parts = [_fmt_duration(mission.duration_ms)]
     if mission.attempts > 1:
@@ -504,7 +602,7 @@ def _render_mission(mission: MissionResult) -> str:
         steps_html = f'<div class="step-error" style="margin:12px 16px;">{_esc(mission.error)}</div>'
 
     return (
-        f'<div class="mission">'
+        f'<div class="mission" data-status="{_esc(status)}" data-tags="{tags_attr}">'
         f'  <div class="mission-header">'
         f'    <span class="chevron">\u25b6</span>'
         f'    <span class="icon">{icon}</span>'
@@ -525,7 +623,26 @@ def _render_html(summary: RunSummary) -> str:
     flaky_pct = (summary.flaky / total) * 100
     fail_pct = (summary.failed / total) * 100
 
+    # Collect unique tags across all missions for the filter UI
+    all_tags: list[str] = sorted({t for m in summary.missions for t in m.tags})
+
     missions_html = "\n".join(_render_mission(m) for m in summary.missions)
+
+    # Build control panel HTML
+    tag_chips_html = ""
+    if all_tags:
+        chips = "".join(
+            f'<span class="tag-chip" data-tag="{_esc(t)}">{_esc(t)}</span>'
+            for t in all_tags
+        )
+        tag_chips_html = f'<span class="tag-divider"></span><div class="tag-chips">{chips}</div>'
+
+    control_panel_html = (
+        f'<div class="control-panel">'
+        f'<label><input type="checkbox" id="filter-failed"> Show only failed</label>'
+        f'{tag_chips_html}'
+        f'</div>'
+    )
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -581,6 +698,9 @@ def _render_html(summary: RunSummary) -> str:
     <div class="seg-fail" style="width:{fail_pct:.1f}%"></div>
   </div>
 </div>
+
+<!-- Control Panel -->
+{control_panel_html}
 
 <!-- Missions -->
 {missions_html}
