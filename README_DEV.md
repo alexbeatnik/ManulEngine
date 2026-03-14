@@ -68,7 +68,10 @@ ManulEngine/
 │       ├── test_30_heuristic_weights.py Synthetic+Unit: DOMScorer priority hierarchy (32 assertions)
 │       ├── test_31_visibility_treewalker.py Synthetic+Unit: TreeWalker PRUNE/checkVisibility (20 assertions)
 │       ├── test_32_verify_enabled.py VERIFY ENABLED/DISABLED state verification (20 assertions, no browser)
-│       └── test_33_call_python_args.py CALL PYTHON with positional arguments (44 assertions, no browser)
+│       ├── test_33_call_python_args.py CALL PYTHON with positional arguments (44 assertions, no browser)
+│       ├── test_34_verify_checked.py Unit: VERIFY checked/NOT checked (20 assertions, no browser)
+│       ├── test_35_scanner.py       Unit: Smart Page Scanner build_hunt() (44 assertions, no browser)
+│       └── test_36_scoring_math.py   Unit: exact numerical scoring validation (29 assertions, no browser)
 ├── controls/                         User-owned custom Python handlers (auto-loaded at engine startup)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
@@ -580,9 +583,9 @@ manul tests/mission.hunt
 
 ---
 
-## 🐾 Chaos Chamber Verified (1890+ Tests)
+## 🐾 Chaos Chamber Verified (1983 Tests)
 
-The engine is battle-tested with **1890+** synthetic DOM/unit tests covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, and visibility edge cases.
+The engine is battle-tested with **1983** synthetic DOM/unit tests across 37 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, and visibility edge cases.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).
@@ -603,6 +606,9 @@ The engine is battle-tested with **1890+** synthetic DOM/unit tests covering the
 * **Visibility & TreeWalker synthetic+unit suite:** `manul_engine/test/test_31_visibility_treewalker.py` (PRUNE set subtree skipping, `checkVisibility` filtering, special hidden inputs, snapshot element counts, 20 assertions).
 * **VERIFY ENABLED/DISABLED unit suite:** `manul_engine/test/test_32_verify_enabled.py` (STATE_CHECK_JS enabled/disabled logic, buttons, inputs, selects, textareas, ARIA roles, CSS-based states, 20 assertions, no browser).
 * **CALL PYTHON with arguments unit suite:** `manul_engine/test/test_33_call_python_args.py` (`_parse_call_args`, variable resolution, file-based helper execution, engine integration with memory, backward compatibility, 44 assertions, no browser).
+* **VERIFY checked/NOT checked unit suite:** `manul_engine/test/test_34_verify_checked.py` (checkbox state verification via JS checked property, ARIA checked, mixed states, 20 assertions, no browser).
+* **Smart Page Scanner unit suite:** `manul_engine/test/test_35_scanner.py` (`build_hunt()` element-to-step mapping, keyword generation, metadata headers, edge cases, 44 assertions, no browser).
+* **Scoring Math unit suite:** `manul_engine/test/test_36_scoring_math.py` (exact numerical scoring validation, WEIGHTS/SCALE constants, channel arithmetic, penalty multipliers, 29 assertions, no browser).
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
 Run the synthetic suite:
@@ -645,7 +651,7 @@ The `prompts/` directory contains ready-to-use LLM prompt templates that let you
 
 ## 🖱️ VS Code Extension
 
-The `vscode-extension/` directory contains a companion VS Code extension (v0.0.89) that provides:
+The `vscode-extension/` directory contains a companion VS Code extension (v0.0.90) that provides:
 
 | Feature | Details |
 | --- | --- |

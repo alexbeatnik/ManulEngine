@@ -692,7 +692,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 
 ## 🐾 Battle-Tested
 
-ManulEngine is verified against **1890+ synthetic DOM tests** covering:
+ManulEngine is verified against **1983 synthetic DOM tests** across 37 test suites covering:
 
 - Shadow DOM, invisible overlays, zero-pixel honeypots
 - Same-origin iframe element routing and cross-frame resolution

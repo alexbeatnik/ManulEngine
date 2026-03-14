@@ -63,6 +63,9 @@ manul_engine/
     test_31_visibility_treewalker.py TreeWalker PRUNE/checkVisibility (20 assertions)
     test_32_verify_enabled.py    VERIFY ENABLED/DISABLED state verification (20 assertions)
     test_33_call_python_args.py  CALL PYTHON with positional arguments (44 assertions, no browser)
+    test_34_verify_checked.py    VERIFY checked/NOT checked state verification (20 assertions, no browser)
+    test_35_scanner.py           Smart Page Scanner build_hunt() (44 assertions, no browser)
+    test_36_scoring_math.py      Exact numerical scoring validation (29 assertions, no browser)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
