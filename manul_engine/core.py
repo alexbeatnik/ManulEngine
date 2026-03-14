@@ -1044,6 +1044,25 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                     print("    ❌ ACTION FAILED")
                                     _step_ok = False; ok = False; break
 
+                        elif step_kind == "set_var":
+                            # SET {var} = value — assign a variable mid-flight.
+                            _set_m = re.match(
+                                r"(?:\d+\.\s*)?SET\s+\{?(\w+)\}?\s*=\s*(.+)",
+                                step, re.IGNORECASE,
+                            )
+                            if _set_m:
+                                _sv_name = _set_m.group(1)
+                                _sv_raw = _set_m.group(2).strip()
+                                # Strip surrounding quotes if present.
+                                if len(_sv_raw) >= 2 and _sv_raw[0] in ("'", '"') and _sv_raw[-1] == _sv_raw[0]:
+                                    _sv_raw = _sv_raw[1:-1]
+                                self.memory[_sv_name] = _sv_raw
+                                print(f"    📝 SET {{{_sv_name}}} = {_sv_raw}")
+                            else:
+                                _step_error = f"Malformed SET command: {step}"
+                                print(f"    ❌ {_step_error}")
+                                _step_ok = False; ok = False; break
+
                         elif step_kind == "debug":
                             # In debug_mode the pre-step _debug_prompt() above already
                             # paused execution; treat this step as a no-op to avoid a

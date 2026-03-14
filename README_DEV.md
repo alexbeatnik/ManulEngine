@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.0.9.1 — The Mastermind
+# 😼 ManulEngine v0.0.9.2 — The Mastermind
 
 **A deterministic, DSL-first E2E browser automation platform.**
 Write unbreakable tests in plain English — powered by blazing-fast heuristics, with optional local AI for self-healing.
@@ -22,7 +22,7 @@ ManulEngine resolves elements using a mathematically sound `DOMScorer` (normalis
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                        Build config — package: manul-engine 0.0.9.1
+├── pyproject.toml                        Build config — package: manul-engine 0.0.9.2
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
@@ -70,7 +70,8 @@ ManulEngine/
 │       ├── test_34_verify_checked.py Synthetic: VERIFY checked/NOT checked (20 assertions)
 │       ├── test_35_scanner.py       Synthetic+Unit: Smart Page Scanner build_hunt() (44 assertions)
 │       ├── test_36_scoring_math.py   Unit: exact numerical scoring validation (29 assertions, no browser)
-│       └── test_37_enterprise_dsl.py Unit: Enterprise DSL — @data:, MOCK, VERIFY VISUAL/SOFTLY, reporter warnings (68 assertions, no browser)
+│       ├── test_37_enterprise_dsl.py Unit: Enterprise DSL — @data:, MOCK, VERIFY VISUAL/SOFTLY, reporter warnings (68 assertions, no browser)
+│       └── test_38_set_and_indent.py Unit: SET command & indentation robustness (v0.0.9.2)
 ├── controls/                         User-owned custom Python handlers (auto-loaded at engine startup)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
@@ -88,14 +89,15 @@ ManulEngine/
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 └── vscode-extension/                 VS Code extension (language support + UI)
-    └── package.json                  Extension manifest (v0.0.91)
+    └── package.json                  Extension manifest (v0.0.92)
     ├── src/
-    │   ├── extension.ts              Activation, command registration
+    │   ├── extension.ts              Activation, command registration, formatter registration
     │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
     │   ├── huntTestController.ts     VS Code Test Explorer integration
     │   ├── configPanel.ts            Webview sidebar: config editor + Ollama discovery
     │   ├── cacheTreeProvider.ts      Sidebar tree: controls cache browser
     │   ├── stepBuilderPanel.ts       Step Builder sidebar (incl. Live Page Scanner UI + Scan Page button)
+    │   ├── formatter.ts              DocumentFormattingEditProvider for .hunt files (4-space action indent)
     │   └── debugControlPanel.ts      Singleton QuickPick overlay for interactive debug stepping
     └── syntaxes/hunt.tmLanguage.json Hunt file syntax grammar
 ```
@@ -613,6 +615,7 @@ The engine is battle-tested with **1983** synthetic DOM/unit tests across 37 tes
 * **Smart Page Scanner synthetic+unit suite:** `manul_engine/test/test_35_scanner.py` (`build_hunt()` element-to-step mapping, keyword generation, metadata headers, edge cases, 44 assertions).
 * **Scoring Math unit suite:** `manul_engine/test/test_36_scoring_math.py` (exact numerical scoring validation, WEIGHTS/SCALE constants, channel arithmetic, penalty multipliers, 29 assertions, no browser).
 * **Enterprise DSL unit suite:** `manul_engine/test/test_37_enterprise_dsl.py` (`@data:` parsing, `_load_data_file` JSON/CSV loading, MOCK/WAIT FOR RESPONSE/VERIFY VISUAL/VERIFY SOFTLY classification, `ParsedHunt` 9-field compat, reporter warning HTML, `RunSummary.warning`, 68 assertions, no browser).
+* **SET & Indentation unit suite:** `manul_engine/test/test_38_set_and_indent.py` (SET command parsing, regex validation, `substitute_memory` integration, `@var:`+SET coexistence, indentation stripping robustness, tab handling, no browser).
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
 Run the synthetic suite:
@@ -691,7 +694,7 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 ---
 
-**Version:** 0.0.9.1
+**Version:** 0.0.9.2
 
 **Codename:** The Mastermind
 

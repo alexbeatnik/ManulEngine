@@ -33,7 +33,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.1
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.2
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
@@ -78,6 +78,7 @@ manul_engine/
     test_35_scanner.py           Smart Page Scanner build_hunt() (44 assertions, no browser)
     test_36_scoring_math.py      Exact numerical scoring validation (29 assertions, no browser)
     test_37_enterprise_dsl.py    Enterprise DSL: @data:, MOCK, VERIFY VISUAL/SOFTLY, reporter warnings (68 assertions, no browser)
+    test_38_set_and_indent.py    SET command & indentation robustness (v0.0.9.2)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
@@ -88,14 +89,15 @@ tests/
   demo_login.hunt         integration: login with @var: static variables
   demo_variables.hunt     integration: @var: + CALL PYTHON into {var} combined
 vscode-extension/
-  package.json              Extension manifest (v0.0.91)
+  package.json              Extension manifest (v0.0.92)
   src:
-    extension.ts            Activation, command registration
+    extension.ts            Activation, command registration, formatter registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
     huntTestController.ts   VS Code Test Explorer integration (step-level reporting)
     configPanel.ts          Webview sidebar: config editor + Ollama model discovery
     cacheTreeProvider.ts    Sidebar tree: controls cache browser
     stepBuilderPanel.ts     Sidebar webview: step-insertion buttons + new hunt file (incl. Scan Page)
+    formatter.ts            DocumentFormattingEditProvider for .hunt files (4-space action indent)
     debugControlPanel.ts    Singleton QuickPick overlay for interactive debug stepping
     constants.ts            Shared constants (DEFAULT_CONFIG_FILENAME, PAUSE_MARKER, terminal names, getConfigFileName())
   syntaxes/hunt.tmLanguage.json  Hunt file syntax grammar
@@ -180,6 +182,7 @@ Rules for STEP-grouped files:
 * `WAIT FOR RESPONSE "url_pattern"` — Blocks until a network response matching the URL pattern arrives (substring match via `page.wait_for_response()`). Uses `nav_timeout`.
 * `SCAN PAGE` — scans the current page for interactive elements and prints a draft `.hunt` to the console.
 * `SCAN PAGE into {filename}` — same, but also writes the draft to `{filename}`. Default output dir is `tests_home` from config.
+* `SET {variable_name} = value` — Sets a runtime variable mid-flight. Both `{braced}` and bare key forms accepted. Quoted values (`'...'` / `"..."`) are auto-unquoted. The variable is immediately available for `{placeholder}` substitution in all subsequent steps.
 * `DEBUG` / `PAUSE` — pauses execution at that step. In interactive terminal mode (`--debug`), draws a dashed red border around the resolved element and prompts the user; when run via VS Code extension, emits the debug pause protocol marker (see below).
 * `DONE.`
 
@@ -238,6 +241,7 @@ These keywords are detected via word-boundary regex, bypass heuristics, and are 
 * `WAIT FOR RESPONSE "url_pattern"` — Blocks until a network response matching the URL pattern arrives (substring match via `page.wait_for_response()`). Uses `nav_timeout`.
 * `SCAN PAGE` — Runs `SCAN_JS` on the current page, maps results to hunt steps, prints a draft to console.
 * `SCAN PAGE into {filename}` — Same, but also writes the draft to `{filename}`. Output defaults to `{tests_home}/draft.hunt` (reads `tests_home` from `manul_engine_configuration.json`, defaults to `tests/`).
+* `SET {variable_name} = value` — Sets a runtime variable mid-flight. Both `{braced}` and bare key forms accepted. Quoted values are auto-unquoted. Available for `{placeholder}` substitution in subsequent steps.
 * `DONE.` — Explicitly ends the mission.
 * `[SETUP]` / `[END SETUP]` — Block wrapping `CALL PYTHON <module>.<function>` lines. Runs **before** the browser launches. If any line fails, the mission is skipped and teardown is not called.
 * `[TEARDOWN]` / `[END TEARDOWN]` — Cleanup block. Runs in a `finally` block **after** the mission (pass or fail). Only executed if `[SETUP]` succeeded. Failure is logged but does not override the mission result.
@@ -341,7 +345,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * `prompts.py` loads config from `manul_engine_configuration.json` (CWD first, then package root fallback). No dotenv dependency.
 * `js_scripts.py` owns **all** JavaScript constants injected into the browser — no inline JS in Python files. This includes `SCAN_JS` (Smart Page Scanner).
 * `scanner.py` owns the standalone scan logic: `SCAN_JS` is imported from `js_scripts.py`; `build_hunt()` maps raw element dicts to hunt steps; `scan_page()` is the async Playwright runner; `scan_main()` is the async CLI entry called by `cli.py`. `_default_output()` reads `tests_home` from the config to derive the default output path.
-* `helpers.py` provides `env_bool(name, default)` for parsing boolean env vars; `detect_mode(step)` returns the interaction mode string (`"input"`, `"clickable"`, `"select"`, `"hover"`, `"drag"`, `"locate"`); `classify_step(step)` returns a step kind string (`"navigate"`, `"wait"`, `"scroll"`, `"extract"`, `"verify"`, `"press_enter"`, `"press"`, `"right_click"`, `"upload"`, `"scan_page"`, `"call_python"`, `"debug"`, `"done"`, or `"action"`) — used by `run_mission()` and `_execute_step()` to avoid duplicated regex dispatches.
+* `helpers.py` provides `env_bool(name, default)` for parsing boolean env vars; `detect_mode(step)` returns the interaction mode string (`"input"`, `"clickable"`, `"select"`, `"hover"`, `"drag"`, `"locate"`); `classify_step(step)` returns a step kind string (`"navigate"`, `"wait"`, `"scroll"`, `"extract"`, `"verify"`, `"press_enter"`, `"press"`, `"right_click"`, `"upload"`, `"scan_page"`, `"call_python"`, `"set_var"`, `"debug"`, `"done"`, or `"action"`) — used by `run_mission()` and `_execute_step()` to avoid duplicated regex dispatches.
 * **Null model = heuristics-only:** When `model` is `None`, `_llm_json()` returns `None` immediately. `get_threshold(None)` returns `0`. No Ollama calls are made.
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
 * **Debug mode:** `ManulEngine(debug_mode=True, break_steps={N,...})`. `debug_mode=True` (from `--debug`) highlights the resolved element and pauses before every step using `input()` in TTY or Playwright's `page.pause()`. `break_steps` (from `--break-lines`) pauses only at listed step indices using the stdout/stdin panel protocol when stdout is not a TTY. The two are mutually exclusive in practice — the extension only ever sets `break_steps` via `--break-lines`.
