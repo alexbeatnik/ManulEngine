@@ -18,14 +18,21 @@ Manul combines the blazing speed of **Playwright**, 20+ JavaScript DOM heuristic
 
 ---
 
-## 🚀 What's New: The Engine Overhaul
+## 🚀 What's New in v0.0.9.0 — The Power User Update
+
+* **`VERIFY ... is ENABLED`:** State verification now supports both `ENABLED` and `DISABLED` checks. Assert that interactive elements are truly active before attempting actions — `VERIFY that 'Submit' is ENABLED`.
+* **`CALL PYTHON` with Arguments:** Hook functions and inline `CALL PYTHON` steps now accept positional arguments — static strings, unquoted tokens, and `{var}` placeholders resolved at runtime. `CALL PYTHON helpers.multiply "6" "7" into {product}`. Arguments are tokenised with `shlex.split()`.
+* **Interactive HTML Reporter:** Control panel with **"Show Only Failed" checkbox** and **tag filter chips**. All `@tags` from executed hunt files are auto-collected and rendered as clickable chips for instant filtering. Missions carry `data-status` and `data-tags` attributes — all powered by inline Vanilla JS with zero external dependencies.
+* **Dual Persona Workflow:** QA writes plain English. SDETs write Python hooks that now accept dynamic arguments (`{variables}`) directly from the `.hunt` file — no code changes needed on the QA side when backend logic evolves.
+
+### Previous highlights
 
 * **Normalised Heuristic Scoring (DOMScorer):** The scoring engine now uses `0.0–1.0` float arithmetic under the hood. Five weighted channels — `cache` (2.0), `semantics` (0.60), `text` (0.45), `attributes` (0.25), `proximity` (0.10) — are combined via a `WEIGHTS` dict and multiplied by `SCALE=177,778` to produce the final integer score. Exact `data-qa` match is the single strongest heuristic signal (+1.0 text). Penalties are clean multipliers: disabled ×0.0, hidden ×0.1.
 * **TreeWalker-Based DOM Scanner:** `SNAPSHOT_JS` no longer calls `querySelectorAll` — it walks the DOM with a native `TreeWalker` and a `PRUNE` set (`SCRIPT, STYLE, SVG, NOSCRIPT, TEMPLATE, META, PATH, G, BR, HR`) that rejects entire subtrees in one hop. Visibility is checked via the zero-layout-thrash `checkVisibility()` API with automatic `offsetWidth/offsetHeight` fallback. Hidden file/checkbox/radio inputs are preserved as special exceptions.
 * **Safe iframe Support:** `_snapshot()` iterates `page.frames`, injects `SNAPSHOT_JS` into each same-origin frame, and tags every returned element with `frame_index`. `_frame_for(page, el)` routes all downstream `locator()` and `evaluate()` calls to the correct Playwright `Frame`. Cross-origin and detached frames are silently skipped with retry logic.
 * **Clean, Unnumbered DSL:** Scripts now read exactly like plain English (`NAVIGATE to url` instead of `1. NAVIGATE to url`).
 * **Logical STEP Grouping:** `STEP [optional number]: [Description]` metadata blocks map manual QA cases directly into `.hunt` files.
-* **Enterprise HTML Reporter:** Dual-mode, zero-dependency reporter with native HTML5 accordions, auto-expanding failures, and Flexbox layout.
+* **Interactive Enterprise HTML Reporter:** Dual-mode, zero-dependency reporter with native HTML5 accordions, auto-expanding failures, Flexbox layout, **"Show Only Failed" toggle**, and **tag-based filtering chips** — all powered by inline Vanilla JS with zero external dependencies.
 * **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, `@after_group` orchestrate DB seeding and auth. `ctx.variables` serialise across parallel `--workers`.
 
 ## ✨ Key Features
@@ -83,13 +90,15 @@ manul tests/ --retries 3 --html-report  # retry + generate an HTML report
 
 Or set `"retries": 2` in `manul_engine_configuration.json` for a permanent default. Each retry is a full fresh run — no stale state carried over.
 
-### 📊 Enterprise HTML Reporter
+### 📊 Interactive Enterprise HTML Reporter
 
 One flag. One self-contained HTML file. Dark-themed dashboard with pass/fail stats, native HTML5 `<details>` step accordions, inline base64 screenshots, and XSS-safe output — zero external dependencies, zero CDN, zero server.
 
 **Enterprise Upgrades:**
 * **Dual-Mode Rendering:** If `STEP` blocks are used, steps are grouped into logical Accordions. Passing steps collapse by default; failing steps auto-expand to show exactly what broke.
 * **Flexbox Layout:** Dropped clunky tables for a sleek Flexbox design ensuring perfect text alignment and zero text mashing.
+* **"Show Only Failed" Toggle:** A control-panel checkbox instantly hides all passing tests — zero-click triage for large suites.
+* **Tag Filter Chips:** All `@tags` from executed hunt files are collected and rendered as clickable chips. Click a tag to show only matching tests — perfect for filtering by `smoke`, `regression`, `login`, etc.
 
 ```bash
 manul tests/ --html-report                          # report saved to reports/manul_report.html
@@ -238,6 +247,19 @@ VERIFY that 'Dashboard' is present.
 ```
 
 The same module resolution rules apply as for `[SETUP]`/`[TEARDOWN]`: hunt file directory → CWD → `sys.path`. Functions must be synchronous. If the call fails, the mission stops immediately — just like any other failed step. No special syntax or block wrapping required.
+
+#### Passing arguments to Python functions
+
+`CALL PYTHON` now accepts optional positional arguments — static strings, unquoted tokens, and `{var}` placeholders resolved from the engine’s runtime memory:
+
+```text
+CALL PYTHON helpers.multiply "6" "7" into {product}
+CALL PYTHON api.send_email "{user_email}" "Welcome!"
+CALL PYTHON utils.concat 'a' 'b' 'c' into {result}
+```
+
+Arguments are tokenised with `shlex.split()` — single-quoted, double-quoted, and unquoted tokens are all accepted. `{var}` placeholders inside arguments are resolved from the engine’s runtime memory; unresolved placeholders are kept as-is.
+
 #### Capturing return values with `into {var}`
 
 Append `into {var_name}` (or `to {var_name}`) to bind the function’s return value directly into an in-mission variable:
@@ -245,6 +267,13 @@ Append `into {var_name}` (or `to {var_name}`) to bind the function’s return va
 ```text
 CALL PYTHON api_helpers.fetch_otp into {dynamic_otp}
 Fill 'Security Code' field with '{dynamic_otp}'
+```
+
+Combine arguments and capture in one line:
+
+```text
+CALL PYTHON api_helpers.fetch_otp "{email}" into {otp}
+Fill 'OTP' field with '{otp}'
 ```
 
 The raw return value is converted to a string (`str(return_value)`) and stored under the variable name. It is then available for `{placeholder}` substitution in every subsequent step, exactly like variables populated by `EXTRACT` or `@var:`.
@@ -464,7 +493,8 @@ Lines starting with `#` are ignored.
 | `EXTRACT [target] into {var}` | Extract text into a memory variable |
 | `VERIFY that [target] is present` | Assert text/element is visible |
 | `VERIFY that [target] is NOT present` | Assert absence |
-| `VERIFY that [target] is DISABLED` | Assert element state |
+| `VERIFY that [target] is DISABLED` | Assert element is disabled |
+| `VERIFY that [target] is ENABLED` | Assert element is enabled / interactable |
 | `VERIFY that [target] is checked` | Assert checkbox state |
 | `SCAN PAGE` | Scan the current page for interactive elements and print a draft `.hunt` to the console |
 | `SCAN PAGE into {filename}` | Same, and also write the draft to `{filename}` (default: `tests_home/draft.hunt`) |
@@ -495,7 +525,8 @@ Rules:
 - Functions must be **synchronous** (async functions are explicitly rejected).
 - A single `[SETUP]`/`[TEARDOWN]` block may contain multiple `CALL PYTHON` lines; they run sequentially — first failure stops the block.
 - An inline `CALL PYTHON` step that fails stops the mission immediately, just like any other failed step.
-- Append `into {var_name}` (or `to {var_name}`) to a `CALL PYTHON` step to bind the function’s return value into a variable: `CALL PYTHON api.fetch_otp into {otp}`. The value is converted to a string and available for `{placeholder}` substitution in all subsequent steps.
+- Append `into {var_name}` (or `to {var_name}`) to a `CALL PYTHON` step to bind the function's return value into a variable: `CALL PYTHON api.fetch_otp into {otp}`. The value is converted to a string and available for `{placeholder}` substitution in all subsequent steps.
+- Pass positional arguments after the dotted function name: `CALL PYTHON helpers.multiply "6" "7" into {product}`. Arguments are tokenised with `shlex.split()` and `{var}` placeholders are resolved from runtime memory.
 - The module is searched in: hunt file directory → CWD → `sys.path`. No import configuration needed.
 
 ### Interaction Steps
@@ -648,7 +679,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 | **Selection** | `Select [Option] from [Dropdown]`, `Check [Checkbox]`, `Uncheck [Checkbox]` |
 | **Mouse Action** | `HOVER over [Element]`, `Drag [Element] and drop it into [Target]` |
 | **Data Extraction** | `EXTRACT [Target] into {variable_name}` |
-| **Verification** | `VERIFY that [Text] is present/absent`, `VERIFY that [Element] is checked/disabled` |
+| **Verification** | `VERIFY that [Text] is present/absent`, `VERIFY that [Element] is checked/disabled/enabled` |
 | **Page Scanner** | `SCAN PAGE`, `SCAN PAGE into {filename}` |
 | **Debug** | `DEBUG` / `PAUSE` — pause execution at that step (use with `--debug` or VS Code gutter breakpoints) |
 | **Keyboard** | `PRESS ENTER`, `PRESS [Key]`, `PRESS [Key] on [Element]` |
@@ -663,7 +694,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 
 ## 🐾 Battle-Tested
 
-ManulEngine is verified against **1803+ synthetic DOM tests** covering:
+ManulEngine is verified against **1983 synthetic DOM tests** across 37 test suites covering:
 
 - Shadow DOM, invisible overlays, zero-pixel honeypots
 - Same-origin iframe element routing and cross-frame resolution
@@ -676,4 +707,4 @@ ManulEngine is verified against **1803+ synthetic DOM tests** covering:
 
 ---
 
-**Version:** 0.0.8.9 · **Status:** Hunting...
+**Version:** 0.0.9.0 · **Status:** Hunting...

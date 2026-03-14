@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.0.8.9 — The Mastermind
+# 😼 ManulEngine v0.0.9.0 — The Mastermind
 
 ManulEngine is a relentless hybrid (neuro-symbolic) framework for browser automation and E2E testing.
 
@@ -24,7 +24,7 @@ Manul combines the blazing speed of Playwright, powerful JavaScript DOM heuristi
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.8.9
+├── pyproject.toml                        Build config — package: manul-engine 0.0.9.0
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
@@ -42,7 +42,7 @@ ManulEngine/
 │   ├── cache.py                      Persistent per-site controls cache mixin
 │   ├── actions.py                    Action execution mixin (click, type, select, hover, drag, scan_page)
 │   ├── reporting.py                  StepResult, MissionResult, RunSummary dataclasses
-│   ├── reporter.py                   Self-contained HTML report generator (dark theme, base64 screenshots)
+│   ├── reporter.py                   Interactive HTML report generator (dark theme, control panel, tag chips, base64 screenshots)
 │   └── test/
 │       ├── test_00_engine.py         Engine micro-suite (synthetic DOM via local HTML)
 │       ├── test_01_ecommerce.py      Scenario pack: ecommerce
@@ -58,15 +58,20 @@ ManulEngine/
 │       ├── test_20_variables.py      Unit: @var: static variable declaration (17 assertions, no browser)
 │       ├── test_21_dynamic_vars.py   Unit: CALL PYTHON ... into {var} dynamic variable capture
 │       ├── test_22_tags.py           Unit: @tags: / --tags CLI filter (20 assertions, no browser)
-│       ├── test_23_advanced_interactions.py  Unit: PRESS/RIGHT CLICK/UPLOAD (39 assertions, no browser)
+│       ├── test_23_advanced_interactions.py  Unit: PRESS/RIGHT CLICK/UPLOAD (48 assertions, no browser)
 │       ├── test_24_reporting.py      Unit: StepResult/MissionResult/RunSummary dataclasses (45 assertions)
-│       ├── test_25_reporter.py       Unit: HTML report generator (42 assertions, no browser)
+│       ├── test_25_reporter.py       Unit: HTML report generator (65 assertions, no browser)
 │       ├── test_26_wikipedia_search.py Unit: name_attr heuristic scoring (20 assertions, no browser)
 │       ├── test_27_lifecycle_hooks.py  Unit: Global Lifecycle Hook system (57 assertions, no browser)
 │       ├── test_28_logical_steps.py    Unit: Logical STEP ordering and parser (48 assertions, no browser)
 │       ├── test_29_iframe_routing.py   Synthetic: Cross-frame element resolution (25 assertions)
 │       ├── test_30_heuristic_weights.py Synthetic+Unit: DOMScorer priority hierarchy (32 assertions)
-│       └── test_31_visibility_treewalker.py Synthetic+Unit: TreeWalker PRUNE/checkVisibility (20 assertions)
+│       ├── test_31_visibility_treewalker.py Synthetic+Unit: TreeWalker PRUNE/checkVisibility (20 assertions)
+│       ├── test_32_verify_enabled.py Synthetic: VERIFY ENABLED/DISABLED state verification (20 assertions)
+│       ├── test_33_call_python_args.py Unit: CALL PYTHON with positional arguments (44 assertions, no browser)
+│       ├── test_34_verify_checked.py Synthetic: VERIFY checked/NOT checked (20 assertions)
+│       ├── test_35_scanner.py       Synthetic+Unit: Smart Page Scanner build_hunt() (44 assertions)
+│       └── test_36_scoring_math.py   Unit: exact numerical scoring validation (29 assertions, no browser)
 ├── controls/                         User-owned custom Python handlers (auto-loaded at engine startup)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
@@ -84,7 +89,7 @@ ManulEngine/
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 └── vscode-extension/                 VS Code extension (language support + UI)
-    ├── package.json                  Extension manifest (v0.0.89)
+    └── package.json                  Extension manifest (v0.0.90)
     ├── src/
     │   ├── extension.ts              Activation, command registration
     │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
@@ -105,7 +110,7 @@ ManulEngine/
 * **Safe iframe Support:** `_snapshot()` iterates `page.frames`, injects `SNAPSHOT_JS` per frame, tags elements with `frame_index`. `_frame_for(page, el)` routes `locator()`/`evaluate()` to the correct Playwright `Frame`. Cross-origin frames silently skipped; stale indices fall back to main frame. All 12+ locator call-sites in `actions.py` route through `frame`.
 * **Clean, Unnumbered DSL:** Scripts read like plain English (`NAVIGATE to url` instead of `1. NAVIGATE to url`).
 * **Logical STEP Grouping:** `STEP [optional number]: [Description]` metadata blocks map manual QA cases directly into `.hunt` files.
-* **Enterprise HTML Reporter:** Dual-mode, zero-dependency reporter with native HTML5 accordions, auto-expanding failures, and Flexbox layout.
+* **Interactive Enterprise HTML Reporter:** Dual-mode, zero-dependency reporter with native HTML5 accordions, auto-expanding failures, Flexbox layout, **"Show Only Failed" toggle**, and **tag filter chips** — inline Vanilla JS, zero dependencies.
 * **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, `@after_group` orchestrate DB seeding and auth. `ctx.variables` serialise across parallel `--workers`.
 
 ## ✨ Key Features
@@ -216,11 +221,24 @@ Version 0.0.8.3 introduces a pre/post hook mechanism powered by `manul_engine/ho
 
 ```python
 extract_hook_blocks(raw_text)  → (setup_lines, teardown_lines, mission_body)
-execute_hook_line(line, hunt_dir)  → HookResult(success, message, return_value, var_name)
-run_hooks(lines, label, hunt_dir)  → bool
+execute_hook_line(line, hunt_dir, variables)  → HookResult(success, message, return_value, var_name)
+run_hooks(lines, label, hunt_dir, variables)  → bool
 ```
 
 **`HookResult` fields:** `success: bool`, `message: str`, `return_value: str | None`, `var_name: str | None`. The last two fields are populated when the step used the `into {var}` / `to {var}` capture syntax (see *Dynamic Variables* below); they are `None` for plain `CALL PYTHON` steps. When `into/to` is present, `return_value` is **always** set to `str(ret)` — even when the function returns `None` (yielding the string `"None"`). This guarantees that `{var}` is always bound after a capture step.
+
+**Positional arguments (v0.0.9.0):** `CALL PYTHON` now accepts optional positional arguments between the dotted function name and the optional `into {var}` clause. Arguments are tokenised with `shlex.split()` — single-quoted, double-quoted, and unquoted tokens are all accepted. `{var}` placeholders inside arguments are resolved from the engine’s runtime memory (`self.memory` for inline steps, `parsed_vars`/`variables` dict for hook blocks). Unresolved placeholders are kept as-is.
+
+Full syntax variants:
+
+```text
+CALL PYTHON <module>.<function>
+CALL PYTHON <module>.<function> "arg1" 'arg2' {var}
+CALL PYTHON <module>.<function> "arg1" {var} into {result}
+CALL PYTHON <module>.<function> into {result}
+```
+
+The regex uses a two-step parsing approach: `_RE_CALL_PYTHON` captures the dotted name and everything after it; `_RE_INTO_VAR` then strips the trailing `into/to {var}` clause from the remainder. What’s left becomes the raw arguments string, parsed by `_parse_call_args()`. This cleanly handles all four variants without backtracking issues.
 
 **Dynamic Variables via `CALL PYTHON ... into {var}`:** Inline `CALL PYTHON` steps may optionally bind their return value to a mission variable:
 
@@ -553,7 +571,7 @@ manul tests/mission.hunt
 | **Selection** | `Select [Option] from [Dropdown]`, `Check [Checkbox]`, `Uncheck [Checkbox]` |
 | **Mouse Action** | `HOVER over [Element]`, `Drag [Element] and drop it into [Target]` |
 | **Data Extraction** | `EXTRACT [Target] into {variable_name}` |
-| **Verification** | `VERIFY that [Text] is present/absent`, `VERIFY that [Element] is checked/disabled` |
+| **Verification** | `VERIFY that [Text] is present/absent`, `VERIFY that [Element] is checked/disabled/enabled` |
 | **Page Scanner** | `SCAN PAGE`, `SCAN PAGE into {filename}` |
 | **Debug** | `DEBUG` / `PAUSE` — pause execution at that step (use with `--debug` or VS Code gutter breakpoints) |
 | **Keyboard** | `PRESS ENTER`, `PRESS [Key]`, `PRESS [Key] on [Element]` |
@@ -565,9 +583,9 @@ manul tests/mission.hunt
 
 ---
 
-## 🐾 Chaos Chamber Verified (1803+ Tests)
+## 🐾 Chaos Chamber Verified (1983 Tests)
 
-The engine is battle-tested with **1803+** synthetic DOM/unit tests covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, and visibility edge cases.
+The engine is battle-tested with **1983** synthetic DOM/unit tests across 37 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, and visibility edge cases.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).
@@ -577,15 +595,20 @@ The engine is battle-tested with **1803+** synthetic DOM/unit tests covering the
 * **Static Variables unit suite:** `manul_engine/test/test_20_variables.py` (parser correctness, `initial_vars` interpolation, 17 assertions, no browser).
 * **Dynamic Variables unit suite:** `manul_engine/test/test_21_dynamic_vars.py` (`CALL PYTHON ... into {var}` capture and substitution).
 * **Tags unit suite:** `manul_engine/test/test_22_tags.py` (`@tags:` parsing + `--tags` CLI filter, 20 assertions, no browser).
-* **Advanced interactions unit suite:** `manul_engine/test/test_23_advanced_interactions.py` (PRESS, RIGHT CLICK, UPLOAD commands, 39 assertions, no browser).
+* **Advanced interactions unit suite:** `manul_engine/test/test_23_advanced_interactions.py` (PRESS, RIGHT CLICK, UPLOAD commands, 48 assertions, no browser).
 * **Reporting unit suite:** `manul_engine/test/test_24_reporting.py` (StepResult, MissionResult, RunSummary dataclasses, 45 assertions, no browser).
-* **HTML reporter unit suite:** `manul_engine/test/test_25_reporter.py` (HTML report generation, base64 screenshots, XSS safety, 42 assertions, no browser).
+* **HTML reporter unit suite:** `manul_engine/test/test_25_reporter.py` (HTML report generation, base64 screenshots, XSS safety, interactive control panel, tag filtering, 65 assertions, no browser).
 * **Wikipedia Search Input unit suite:** `manul_engine/test/test_26_wikipedia_search.py` (`name_attr` heuristic scoring for `<input name="search">` on Vector 2022 skin, 20 assertions, no browser).
 * **Lifecycle Hooks unit suite:** `manul_engine/test/test_27_lifecycle_hooks.py` (`@before_all`, `@after_all`, `@before_group`, `@after_group`, `GlobalContext`, `load_hooks_file`, serialize/deserialize, 57 assertions, no browser).
 * **Logical Steps unit suite:** `manul_engine/test/test_28_logical_steps.py` (Unnumbered DSL, STEP grouping, snippet injection logic, 48 assertions, no browser).
 * **iframe Routing synthetic suite:** `manul_engine/test/test_29_iframe_routing.py` (`_snapshot` frame iteration, `frame_index` tagging, `_frame_for` routing and stale fallback, 25 assertions).
 * **Heuristic Weights synthetic+unit suite:** `manul_engine/test/test_30_heuristic_weights.py` (DOMScorer float scoring, WEIGHTS/SCALE constants, `data-qa` dominance, disabled/hidden penalties, mode synergy, 32 assertions).
 * **Visibility & TreeWalker synthetic+unit suite:** `manul_engine/test/test_31_visibility_treewalker.py` (PRUNE set subtree skipping, `checkVisibility` filtering, special hidden inputs, snapshot element counts, 20 assertions).
+* **VERIFY ENABLED/DISABLED synthetic suite:** `manul_engine/test/test_32_verify_enabled.py` (STATE_CHECK_JS enabled/disabled logic, buttons, inputs, selects, textareas, ARIA roles, CSS-based states, 20 assertions).
+* **CALL PYTHON with arguments unit suite:** `manul_engine/test/test_33_call_python_args.py` (`_parse_call_args`, variable resolution, file-based helper execution, engine integration with memory, backward compatibility, 44 assertions, no browser).
+* **VERIFY checked/NOT checked synthetic suite:** `manul_engine/test/test_34_verify_checked.py` (checkbox state verification via JS checked property, ARIA checked, mixed states, 20 assertions).
+* **Smart Page Scanner synthetic+unit suite:** `manul_engine/test/test_35_scanner.py` (`build_hunt()` element-to-step mapping, keyword generation, metadata headers, edge cases, 44 assertions).
+* **Scoring Math unit suite:** `manul_engine/test/test_36_scoring_math.py` (exact numerical scoring validation, WEIGHTS/SCALE constants, channel arithmetic, penalty multipliers, 29 assertions, no browser).
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
 Run the synthetic suite:
@@ -628,7 +651,7 @@ The `prompts/` directory contains ready-to-use LLM prompt templates that let you
 
 ## 🖱️ VS Code Extension
 
-The `vscode-extension/` directory contains a companion VS Code extension (v0.0.89) that provides:
+The `vscode-extension/` directory contains a companion VS Code extension (v0.0.90) that provides:
 
 | Feature | Details |
 | --- | --- |
@@ -664,7 +687,7 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 ---
 
-**Version:** 0.0.8.9
+**Version:** 0.0.9.0
 
 **Codename:** The Mastermind
 

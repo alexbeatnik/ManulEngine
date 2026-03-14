@@ -2,7 +2,7 @@
   "name": "manul-engine",
   "displayName": "ManulEngine",
   "description": "Hunt file language support, test runner and configuration UI for ManulEngine browser automation",
-  "version": "0.0.89",
+  "version": "0.0.90",
   "publisher": "manul-engine",
   "icon": "images/icon128.png",
   "repository": {

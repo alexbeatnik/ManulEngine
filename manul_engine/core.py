@@ -1004,7 +1004,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                 # {var} already exists in memory and would have been
                                 # replaced by substitute_memory() before this point.
                                 raw_instr = re.sub(r'^\s*\d+\.\s*', '', raw_step).strip()
-                                result = execute_hook_line(raw_instr, hunt_dir=hunt_dir)
+                                result = execute_hook_line(raw_instr, hunt_dir=hunt_dir, variables=self.memory)
                                 print(f"     {result.message}")
                                 if not result.success:
                                     _step_error = result.message

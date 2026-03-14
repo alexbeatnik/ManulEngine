@@ -72,7 +72,7 @@
     },
     "system-keyword": {
       "name": "keyword.control.hunt",
-      "match": "(?i)\\b(NAVIGATE to|NAVIGATE|VERIFY that|VERIFY|EXTRACT|SCROLL DOWN inside the list|SCROLL DOWN|SCROLL|PRESS ENTER|PRESS|RIGHT CLICK|UPLOAD|WAIT|DONE|DOUBLE CLICK|HOVER)\\b"
+      "match": "(?i)\\b(NAVIGATE to|NAVIGATE|VERIFY that|VERIFY|EXTRACT|SCROLL DOWN inside the list|SCROLL DOWN|SCROLL|PRESS ENTER|PRESS|RIGHT CLICK|UPLOAD|WAIT|DONE|DOUBLE CLICK|HOVER|CALL PYTHON|SCAN PAGE(?: into)?)\\b"
     },
     "action-verb": {
       "name": "keyword.operator.action.hunt",
@@ -104,7 +104,7 @@
     },
     "modifier": {
       "name": "keyword.other.modifier.hunt",
-      "match": "\\b(if exists|optional|NOT|DISABLED|is present|is checked|is NOT present|into|from|that|the|field|button|link|checkbox|radio|dropdown|input)\\b"
+      "match": "\\b(if exists|optional|NOT|DISABLED|ENABLED|is present|is checked|is NOT checked|is NOT present|into|from|that|the|field|button|link|checkbox|radio|dropdown|input)\\b"
     }
   }
 }

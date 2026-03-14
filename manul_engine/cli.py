@@ -280,7 +280,7 @@ async def _run_hunt_file(
     # ── [SETUP] ───────────────────────────────────────────────────────────────
     # If setup fails, we skip the mission and teardown entirely — there is
     # nothing to clean up because setup never completed.
-    if not run_hooks(hunt.setup_lines, label="SETUP", hunt_dir=hunt_dir):
+    if not run_hooks(hunt.setup_lines, label="SETUP", hunt_dir=hunt_dir, variables=hunt.parsed_vars):
         print(f"\n❌ SETUP failed — skipping mission and teardown for {filename}")
         return MissionResult(file=path, name=filename, status="fail", error="SETUP failed")
 
@@ -312,7 +312,7 @@ async def _run_hunt_file(
         # ── [TEARDOWN] ────────────────────────────────────────────────────────
         # Always runs after setup succeeds, regardless of mission outcome.
         # Teardown failures are logged but do not override the mission result.
-        run_hooks(hunt.teardown_lines, label="TEARDOWN", hunt_dir=hunt_dir)
+        run_hooks(hunt.teardown_lines, label="TEARDOWN", hunt_dir=hunt_dir, variables=hunt.parsed_vars)
 
 
 # ── Collect .hunt files from a path ──────────────────────────────────────────
@@ -587,6 +587,7 @@ async def main() -> None:
                         name=os.path.basename(path),
                         status="fail",
                         error="@before_group hook failed",
+                        tags=file_tags,
                     )
                     run_summary.missions.append(_mr)
                     results.append((_mr.name, "FAIL", 0.0))
@@ -598,6 +599,7 @@ async def main() -> None:
                     screenshot_mode=screenshot_mode,
                     global_vars=_lc_ctx.variables,
                 )
+                mission_result.tags = file_tags
                 # ── Retry loop ────────────────────────────────────────────
                 if not mission_result and retries > 0:
                     for attempt in range(2, retries + 2):
@@ -607,6 +609,7 @@ async def main() -> None:
                             screenshot_mode=screenshot_mode,
                             global_vars=_lc_ctx.variables,
                         )
+                        mission_result.tags = file_tags
                         mission_result.attempts = attempt
                         if mission_result:
                             mission_result.status = "flaky"
@@ -634,7 +637,7 @@ async def main() -> None:
             # Serialise ctx.variables so worker processes can inherit them.
             _global_vars_json = serialize_global_vars(_lc_ctx)
 
-            async def _run_subprocess(path: str) -> tuple[str, str, float, str]:
+            async def _run_subprocess(path: str) -> tuple[str, str, float, str, str]:
                 # Build base command: executable + optional script path
                 base: list[str]
                 if manul_exe.endswith(".py"):
@@ -676,13 +679,13 @@ async def main() -> None:
                     elapsed = time.perf_counter() - t0
                     output = raw.decode("utf-8", errors="replace")
                     status = "PASS" if proc.returncode == 0 else "FAIL"
-                    return os.path.basename(path), status, elapsed, output
+                    return os.path.basename(path), status, elapsed, output, path
 
             tasks = [asyncio.create_task(_run_subprocess(p)) for p in files]
             subprocess_results = await asyncio.gather(*tasks)
 
             # Print each hunt's buffered output in original submission order
-            for name, status, elapsed, output in subprocess_results:
+            for name, status, elapsed, output, fpath in subprocess_results:
                 print(output, end="")
                 # Detect flaky status: child prints "marked FLAKY" when
                 # a hunt passes on retry. Exit code is still 0 (pass).
@@ -691,9 +694,10 @@ async def main() -> None:
                 else:
                     _child_status = "pass" if status == "PASS" else "fail"
                 _mr = MissionResult(
-                    file="", name=name,
+                    file=fpath, name=name,
                     status=_child_status,
                     duration_ms=elapsed * 1000,
+                    tags=_read_tags(fpath),
                 )
                 run_summary.missions.append(_mr)
                 results.append((name, _child_status.upper(), elapsed))

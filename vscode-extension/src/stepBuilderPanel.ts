@@ -63,7 +63,8 @@ const STEP_TEMPLATES: StepTemplate[] = [
   { label: "Extract",       icon: "📤", template: "EXTRACT the '' into {}" },
   { label: "Verify present",icon: "✅", template: "VERIFY that '' is present" },
   { label: "Verify absent", icon: "🚫", template: "VERIFY that '' is NOT present" },
-  { label: "Verify state",  icon: "🔒", template: "VERIFY that '' is DISABLED" },
+  { label: "Verify disabled",icon: "🔒", template: "VERIFY that '' is DISABLED" },
+  { label: "Verify enabled", icon: "🔓", template: "VERIFY that '' is ENABLED" },
   { label: "Press Enter",   icon: "↩️",  template: "PRESS ENTER" },
   { label: "Press Key",     icon: "⌨️",  template: "PRESS <KEY>" },
   { label: "Right Click",   icon: "🖱️",  template: "RIGHT CLICK ''" },
@@ -72,7 +73,9 @@ const STEP_TEMPLATES: StepTemplate[] = [
   { label: "Scroll Down",   icon: "⬇️",  template: "SCROLL DOWN" },
   { label: "Scan Page",     icon: "🔍", template: "SCAN PAGE into draft.hunt" },
   { label: "Call Python",   icon: "🐍", template: "CALL PYTHON module_name.function_name" },
+  { label: "Call Python + Args", icon: "🐍", template: "CALL PYTHON module_name.function_name 'arg1' {var}" },
   { label: "Call Python → Var", icon: "🐍", template: "CALL PYTHON module_name.function_name into {variable_name}" },
+  { label: "Call Python Args → Var", icon: "🐍", template: "CALL PYTHON module_name.function_name 'arg1' {var} into {result}" },
   { label: "Debug / Pause", icon: "🐛", template: "DEBUG" },
   { label: "Done",          icon: "🏁", template: "DONE." },
 ];
@@ -306,8 +309,12 @@ async function insertStep(template: string): Promise<void> {
     snippetString = "STEP ${1:1}: ${2:Description}";
   } else if (template === "CALL PYTHON module_name.function_name") {
     snippetString = "CALL PYTHON ${1:module_name}.${2:function_name}";
+  } else if (template === "CALL PYTHON module_name.function_name 'arg1' {var}") {
+    snippetString = "CALL PYTHON ${1:module_name}.${2:function_name} ${3:'arg1'} {${4:var}}";
   } else if (template === "CALL PYTHON module_name.function_name into {variable_name}") {
     snippetString = "CALL PYTHON ${1:module_name}.${2:function_name} into {${3:variable_name}}";
+  } else if (template === "CALL PYTHON module_name.function_name 'arg1' {var} into {result}") {
+    snippetString = "CALL PYTHON ${1:module_name}.${2:function_name} ${3:'arg1'} {${4:var}} into {${5:result}}";
   } else {
     let counter = 1;
     snippetString = snippetString.replace(/''/g, () => `'$\{${counter++}}'`);

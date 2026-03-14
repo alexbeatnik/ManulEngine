@@ -27,7 +27,9 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import os
 import re
+import shlex
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
@@ -39,9 +41,13 @@ RE_TEARDOWN     = re.compile(r"^\[TEARDOWN\]$",       re.IGNORECASE)
 RE_END_TEARDOWN = re.compile(r"^\[END\s+TEARDOWN\]$", re.IGNORECASE)
 
 _RE_CALL_PYTHON = re.compile(
-    r"^CALL\s+PYTHON\s+([\w.]+)(?:\s+(?:into|to)\s+\{(\w+)\})?\s*$",
+    r"^CALL\s+PYTHON\s+([\w.]+)(.*?)$",
     re.IGNORECASE,
 )
+
+_RE_INTO_VAR = re.compile(r"(?:^|\s+)(?:into|to)\s+\{(\w+)\}\s*$", re.IGNORECASE)
+
+_RE_VAR_PLACEHOLDER = re.compile(r"\{(\w+)\}")
 
 
 # ── Result type ───────────────────────────────────────────────────────────────
@@ -149,15 +155,45 @@ def _resolve_module(module_path: str, hunt_dir: str | None) -> ModuleType:
 
 # ── Single-line executor ──────────────────────────────────────────────────────
 
+def _parse_call_args(raw_args: str | None, variables: dict[str, str] | None = None) -> list[str]:
+    """Parse and resolve positional arguments from a CALL PYTHON instruction.
+
+    Handles single/double-quoted strings and ``{var}`` placeholders.
+    Placeholders are resolved against *variables*; unresolved ones are
+    kept as-is (literal ``{name}``).
+    """
+    if not raw_args or not raw_args.strip():
+        return []
+    try:
+        # On Windows, use posix=False so backslashes in paths are preserved.
+        tokens = shlex.split(raw_args, posix=(os.name != "nt"))
+    except ValueError:
+        # Malformed quoting — fall back to simple whitespace split.
+        tokens = raw_args.split()
+    if variables:
+        resolved: list[str] = []
+        for tok in tokens:
+            resolved.append(
+                _RE_VAR_PLACEHOLDER.sub(
+                    lambda m: variables.get(m.group(1), m.group(0)), tok
+                )
+            )
+        return resolved
+    return tokens
+
+
 def execute_hook_line(
     line: str,
     hunt_dir: str | None = None,
+    variables: dict[str, str] | None = None,
 ) -> HookResult:
     """Execute one hook instruction and return a :class:`HookResult`.
 
     Supported syntax::
 
         CALL PYTHON <module_path>.<function_name>
+        CALL PYTHON <module_path>.<function_name> "arg1" 'arg2' {var}
+        CALL PYTHON <module_path>.<function_name> "arg1" into {result}
 
     The target function must be **synchronous**.  Async callables are detected
     and rejected with a descriptive error rather than silently producing a
@@ -167,6 +203,8 @@ def execute_hook_line(
         line:      A stripped instruction string from the hook block.
         hunt_dir:  Absolute path of the directory containing the ``.hunt``
                    file.  Used as the first search root for module resolution.
+        variables: Optional dict of ``{name} → value`` used to resolve
+                   placeholder arguments.
     """
     m = _RE_CALL_PYTHON.match(line)
     if not m:
@@ -180,7 +218,16 @@ def execute_hook_line(
         )
 
     dotted = m.group(1)
-    var_name: str | None = m.group(2) or None  # None when no 'into {var}' clause
+    remainder = m.group(2).strip()  # everything after dotted name
+
+    # Extract 'into {var}' / 'to {var}' clause from the end if present.
+    var_name: str | None = None
+    into_m = _RE_INTO_VAR.search(remainder)
+    if into_m:
+        var_name = into_m.group(1)
+        remainder = remainder[:into_m.start()].strip()  # args without 'into {var}'
+    raw_args_str: str | None = remainder or None
+
     if "." not in dotted:
         return HookResult(
             success=False,
@@ -265,9 +312,13 @@ def execute_hook_line(
             ),
         )
 
+    # ── Parse positional arguments ─────────────────────────────────────────────
+    call_args = _parse_call_args(raw_args_str or "", variables)
+    args_repr = ", ".join(repr(a) for a in call_args)
+
     # ── Execute ───────────────────────────────────────────────────────────────
     try:
-        ret = func()
+        ret = func(*call_args)
         ret_str: str | None = None
         if var_name is not None:
             # Always stringify — even None → "None" — so that a variable binding
@@ -276,7 +327,7 @@ def execute_hook_line(
         suffix = f" → {{{var_name}}} = {ret_str!r}" if var_name and ret_str is not None else ""
         return HookResult(
             success=True,
-            message=f"✔  {dotted}(){suffix}",
+            message=f"✔  {dotted}({args_repr}){suffix}",
             return_value=ret_str,
             var_name=var_name,
         )
@@ -284,7 +335,7 @@ def execute_hook_line(
         return HookResult(
             success=False,
             message=(
-                f"ManulEngine Error: '{dotted}()' raised "
+                f"ManulEngine Error: '{dotted}({args_repr})' raised "
                 f"{type(exc).__name__}: {exc}"
             ),
         )
@@ -296,6 +347,7 @@ def run_hooks(
     lines: list[str],
     label: str = "HOOK",
     hunt_dir: str | None = None,
+    variables: dict[str, str] | None = None,
 ) -> bool:
     """Run all instruction lines in a hook block sequentially.
 
@@ -307,6 +359,8 @@ def run_hooks(
         label:    Display label — ``"SETUP"`` or ``"TEARDOWN"``.
         hunt_dir: Absolute path to the ``.hunt`` file's directory, forwarded
                   to :func:`execute_hook_line` for module resolution.
+        variables: Optional ``{name → value}`` dict forwarded to
+                   :func:`execute_hook_line` for placeholder resolution.
 
     Returns:
         ``True`` if every instruction succeeded; ``False`` if any failed.
@@ -321,7 +375,7 @@ def run_hooks(
 
     for line in lines:
         print(f"  ▶  {line}")
-        result = execute_hook_line(line, hunt_dir=hunt_dir)
+        result = execute_hook_line(line, hunt_dir=hunt_dir, variables=variables)
         print(f"     {result.message}")
         if not result.success:
             print(bar)
