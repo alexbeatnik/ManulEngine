@@ -240,6 +240,13 @@ export function activate(context: vscode.ExtensionContext): void {
       new HuntDocumentFormatter()
     )
   );
+
+  // ── Format button (editor title bar) ───────────────────────────────────────
+  context.subscriptions.push(
+    vscode.commands.registerCommand("manul.formatHuntFile", () =>
+      vscode.commands.executeCommand("editor.action.formatDocument")
+    )
+  );
 }
 
 export function deactivate(): void {
