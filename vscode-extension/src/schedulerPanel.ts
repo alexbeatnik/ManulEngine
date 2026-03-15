@@ -194,8 +194,11 @@ async function mutateScheduleHeader(
     }
   }
 
-  if (schedule) {
-    const newLine = `@schedule: ${schedule}`;
+  // Normalize to a single line: strip newlines and collapse whitespace.
+  const sanitizedSchedule = (schedule ?? "").replace(/[\r\n]+/g, " ").trim();
+
+  if (sanitizedSchedule) {
+    const newLine = `@schedule: ${sanitizedSchedule}`;
     if (existingLine >= 0) {
       // Replace existing @schedule: line
       const range = doc.lineAt(existingLine).range;
@@ -326,9 +329,9 @@ export class SchedulerPanel {
     }
 
     const rawTestsHome = readTestsHome(workspaceRoot);
-    if (/["'`\r\n]/.test(rawTestsHome)) {
+    if (/["'`$\r\n]/.test(rawTestsHome)) {
       vscode.window.showErrorMessage(
-        "ManulEngine: Invalid tests_home path in config. It must not contain quotes or newlines."
+        "ManulEngine: Invalid tests_home path in config. It must not contain quotes, $, or newlines."
       );
       return;
     }
@@ -357,8 +360,8 @@ export class SchedulerPanel {
     const shellBase = path.basename((vscode.env.shell || "").toLowerCase());
     const isPowerShell = shellBase === "powershell.exe" || shellBase === "pwsh" || shellBase === "pwsh.exe";
     const cmd = isPowerShell
-      ? `& "${manulExe}" daemon "${testsHome}" --headless`
-      : `"${manulExe}" daemon "${testsHome}" --headless`;
+      ? `& "${manulExe}" daemon '${testsHome}' --headless`
+      : `"${manulExe}" daemon '${testsHome}' --headless`;
     terminal.sendText(cmd);
 
     this._postStatus();

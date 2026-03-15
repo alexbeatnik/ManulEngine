@@ -667,8 +667,8 @@ async function runRecordSessionCommand(rawUrl: string): Promise<void> {
     );
     return;
   }
-  // Guard against shell injection: refuse URLs containing quotes, backticks, or newlines.
-  if (/["'`\r\n]/.test(normalizedUrl)) {
+  // Guard against shell injection: refuse URLs containing quotes, backticks, $, or newlines.
+  if (/["'`$\r\n]/.test(normalizedUrl)) {
     vscode.window.showErrorMessage(
       "ManulEngine: The URL contains unsupported characters. Please provide a standard URL."
     );
@@ -700,7 +700,7 @@ async function runRecordSessionCommand(rawUrl: string): Promise<void> {
   const shellBase = path.basename((vscode.env.shell || "").toLowerCase());
   const isPowerShell = shellBase === "powershell.exe" || shellBase === "pwsh" || shellBase === "pwsh.exe";
   const cmd = isPowerShell
-    ? `& "${manulExe}" record "${normalizedUrl}"`
-    : `"${manulExe}" record "${normalizedUrl}"`;  
+    ? `& "${manulExe}" record '${normalizedUrl}'`
+    : `"${manulExe}" record '${normalizedUrl}'`;
   terminal.sendText(cmd);
 }

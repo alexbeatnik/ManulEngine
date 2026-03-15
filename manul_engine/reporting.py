@@ -84,7 +84,13 @@ def append_run_history(mission: MissionResult) -> None:
     }
 
     try:
-        with open(history_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        # Single low-level append write avoids interleaved/corrupted lines
+        # when multiple worker subprocesses write concurrently.
+        line = json.dumps(record, ensure_ascii=False).encode("utf-8") + b"\n"
+        fd = os.open(history_path, os.O_APPEND | os.O_CREAT | os.O_WRONLY)
+        try:
+            os.write(fd, line)
+        finally:
+            os.close(fd)
     except OSError:
         pass  # best-effort — do not crash the run
