@@ -1,9 +1,12 @@
 /**
  * schedulerPanel.ts
  *
- * Full-editor Webview Panel that displays a "Scheduler Dashboard":
- *  - Scans the workspace for .hunt files with `@schedule:` headers.
- *  - Shows them in a table (file name + schedule expression).
+ * Advanced Scheduler Dashboard — Visual RPA Manager:
+ *  - Scans the workspace for ALL `.hunt` files.
+ *  - Splits them into "Scheduled" (has `@schedule:`) and "Unscheduled".
+ *  - Provides a search bar to filter by filename.
+ *  - Each file row has a combobox + custom input + Apply button to
+ *    inject, update, or remove the `@schedule:` header in the actual file.
  *  - Provides Start / Stop buttons to control a `manul daemon` terminal.
  */
 
@@ -14,24 +17,28 @@ import { DAEMON_TERMINAL_NAME, getConfigFileName } from "./constants";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-interface ScheduledFile {
+interface HuntFileEntry {
   /** Workspace-relative path */
   relPath: string;
-  /** Raw @schedule: expression */
+  /** Absolute file URI string for file operations */
+  absUri: string;
+  /** Raw @schedule: expression, or empty string if unscheduled */
   schedule: string;
 }
 
 // ── File scanner ─────────────────────────────────────────────────────────────
 
 /**
- * Scan the workspace for `.hunt` files and extract `@schedule:` headers.
+ * Scan the workspace for ALL `.hunt` files and extract `@schedule:` headers.
+ * Returns every file — scheduled and unscheduled alike.
  * Reads only the first 20 lines of each file for speed.
  */
-async function findScheduledHunts(): Promise<ScheduledFile[]> {
+async function findAllHunts(): Promise<HuntFileEntry[]> {
   const files = await vscode.workspace.findFiles("**/*.hunt", "**/node_modules/**");
-  const results: ScheduledFile[] = [];
+  const results: HuntFileEntry[] = [];
 
   for (const uri of files) {
+    let schedule = "";
     try {
       const doc = await vscode.workspace.openTextDocument(uri);
       const linesToCheck = Math.min(doc.lineCount, 20);
@@ -40,12 +47,10 @@ async function findScheduledHunts(): Promise<ScheduledFile[]> {
         if (text.startsWith("@schedule:")) {
           const expr = text.substring("@schedule:".length).trim();
           if (expr) {
-            const rel = vscode.workspace.asRelativePath(uri, false);
-            results.push({ relPath: rel, schedule: expr });
+            schedule = expr;
           }
-          break; // only one @schedule per file
+          break;
         }
-        // Stop early if we hit a step line (not a header anymore)
         if (/^(STEP\s|NAVIGATE\s|\d+\.)/i.test(text)) {
           break;
         }
@@ -53,6 +58,8 @@ async function findScheduledHunts(): Promise<ScheduledFile[]> {
     } catch {
       // skip unreadable files
     }
+    const rel = vscode.workspace.asRelativePath(uri, false);
+    results.push({ relPath: rel, absUri: uri.toString(), schedule });
   }
 
   results.sort((a, b) => a.relPath.localeCompare(b.relPath));
@@ -73,6 +80,71 @@ function readTestsHome(workspaceRoot: string): string {
   return "tests";
 }
 
+// ── @schedule: file mutation ─────────────────────────────────────────────────
+
+/**
+ * Inject, update, or remove the `@schedule:` header in a `.hunt` file.
+ * - If `schedule` is non-empty: insert or replace the `@schedule:` line.
+ * - If `schedule` is empty: remove the `@schedule:` line entirely.
+ *
+ * Placement rule: inserted right after the last `@`-prefixed metadata header
+ * line (e.g. `@context:`, `@title:`, `@tags:`, `@data:`), or at line 0 if
+ * none exist.
+ */
+async function mutateScheduleHeader(
+  fileUri: vscode.Uri,
+  schedule: string,
+): Promise<void> {
+  const doc = await vscode.workspace.openTextDocument(fileUri);
+  const edit = new vscode.WorkspaceEdit();
+  const linesToCheck = Math.min(doc.lineCount, 30);
+
+  // Find existing @schedule: line (if any)
+  let existingLine = -1;
+  let lastMetaLine = -1;
+  for (let i = 0; i < linesToCheck; i++) {
+    const text = doc.lineAt(i).text.trim();
+    if (text.startsWith("@schedule:")) {
+      existingLine = i;
+    }
+    if (/^@\w+:/.test(text)) {
+      lastMetaLine = i;
+    }
+    if (/^(STEP\s|NAVIGATE\s|\d+\.\s|\[SETUP\])/i.test(text)) {
+      break;
+    }
+  }
+
+  if (schedule) {
+    const newLine = `@schedule: ${schedule}`;
+    if (existingLine >= 0) {
+      // Replace existing @schedule: line
+      const range = doc.lineAt(existingLine).range;
+      edit.replace(fileUri, range, newLine);
+    } else {
+      // Insert after last metadata header, or at line 0
+      const insertPos = lastMetaLine >= 0
+        ? doc.lineAt(lastMetaLine).range.end
+        : new vscode.Position(0, 0);
+      const textToInsert = lastMetaLine >= 0
+        ? "\n" + newLine
+        : newLine + "\n";
+      edit.insert(fileUri, insertPos, textToInsert);
+    }
+  } else {
+    // Remove @schedule: line
+    if (existingLine >= 0) {
+      const range = doc.lineAt(existingLine).rangeIncludingLineBreak;
+      edit.delete(fileUri, range);
+    }
+  }
+
+  await vscode.workspace.applyEdit(edit);
+  // Save the document so the change is persisted
+  const updatedDoc = await vscode.workspace.openTextDocument(fileUri);
+  await updatedDoc.save();
+}
+
 // ── Panel singleton ──────────────────────────────────────────────────────────
 
 export class SchedulerPanel {
@@ -87,13 +159,15 @@ export class SchedulerPanel {
 
     // Handle messages from the webview
     this._panel.webview.onDidReceiveMessage(
-      async (msg: { command: string }) => {
+      async (msg: { command: string; filePath?: string; schedule?: string }) => {
         if (msg.command === "refresh") {
-          await this._sendScheduledFiles();
+          await this._sendAllFiles();
         } else if (msg.command === "startDaemon") {
           await this._startDaemon();
         } else if (msg.command === "stopDaemon") {
           this._stopDaemon();
+        } else if (msg.command === "updateSchedule") {
+          await this._handleUpdateSchedule(msg.filePath ?? "", msg.schedule ?? "");
         }
       },
       undefined,
@@ -117,12 +191,31 @@ export class SchedulerPanel {
 
     const panel = vscode.window.createWebviewPanel(
       SchedulerPanel.viewType,
-      "ManulEngine Daemon",
+      "ManulEngine Scheduler",
       vscode.ViewColumn.One,
       { enableScripts: true, retainContextWhenHidden: true },
     );
 
     SchedulerPanel._instance = new SchedulerPanel(panel, extensionUri);
+  }
+
+  // ── Schedule mutation handler ────────────────────────────────────────────
+
+  private async _handleUpdateSchedule(
+    absUriStr: string,
+    schedule: string,
+  ): Promise<void> {
+    if (!absUriStr) { return; }
+    try {
+      const fileUri = vscode.Uri.parse(absUriStr);
+      await mutateScheduleHeader(fileUri, schedule);
+      await this._sendAllFiles();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      vscode.window.showErrorMessage(
+        `ManulEngine: Failed to update schedule — ${message}`,
+      );
+    }
   }
 
   // ── Daemon terminal management ───────────────────────────────────────────
@@ -192,9 +285,9 @@ export class SchedulerPanel {
 
   // ── Send data to the webview ─────────────────────────────────────────────
 
-  private async _sendScheduledFiles(): Promise<void> {
+  private async _sendAllFiles(): Promise<void> {
     if (this._disposed) { return; }
-    const files = await findScheduledHunts();
+    const files = await findAllHunts();
     this._panel.webview.postMessage({ command: "setFiles", files });
     this._postStatus();
   }
@@ -213,7 +306,7 @@ export class SchedulerPanel {
     const nonce = getNonce();
     const csp = `default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';`;
 
-    return `<!DOCTYPE html>
+    return /* html */ `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -265,35 +358,84 @@ export class SchedulerPanel {
     color: var(--vscode-button-secondaryForeground);
   }
   .ctrl-btn.refresh:hover { background: var(--vscode-button-secondaryHoverBackground); }
-  h2 { font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7; }
-  table {
-    width: 100%; border-collapse: collapse;
-    font-size: 12px;
+
+  /* ── Search ────────────────────────── */
+  #searchInput {
+    width: 100%; padding: 7px 10px; margin-bottom: 16px;
+    border: 1px solid var(--vscode-input-border, #555);
+    border-radius: 4px; font-size: 13px;
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    outline: none;
   }
-  th {
-    text-align: left; padding: 6px 10px;
-    background: var(--vscode-editorWidget-background);
-    border-bottom: 1px solid var(--vscode-editorWidget-border, #444);
-    font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
-    opacity: 0.7; font-size: 11px;
+  #searchInput:focus {
+    border-color: var(--vscode-focusBorder);
   }
-  td {
-    padding: 6px 10px;
+
+  /* ── Section headers ───────────────── */
+  .section-header {
+    font-size: 14px; margin-top: 12px; margin-bottom: 8px;
+    text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .section-header .count {
+    font-size: 11px; opacity: 0.5;
+    font-weight: normal;
+  }
+
+  /* ── File rows ─────────────────────── */
+  .file-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; font-size: 12px;
     border-bottom: 1px solid var(--vscode-editorWidget-border, #333);
   }
-  tr:hover td { background: var(--vscode-list-hoverBackground); }
-  .empty-msg {
-    padding: 20px; text-align: center; opacity: 0.5; font-style: italic;
+  .file-row:hover { background: var(--vscode-list-hoverBackground); }
+  .file-row.hidden { display: none; }
+  .file-name {
+    flex: 1; min-width: 0; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
   }
   .schedule-expr {
     font-family: var(--vscode-editor-font-family, monospace);
     color: var(--vscode-textLink-foreground);
+    font-size: 11px; margin-right: 4px; white-space: nowrap;
+  }
+  .editor-group {
+    display: flex; align-items: center; gap: 4px; flex-shrink: 0;
+  }
+  .editor-group select {
+    padding: 3px 4px; font-size: 11px;
+    background: var(--vscode-dropdown-background);
+    color: var(--vscode-dropdown-foreground);
+    border: 1px solid var(--vscode-dropdown-border, #555);
+    border-radius: 3px;
+  }
+  .editor-group input[type="text"] {
+    padding: 3px 6px; font-size: 11px; width: 140px;
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border, #555);
+    border-radius: 3px;
+  }
+  .editor-group input[type="text"]:disabled {
+    opacity: 0.4; cursor: not-allowed;
+  }
+  .apply-btn {
+    padding: 3px 10px; font-size: 11px; font-weight: 600;
+    border: none; cursor: pointer; border-radius: 3px;
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+  }
+  .apply-btn:hover { background: var(--vscode-button-hoverBackground); }
+
+  .empty-msg {
+    padding: 20px; text-align: center; opacity: 0.5; font-style: italic;
   }
 </style>
 </head>
 <body>
-  <h1>😼 ManulEngine Daemon</h1>
-  <div class="subtitle">Built-in scheduler for RPA workflows &amp; synthetic monitoring</div>
+  <h1>😼 ManulEngine Scheduler Dashboard</h1>
+  <div class="subtitle">Visual RPA Manager — assign, edit &amp; monitor schedules for all hunt files</div>
 
   <div class="status-bar">
     <span class="status-dot stopped" id="statusDot"></span>
@@ -306,14 +448,29 @@ export class SchedulerPanel {
     <button class="ctrl-btn refresh" id="btnRefresh">↻ Refresh</button>
   </div>
 
-  <h2>Scheduled Hunt Files</h2>
-  <div id="tableContainer">
-    <div class="empty-msg">Scanning workspace…</div>
-  </div>
+  <input type="text" id="searchInput" placeholder="Search hunt files…" />
+
+  <div id="scheduledSection"></div>
+  <div id="unscheduledSection"></div>
 
   <script nonce="${nonce}">
-    const vsc = acquireVsCodeApi();
+    var vsc = acquireVsCodeApi();
+    var allFiles = [];
 
+    var PRESET_OPTIONS = [
+      { label: 'None', value: '' },
+      { label: 'every 30 seconds', value: 'every 30 seconds' },
+      { label: 'every 1 minute', value: 'every 1 minute' },
+      { label: 'every 5 minutes', value: 'every 5 minutes' },
+      { label: 'every 15 minutes', value: 'every 15 minutes' },
+      { label: 'every hour', value: 'every hour' },
+      { label: 'daily at 09:00', value: 'daily at 09:00' },
+      { label: 'every monday', value: 'every monday' },
+      { label: 'every friday at 14:30', value: 'every friday at 14:30' },
+      { label: 'Custom...', value: '__custom__' }
+    ];
+
+    // ── Buttons ──────────────────────────
     document.getElementById('btnStart').addEventListener('click', function() {
       vsc.postMessage({ command: 'startDaemon' });
     });
@@ -324,10 +481,41 @@ export class SchedulerPanel {
       vsc.postMessage({ command: 'refresh' });
     });
 
+    // ── Search filter ────────────────────
+    document.getElementById('searchInput').addEventListener('input', function() {
+      applyFilter(this.value);
+    });
+
+    function applyFilter(query) {
+      var q = query.toLowerCase();
+      var rows = document.querySelectorAll('.file-row');
+      for (var i = 0; i < rows.length; i++) {
+        var name = rows[i].getAttribute('data-name') || '';
+        if (q === '' || name.indexOf(q) >= 0) {
+          rows[i].classList.remove('hidden');
+        } else {
+          rows[i].classList.add('hidden');
+        }
+      }
+      updateCounts();
+    }
+
+    function updateCounts() {
+      ['scheduled', 'unscheduled'].forEach(function(section) {
+        var container = document.getElementById(section + 'Section');
+        if (!container) return;
+        var rows = container.querySelectorAll('.file-row:not(.hidden)');
+        var countEl = container.querySelector('.count');
+        if (countEl) countEl.textContent = '(' + rows.length + ')';
+      });
+    }
+
+    // ── Message handling ─────────────────
     window.addEventListener('message', function(event) {
       var msg = event.data;
       if (msg.command === 'setFiles') {
-        renderTable(msg.files);
+        allFiles = msg.files || [];
+        render();
       } else if (msg.command === 'setStatus') {
         var dot = document.getElementById('statusDot');
         var label = document.getElementById('statusLabel');
@@ -341,25 +529,126 @@ export class SchedulerPanel {
       }
     });
 
-    function renderTable(files) {
-      var container = document.getElementById('tableContainer');
-      if (!files || files.length === 0) {
-        container.innerHTML = '<div class="empty-msg">No .hunt files with @schedule: found in this workspace.</div>';
-        return;
+    // ── Render ────────────────────────────
+    function render() {
+      var scheduled = [];
+      var unscheduled = [];
+      for (var i = 0; i < allFiles.length; i++) {
+        if (allFiles[i].schedule) {
+          scheduled.push(allFiles[i]);
+        } else {
+          unscheduled.push(allFiles[i]);
+        }
       }
-      var html = '<table><thead><tr><th>File</th><th>Schedule</th></tr></thead><tbody>';
+      document.getElementById('scheduledSection').innerHTML =
+        buildSection('Scheduled Tasks', 'scheduled', scheduled);
+      document.getElementById('unscheduledSection').innerHTML =
+        buildSection('Unscheduled Tasks', 'unscheduled', unscheduled);
+
+      // Re-apply current search filter
+      var q = document.getElementById('searchInput').value;
+      if (q) applyFilter(q);
+      else updateCounts();
+
+      // Wire up event handlers
+      wireEditors();
+    }
+
+    function buildSection(title, id, files) {
+      var html = '<div class="section-header">'
+        + escapeHtml(title) + ' <span class="count">(' + files.length + ')</span></div>';
+      if (files.length === 0) {
+        html += '<div class="empty-msg">No files</div>';
+        return html;
+      }
       for (var i = 0; i < files.length; i++) {
-        html += '<tr><td>' + escapeHtml(files[i].relPath) + '</td>'
-              + '<td class="schedule-expr">' + escapeHtml(files[i].schedule) + '</td></tr>';
+        var f = files[i];
+        html += fileRow(f);
       }
-      html += '</tbody></table>';
-      container.innerHTML = html;
+      return html;
+    }
+
+    function fileRow(f) {
+      var preset = matchPreset(f.schedule);
+      var isCustom = f.schedule && preset === '__custom__';
+
+      var html = '<div class="file-row" data-name="' + escapeAttr(f.relPath.toLowerCase()) + '" data-uri="' + escapeAttr(f.absUri) + '">';
+      html += '<span class="file-name">' + escapeHtml(f.relPath) + '</span>';
+      if (f.schedule) {
+        html += '<span class="schedule-expr">' + escapeHtml(f.schedule) + '</span>';
+      }
+      html += '<span class="editor-group">';
+      html += '<select class="preset-select">';
+      for (var j = 0; j < PRESET_OPTIONS.length; j++) {
+        var opt = PRESET_OPTIONS[j];
+        var sel = '';
+        if (isCustom && opt.value === '__custom__') sel = ' selected';
+        else if (!isCustom && opt.value === f.schedule) sel = ' selected';
+        else if (!f.schedule && opt.value === '') sel = ' selected';
+        html += '<option value="' + escapeAttr(opt.value) + '"' + sel + '>' + escapeHtml(opt.label) + '</option>';
+      }
+      html += '</select>';
+      html += '<input type="text" class="custom-input" placeholder="e.g. every 2 hours" value="'
+        + (isCustom ? escapeAttr(f.schedule) : '')
+        + '"' + (isCustom ? '' : ' disabled') + '>';
+      html += '<button class="apply-btn">Apply</button>';
+      html += '</span>';
+      html += '</div>';
+      return html;
+    }
+
+    function matchPreset(schedule) {
+      if (!schedule) return '';
+      for (var j = 0; j < PRESET_OPTIONS.length; j++) {
+        if (PRESET_OPTIONS[j].value === schedule) return schedule;
+      }
+      return '__custom__';
+    }
+
+    function wireEditors() {
+      // Select change — toggle custom input
+      var selects = document.querySelectorAll('.preset-select');
+      for (var i = 0; i < selects.length; i++) {
+        selects[i].addEventListener('change', function() {
+          var row = this.closest('.file-row');
+          var custom = row.querySelector('.custom-input');
+          if (this.value === '__custom__') {
+            custom.disabled = false;
+            custom.focus();
+          } else {
+            custom.disabled = true;
+            custom.value = '';
+          }
+        });
+      }
+
+      // Apply button
+      var btns = document.querySelectorAll('.apply-btn');
+      for (var i = 0; i < btns.length; i++) {
+        btns[i].addEventListener('click', function() {
+          var row = this.closest('.file-row');
+          var sel = row.querySelector('.preset-select');
+          var custom = row.querySelector('.custom-input');
+          var uri = row.getAttribute('data-uri');
+          var schedule = '';
+          if (sel.value === '__custom__') {
+            schedule = (custom.value || '').trim();
+          } else {
+            schedule = sel.value;
+          }
+          vsc.postMessage({ command: 'updateSchedule', filePath: uri, schedule: schedule });
+        });
+      }
     }
 
     function escapeHtml(str) {
       var d = document.createElement('div');
-      d.appendChild(document.createTextNode(str));
+      d.appendChild(document.createTextNode(str || ''));
       return d.innerHTML;
+    }
+
+    function escapeAttr(str) {
+      return (str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
     // Request initial data on load.
