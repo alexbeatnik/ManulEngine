@@ -15,6 +15,8 @@ import { spawn } from "child_process";
 import { findManulExecutable } from "./huntRunner";
 import { getConfigFileName, TERMINAL_NAME } from "./constants";
 
+const RECORDER_TERMINAL_NAME = `${TERMINAL_NAME} (Recorder)`;
+
 // ── Hook scaffold constants ──────────────────────────────────────────────────
 
 const SETUP_SCAFFOLD = `[SETUP]
@@ -635,15 +637,29 @@ async function runRecordSessionCommand(rawUrl: string): Promise<void> {
     return;
   }
 
-  // URL validation — mirror scan behaviour.
+  // URL normalization and validation — mirror scan behaviour.
+  let normalizedUrl = url;
   let parsed: URL;
   try {
-    parsed = new URL(url);
+    parsed = new URL(normalizedUrl);
   } catch {
-    vscode.window.showErrorMessage(
-      "ManulEngine: Please enter a valid URL to record (e.g. https://example.com)."
-    );
-    return;
+    // Retry with https:// if it looks like a bare hostname (no spaces).
+    if (!/\s/.test(normalizedUrl)) {
+      try {
+        normalizedUrl = "https://" + normalizedUrl;
+        parsed = new URL(normalizedUrl);
+      } catch {
+        vscode.window.showErrorMessage(
+          "ManulEngine: Please enter a valid URL to record (e.g. https://example.com)."
+        );
+        return;
+      }
+    } else {
+      vscode.window.showErrorMessage(
+        "ManulEngine: Please enter a valid URL to record (e.g. https://example.com)."
+      );
+      return;
+    }
   }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     vscode.window.showErrorMessage(
@@ -652,7 +668,7 @@ async function runRecordSessionCommand(rawUrl: string): Promise<void> {
     return;
   }
   // Guard against shell injection: refuse URLs containing quotes, backticks, or newlines.
-  if (/["'`\r\n]/.test(url)) {
+  if (/["'`\r\n]/.test(normalizedUrl)) {
     vscode.window.showErrorMessage(
       "ManulEngine: The URL contains unsupported characters. Please provide a standard URL."
     );
@@ -676,15 +692,15 @@ async function runRecordSessionCommand(rawUrl: string): Promise<void> {
     return;
   }
 
-  // Reuse an existing terminal or create a new one.
-  const existing = vscode.window.terminals.find((t) => t.name === TERMINAL_NAME);
-  const terminal = existing ?? vscode.window.createTerminal({ name: TERMINAL_NAME, cwd: workspaceRoot });
+  // Reuse an existing recorder terminal or create a new one with a dedicated name.
+  const existing = vscode.window.terminals.find((t) => t.name === RECORDER_TERMINAL_NAME);
+  const terminal = existing ?? vscode.window.createTerminal({ name: RECORDER_TERMINAL_NAME, cwd: workspaceRoot });
   terminal.show();
 
   const shellBase = path.basename((vscode.env.shell || "").toLowerCase());
   const isPowerShell = shellBase === "powershell.exe" || shellBase === "pwsh" || shellBase === "pwsh.exe";
   const cmd = isPowerShell
-    ? `& "${manulExe}" record "${url}"`
-    : `"${manulExe}" record "${url}"`;
+    ? `& "${manulExe}" record "${normalizedUrl}"`
+    : `"${manulExe}" record "${normalizedUrl}"`;  
   terminal.sendText(cmd);
 }

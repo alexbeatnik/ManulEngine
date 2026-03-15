@@ -40,7 +40,7 @@ interface RunHistoryRecord {
 /**
  * Scan the workspace for ALL `.hunt` files and extract `@schedule:` headers.
  * Returns every file — scheduled and unscheduled alike.
- * Reads only the first 20 lines of each file for speed.
+ * Scans header lines until it finds `@schedule:` or the first STEP/action marker.
  */
 async function findAllHunts(): Promise<HuntFileEntry[]> {
   const files = await vscode.workspace.findFiles("**/*.hunt", "**/node_modules/**");
@@ -50,8 +50,7 @@ async function findAllHunts(): Promise<HuntFileEntry[]> {
     let schedule = "";
     try {
       const doc = await vscode.workspace.openTextDocument(uri);
-      const linesToCheck = Math.min(doc.lineCount, 20);
-      for (let i = 0; i < linesToCheck; i++) {
+      for (let i = 0; i < doc.lineCount; i++) {
         const text = doc.lineAt(i).text.trim();
         if (text.startsWith("@schedule:")) {
           const expr = text.substring("@schedule:".length).trim();
@@ -112,7 +111,22 @@ function readRunHistory(
 
   try {
     if (!fs.existsSync(historyPath)) { return result; }
-    const raw = fs.readFileSync(historyPath, "utf8");
+    let raw: string;
+    const stat = fs.statSync(historyPath);
+    const MAX_TAIL_BYTES = 512 * 1024; // 512 KB
+    if (stat.size <= MAX_TAIL_BYTES) {
+      raw = fs.readFileSync(historyPath, "utf8");
+    } else {
+      // Tail-read only the last chunk to avoid unbounded memory usage.
+      const fd = fs.openSync(historyPath, "r");
+      try {
+        const buf = Buffer.alloc(MAX_TAIL_BYTES);
+        const bytesRead = fs.readSync(fd, buf, 0, MAX_TAIL_BYTES, stat.size - MAX_TAIL_BYTES);
+        raw = buf.slice(0, bytesRead).toString("utf8");
+      } finally {
+        fs.closeSync(fd);
+      }
+    }
     const lines = raw.split("\n").filter((l) => l.trim());
 
     for (const line of lines) {
@@ -204,7 +218,13 @@ async function mutateScheduleHeader(
     }
   }
 
-  await vscode.workspace.applyEdit(edit);
+  const success = await vscode.workspace.applyEdit(edit);
+  if (!success) {
+    vscode.window.showErrorMessage(
+      "ManulEngine: Failed to update @schedule: header. The file may be read-only."
+    );
+    return;
+  }
   // Only save if the document was not dirty before our edit; otherwise,
   // leave it dirty and let the user decide when to save.
   if (!wasDirty) {
@@ -305,7 +325,16 @@ export class SchedulerPanel {
       return;
     }
 
-    const testsHome = readTestsHome(workspaceRoot);
+    const rawTestsHome = readTestsHome(workspaceRoot);
+    if (/["'`\r\n]/.test(rawTestsHome)) {
+      vscode.window.showErrorMessage(
+        "ManulEngine: Invalid tests_home path in config. It must not contain quotes or newlines."
+      );
+      return;
+    }
+    const testsHome = path.isAbsolute(rawTestsHome)
+      ? rawTestsHome
+      : path.join(workspaceRoot, rawTestsHome);
 
     // Reuse existing daemon terminal or create a new one.
     const existing = vscode.window.terminals.find(
