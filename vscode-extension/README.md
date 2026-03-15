@@ -3,9 +3,11 @@
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
 
-The official VS Code extension for **ManulEngine** — a deterministic, DSL-based E2E browser automation platform.
+The official IDE for the **ManulEngine Universal Web Automation Runtime**.
 
-Write tests in plain English `.hunt` files. Run them at Playwright speed. Resolve elements with a mathematically sound `DOMScorer` (0.0–1.0 float scoring, 20+ heuristic signals) and a native `TreeWalker` — no CSS selectors, no XPath, no cloud APIs.
+Author, run, and debug `.hunt` automation scripts for E2E testing, RPA workflows, synthetic monitoring, and AI-agent execution — all from a single editor. The extension provides Hunt DSL language support, one-click execution, interactive debug stepping, a Step Builder sidebar, configuration UI, and cache management for [ManulEngine](https://github.com/alexbeatnik/ManulEngine).
+
+ManulEngine is a Playwright-backed runtime that interprets plain-English `.hunt` DSL scripts deterministically — resolving DOM elements with blazing-fast JS heuristics (`DOMScorer` + `TreeWalker`), no CSS selectors, no cloud APIs. Whether you are writing QA test suites, automating repetitive business tasks, or building production health monitors, the workflow is the same: write a `.hunt` file, hit Run.
 
 > The Manul goes hunting and never returns without its prey.
 
@@ -14,18 +16,18 @@ Write tests in plain English `.hunt` files. Run them at Playwright speed. Resolv
 
 ---
 
-## 🤝 Dual Persona Workflow — Testing for Humans, Power for Engineers
+## 🤝 Dual Persona Workflow — Automation for Humans, Power for Engineers
 
-ManulEngine bridges the gap between Manual QA and Engineering. You don't write controls — you write tests.
+ManulEngine bridges the gap between non-technical authors and engineering teams. You don't write selectors — you write scripts.
 
-* **For Manual QA:** Open a `.hunt` file and write scenarios in plain English — no Python, CSS, or XPath needed. The deterministic heuristics engine resolves elements reliably across UI changes.
-* **For Developers / SDETs:** No more maintaining thousands of brittle `page.locator()` calls. For complex custom UI elements, write a Python control hook with the full Playwright API. The QA team keeps writing plain English — your hook handles the Playwright logic behind the scenes.
+* **For QA / Business Analysts / Ops:** Open a `.hunt` file and write automation scenarios in plain English — no Python, CSS, or XPath needed. The deterministic heuristics engine resolves elements reliably across UI changes. The same scripts work for testing, RPA, and monitoring.
+* **For Developers / SDETs:** No more maintaining thousands of brittle `page.locator()` calls. For complex custom UI elements, write a Python control hook with the full Playwright API. The rest of the team keeps writing plain English — your hook handles the Playwright logic behind the scenes.
 
 ---
 
 ## VS Code Extension Features
 
-> Hunt file language support, one-click test runner, interactive debug runner with gutter breakpoints, Step Builder for plain-English `.hunt` files, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) — deterministic DSL-based browser automation.
+> Hunt DSL language support, one-click runner, interactive debug runner with gutter breakpoints, Step Builder for plain-English `.hunt` scripts, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) — the Universal Web Automation Runtime for E2E testing, RPA, synthetic monitoring, and AI-agent execution.
 
 ## 🚀 What's New in v0.0.9.2 — The Mastermind
 

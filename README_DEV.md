@@ -1,13 +1,13 @@
 
 ---
 
-# 😼 ManulEngine v0.0.9.2 — The Mastermind
+# 😼 ManulEngine v0.0.9.2 — The Universal Web Automation Runtime
 
-**A deterministic, DSL-first E2E browser automation platform.**
-Write unbreakable tests in plain English — powered by blazing-fast heuristics (`TreeWalker`), with optional local AI for self-healing.
+**ManulEngine — The Universal Web Automation Runtime.**
+Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright.
 
 No CSS selectors. No XPath fragility. No cloud API bills.
-ManulEngine resolves elements using a mathematically sound `DOMScorer` (normalised 0.0–1.0 float scoring across 20+ signals) and a native JavaScript `TreeWalker` — deterministic, reproducible, and fast enough to run on any machine.
+ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtime that resolves DOM elements with a mathematically sound `DOMScorer` (normalised 0.0–1.0 float scoring across 20+ signals) and a native JavaScript `TreeWalker`. Deterministic, reproducible, and fast enough to run anywhere.
 
 > The Manul goes hunting and never returns without its prey.
 
@@ -102,6 +102,50 @@ ManulEngine/
     │   └── debugControlPanel.ts      Singleton QuickPick overlay for interactive debug stepping
     └── syntaxes/hunt.tmLanguage.json Hunt file syntax grammar
 ```
+
+---
+
+## 🏛️ Architecture — ManulEngine as a Runtime
+
+ManulEngine is not a test library bolted onto Playwright. It is a **runtime** — an interpreter for the `.hunt` DSL that sits between human-authored (or AI-generated) automation scripts and the browser.
+
+```text
+┌──────────────────────────────────────────────────────────────────────────┐
+│  .hunt DSL             (human-authored or AI-generated)    │
+│  QA tests · RPA scripts · synthetic monitors · agent tasks  │
+└─────────────────────────────────┬────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│  Parser (cli.py)                                             │
+│  parse_hunt_file() → ParsedHunt NamedTuple                   │
+│  Extracts: @context, @title, @tags, @data, @var,             │
+│  [SETUP]/[TEARDOWN], step lines                               │
+└─────────────────────────────────┬────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│  Execution Engine (core.py → run_mission)                     │
+│  DOMScorer (scoring.py) · TreeWalker (js_scripts.py)          │
+│  Element resolution → Action dispatch → Self-healing          │
+└───────────┬─────────────────────┬─────────────────────┬──────────────────┘
+            │                     │                     │
+            ▼                     ▼                     ▼
+┌────────────────┐  ┌───────────────────┐  ┌───────────────────┐
+│ Custom Controls │  │ Python Hooks       │  │ Persistent Cache  │
+│ (controls.py)   │  │ [SETUP]/[TEARDOWN] │  │ (cache.py)        │
+│ @custom_control  │  │ CALL PYTHON        │  │ Per-site storage  │
+└────────────────┘  │ @before_all        │  └───────────────────┘
+                    └───────────────────┘
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│  Playwright (async)                                          │
+│  Chromium · Firefox · WebKit · Electron                       │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+This architecture is what makes ManulEngine a **true runtime** rather than just a test library. The `.hunt` DSL is the instruction set. The parser and engine are the interpreter. Playwright is the I/O layer. Users write scripts — QA tests, RPA workflows, synthetic monitors, or AI-agent actions — in the same deterministic DSL, and the runtime executes them identically.
 
 ---
 

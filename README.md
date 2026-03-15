@@ -1,13 +1,13 @@
-# 😼 ManulEngine — The Mastermind
+# 😼 ManulEngine — The Universal Web Automation Runtime
 
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
 
-**A deterministic, DSL-first E2E browser automation platform.**
-Write unbreakable tests in plain English — powered by blazing-fast heuristics (`TreeWalker`), with optional local AI for self-healing.
+**ManulEngine — The Universal Web Automation Runtime.**
+Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright.
 
 No CSS selectors. No XPath fragility. No cloud API bills.
-ManulEngine resolves elements using a mathematically sound `DOMScorer` (normalised 0.0–1.0 float scoring across 20+ signals) and a native JavaScript `TreeWalker` — deterministic, reproducible, and fast enough to run on any machine.
+ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtime that resolves DOM elements with a mathematically sound `DOMScorer` (normalised 0.0–1.0 float scoring across 20+ signals) and a native JavaScript `TreeWalker`. Deterministic, reproducible, and fast enough to run anywhere: CI pipelines, cron jobs, or a developer's laptop.
 
 > The Manul goes hunting and never returns without its prey.
 
@@ -70,6 +70,28 @@ QA engineers write `.hunt` files in a plain-English DSL — no programming requi
 ### Optional AI Fallback — Off by Default
 
 AI (Ollama / local micro-LLMs) is **turned off by default** (`"model": null`). The heuristics engine handles the vast majority of real-world UIs on its own. When you do enable a model, it acts as a self-healing fallback — only invoked when heuristic confidence drops below a threshold. No cloud calls. No per-click charges. No flaky non-determinism in your CI pipeline.
+
+---
+
+## 🏛️ Beyond Testing: 4 Pillars of Automation
+
+ManulEngine is not just a test runner — it is a **Universal Web Automation Runtime**. The same `.hunt` DSL, the same heuristics engine, and the same Playwright backend power four distinct automation pillars:
+
+### 1. QA & E2E Testing
+
+The core offering. Write plain-English test scenarios, use Python hooks for DB seeding and teardown, attach `@data:` files for data-driven runs, and generate interactive HTML reports. ManulEngine replaces fragile selector-based test suites with deterministic, human-readable scripts that survive UI refactors.
+
+### 2. RPA (Robotic Process Automation)
+
+Automate repetitive business tasks — logging into a CRM, downloading invoices, filling compliance forms, scraping vendor portals — without writing fragile Selenium code. A `.hunt` file is a self-contained automation script: `NAVIGATE`, `FILL`, `CLICK`, `EXTRACT`, `CALL PYTHON`. Schedule it with cron or a task runner and let the Manul do the work.
+
+### 3. Synthetic Monitoring
+
+Run `.hunt` scripts on a schedule to verify production health. A three-step checkout flow, an API-backed dashboard, a login gate — if it works in a hunt file, it works as a synthetic monitor. Pair with `--html-report` and `--screenshot on-fail` for instant incident forensics.
+
+### 4. AI Agent Execution
+
+The safest way to execute AI-generated browser actions. Instead of letting LLMs hallucinate raw Playwright calls, have them generate strict `.hunt` DSL — a constrained, validated instruction set. ManulEngine's deterministic engine executes the script safely, with built-in retries, self-healing, and screenshot capture. No prompt injection into the browser. No unbounded API calls. Full auditability.
 
 ---
 
