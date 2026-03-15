@@ -10,7 +10,10 @@ can also be serialised to JSON for CI integrations.
 
 from __future__ import annotations
 
+import json
+import os
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 
 @dataclass
@@ -55,3 +58,33 @@ class RunSummary:
     warning:     int = 0
     duration_ms: float = 0.0
     missions:    list[MissionResult] = field(default_factory=list)
+
+
+# ── Run history persistence ──────────────────────────────────────────────────
+
+_HISTORY_FILE = "run_history.json"
+
+
+def append_run_history(mission: MissionResult) -> None:
+    """Append a single run record to ``reports/run_history.json`` (JSON Lines).
+
+    Each line is a self-contained JSON object with keys:
+    ``file``, ``name``, ``timestamp``, ``status``, ``duration_ms``.
+    """
+    reports_dir = os.path.join(os.getcwd(), "reports")
+    os.makedirs(reports_dir, exist_ok=True)
+    history_path = os.path.join(reports_dir, _HISTORY_FILE)
+
+    record = {
+        "file": mission.file,
+        "name": mission.name,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "status": mission.status,
+        "duration_ms": round(mission.duration_ms, 1),
+    }
+
+    try:
+        with open(history_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except OSError:
+        pass  # best-effort — do not crash the run

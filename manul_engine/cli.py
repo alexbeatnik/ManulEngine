@@ -20,7 +20,7 @@ import sys
 import time
 from typing import NamedTuple
 
-from .reporting import StepResult, MissionResult, RunSummary
+from .reporting import StepResult, MissionResult, RunSummary, append_run_history
 
 # ─────────────────────────────────────────────────────────────────────────────
 _USAGE = """
@@ -690,6 +690,7 @@ async def main() -> None:
                     status="fail",
                     error="@before_all hook failed",
                 )
+                append_run_history(_mr)
                 run_summary.missions.append(_mr)
                 results.append((_mr.name, "FAIL", 0.0))
         elif workers == 1:
@@ -709,6 +710,7 @@ async def main() -> None:
                         error="@before_group hook failed",
                         tags=file_tags,
                     )
+                    append_run_history(_mr)
                     run_summary.missions.append(_mr)
                     results.append((_mr.name, "FAIL", 0.0))
                     continue
@@ -737,6 +739,7 @@ async def main() -> None:
                             break
                 elapsed = time.perf_counter() - t0
                 mission_result.duration_ms = elapsed * 1000
+                append_run_history(mission_result)
                 run_summary.missions.append(mission_result)
                 status_label = mission_result.status.upper()
                 results.append((mission_result.name, status_label, elapsed))
@@ -823,6 +826,7 @@ async def main() -> None:
                     duration_ms=elapsed * 1000,
                     tags=_read_tags(fpath),
                 )
+                append_run_history(_mr)
                 run_summary.missions.append(_mr)
                 results.append((name, _child_status.upper(), elapsed))
 

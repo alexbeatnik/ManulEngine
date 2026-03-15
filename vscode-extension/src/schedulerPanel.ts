@@ -12,6 +12,7 @@
 
 import * as vscode from "vscode";
 import * as path from "path";
+import * as fs from "fs";
 import { findManulExecutable } from "./huntRunner";
 import { DAEMON_TERMINAL_NAME, getConfigFileName } from "./constants";
 
@@ -24,6 +25,14 @@ interface HuntFileEntry {
   absUri: string;
   /** Raw @schedule: expression, or empty string if unscheduled */
   schedule: string;
+}
+
+interface RunHistoryRecord {
+  file: string;
+  name: string;
+  timestamp: string;
+  status: string;
+  duration_ms: number;
 }
 
 // ── File scanner ─────────────────────────────────────────────────────────────
@@ -78,6 +87,45 @@ function readTestsHome(workspaceRoot: string): string {
     }
   } catch { /* config missing or malformed */ }
   return "tests";
+}
+
+// ── Run history reader ───────────────────────────────────────────────────────
+
+/**
+ * Read the JSON Lines run history file and return the last N records per file.
+ * Returns a map from hunt filename (basename) to an array of recent records
+ * (newest last, max `limit` entries).
+ */
+function readRunHistory(
+  workspaceRoot: string,
+  limit: number = 5,
+): Record<string, RunHistoryRecord[]> {
+  const historyPath = path.join(workspaceRoot, "reports", "run_history.json");
+  const result: Record<string, RunHistoryRecord[]> = {};
+
+  try {
+    if (!fs.existsSync(historyPath)) { return result; }
+    const raw = fs.readFileSync(historyPath, "utf8");
+    const lines = raw.split("\n").filter((l) => l.trim());
+
+    for (const line of lines) {
+      try {
+        const rec: RunHistoryRecord = JSON.parse(line);
+        if (!rec.name) { continue; }
+        if (!result[rec.name]) { result[rec.name] = []; }
+        result[rec.name].push(rec);
+      } catch { /* skip malformed lines */ }
+    }
+
+    // Keep only the last `limit` records per file
+    for (const key of Object.keys(result)) {
+      if (result[key].length > limit) {
+        result[key] = result[key].slice(-limit);
+      }
+    }
+  } catch { /* file unreadable */ }
+
+  return result;
 }
 
 // ── @schedule: file mutation ─────────────────────────────────────────────────
@@ -288,7 +336,13 @@ export class SchedulerPanel {
   private async _sendAllFiles(): Promise<void> {
     if (this._disposed) { return; }
     const files = await findAllHunts();
-    this._panel.webview.postMessage({ command: "setFiles", files });
+
+    // Read run history from reports/run_history.json
+    const folders = vscode.workspace.workspaceFolders;
+    const wsRoot = folders && folders.length > 0 ? folders[0].uri.fsPath : "";
+    const history = wsRoot ? readRunHistory(wsRoot) : {};
+
+    this._panel.webview.postMessage({ command: "setFiles", files, history });
     this._postStatus();
   }
 
@@ -431,6 +485,26 @@ export class SchedulerPanel {
   .empty-msg {
     padding: 20px; text-align: center; opacity: 0.5; font-style: italic;
   }
+
+  /* ── Sparkline & history ───────────── */
+  .history-group {
+    display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+    margin-right: 4px;
+  }
+  .sparkline {
+    display: inline-flex; align-items: center; gap: 2px;
+  }
+  .spark-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    display: inline-block;
+  }
+  .spark-dot.pass    { background: #a6e3a1; }
+  .spark-dot.fail    { background: #f38ba8; }
+  .spark-dot.flaky   { background: #f9e2af; }
+  .spark-dot.warning { background: #f9e2af; }
+  .last-run {
+    font-size: 10px; opacity: 0.55; white-space: nowrap;
+  }
 </style>
 </head>
 <body>
@@ -456,6 +530,7 @@ export class SchedulerPanel {
   <script nonce="${nonce}">
     var vsc = acquireVsCodeApi();
     var allFiles = [];
+    var runHistory = {};
 
     var PRESET_OPTIONS = [
       { label: 'None', value: '' },
@@ -515,6 +590,7 @@ export class SchedulerPanel {
       var msg = event.data;
       if (msg.command === 'setFiles') {
         allFiles = msg.files || [];
+        runHistory = msg.history || {};
         render();
       } else if (msg.command === 'setStatus') {
         var dot = document.getElementById('statusDot');
@@ -528,6 +604,32 @@ export class SchedulerPanel {
         }
       }
     });
+
+    // ── Relative time ──────────────────
+    function timeAgo(isoStr) {
+      var now = Date.now();
+      var then = new Date(isoStr).getTime();
+      var diff = Math.max(0, Math.floor((now - then) / 1000));
+      if (diff < 60)   return diff + 's ago';
+      if (diff < 3600)  return Math.floor(diff / 60) + 'm ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+      return Math.floor(diff / 86400) + 'd ago';
+    }
+
+    function buildSparkline(records) {
+      if (!records || records.length === 0) return '';
+      var html = '<span class="sparkline" title="Last ' + records.length + ' runs">';
+      for (var i = 0; i < records.length; i++) {
+        var cls = records[i].status === 'pass' ? 'pass'
+                : records[i].status === 'fail' ? 'fail'
+                : records[i].status === 'flaky' ? 'flaky'
+                : records[i].status === 'warning' ? 'warning'
+                : 'pass';
+        html += '<span class="spark-dot ' + cls + '"></span>';
+      }
+      html += '</span>';
+      return html;
+    }
 
     // ── Render ────────────────────────────
     function render() {
@@ -572,8 +674,24 @@ export class SchedulerPanel {
       var preset = matchPreset(f.schedule);
       var isCustom = f.schedule && preset === '__custom__';
 
+      // Lookup run history for this file
+      var basename = f.relPath.split('/').pop() || f.relPath;
+      var records = runHistory[basename] || [];
+      var lastRec = records.length > 0 ? records[records.length - 1] : null;
+
       var html = '<div class="file-row" data-name="' + escapeAttr(f.relPath.toLowerCase()) + '" data-uri="' + escapeAttr(f.absUri) + '">';
       html += '<span class="file-name">' + escapeHtml(f.relPath) + '</span>';
+
+      // History sparkline + last-run time
+      if (records.length > 0) {
+        html += '<span class="history-group">';
+        html += buildSparkline(records);
+        if (lastRec) {
+          html += '<span class="last-run">' + timeAgo(lastRec.timestamp) + '</span>';
+        }
+        html += '</span>';
+      }
+
       if (f.schedule) {
         html += '<span class="schedule-expr">' + escapeHtml(f.schedule) + '</span>';
       }

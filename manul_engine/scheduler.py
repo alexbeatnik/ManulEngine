@@ -162,6 +162,7 @@ async def _run_scheduled_job(hunt_path: str, sched: Schedule,
                              screenshot_mode: str) -> None:
     """Infinite loop that runs a single hunt file on its schedule."""
     from .cli import _run_hunt_file
+    from .reporting import append_run_history
 
     filename = os.path.basename(hunt_path)
 
@@ -182,6 +183,7 @@ async def _run_scheduled_job(hunt_path: str, sched: Schedule,
             )
             status = result.status.upper()
             print(f"🏁 [{filename}] finished — {status}")
+            append_run_history(result)
         except Exception:
             print(f"💥 [{filename}] crashed — daemon continues")
             traceback.print_exc(file=sys.stdout)

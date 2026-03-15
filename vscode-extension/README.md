@@ -288,6 +288,7 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 
 ### 0.0.93
 - **📅 Advanced Scheduler Dashboard** — `ManulEngine: Open Scheduler Dashboard` editor Webview panel. Displays **all** `.hunt` files in Scheduled / Unscheduled split view with live search, per-file combobox schedule editor (preset + custom expressions), and Apply button to inject/update/remove `@schedule:` headers directly in files. Start/Stop Daemon UI and live status indicator. Calendar icon in all sidebar view title bars
+- **📊 Persistent Run History & Sparklines** — Every hunt execution logs a record to `reports/run_history.json`. The Scheduler Dashboard reads this file and shows a sparkline (last 5 runs as 🟢/🔴/🟡 dots) and a relative timestamp ("3m ago") next to each file row
 - **`@schedule:` support** — Hunt files accept `@schedule: every 5 minutes` (and 5 other expression forms). Built-in scheduler runs files on schedule via `manul daemon`
 - **🔴 Record Session** — Step Builder sidebar button to launch `manul record <URL>` for live browser action recording
 - **Self-Healing Controls Cache** — Stale cache entries auto-healed at runtime with `🩹 HEALED` event logging
