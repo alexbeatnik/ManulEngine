@@ -16,6 +16,15 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 
 ---
 
+## 🚀 What's New in v0.0.9.3 — The Scheduler Update
+
+* **Built-in Scheduler (`@schedule:` + `manul daemon`):** Add a `@schedule: every 5 minutes` header to any `.hunt` file and launch `manul daemon tests/ --headless` — the engine runs scheduled hunts in an infinite async loop with zero external dependencies. Supports interval expressions (`every N seconds/minutes/hours`), daily schedules (`daily at 09:00`), and weekly schedules (`every monday at 14:30`). Perfect for RPA workflows and synthetic monitoring.
+* **Scheduler Dashboard (VS Code Extension):** A dedicated Webview panel that scans the workspace for `.hunt` files with `@schedule:` headers, displays them in a dashboard table, and provides **Start Daemon** / **Stop Daemon** buttons that manage the `manul daemon` process directly in the integrated terminal.
+* **Self-Healing Controls Cache:** The persistent controls cache now detects stale entries at runtime. When a cached locator no longer matches any live DOM candidate, the engine re-resolves the element via heuristics, updates the cache file automatically, and logs a `🩹 HEALED` event. Failed healings are surfaced as `⚠️ STALE` warnings in the HTML report.
+* **Semantic Test Recorder (`manul record`):** `manul record https://example.com` opens a browser with a live recording overlay — click, type, and navigate; every action is captured and translated into clean `.hunt` DSL in real time. Stop the recording and a ready-to-run hunt file is saved to `tests_home/`.
+
+### Previous highlights (v0.0.9.2)
+
 ## 🚀 What's New in v0.0.9.2 — The Mastermind
 
 * **YAML-Like Indentation:** Hunt files now support clean hierarchical formatting — action lines under `STEP` headers can be indented with spaces or tabs. The parser strips all leading whitespace before processing. The VS Code extension ships a built-in **Auto-Formatter** (`Shift+Alt+F`) that enforces 4-space indentation for action lines under each `STEP` block.
@@ -807,7 +816,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 
 ## 🐾 Battle-Tested
 
-ManulEngine is verified against **2138 synthetic DOM tests** across 40 test suites covering:
+ManulEngine is verified against **2259 synthetic DOM tests** across 43 test suites covering:
 
 - Shadow DOM, invisible overlays, zero-pixel honeypots
 - Same-origin iframe element routing and cross-frame resolution
@@ -820,4 +829,4 @@ ManulEngine is verified against **2138 synthetic DOM tests** across 40 test suit
 
 ---
 
-**Version:** 0.0.9.2 · **Status:** Hunting...
+**Version:** 0.0.9.3 · **Status:** Hunting...

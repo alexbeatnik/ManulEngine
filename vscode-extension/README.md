@@ -29,6 +29,15 @@ ManulEngine bridges the gap between non-technical authors and engineering teams.
 
 > Hunt DSL language support, one-click runner, interactive debug runner with gutter breakpoints, Step Builder for plain-English `.hunt` scripts, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) — the Universal Web Automation Runtime for E2E testing, RPA, synthetic monitoring, and AI-agent execution.
 
+## 🚀 What's New in v0.0.9.3 — The Scheduler Update
+
+* **📅 Scheduler Dashboard:** A dedicated editor Webview panel (`ManulEngine: Open Scheduler Dashboard` command) that scans the workspace for `.hunt` files containing `@schedule:` headers, displays them in a dashboard table (file path + schedule expression), shows a live status indicator (green when the daemon is running, grey when stopped), and provides **Start Daemon** / **Stop Daemon** buttons. Start spawns `manul daemon <tests_home> --headless` in a dedicated `"Manul Daemon"` terminal; Stop disposes the terminal. The dashboard command appears as a calendar icon in the title bar of all ManulEngine sidebar views.
+* **`@schedule:` Header Support:** Hunt files now support `@schedule: every 5 minutes` (and other expressions: `every N seconds/minutes/hours`, `daily at HH:MM`, `every monday`, `every friday at 14:30`). The engine's built-in scheduler runs these files on their declared schedule via `manul daemon <directory>` — no external cron required.
+* **🔴 Record Session Button:** The Step Builder sidebar includes a **Record Session** button — enter a URL and click to launch `manul record <URL>` in the integrated terminal, capturing browser actions as `.hunt` DSL in real time.
+* **Self-Healing Controls Cache:** Stale cache entries are detected and auto-healed at runtime. `🩹 HEALED` events in the HTML report.
+
+### Previous highlights (v0.0.9.2)
+
 ## 🚀 What's New in v0.0.9.2 — The Mastermind
 
 * **🎨 Auto-Formatter for `.hunt` Files:** Press `Shift+Alt+F` (or enable Format on Save) to auto-format any `.hunt` file. Action lines and inline comments under `STEP` or hook blocks are indented with 4 spaces; metadata headers (`@context:`, `@var:`, `@tags:`, `@data:`), `STEP` headers, hook block markers (`[SETUP]`/`[TEARDOWN]`), top-level comments, and `DONE.` remain flush-left.
@@ -276,6 +285,13 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 ---
 
 ## Release Notes
+
+### 0.0.93
+- **📅 Scheduler Dashboard** — `ManulEngine: Open Scheduler Dashboard` editor Webview panel. Scans workspace for `.hunt` files with `@schedule:` headers, shows a Start/Stop Daemon UI, and displays a live status indicator. Calendar icon in all sidebar view title bars
+- **`@schedule:` support** — Hunt files accept `@schedule: every 5 minutes` (and 5 other expression forms). Built-in scheduler runs files on schedule via `manul daemon`
+- **🔴 Record Session** — Step Builder sidebar button to launch `manul record <URL>` for live browser action recording
+- **Self-Healing Controls Cache** — Stale cache entries auto-healed at runtime with `🩹 HEALED` event logging
+- Core engine bump to **0.0.9.3**
 
 ### 0.0.92
 - **🎨 Auto-Formatter** — `Shift+Alt+F` (or Format on Save) auto-indents `.hunt` files: 4-space indent for action lines and inline comments under `STEP`/hook blocks; metadata, top-level comments, and `DONE.` stay flush-left. Registered via `DocumentFormattingEditProvider`
