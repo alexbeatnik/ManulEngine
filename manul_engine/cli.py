@@ -30,6 +30,7 @@ Usage:
   manul path/to/file.hunt    — run a single hunt file
   manul scan <URL>           — scan a URL and generate a draft .hunt file
   manul record <URL>         — record interactions in a browser and generate a .hunt file
+  manul daemon <directory>    — run scheduled .hunt files as a long-running daemon
 
 Flags:
   --headless                 — run browser in headless mode
@@ -49,6 +50,11 @@ Record-specific flags (only with `manul record`):
   --output <file>            — output file path (default: tests/recorded_mission.hunt)
   --browser <name>           — browser engine (default: chromium)
 
+Daemon-specific flags (only with `manul daemon`):
+  --headless                 — run browser in headless mode (recommended for daemon)
+  --browser <name>           — browser engine (default: chromium)
+  --screenshot <mode>        — screenshot capture mode for each run
+
 Examples:
   manul .
   manul tests/
@@ -64,6 +70,8 @@ Examples:
   manul scan https://example.com --output tests/example.hunt --headless
   manul record https://example.com
   manul record https://example.com tests/my_test.hunt
+  manul daemon tests/ --headless
+  manul daemon tests/ --headless --browser firefox --screenshot on-fail
 
 Notes:
   Any file with the .hunt extension is accepted.
@@ -112,6 +120,7 @@ class ParsedHunt(NamedTuple):
     parsed_vars: dict[str, str]
     tags: list[str]
     data_file: str  # @data: path (empty string if not declared)
+    schedule: str   # @schedule: expression (empty string if not declared)
 
 
 # ── Parse .hunt file ─────────────────────────────────────────────────────────
@@ -148,6 +157,7 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
     parsed_vars: dict[str, str] = {}
     tags: list[str] = []
     data_file: str = ""
+    schedule: str = ""
     mission_lines:  list[str] = []
     step_file_lines: list[int] = []
     setup_lines:    list[str] = []
@@ -197,6 +207,8 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
                     parsed_vars[m.group(1).strip()] = m.group(2).strip()
             elif stripped.startswith("@data:"):
                 data_file = stripped.split(":", 1)[1].strip()
+            elif stripped.startswith("@schedule:"):
+                schedule = stripped.split(":", 1)[1].strip()
             elif not stripped.startswith("#") and stripped:
                 mission_lines.append(line)
                 step_file_lines.append(lineno)
@@ -211,6 +223,7 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
         parsed_vars=parsed_vars,
         tags=tags,
         data_file=data_file,
+        schedule=schedule,
     )
 
 
@@ -476,6 +489,13 @@ async def main() -> None:
         record_idx = args.index("record")
         record_args = args[:record_idx] + args[record_idx + 1:]
         await record_main(record_args)
+        return
+
+    if _non_flag_args and _non_flag_args[0] == "daemon":
+        from manul_engine.scheduler import daemon_main
+        daemon_idx = args.index("daemon")
+        daemon_args = args[:daemon_idx] + args[daemon_idx + 1:]
+        await daemon_main(daemon_args)
         return
 
     headless = "--headless" in args

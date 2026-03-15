@@ -504,6 +504,46 @@ manul scan https://example.com --headless         # headless scan
 
 > **VS Code:** The Step Builder sidebar includes a **Live Page Scanner** — paste a URL and click **🔍 Run Scan** to invoke the scanner without opening a terminal. The generated `draft.hunt` opens automatically in the editor.
 
+### Daemon Mode & Scheduling (RPA / Monitoring)
+
+ManulEngine includes a built-in scheduler — no external cron jobs required. Add a `@schedule:` header to any `.hunt` file and launch the daemon:
+
+```text
+@context: Production health check
+@title: Checkout Monitor
+@schedule: every 5 minutes
+
+STEP 1: Verify checkout flow
+    NAVIGATE to https://shop.example.com
+    Click the 'Add to Cart' button
+    Click the 'Checkout' button
+    VERIFY that 'Order Summary' is present
+    DONE.
+```
+
+Run the daemon:
+
+```bash
+# Start the daemon — runs all scheduled .hunt files in the directory
+manul daemon tests/ --headless
+
+# With screenshot capture and a specific browser
+manul daemon tests/ --headless --browser firefox --screenshot on-fail
+```
+
+Supported `@schedule:` expressions:
+
+| Expression | Meaning |
+|---|---|
+| `every 30 seconds` | Run every 30 seconds |
+| `every 5 minutes` | Run every 5 minutes |
+| `every hour` | Run every hour |
+| `daily at 09:00` | Run once a day at 09:00 |
+| `every monday` | Run once a week on Monday at 00:00 |
+| `every friday at 14:30` | Run once a week on Friday at 14:30 |
+
+The daemon is a long-running process — each scheduled hunt file gets its own async task. If one run fails, the daemon logs the error and continues to the next scheduled execution. Stop with `Ctrl+C`.
+
 ### 3. Python API
 
 ```python

@@ -74,10 +74,10 @@ def _test_parser() -> None:
     finally:
         os.unlink(tmp_path)
 
-    # 1a. Return value is a 9-tuple.
+    # 1a. Return value is a 10-tuple.
     _assert(
-        len(result) == 9,
-        "parse_hunt_file returns 9-tuple",
+        len(result) == 10,
+        "parse_hunt_file returns 10-tuple",
         f"len={len(result)}",
     )
 

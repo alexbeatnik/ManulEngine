@@ -371,20 +371,24 @@ def _test_parsed_hunt_compat() -> None:
     print("\n  ── ParsedHunt backward compatibility ─────────────────────")
     from manul_engine.cli import ParsedHunt
 
-    # 9-field NamedTuple
-    _assert(len(ParsedHunt._fields) == 9,
-            "ParsedHunt has 9 fields", f"got {len(ParsedHunt._fields)}")
+    # 10-field NamedTuple (schedule added in daemon feature)
+    _assert(len(ParsedHunt._fields) == 10,
+            "ParsedHunt has 10 fields", f"got {len(ParsedHunt._fields)}")
     _assert("data_file" in ParsedHunt._fields,
             "ParsedHunt has 'data_file' field")
+    _assert("schedule" in ParsedHunt._fields,
+            "ParsedHunt has 'schedule' field")
 
     # Can still be unpacked positionally
     h = ParsedHunt(
         mission="test", context="ctx", title="t",
         step_file_lines=[1], setup_lines=[], teardown_lines=[],
-        parsed_vars={}, tags=[], data_file="data.json",
+        parsed_vars={}, tags=[], data_file="data.json", schedule="",
     )
     _assert(h[8] == "data.json", "ParsedHunt[8] is data_file")
     _assert(h.data_file == "data.json", "ParsedHunt.data_file attribute access works")
+    _assert(h[9] == "", "ParsedHunt[9] is schedule")
+    _assert(h.schedule == "", "ParsedHunt.schedule attribute access works")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
