@@ -106,7 +106,7 @@ _RECORDER_JS = r"""
 
   // Click
   document.addEventListener('click', (e) => {
-    const el = e.target.closest('a, button, [role="button"], [role="link"], [role="menuitem"], [role="tab"], [role="option"], input[type="submit"], input[type="button"], input[type="checkbox"], input[type="radio"]');
+    const el = e.target.closest('a, button, [role="button"], [role="link"], [role="menuitem"], [role="tab"], [role="option"], input[type="submit"], input[type="button"]');
     if (!el) return;
     // Ignore clicks on text inputs — those are handled by the input event.
     const tag = el.tagName.toLowerCase();
@@ -115,25 +115,6 @@ _RECORDER_JS = r"""
     if (tag === 'textarea') return;
 
     const label = bestLabel(el);
-
-    // Checkbox / radio: use check/uncheck/click radio
-    if (tag === 'input' && type === 'checkbox') {
-      const action = el.checked ? 'check' : 'uncheck';
-      window.recordManulEvent(JSON.stringify({
-        action: action,
-        target: label,
-        value: ''
-      }));
-      return;
-    }
-    if (tag === 'input' && type === 'radio') {
-      window.recordManulEvent(JSON.stringify({
-        action: 'radio',
-        target: label,
-        value: ''
-      }));
-      return;
-    }
 
     window.recordManulEvent(JSON.stringify({
       action: 'click',
@@ -153,10 +134,37 @@ _RECORDER_JS = r"""
     debounceInput(el, el.value || el.textContent || '');
   }, true);
 
-  // Change — captures <select> dropdown changes
+  // Change — captures <select> dropdown changes and checkbox/radio toggles
   document.addEventListener('change', (e) => {
     const el = e.target;
-    if (el.tagName.toLowerCase() !== 'select') return;
+    const tag = el.tagName.toLowerCase();
+    const type = (el.getAttribute('type') || '').toLowerCase();
+
+    // Checkbox: read el.checked AFTER the toggle has occurred
+    if (tag === 'input' && type === 'checkbox') {
+      const label = bestLabel(el);
+      const action = el.checked ? 'check' : 'uncheck';
+      window.recordManulEvent(JSON.stringify({
+        action: action,
+        target: label,
+        value: ''
+      }));
+      return;
+    }
+
+    // Radio button
+    if (tag === 'input' && type === 'radio') {
+      const label = bestLabel(el);
+      window.recordManulEvent(JSON.stringify({
+        action: 'radio',
+        target: label,
+        value: ''
+      }));
+      return;
+    }
+
+    // <select> dropdown
+    if (tag !== 'select') return;
     const label = bestLabel(el);
     const selected = el.options[el.selectedIndex];
     const optionText = selected ? (selected.textContent || '').trim() : el.value;
@@ -328,7 +336,6 @@ async def record_session(
 
     # Collected DSL lines (4-space indented action lines).
     recorded_lines: list[str] = []
-    step_counter = [1]  # mutable so the closure can increment
     # Step aggregation state — collapse consecutive fills on the same target.
     last_fill_target: list[str | None] = [None]
 
@@ -397,7 +404,7 @@ async def record_session(
 
 async def _wait_for_close(page) -> None:
     """Block until the page (or its browser) is closed."""
-    closed = asyncio.get_event_loop().create_future()
+    closed = asyncio.get_running_loop().create_future()
 
     def _on_close(_: object = None) -> None:
         if not closed.done():
@@ -427,7 +434,7 @@ def _write_hunt_file(path: str, url: str, lines: list[str]) -> None:
             fh.write(line + "\n")
         for line in lines:
             fh.write(line + "\n")
-        fh.write("    DONE.\n")
+        fh.write("DONE.\n")
 
 
 # ── CLI entry point ──────────────────────────────────────────────────────────

@@ -725,11 +725,10 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         top        = scored[:8]
         best_score = top[0].get("score", 0)
 
-        # Self-healing: stale cache entry detected — heuristics will re-resolve.
+        # Self-healing: stale cache entry detected — flag for heuristic paths below.
         # The cache is updated by _remember_resolved_control after the action succeeds.
         if _had_stale_cache:
-            self._last_step_healed = True
-            print(f"    🩹 HEALED: Stale cache entry — re-resolved via heuristics (score {best_score})")
+            print(f"    🔄 STALE CACHE: Entry invalidated — re-resolving (score {best_score})")
 
         # Pure-AI mode: usually asks the LLM, but fast-tracks if there is only 1 candidate.
         # Guard: ai_always has no effect without a model — fall through to heuristics.
@@ -763,22 +762,30 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
         if best_score >= 200_000:
             print(f"    🧠 SEMANTIC CACHE: Reusing learned element (score {best_score})")
+            if _had_stale_cache:
+                self._last_step_healed = True
             return top[0]
 
         if best_score >= 10_000:
             label = "High confidence" if best_score >= 20_000 else "Context reuse"
             print(f"    ⚙️  DOM HEURISTICS: {label} match (score {best_score})")
+            if _had_stale_cache:
+                self._last_step_healed = True
             return top[0]
 
         if best_score >= self._threshold:
             label = "High confidence" if best_score >= self._threshold * 2 else "Keyword"
             print(f"    ⚙️  DOM HEURISTICS: {label} match (score {best_score})")
+            if _had_stale_cache:
+                self._last_step_healed = True
             return top[0]
 
         # Explicit AI disable switch: threshold <= 0 means "never call the LLM".
         # (Useful for deterministic runs and environments without Ollama.)
         if self._threshold <= 0:
             print(f"    ⚙️  DOM HEURISTICS: AI disabled (threshold {self._threshold}); using best candidate (score {best_score})")
+            if _had_stale_cache:
+                self._last_step_healed = True
             return top[0]
 
         # Genuinely ambiguous → ask the LLM, unless there's only 1 candidate left

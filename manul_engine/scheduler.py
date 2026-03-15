@@ -85,6 +85,8 @@ def parse_schedule(expr: str) -> Schedule:
     m = _RE_EVERY_N.match(s)
     if m:
         n = int(m.group(1))
+        if n < 1:
+            raise ValueError(f"Interval must be at least 1: {s!r}")
         unit = m.group(2).lower().rstrip("s")  # "minutes" → "minute"
         multiplier = {"second": 1, "minute": 60, "hour": 3600}[unit]
         return Schedule(raw=s, interval_seconds=n * multiplier)
@@ -220,13 +222,18 @@ async def daemon_main(args: list[str]) -> None:
         if idx + 1 < len(args_clean):
             screenshot_mode = args_clean[idx + 1]
             args_clean = [a for i, a in enumerate(args_clean) if i not in (idx, idx + 1)]
+        else:
+            print("Error: --screenshot requires a value (on-fail|always|none).", file=sys.stderr)
+            sys.exit(1)
 
     # Extract --html-report
     html_report = "--html-report" in args_clean
+    if html_report:
+        print("⚠️  --html-report is not yet supported in daemon mode; ignoring.", file=sys.stderr)
     args_clean = [a for a in args_clean if a != "--html-report"]
 
     if not args_clean:
-        print("Usage: manul daemon <directory> [--headless] [--browser <name>]", file=sys.stderr)
+        print("Usage: manul daemon <directory> [--headless] [--browser <name>] [--screenshot <mode>] [--html-report]", file=sys.stderr)
         sys.exit(1)
 
     target_dir = args_clean[0]

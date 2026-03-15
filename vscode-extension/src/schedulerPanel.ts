@@ -93,8 +93,9 @@ function readTestsHome(workspaceRoot: string): string {
 
 /**
  * Read the JSON Lines run history file and return the last N records per file.
- * Returns a map from hunt filename (basename) to an array of recent records
- * (newest last, max `limit` entries).
+ * Returns a map from hunt file path (relative or basename) to an array of
+ * recent records (newest last, max `limit` entries). Entries are keyed by both
+ * the `file` field (when available) and the `name` field for broad matching.
  */
 function readRunHistory(
   workspaceRoot: string,
@@ -102,6 +103,12 @@ function readRunHistory(
 ): Record<string, RunHistoryRecord[]> {
   const historyPath = path.join(workspaceRoot, "reports", "run_history.json");
   const result: Record<string, RunHistoryRecord[]> = {};
+
+  function addEntry(key: string, rec: RunHistoryRecord): void {
+    if (!key) { return; }
+    if (!result[key]) { result[key] = []; }
+    result[key].push(rec);
+  }
 
   try {
     if (!fs.existsSync(historyPath)) { return result; }
@@ -111,9 +118,18 @@ function readRunHistory(
     for (const line of lines) {
       try {
         const rec: RunHistoryRecord = JSON.parse(line);
-        if (!rec.name) { continue; }
-        if (!result[rec.name]) { result[rec.name] = []; }
-        result[rec.name].push(rec);
+        if (!rec.name && !rec.file) { continue; }
+        // Key by relative file path when available (avoids basename collisions)
+        if (rec.file) {
+          const relFile = path.isAbsolute(rec.file)
+            ? path.relative(workspaceRoot, rec.file)
+            : rec.file;
+          addEntry(relFile, rec);
+        }
+        // Also key by basename for backward compatibility
+        if (rec.name) {
+          addEntry(rec.name, rec);
+        }
       } catch { /* skip malformed lines */ }
     }
 
@@ -305,9 +321,13 @@ export class SchedulerPanel {
       cwd: workspaceRoot,
     });
     terminal.show();
-    terminal.sendText(
-      `${JSON.stringify(manulExe)} daemon ${JSON.stringify(testsHome)} --headless`
-    );
+
+    const shellBase = path.basename((vscode.env.shell || "").toLowerCase());
+    const isPowerShell = shellBase === "powershell.exe" || shellBase === "pwsh" || shellBase === "pwsh.exe";
+    const cmd = isPowerShell
+      ? `& "${manulExe}" daemon "${testsHome}" --headless`
+      : `"${manulExe}" daemon "${testsHome}" --headless`;
+    terminal.sendText(cmd);
 
     this._postStatus();
   }
@@ -676,7 +696,8 @@ export class SchedulerPanel {
 
       // Lookup run history for this file
       var basename = f.relPath.split('/').pop() || f.relPath;
-      var records = runHistory[basename] || [];
+      // Lookup run history for this file — prefer relPath key, fall back to basename
+      var records = runHistory[f.relPath] || runHistory[basename] || [];
       var lastRec = records.length > 0 ? records[records.length - 1] : null;
 
       var html = '<div class="file-row" data-name="' + escapeAttr(f.relPath.toLowerCase()) + '" data-uri="' + escapeAttr(f.absUri) + '">';

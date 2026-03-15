@@ -656,5 +656,11 @@ async function runRecordSessionCommand(rawUrl: string): Promise<void> {
   const existing = vscode.window.terminals.find((t) => t.name === TERMINAL_NAME);
   const terminal = existing ?? vscode.window.createTerminal({ name: TERMINAL_NAME, cwd: workspaceRoot });
   terminal.show();
-  terminal.sendText(`${JSON.stringify(manulExe)} record ${JSON.stringify(url)}`);
+
+  const shellBase = path.basename((vscode.env.shell || "").toLowerCase());
+  const isPowerShell = shellBase === "powershell.exe" || shellBase === "pwsh" || shellBase === "pwsh.exe";
+  const cmd = isPowerShell
+    ? `& "${manulExe}" record "${url}"`
+    : `"${manulExe}" record "${url}"`;
+  terminal.sendText(cmd);
 }
