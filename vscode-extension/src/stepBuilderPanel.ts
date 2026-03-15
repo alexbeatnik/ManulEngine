@@ -13,7 +13,7 @@ import * as path from "path";
 import * as fs from "fs";
 import { spawn } from "child_process";
 import { findManulExecutable } from "./huntRunner";
-import { getConfigFileName } from "./constants";
+import { getConfigFileName, TERMINAL_NAME } from "./constants";
 
 // ── Hook scaffold constants ──────────────────────────────────────────────────
 
@@ -116,6 +116,8 @@ export class StepBuilderProvider implements vscode.WebviewViewProvider {
         await vscode.commands.executeCommand("manul.generateDemoTest");
       } else if (msg.command === "runLiveScan") {
         await runLiveScanCommand(msg.url ?? "");
+      } else if (msg.command === "recordSession") {
+        await runRecordSessionCommand(msg.url ?? "");
       }
     });
   }
@@ -203,6 +205,9 @@ export class StepBuilderProvider implements vscode.WebviewViewProvider {
     <input type="text" id="scanner-url-input" placeholder="https://example.com" />
     <button class="scan-btn" id="run-live-scan-btn">🔍 Run Scan</button>
   </div>
+  <div style="margin-top:4px;">
+    <button class="scan-btn" id="run-record-btn" style="width:100%;background:var(--vscode-editorError-foreground,#f44747);color:#fff;">🔴 Record Session</button>
+  </div>
   <h3>Insert Step</h3>
   ${buttons}
   <script nonce="${nonce}">
@@ -236,6 +241,14 @@ export class StepBuilderProvider implements vscode.WebviewViewProvider {
         return;
       }
       vsc.postMessage({ command: 'runLiveScan', url: urlVal });
+    });
+    document.getElementById('run-record-btn').addEventListener('click', function() {
+      var urlVal = document.getElementById('scanner-url-input').value.trim();
+      if (!urlVal) {
+        document.getElementById('scanner-url-input').focus();
+        return;
+      }
+      vsc.postMessage({ command: 'recordSession', url: urlVal });
     });
   </script>
 </body></html>`;
@@ -608,4 +621,40 @@ async function runLiveScanCommand(rawUrl: string): Promise<void> {
       `ManulEngine: Scan finished but ${outputFile} was not created.`
     );
   }
+}
+
+/**
+ * Launch `manul record <url>` in a VS Code integrated terminal.
+ * The recorder is interactive and long-running — the user watches DSL lines
+ * appear in real-time and closes the browser window (or presses Ctrl+C) to stop.
+ */
+async function runRecordSessionCommand(rawUrl: string): Promise<void> {
+  const url = rawUrl.trim();
+  if (!url) {
+    vscode.window.showErrorMessage("ManulEngine: Please enter a URL to record.");
+    return;
+  }
+
+  const folders = vscode.workspace.workspaceFolders;
+  if (!folders || folders.length === 0) {
+    vscode.window.showErrorMessage("ManulEngine: No workspace folder open.");
+    return;
+  }
+  const workspaceRoot = folders[0].uri.fsPath;
+
+  let manulExe: string;
+  try {
+    manulExe = await findManulExecutable(workspaceRoot);
+  } catch {
+    vscode.window.showErrorMessage(
+      "ManulEngine: Could not find the manul executable. Is ManulEngine installed?"
+    );
+    return;
+  }
+
+  // Reuse an existing terminal or create a new one.
+  const existing = vscode.window.terminals.find((t) => t.name === TERMINAL_NAME);
+  const terminal = existing ?? vscode.window.createTerminal({ name: TERMINAL_NAME, cwd: workspaceRoot });
+  terminal.show();
+  terminal.sendText(`${JSON.stringify(manulExe)} record ${JSON.stringify(url)}`);
 }
