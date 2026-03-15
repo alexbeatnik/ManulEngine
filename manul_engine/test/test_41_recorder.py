@@ -2,13 +2,13 @@
 """
 Unit-test suite for the Semantic Test Recorder (recorder.py).
 
-Tests:
-  1. _event_to_dsl maps all action types correctly.
-  2. Unknown/empty actions return None.
-  3. _write_hunt_file produces valid STEP-grouped output.
-  4. _default_output resolves to tests_home directory.
-  5. JS injection script contains expected event listeners.
-  6. record_main parses CLI arguments correctly.
+Covers:
+  * _event_to_dsl mappings for all supported action types.
+  * Handling of unknown or empty actions (returns None).
+  * _write_hunt_file producing valid STEP-grouped output.
+  * _default_output resolving to the tests_home directory.
+  * JS injection script wiring and expected event listeners.
+  * record_main CLI argument parsing.
 
 No browser or network required — tests the DSL generator and file writer only.
 """
@@ -22,7 +22,7 @@ import tempfile
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from manul_engine.recorder import _event_to_dsl, _write_hunt_file, _RECORDER_JS, _aggregate_event
+from manul_engine.recorder import _event_to_dsl, _write_hunt_file, _RECORDER_JS, _aggregate_event, _escape_dsl
 
 # ── Test helpers ──────────────────────────────────────────────────────────────
 
@@ -110,6 +110,13 @@ async def run_suite() -> bool:
 
     _assert(_event_to_dsl({}) is None,
             "empty event dict → None")
+
+    # Quote escaping: single quotes in target/value are escaped
+    result = _event_to_dsl({"action": "click", "target": "John's", "value": ""})
+    _assert(result is not None and "John\\'s" in result,
+            "single quote in target is escaped")
+    _assert(_escape_dsl("it's a test") == "it\\'s a test",
+            "_escape_dsl escapes single quotes")
 
     # ── 7. _write_hunt_file produces valid output ─────────────────────────
     with tempfile.TemporaryDirectory() as tmpdir:

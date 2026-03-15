@@ -76,7 +76,7 @@ ManulEngine/
 │       ├── test_38_set_and_indent.py Unit: SET command & indentation robustness (v0.0.9.2)
 │       ├── test_39_open_app.py       Unit: OPEN APP command — classify_step, RE_SYSTEM_STEP, _handle_open_app (32 assertions, no browser)
 │       ├── test_40_self_healing_cache.py Unit: Self-Healing Controls Cache — stale detection, HEALED logging, cache auto-update (16 assertions)
-│       ├── test_41_recorder.py      Unit: Semantic Test Recorder — JS bridge, DSL generator (48 assertions, no browser)
+│       ├── test_41_recorder.py      Unit: Semantic Test Recorder — JS bridge, DSL generator, step aggregation (no browser)
 │       └── test_42_scheduler.py     Unit: Built-in Scheduler — parse_schedule, next_run_delay, ParsedHunt integration (51 assertions, no browser)
 ├── controls/                         User-owned custom Python handlers (auto-loaded at engine startup)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
@@ -693,7 +693,7 @@ The engine is battle-tested with **2259** synthetic DOM/unit tests across 43 tes
 * **SET & Indentation unit suite:** `manul_engine/test/test_38_set_and_indent.py` (SET command parsing, regex validation, `substitute_memory` integration, `@var:`+SET coexistence, indentation stripping robustness, tab handling, no browser).
 * **OPEN APP unit suite:** `manul_engine/test/test_39_open_app.py` (`classify_step` detection, `RE_SYSTEM_STEP` matching, `_handle_open_app` mock tests — existing pages, wait_for_event, failure path, parse_hunt_file integration, 32 assertions, no browser).
 * **Self-Healing Cache unit suite:** `manul_engine/test/test_40_self_healing_cache.py` (stale detection, HEALED logging, cache auto-update, HTML reporter badge, 16 assertions).
-* **Recorder unit suite:** `manul_engine/test/test_41_recorder.py` (JS injection bridge, DSL step generator, hunt file output, 48 assertions, no browser).
+* **Recorder unit suite:** `manul_engine/test/test_41_recorder.py` (JS injection bridge, DSL step generator, step aggregation, hunt file output, no browser).
 * **Scheduler unit suite:** `manul_engine/test/test_42_scheduler.py` (`parse_schedule` all 6 expression forms, case insensitivity, error cases, `next_run_delay`, `_seconds_until_time/weekday`, ParsedHunt integration, Schedule immutability, all 7 weekday names, 51 assertions, no browser).
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 

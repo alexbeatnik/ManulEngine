@@ -635,6 +635,30 @@ async function runRecordSessionCommand(rawUrl: string): Promise<void> {
     return;
   }
 
+  // URL validation — mirror scan behaviour.
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    vscode.window.showErrorMessage(
+      "ManulEngine: Please enter a valid URL to record (e.g. https://example.com)."
+    );
+    return;
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    vscode.window.showErrorMessage(
+      "ManulEngine: Only http:// and https:// URLs are supported for recording."
+    );
+    return;
+  }
+  // Guard against shell injection: refuse URLs containing quotes, backticks, or newlines.
+  if (/["'`\r\n]/.test(url)) {
+    vscode.window.showErrorMessage(
+      "ManulEngine: The URL contains unsupported characters. Please provide a standard URL."
+    );
+    return;
+  }
+
   const folders = vscode.workspace.workspaceFolders;
   if (!folders || folders.length === 0) {
     vscode.window.showErrorMessage("ManulEngine: No workspace folder open.");

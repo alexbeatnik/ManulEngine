@@ -160,6 +160,7 @@ async function mutateScheduleHeader(
   schedule: string,
 ): Promise<void> {
   const doc = await vscode.workspace.openTextDocument(fileUri);
+  const wasDirty = doc.isDirty;
   const edit = new vscode.WorkspaceEdit();
   const linesToCheck = Math.min(doc.lineCount, 30);
 
@@ -204,9 +205,11 @@ async function mutateScheduleHeader(
   }
 
   await vscode.workspace.applyEdit(edit);
-  // Save the document so the change is persisted
-  const updatedDoc = await vscode.workspace.openTextDocument(fileUri);
-  await updatedDoc.save();
+  // Only save if the document was not dirty before our edit; otherwise,
+  // leave it dirty and let the user decide when to save.
+  if (!wasDirty) {
+    await doc.save();
+  }
 }
 
 // ── Panel singleton ──────────────────────────────────────────────────────────

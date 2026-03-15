@@ -826,7 +826,8 @@ async def main() -> None:
                     duration_ms=elapsed * 1000,
                     tags=_read_tags(fpath),
                 )
-                append_run_history(_mr)
+                # Child subprocess (--workers 1) already persists history;
+                # skip here to avoid duplicate entries.
                 run_summary.missions.append(_mr)
                 results.append((name, _child_status.upper(), elapsed))
 

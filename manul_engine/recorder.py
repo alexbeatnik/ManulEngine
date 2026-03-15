@@ -195,14 +195,20 @@ _RECORDER_JS = r"""
 
 # ── DSL generation ────────────────────────────────────────────────────────────
 
+
+def _escape_dsl(text: str) -> str:
+    """Escape single quotes in text to keep DSL lines balanced."""
+    return text.replace("'", "\\'")
+
+
 def _event_to_dsl(event: dict) -> str | None:
     """Convert a recorded browser event dict into a Hunt DSL line.
 
     Returns None for events that should be silently skipped.
     """
     action = event.get("action", "")
-    target = event.get("target", "").strip()
-    value = event.get("value", "").strip()
+    target = _escape_dsl(event.get("target", "").strip())
+    value = _escape_dsl(event.get("value", "").strip())
 
     if action == "click":
         if not target:

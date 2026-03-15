@@ -1222,6 +1222,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             _sr_status = "warning"
                         else:
                             _sr_status = "fail"
+                        _healed = self._last_step_healed
                         _step_results.append(StepResult(
                             index=i,
                             text=re.sub(r'^\s*\d+\.\s*', '', step),
@@ -1230,8 +1231,9 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             error=_step_error,
                             screenshot=_ss_b64,
                             logical_step=_current_logical_step,
-                            healed=self._last_step_healed,
+                            healed=_healed,
                         ))
+                        self._last_step_healed = False
                         # After non-NAVIGATE steps, check if the URL changed and
                         # annotate the next step with the new landing URL.
                         if _auto_annotate_live and hunt_file and step_file_lines \
