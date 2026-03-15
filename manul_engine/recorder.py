@@ -234,6 +234,40 @@ def _event_to_dsl(event: dict) -> str | None:
     return None
 
 
+# ── Step aggregation ──────────────────────────────────────────────────────────
+
+def _aggregate_event(
+    event: dict,
+    recorded_lines: list[str],
+    last_fill_target: list[str | None],
+) -> str | None:
+    """Process a recorded event with step aggregation (collapsing consecutive fills).
+
+    If the event is a ``fill`` on the same target as the previous fill, the last
+    entry in *recorded_lines* is **replaced** instead of appending a new line.
+
+    Returns the DSL line that was appended/updated, or ``None`` when the event
+    was silently skipped.
+
+    *last_fill_target* is a single-element list used as mutable state — it is
+    updated in-place so callers can track continuity between invocations.
+    """
+    dsl = _event_to_dsl(event)
+    if dsl is None:
+        return None
+
+    action = event.get("action", "")
+    target = event.get("target", "").strip()
+
+    if action == "fill" and target and target == last_fill_target[0] and recorded_lines:
+        recorded_lines[-1] = dsl
+    else:
+        recorded_lines.append(dsl)
+
+    last_fill_target[0] = target if action == "fill" else None
+    return dsl
+
+
 # ── Default output path ──────────────────────────────────────────────────────
 
 def _default_output(filename: str = "recorded_mission.hunt") -> str:
@@ -295,6 +329,8 @@ async def record_session(
     # Collected DSL lines (4-space indented action lines).
     recorded_lines: list[str] = []
     step_counter = [1]  # mutable so the closure can increment
+    # Step aggregation state — collapse consecutive fills on the same target.
+    last_fill_target: list[str | None] = [None]
 
     def on_event(raw_json: str) -> None:
         """Bridge callback invoked from the browser JS context."""
@@ -303,12 +339,17 @@ async def record_session(
             event = json.loads(raw_json)
         except (json.JSONDecodeError, TypeError):
             return
-        dsl = _event_to_dsl(event)
+
+        prev_len = len(recorded_lines)
+        dsl = _aggregate_event(event, recorded_lines, last_fill_target)
         if dsl is None:
             return
-        recorded_lines.append(dsl)
+
         # Real-time console feedback for the user.
-        print(f"  📝 {dsl.strip()}")
+        if len(recorded_lines) == prev_len:
+            print(f"  📝 {dsl.strip()}  (updated)")
+        else:
+            print(f"  📝 {dsl.strip()}")
 
     print(f"\n🎬 Manul Recorder — recording session for {url}")
     print(f"   Browser: {browser} | Output: {output_abs}")

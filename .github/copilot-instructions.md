@@ -98,7 +98,7 @@ manul_engine/
     test_38_set_and_indent.py    SET command & indentation robustness (v0.0.9.2)
     test_39_open_app.py          OPEN APP command — classify_step, _handle_open_app (32 assertions, no browser)
     test_40_self_healing_cache.py Self-Healing Controls Cache (16 assertions)
-    test_41_recorder.py          Semantic Test Recorder JS bridge + DSL generator (48 assertions, no browser)
+    test_41_recorder.py          Semantic Test Recorder JS bridge + DSL generator + step aggregation (75 assertions, no browser)
     test_42_scheduler.py         Built-in Scheduler — parse_schedule, next_run_delay, ParsedHunt integration (51 assertions, no browser)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables

@@ -22,7 +22,7 @@ import tempfile
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from manul_engine.recorder import _event_to_dsl, _write_hunt_file, _RECORDER_JS
+from manul_engine.recorder import _event_to_dsl, _write_hunt_file, _RECORDER_JS, _aggregate_event
 
 # ── Test helpers ──────────────────────────────────────────────────────────────
 
@@ -230,6 +230,97 @@ async def run_suite() -> bool:
         dsl = _event_to_dsl(event)
         _assert(dsl is not None and dsl.startswith("    "),
                 f"{action} DSL has 4-space indent")
+
+    # ── 12. Step aggregation — consecutive fills on same target collapse ──
+    print("\n  🔄 Step aggregation (consecutive fill collapsing)")
+
+    lines: list[str] = []
+    lft: list[str | None] = [None]
+
+    # First fill on 'email' → appends
+    _aggregate_event({"action": "fill", "target": "email", "value": "l"}, lines, lft)
+    _assert(len(lines) == 1, "first fill appends (len=1)")
+    _assert("'l'" in lines[0], "first fill has value 'l'")
+
+    # Second fill on same 'email' → replaces
+    _aggregate_event({"action": "fill", "target": "email", "value": "lo"}, lines, lft)
+    _assert(len(lines) == 1, "second fill on same target replaces (len=1)")
+    _assert("'lo'" in lines[0], "replaced value is 'lo'")
+
+    # Third fill on same 'email' → replaces again
+    _aggregate_event({"action": "fill", "target": "email", "value": "login"}, lines, lft)
+    _assert(len(lines) == 1, "third fill on same target still replaces (len=1)")
+    _assert("'login'" in lines[0], "final value is 'login'")
+
+    # ── 13. Aggregation resets when target changes ────────────────────────
+    _aggregate_event({"action": "fill", "target": "pass", "value": "p"}, lines, lft)
+    _assert(len(lines) == 2, "fill on different target appends (len=2)")
+    _assert("'pass'" in lines[1] and "'p'" in lines[1],
+            "new target step has correct target and value")
+
+    _aggregate_event({"action": "fill", "target": "pass", "value": "password"}, lines, lft)
+    _assert(len(lines) == 2, "consecutive fill on 'pass' replaces (len=2)")
+    _assert("'password'" in lines[1], "replaced pass value is 'password'")
+
+    # ── 14. Aggregation resets when action changes ────────────────────────
+    _aggregate_event({"action": "click", "target": "Login", "value": ""}, lines, lft)
+    _assert(len(lines) == 3, "click appends as new step (len=3)")
+    _assert(lft[0] is None, "last_fill_target reset after click")
+
+    # Fill after click → appends even if same target as a previous fill
+    _aggregate_event({"action": "fill", "target": "email", "value": "retry"}, lines, lft)
+    _assert(len(lines) == 4, "fill after click appends (len=4)")
+    _assert("'retry'" in lines[3], "new fill step has value 'retry'")
+
+    # ── 15. Aggregation skips None DSL events ─────────────────────────────
+    result = _aggregate_event({"action": "unknown", "target": "X", "value": ""}, lines, lft)
+    _assert(result is None, "unknown action returns None")
+    _assert(len(lines) == 4, "unknown action does not modify list (len=4)")
+
+    result = _aggregate_event({"action": "fill", "target": "", "value": "empty"}, lines, lft)
+    _assert(result is None, "fill with empty target returns None")
+    _assert(len(lines) == 4, "fill with empty target does not modify list (len=4)")
+
+    # ── 16. Full sequence produces clean output ───────────────────────────
+    full_lines: list[str] = []
+    full_lft: list[str | None] = [None]
+    events = [
+        {"action": "fill", "target": "email", "value": "l"},
+        {"action": "fill", "target": "email", "value": "lo"},
+        {"action": "fill", "target": "email", "value": "login"},
+        {"action": "fill", "target": "pass", "value": "p"},
+        {"action": "fill", "target": "pass", "value": "pa"},
+        {"action": "fill", "target": "pass", "value": "password"},
+        {"action": "click", "target": "Log In", "value": ""},
+    ]
+    for ev in events:
+        _aggregate_event(ev, full_lines, full_lft)
+
+    _assert(len(full_lines) == 3,
+            "7 raw events collapse to 3 clean steps")
+    _assert("'login'" in full_lines[0],
+            "email fill collapsed to final value 'login'")
+    _assert("'password'" in full_lines[1],
+            "pass fill collapsed to final value 'password'")
+    _assert("'Log In'" in full_lines[2],
+            "click step preserved")
+
+    # ── 17. Write aggregated output to file ───────────────────────────────
+    with tempfile.TemporaryDirectory() as tmpdir:
+        out_path = os.path.join(tmpdir, "aggregated.hunt")
+        _write_hunt_file(out_path, "https://www.facebook.com/", full_lines)
+        content = open(out_path, "r", encoding="utf-8").read()
+        # Should contain exactly one email fill and one pass fill
+        _assert(content.count("Fill 'email'") == 1,
+                "aggregated file has exactly 1 email fill")
+        _assert(content.count("Fill 'pass'") == 1,
+                "aggregated file has exactly 1 pass fill")
+        _assert("'login'" in content,
+                "aggregated file has final email value")
+        _assert("'password'" in content,
+                "aggregated file has final pass value")
+        _assert("Click the 'Log In' button" in content,
+                "aggregated file has click step")
 
     # ── Summary ───────────────────────────────────────────────────────────
     total = _PASS + _FAIL
