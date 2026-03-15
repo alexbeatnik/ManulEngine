@@ -1,13 +1,13 @@
-# 😼 ManulEngine — The Mastermind
+# 😼 ManulEngine — The Universal Web Automation Runtime
 
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
 
-**A deterministic, DSL-first E2E browser automation platform.**
-Write unbreakable tests in plain English — powered by blazing-fast heuristics (`TreeWalker`), with optional local AI for self-healing.
+**ManulEngine — The Universal Web Automation Runtime.**
+Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright.
 
 No CSS selectors. No XPath fragility. No cloud API bills.
-ManulEngine resolves elements using a mathematically sound `DOMScorer` (normalised 0.0–1.0 float scoring across 20+ signals) and a native JavaScript `TreeWalker` — deterministic, reproducible, and fast enough to run on any machine.
+ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtime that resolves DOM elements with a mathematically sound `DOMScorer` (normalised 0.0–1.0 float scoring across 20+ signals) and a native JavaScript `TreeWalker`. Deterministic, reproducible, and fast enough to run anywhere: CI pipelines, cron jobs, or a developer's laptop.
 
 > The Manul goes hunting and never returns without its prey.
 
@@ -15,6 +15,16 @@ ManulEngine resolves elements using a mathematically sound `DOMScorer` (normalis
 > Playwright speed. Heuristic precision. Optional local micro-LLMs via Ollama — only when you need them.
 
 ---
+
+## 🚀 What's New in v0.0.9.3 — The Scheduler Update
+
+* **Built-in Scheduler (`@schedule:` + `manul daemon`):** Add a `@schedule: every 5 minutes` header to any `.hunt` file and launch `manul daemon tests/ --headless` — the engine runs scheduled hunts in an infinite async loop with zero external dependencies. Supports interval expressions (`every N seconds/minutes/hours`), daily schedules (`daily at 09:00`), and weekly schedules (`every monday at 14:30`). Perfect for RPA workflows and synthetic monitoring.
+* **Advanced Scheduler Dashboard (VS Code Extension):** A visual RPA manager that displays **all** `.hunt` files in the workspace, split into **Scheduled** and **Unscheduled** sections. A live search bar filters by filename. Each file row includes a combobox with preset schedule options and a custom input — click **Apply** to inject, update, or remove the `@schedule:` header directly in the file. The dashboard also provides **Start Daemon** / **Stop Daemon** buttons that manage the `manul daemon` process directly in the integrated terminal.
+* **Persistent Run History & Sparklines:** Every hunt execution (CLI, parallel workers, and daemon mode) appends a JSON record to `reports/run_history.json` (JSON Lines format: `file`, `name`, `timestamp`, `status`, `duration_ms`). The Scheduler Dashboard reads this file and renders a **sparkline** (last 5 runs as 🟢/🔴/🟡 dots) and a **relative timestamp** (e.g. "3m ago") next to each file row — giving instant visibility into test health without leaving the editor.
+* **Self-Healing Controls Cache:** The persistent controls cache now detects stale entries at runtime. When a cached locator no longer matches any live DOM candidate, the engine re-resolves the element via heuristics, updates the cache file automatically, and logs a `🩹 HEALED` event. Failed healings are surfaced as `⚠️ STALE` warnings in the HTML report.
+* **Semantic Test Recorder (`manul record`):** `manul record https://example.com` opens a browser with a live recording overlay — click, type, and navigate; every action is captured and translated into clean `.hunt` DSL in real time. Stop the recording and a ready-to-run hunt file is saved to `tests_home/`.
+
+### Previous highlights (v0.0.9.2)
 
 ## 🚀 What's New in v0.0.9.2 — The Mastermind
 
@@ -70,6 +80,28 @@ QA engineers write `.hunt` files in a plain-English DSL — no programming requi
 ### Optional AI Fallback — Off by Default
 
 AI (Ollama / local micro-LLMs) is **turned off by default** (`"model": null`). The heuristics engine handles the vast majority of real-world UIs on its own. When you do enable a model, it acts as a self-healing fallback — only invoked when heuristic confidence drops below a threshold. No cloud calls. No per-click charges. No flaky non-determinism in your CI pipeline.
+
+---
+
+## 🏛️ Beyond Testing: 4 Pillars of Automation
+
+ManulEngine is not just a test runner — it is a **Universal Web Automation Runtime**. The same `.hunt` DSL, the same heuristics engine, and the same Playwright backend power four distinct automation pillars:
+
+### 1. QA & E2E Testing
+
+The core offering. Write plain-English test scenarios, use Python hooks for DB seeding and teardown, attach `@data:` files for data-driven runs, and generate interactive HTML reports. ManulEngine replaces fragile selector-based test suites with deterministic, human-readable scripts that survive UI refactors.
+
+### 2. RPA (Robotic Process Automation)
+
+Automate repetitive business tasks — logging into a CRM, downloading invoices, filling compliance forms, scraping vendor portals — without writing fragile Selenium code. A `.hunt` file is a self-contained automation script: `NAVIGATE`, `FILL`, `CLICK`, `EXTRACT`, `CALL PYTHON`. Schedule it with cron or a task runner and let the Manul do the work.
+
+### 3. Synthetic Monitoring
+
+Run `.hunt` scripts on a schedule to verify production health. A three-step checkout flow, an API-backed dashboard, a login gate — if it works in a hunt file, it works as a synthetic monitor. Pair with `--html-report` and `--screenshot on-fail` for instant incident forensics.
+
+### 4. AI Agent Execution
+
+The safest way to execute AI-generated browser actions. Instead of letting LLMs hallucinate raw Playwright calls, have them generate strict `.hunt` DSL — a constrained, validated instruction set. ManulEngine's deterministic engine executes the script safely, with built-in retries, self-healing, and screenshot capture. No prompt injection into the browser. No unbounded API calls. Full auditability.
 
 ---
 
@@ -482,6 +514,46 @@ manul scan https://example.com --headless         # headless scan
 
 > **VS Code:** The Step Builder sidebar includes a **Live Page Scanner** — paste a URL and click **🔍 Run Scan** to invoke the scanner without opening a terminal. The generated `draft.hunt` opens automatically in the editor.
 
+### Daemon Mode & Scheduling (RPA / Monitoring)
+
+ManulEngine includes a built-in scheduler — no external cron jobs required. Add a `@schedule:` header to any `.hunt` file and launch the daemon:
+
+```text
+@context: Production health check
+@title: Checkout Monitor
+@schedule: every 5 minutes
+
+STEP 1: Verify checkout flow
+    NAVIGATE to https://shop.example.com
+    Click the 'Add to Cart' button
+    Click the 'Checkout' button
+    VERIFY that 'Order Summary' is present
+    DONE.
+```
+
+Run the daemon:
+
+```bash
+# Start the daemon — runs all scheduled .hunt files in the directory
+manul daemon tests/ --headless
+
+# With screenshot capture and a specific browser
+manul daemon tests/ --headless --browser firefox --screenshot on-fail
+```
+
+Supported `@schedule:` expressions:
+
+| Expression | Meaning |
+|---|---|
+| `every 30 seconds` | Run every 30 seconds |
+| `every 5 minutes` | Run every 5 minutes |
+| `every hour` | Run every hour |
+| `daily at 09:00` | Run once a day at 09:00 |
+| `every monday` | Run once a week on Monday at 00:00 |
+| `every friday at 14:30` | Run once a week on Friday at 14:30 |
+
+The daemon is a long-running process — each scheduled hunt file gets its own async task. If one run fails, the daemon logs the error and continues to the next scheduled execution. Stop with `Ctrl+C`.
+
 ### 3. Python API
 
 ```python
@@ -745,7 +817,7 @@ export MANUL_BROWSER_ARGS="--disable-gpu,--lang=uk"
 
 ## 🐾 Battle-Tested
 
-ManulEngine is verified against **2138 synthetic DOM tests** across 40 test suites covering:
+ManulEngine is verified against **2259 synthetic DOM tests** across 43 test suites covering:
 
 - Shadow DOM, invisible overlays, zero-pixel honeypots
 - Same-origin iframe element routing and cross-frame resolution
@@ -758,4 +830,4 @@ ManulEngine is verified against **2138 synthetic DOM tests** across 40 test suit
 
 ---
 
-**Version:** 0.0.9.2 · **Status:** Hunting...
+**Version:** 0.0.9.3 · **Status:** Hunting...

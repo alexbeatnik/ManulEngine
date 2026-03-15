@@ -10,7 +10,10 @@ can also be serialised to JSON for CI integrations.
 
 from __future__ import annotations
 
+import json
+import os
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 
 @dataclass
@@ -23,6 +26,7 @@ class StepResult:
     error:         str | None = None       # traceback / message on failure
     screenshot:    str | None = None       # base64-encoded PNG, or None
     logical_step:  str | None = None       # active STEP label when this step ran
+    healed:        bool = False            # True when a stale cache entry was re-resolved via heuristics
 
 
 @dataclass
@@ -54,3 +58,39 @@ class RunSummary:
     warning:     int = 0
     duration_ms: float = 0.0
     missions:    list[MissionResult] = field(default_factory=list)
+
+
+# ── Run history persistence ──────────────────────────────────────────────────
+
+_HISTORY_FILE = "run_history.json"
+
+
+def append_run_history(mission: MissionResult) -> None:
+    """Append a single run record to ``reports/run_history.json`` (JSON Lines).
+
+    Each line is a self-contained JSON object with keys:
+    ``file``, ``name``, ``timestamp``, ``status``, ``duration_ms``.
+    """
+    reports_dir = os.path.join(os.getcwd(), "reports")
+    os.makedirs(reports_dir, exist_ok=True)
+    history_path = os.path.join(reports_dir, _HISTORY_FILE)
+
+    record = {
+        "file": mission.file,
+        "name": mission.name,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "status": mission.status,
+        "duration_ms": round(mission.duration_ms, 1),
+    }
+
+    try:
+        # Single low-level append write avoids interleaved/corrupted lines
+        # when multiple worker subprocesses write concurrently.
+        line = json.dumps(record, ensure_ascii=False).encode("utf-8") + b"\n"
+        fd = os.open(history_path, os.O_APPEND | os.O_CREAT | os.O_WRONLY)
+        try:
+            os.write(fd, line)
+        finally:
+            os.close(fd)
+    except OSError:
+        pass  # best-effort — do not crash the run

@@ -3,9 +3,11 @@
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
 
-The official VS Code extension for **ManulEngine** — a deterministic, DSL-based E2E browser automation platform.
+The official IDE for the **ManulEngine Universal Web Automation Runtime**.
 
-Write tests in plain English `.hunt` files. Run them at Playwright speed. Resolve elements with a mathematically sound `DOMScorer` (0.0–1.0 float scoring, 20+ heuristic signals) and a native `TreeWalker` — no CSS selectors, no XPath, no cloud APIs.
+Author, run, and debug `.hunt` automation scripts for E2E testing, RPA workflows, synthetic monitoring, and AI-agent execution — all from a single editor. The extension provides Hunt DSL language support, one-click execution, interactive debug stepping, a Step Builder sidebar, configuration UI, and cache management for [ManulEngine](https://github.com/alexbeatnik/ManulEngine).
+
+ManulEngine is a Playwright-backed runtime that interprets plain-English `.hunt` DSL scripts deterministically — resolving DOM elements with blazing-fast JS heuristics (`DOMScorer` + `TreeWalker`), no CSS selectors, no cloud APIs. Whether you are writing QA test suites, automating repetitive business tasks, or building production health monitors, the workflow is the same: write a `.hunt` file, hit Run.
 
 > The Manul goes hunting and never returns without its prey.
 
@@ -14,18 +16,27 @@ Write tests in plain English `.hunt` files. Run them at Playwright speed. Resolv
 
 ---
 
-## 🤝 Dual Persona Workflow — Testing for Humans, Power for Engineers
+## 🤝 Dual Persona Workflow — Automation for Humans, Power for Engineers
 
-ManulEngine bridges the gap between Manual QA and Engineering. You don't write controls — you write tests.
+ManulEngine bridges the gap between non-technical authors and engineering teams. You don't write selectors — you write scripts.
 
-* **For Manual QA:** Open a `.hunt` file and write scenarios in plain English — no Python, CSS, or XPath needed. The deterministic heuristics engine resolves elements reliably across UI changes.
-* **For Developers / SDETs:** No more maintaining thousands of brittle `page.locator()` calls. For complex custom UI elements, write a Python control hook with the full Playwright API. The QA team keeps writing plain English — your hook handles the Playwright logic behind the scenes.
+* **For QA / Business Analysts / Ops:** Open a `.hunt` file and write automation scenarios in plain English — no Python, CSS, or XPath needed. The deterministic heuristics engine resolves elements reliably across UI changes. The same scripts work for testing, RPA, and monitoring.
+* **For Developers / SDETs:** No more maintaining thousands of brittle `page.locator()` calls. For complex custom UI elements, write a Python control hook with the full Playwright API. The rest of the team keeps writing plain English — your hook handles the Playwright logic behind the scenes.
 
 ---
 
 ## VS Code Extension Features
 
-> Hunt file language support, one-click test runner, interactive debug runner with gutter breakpoints, Step Builder for plain-English `.hunt` files, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) — deterministic DSL-based browser automation.
+> Hunt DSL language support, one-click runner, interactive debug runner with gutter breakpoints, Step Builder for plain-English `.hunt` scripts, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) — the Universal Web Automation Runtime for E2E testing, RPA, synthetic monitoring, and AI-agent execution.
+
+## 🚀 What's New in v0.0.9.3 — The Scheduler Update
+
+* **📅 Advanced Scheduler Dashboard (Visual RPA Manager):** A dedicated editor Webview panel (`ManulEngine: Open Scheduler Dashboard` command) that scans the workspace for **all** `.hunt` files — not just scheduled ones. The dashboard splits files into **Scheduled Tasks** (files with an existing `@schedule:` header) and **Unscheduled Tasks** sections. A **live search bar** at the top filters both lists by filename. Each file row includes a **combobox** with preset schedule options (`every 5 minutes`, `hourly`, `daily at 09:00`, `Custom...`, etc.) and an **Apply** button that injects, updates, or removes the `@schedule:` header directly in the `.hunt` file — no manual editing required. The dashboard also shows a live status indicator (green when the daemon is running, grey when stopped) and provides **Start Daemon** / **Stop Daemon** buttons. Start spawns `manul daemon <tests_home> --headless` in a dedicated `"Manul Daemon"` terminal; Stop disposes the terminal. The dashboard command appears as a calendar icon in the title bar of all ManulEngine sidebar views.
+* **`@schedule:` Header Support:** Hunt files now support `@schedule: every 5 minutes` (and other expressions: `every N seconds/minutes/hours`, `daily at HH:MM`, `every monday`, `every friday at 14:30`). The engine's built-in scheduler runs these files on their declared schedule via `manul daemon <directory>` — no external cron required.
+* **🔴 Record Session Button:** The Step Builder sidebar includes a **Record Session** button — enter a URL and click to launch `manul record <URL>` in the integrated terminal, capturing browser actions as `.hunt` DSL in real time.
+* **Self-Healing Controls Cache:** Stale cache entries are detected and auto-healed at runtime. `🩹 HEALED` events in the HTML report.
+
+### Previous highlights (v0.0.9.2)
 
 ## 🚀 What's New in v0.0.9.2 — The Mastermind
 
@@ -274,6 +285,14 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 ---
 
 ## Release Notes
+
+### 0.0.93
+- **📅 Advanced Scheduler Dashboard** — `ManulEngine: Open Scheduler Dashboard` editor Webview panel. Displays **all** `.hunt` files in Scheduled / Unscheduled split view with live search, per-file combobox schedule editor (preset + custom expressions), and Apply button to inject/update/remove `@schedule:` headers directly in files. Start/Stop Daemon UI and live status indicator. Calendar icon in all sidebar view title bars
+- **📊 Persistent Run History & Sparklines** — Every hunt execution logs a record to `reports/run_history.json`. The Scheduler Dashboard reads this file and shows a sparkline (last 5 runs as 🟢/🔴/🟡 dots) and a relative timestamp ("3m ago") next to each file row
+- **`@schedule:` support** — Hunt files accept `@schedule: every 5 minutes` (and 5 other expression forms). Built-in scheduler runs files on schedule via `manul daemon`
+- **🔴 Record Session** — Step Builder sidebar button to launch `manul record <URL>` for live browser action recording
+- **Self-Healing Controls Cache** — Stale cache entries auto-healed at runtime with `🩹 HEALED` event logging
+- Core engine bump to **0.0.9.3**
 
 ### 0.0.92
 - **🎨 Auto-Formatter** — `Shift+Alt+F` (or Format on Save) auto-indents `.hunt` files: 4-space indent for action lines and inline comments under `STEP`/hook blocks; metadata, top-level comments, and `DONE.` stay flush-left. Registered via `DocumentFormattingEditProvider`

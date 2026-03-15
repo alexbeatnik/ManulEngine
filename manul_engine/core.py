@@ -104,6 +104,9 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         # Tracks how many annotation lines have been inserted into the hunt file
         # during this run, so subsequent NAVIGATE steps can offset their line numbers.
         self._annotate_line_offset: int = 0
+        # Self-healing flag: set by _resolve_element when a stale cache entry
+        # is detected and the element is re-resolved via heuristics.
+        self._last_step_healed: bool = False
         if self.model is None:
             print("    ℹ️  No model configured — running in heuristics-only mode (AI disabled).")
         if self.debug_mode:
@@ -646,6 +649,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         """
         _skip = failed_ids or set()
         is_blind = not search_texts and not target_field
+        self._last_step_healed = False
+        _had_stale_cache = False
 
         els = []
         for attempt in range(5):
@@ -674,6 +679,10 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                 is_aria_disabled = aria_disabled_raw == "true"
                 if not (is_disabled or is_aria_disabled):
                     return cached_control
+            elif self._controls_cache_enabled:
+                _cache_key = self._control_cache_key(mode, search_texts, target_field)
+                if _cache_key in self._controls_cache_data:
+                    _had_stale_cache = True
 
             # Quick exact-match pass
             exact = []
@@ -716,6 +725,11 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         top        = scored[:8]
         best_score = top[0].get("score", 0)
 
+        # Self-healing: stale cache entry detected — flag for heuristic paths below.
+        # The cache is updated by _remember_resolved_control after the action succeeds.
+        if _had_stale_cache:
+            print(f"    🔄 STALE CACHE: Entry invalidated — re-resolving (score {best_score})")
+
         # Pure-AI mode: usually asks the LLM, but fast-tracks if there is only 1 candidate.
         # Guard: ai_always has no effect without a model — fall through to heuristics.
         if getattr(prompts, "AI_ALWAYS", False) and self.model is not None:
@@ -727,6 +741,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                 idx = await self._llm_select_element(step, mode, top, strategic_context)
                 
             if idx is None:
+                self._last_step_healed = False
                 if failed_ids is not None:
                     for c in top:
                         failed_ids.add((c.get("frame_index", 0), c["id"]))
@@ -740,28 +755,37 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                 target_field=target_field,
                 ai_choice=ai_choice,
             ):
+                self._last_step_healed = False
                 return None
 
             return ai_choice
 
         if best_score >= 200_000:
             print(f"    🧠 SEMANTIC CACHE: Reusing learned element (score {best_score})")
+            if _had_stale_cache:
+                self._last_step_healed = True
             return top[0]
 
         if best_score >= 10_000:
             label = "High confidence" if best_score >= 20_000 else "Context reuse"
             print(f"    ⚙️  DOM HEURISTICS: {label} match (score {best_score})")
+            if _had_stale_cache:
+                self._last_step_healed = True
             return top[0]
 
         if best_score >= self._threshold:
             label = "High confidence" if best_score >= self._threshold * 2 else "Keyword"
             print(f"    ⚙️  DOM HEURISTICS: {label} match (score {best_score})")
+            if _had_stale_cache:
+                self._last_step_healed = True
             return top[0]
 
         # Explicit AI disable switch: threshold <= 0 means "never call the LLM".
         # (Useful for deterministic runs and environments without Ollama.)
         if self._threshold <= 0:
             print(f"    ⚙️  DOM HEURISTICS: AI disabled (threshold {self._threshold}); using best candidate (score {best_score})")
+            if _had_stale_cache:
+                self._last_step_healed = True
             return top[0]
 
         # Genuinely ambiguous → ask the LLM, unless there's only 1 candidate left
@@ -776,6 +800,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                 idx = 0
             
         if idx is None:
+            self._last_step_healed = False
             if failed_ids is not None:
                 for c in top:
                     failed_ids.add((c.get("frame_index", 0), c["id"]))
@@ -790,6 +815,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             target_field=target_field,
             ai_choice=ai_choice,
         ):
+            self._last_step_healed = False
             return None
 
         return ai_choice
@@ -1196,6 +1222,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             _sr_status = "warning"
                         else:
                             _sr_status = "fail"
+                        _healed = self._last_step_healed
                         _step_results.append(StepResult(
                             index=i,
                             text=re.sub(r'^\s*\d+\.\s*', '', step),
@@ -1204,7 +1231,9 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             error=_step_error,
                             screenshot=_ss_b64,
                             logical_step=_current_logical_step,
+                            healed=_healed,
                         ))
+                        self._last_step_healed = False
                         # After non-NAVIGATE steps, check if the URL changed and
                         # annotate the next step with the new landing URL.
                         if _auto_annotate_live and hunt_file and step_file_lines \

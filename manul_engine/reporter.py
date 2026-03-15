@@ -41,6 +41,7 @@ _CSS = """\
   --green:     #a6e3a1;
   --red:       #f38ba8;
   --yellow:    #f9e2af;
+  --teal:      #94e2d5;
   --radius:    8px;
 }
 
@@ -282,6 +283,22 @@ h1 .logo { font-size: 1.8rem; }
 .status-fail { color: var(--red); }
 .status-skip { color: var(--text-dim); }
 .status-warning { color: var(--yellow); }
+
+/* ── Healed indicator ─────────────────── */
+
+.healed-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(148,226,213,0.15);
+  color: var(--teal);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-left: 8px;
+  vertical-align: middle;
+}
 
 .step-duration {
   font-size: 0.8rem;
@@ -537,6 +554,8 @@ def _render_step_row(step: StepResult, local_index: int | None = None) -> str:
     display_text = re.sub(r'^\s*\d+\.\s*', '', step.text)
 
     content_html = f'<div class="step-text">{_esc(display_text)}</div>'
+    if step.healed:
+        content_html += '<span class="healed-badge">\U0001fa79 healed</span>'
     if step.error:
         content_html += f'\n<div class="step-error">{_esc(step.error)}</div>'
     if step.screenshot:
@@ -588,6 +607,7 @@ def _render_lstep_group(label: str | None, steps: list[StepResult], index: int) 
     """
     has_failure = any(s.status == "fail" for s in steps)
     has_warning = any(s.status == "warning" for s in steps)
+    has_healed = any(s.healed for s in steps)
     if has_failure:
         status_text = "FAIL"
         status_class = "lstep-status-fail"
@@ -597,6 +617,7 @@ def _render_lstep_group(label: str | None, steps: list[StepResult], index: int) 
     else:
         status_text = "PASS"
         status_class = "lstep-status-pass"
+    healed_marker = ' <span class="healed-badge">\U0001fa79 healed</span>' if has_healed and not has_failure else ""
     display_label = _esc(label) if label else "Default"
     open_attr = " open" if has_failure else ""
     # Use 1-based local indices so the # column reads 1, 2, 3… within each
@@ -609,7 +630,7 @@ def _render_lstep_group(label: str | None, steps: list[StepResult], index: int) 
         f'    <span class="lstep-chevron">&#9658;</span>'
         f'    <span class="lstep-label">{display_label}</span>'
         f'    <span class="lstep-count">{len(steps)} action{"s" if len(steps) != 1 else ""}</span>'
-        f'    <span class="lstep-status {status_class}">{status_text}</span>'
+        f'    <span class="lstep-status {status_class}">{status_text}</span>{healed_marker}'
         f'  </summary>'
         f'  <div class="lstep-body"><div class="steps-list">{rows}</div></div>'
         f'</details>'
