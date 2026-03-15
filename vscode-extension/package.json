@@ -153,6 +153,11 @@
         "command": "manul.formatHuntFile",
         "title": "ManulEngine: Format Hunt File",
         "icon": "$(list-flat)"
+      },
+      {
+        "command": "manul-engine.openScheduler",
+        "title": "ManulEngine: Open Scheduler Dashboard",
+        "icon": "$(calendar)"
       }
     ],
     "menus": {
@@ -212,6 +217,11 @@
           "command": "manul.refreshCache",
           "when": "view == manul.cacheView",
           "group": "navigation@2"
+        },
+        {
+          "command": "manul-engine.openScheduler",
+          "when": "view == manul.stepBuilder || view == manul.configView || view == manul.cacheView",
+          "group": "navigation@3"
         }
       ]
     },

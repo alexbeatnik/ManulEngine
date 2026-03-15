@@ -18,6 +18,7 @@ import {
 } from "./cacheTreeProvider";
 import { DEFAULT_CONFIG_FILENAME, DEBUG_TERMINAL_NAME, TERMINAL_NAME, getConfigFileName } from "./constants";
 import { HuntDocumentFormatter } from "./formatter";
+import { SchedulerPanel } from "./schedulerPanel";
 
 export function activate(context: vscode.ExtensionContext): void {
   // Output channel reused across debug runs from the editor button / context menu.
@@ -218,6 +219,10 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(
       "manul.clearSiteCache",
       (item: CacheItem) => clearSiteCacheCommand(item, cacheProvider)
+    ),
+
+    vscode.commands.registerCommand("manul-engine.openScheduler", () =>
+      SchedulerPanel.render(context.extensionUri)
     )
   );
 

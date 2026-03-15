@@ -16,6 +16,9 @@ export const TERMINAL_NAME = "ManulEngine";
 /** Terminal name for interactive debug runs. */
 export const DEBUG_TERMINAL_NAME = "ManulEngine Debug";
 
+/** Terminal name for the background daemon process. */
+export const DAEMON_TERMINAL_NAME = "Manul Daemon";
+
 /**
  * Read the effective config file name from VS Code settings,
  * falling back to the default.
