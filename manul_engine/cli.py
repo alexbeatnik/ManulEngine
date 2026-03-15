@@ -29,6 +29,7 @@ Usage:
   manul path/to/folder/      — run all *.hunt files in that folder
   manul path/to/file.hunt    — run a single hunt file
   manul scan <URL>           — scan a URL and generate a draft .hunt file
+  manul record <URL>         — record interactions in a browser and generate a .hunt file
 
 Flags:
   --headless                 — run browser in headless mode
@@ -44,6 +45,10 @@ Flags:
 Scan-specific flags (only with `manul scan`):
   --output <file>            — output file for the draft (default: draft.hunt)
 
+Record-specific flags (only with `manul record`):
+  --output <file>            — output file path (default: tests/recorded_mission.hunt)
+  --browser <name>           — browser engine (default: chromium)
+
 Examples:
   manul .
   manul tests/
@@ -57,6 +62,8 @@ Examples:
   manul --tags smoke,regression tests/
   manul scan https://example.com
   manul scan https://example.com --output tests/example.hunt --headless
+  manul record https://example.com
+  manul record https://example.com tests/my_test.hunt
 
 Notes:
   Any file with the .hunt extension is accepted.
@@ -462,6 +469,13 @@ async def main() -> None:
         scan_idx = args.index("scan")
         scan_args = args[:scan_idx] + args[scan_idx + 1:]
         await scan_main(scan_args)
+        return
+
+    if _non_flag_args and _non_flag_args[0] == "record":
+        from manul_engine.recorder import record_main
+        record_idx = args.index("record")
+        record_args = args[:record_idx] + args[record_idx + 1:]
+        await record_main(record_args)
         return
 
     headless = "--headless" in args
