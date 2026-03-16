@@ -48,7 +48,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.3
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.4
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
@@ -67,6 +67,7 @@ manul_engine/
   lifecycle.py             Global Lifecycle Hook Registry (@before_all, @after_all, @before_group, @after_group, GlobalContext, load_hooks_file)
   recorder.py              Semantic Test Recorder — JS injection, Python bridge, DSL generator
   scheduler.py             Built-in Scheduler — parse_schedule(), Schedule dataclass, next_run_delay(), daemon_main()
+  variables.py             ScopedVariables — 4-level variable hierarchy (row, step, mission, global)
   _test_runner.py          Dev-only synthetic test runner (not in public CLI)
   test/
     test_00_engine.py       synthetic DOM micro-suite (local HTML via Playwright)
@@ -100,6 +101,8 @@ manul_engine/
     test_40_self_healing_cache.py Self-Healing Controls Cache (16 assertions)
     test_41_recorder.py          Semantic Test Recorder JS bridge + DSL generator + step aggregation (no browser)
     test_42_scheduler.py         Built-in Scheduler — parse_schedule, next_run_delay, ParsedHunt integration (51 assertions, no browser)
+    test_43_scoped_variables.py  ScopedVariables 4-level hierarchy, scope isolation, dict compat (43 assertions, no browser)
+    test_44_explain_mode.py      DOMScorer explain output, channel breakdown, --explain CLI flag (27 assertions, no browser)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
@@ -109,8 +112,10 @@ tests/
   demo_controls.hunt      integration: Custom Controls workflow
   demo_login.hunt         integration: login with @var: static variables
   demo_variables.hunt     integration: @var: + CALL PYTHON into {var} combined
+benchmarks/
+  run_benchmarks.py        Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
 vscode-extension/
-  package.json              Extension manifest (v0.0.93)
+  package.json              Extension manifest (v0.0.94)
   src:
     extension.ts            Activation, command registration, formatter registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
