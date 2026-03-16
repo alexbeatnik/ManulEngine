@@ -170,6 +170,14 @@ def _parse_call_args(raw_args: str | None, variables: dict[str, str] | None = No
     except ValueError:
         # Malformed quoting — fall back to simple whitespace split.
         tokens = raw_args.split()
+    # posix=False preserves surrounding quotes — strip them.
+    if os.name == "nt":
+        stripped: list[str] = []
+        for t in tokens:
+            if len(t) >= 2 and t[0] == t[-1] and t[0] in ('"', "'"):
+                t = t[1:-1]
+            stripped.append(t)
+        tokens = stripped
     if variables:
         resolved: list[str] = []
         for tok in tokens:

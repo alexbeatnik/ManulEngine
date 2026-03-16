@@ -1,0 +1,10 @@
+python : Traceback (most recent call last):
+At line:1 char:1
++ python -c "from manul_engine._test_runner import main; import asyncio ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last)    ::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "<string>", line 1, in <module>
+ImportError: cannot import name 'main' from 'manul_engine._test_runner' (C:\projects\ManulEngine\manul_engine\_test_runner.py)
+

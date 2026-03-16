@@ -38,6 +38,7 @@ from .lifecycle import (
     before_group,
     after_group,
 )
+from .variables import ScopedVariables
 
 __all__ = [
     "ManulEngine",
@@ -47,4 +48,5 @@ __all__ = [
     "after_all",
     "before_group",
     "after_group",
+    "ScopedVariables",
 ]

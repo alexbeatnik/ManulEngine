@@ -39,6 +39,7 @@ from .actions import _ActionsMixin
 from .cache import _ControlsCacheMixin
 from .controls import load_custom_controls, get_custom_control
 from .reporting import StepResult, MissionResult
+from .variables import ScopedVariables
 
 
 class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
@@ -53,6 +54,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         break_steps:    "set[int] | None" = None,
         disable_cache:  bool          = False,
         semantic_cache: "bool | None" = None,     # None → read from config/env
+        explain_mode:   bool          = False,
         **_kwargs,
     ):
         # None model → heuristics-only mode (AI fully disabled)
@@ -72,7 +74,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                 f"Playwright 'channel' is only supported for Chromium, "
                 f"but got browser={self.browser!r} with channel={self.channel!r}."
             )
-        self.memory:          dict = {}
+        self.memory:          ScopedVariables = ScopedVariables()
         self.last_xpath:      "str | None" = None
         self.learned_elements: dict = {}        # semantic cache: cache_key → {name, tag}
         
@@ -98,6 +100,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         self._threshold       = prompts.get_threshold(self.model, ai_threshold)
         self._executor_prompt = prompts.get_executor_prompt(self.model)
         self.debug_mode = debug_mode
+        self.explain_mode = explain_mode
         self._debug_continue = False   # set to True by 'Continue All' in debug session
         self._user_break_steps: set[int] = set(break_steps) if break_steps else set()
         self.break_steps: set[int] = set(self._user_break_steps)
@@ -115,7 +118,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
     def reset_session_state(self) -> None:
         """Clear in-memory caches and variables. Useful for synthetic stateless tests."""
-        self.memory.clear()
+        self.memory.clear_runtime()
         self.learned_elements.clear()
         self.last_xpath = None
     # ── Persistent controls cache ─────────────────────────────────────
@@ -612,6 +615,38 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
         return all_elements
 
+    # ── Explain mode output ─────────────────
+
+    @staticmethod
+    def _print_explain(step: str, search_texts: list[str], top: list[dict]) -> None:
+        """Print a formatted score breakdown for the top candidates."""
+        target_str = ", ".join(search_texts) if search_texts else "(blind)"
+        print(f"\n    ┌─ 🔍 EXPLAIN: Target = \"{target_str}\"")
+        print(f"    │  Step: {step}")
+        print(f"    │  Top {len(top)} candidates:")
+        for rank, el in enumerate(top, 1):
+            name = compact_log_field(el.get("name", ""), "MANUL_LOG_NAME_MAXLEN")
+            tag = el.get("tag_name", "?")
+            score = el.get("score", 0)
+            expl = el.get("_explain")
+            if expl:
+                print(f"    │")
+                print(f"    │  #{rank}  <{tag}> \"{name}\"  → Total: {score}")
+                print(f"    │       Text:       {expl['text']:>+8d}")
+                print(f"    │       Attributes: {expl['attributes']:>+8d}")
+                print(f"    │       Semantics:  {expl['semantics']:>+8d}")
+                print(f"    │       Proximity:  {expl['proximity']:>+8d}")
+                print(f"    │       Cache:      {expl['cache']:>+8d}")
+                if expl["penalty"] < 1.0:
+                    print(f"    │       Penalty:    ×{expl['penalty']:.1f}")
+            else:
+                print(f"    │  #{rank}  <{tag}> \"{name}\"  → Score: {score}")
+        winner = top[0]
+        winner_name = compact_log_field(winner.get("name", ""), "MANUL_LOG_NAME_MAXLEN")
+        print(f"    │")
+        print(f"    └─ ✅ Decision: Selected \"{winner_name}\" with score {winner.get('score', 0)}")
+        print()
+
     # ── Scoring (delegates to scoring module) ─
 
     def _score_elements(
@@ -628,6 +663,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             els, step, mode, search_texts, target_field, is_blind,
             learned_elements=self.learned_elements if self._semantic_cache_enabled else {},
             last_xpath=self.last_xpath,
+            explain=self.explain_mode,
         )
 
     # ── Element resolution ────────────────────
@@ -724,6 +760,10 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         scored     = self._score_elements(els, step, mode, search_texts, target_field, is_blind)
         top        = scored[:8]
         best_score = top[0].get("score", 0)
+
+        # ── Explain mode: print per-element score breakdown ──────────────
+        if self.explain_mode and top:
+            self._print_explain(step, search_texts, top[:3])
 
         # Self-healing: stale cache entry detected — flag for heuristic paths below.
         # The cache is updated by _remember_resolved_control after the action succeeds.
@@ -871,6 +911,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
     async def run_mission(self, task: str, strategic_context: str = "", hunt_dir: str | None = None,
                           hunt_file: str | None = None, step_file_lines: "list[int] | None" = None,
                           initial_vars: "dict | None" = None,
+                          global_vars: "dict | None" = None,
+                          row_vars: "dict | None" = None,
                           screenshot_mode: str = "none") -> MissionResult:
         """
         Execute a full browser automation mission.
@@ -931,10 +973,16 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             _soft_errors: list[str] = []
             _screenshot_mode = screenshot_mode
             _current_logical_step: str | None = None  # active STEP label
-            # Pre-populate runtime memory with static variables declared via
-            # @var: {key} = value in the hunt file (or passed programmatically).
+            # Pre-populate scoped variable levels.
+            # Level 4 (lowest): Global vars from CLI / lifecycle hooks.
+            if global_vars:
+                self.memory.set_many(global_vars, ScopedVariables.LEVEL_GLOBAL)
+            # Level 3: Mission vars declared via @var: in the hunt file header.
             if initial_vars:
-                self.memory.update(initial_vars)
+                self.memory.set_many(initial_vars, ScopedVariables.LEVEL_MISSION)
+            # Level 1 (highest): Row vars from @data iteration.
+            if row_vars:
+                self.memory.set_many(row_vars, ScopedVariables.LEVEL_ROW)
             # Cache lookup_page_name() results within this mission.
             # The cache is invalidated when pages.json is modified on disk so live
             # edits made during a long run are still reflected within one step.
@@ -1118,6 +1166,11 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                 _step_error = f"Malformed SET command: {step}"
                                 print(f"    ❌ {_step_error}")
                                 _step_ok = False; ok = False; break
+
+                        elif step_kind == "debug_vars":
+                            # DEBUG VARS — dump all scoped variable levels to stdout.
+                            print(f"    📋 DEBUG VARS — current variable state:")
+                            print(self.memory.dump())
 
                         elif step_kind == "debug":
                             # In debug_mode the pre-step _debug_prompt() above already

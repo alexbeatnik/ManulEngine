@@ -53,6 +53,7 @@ _KEY_MAP: dict[str, str] = {
     "retries":                "MANUL_RETRIES",
     "screenshot":             "MANUL_SCREENSHOT",
     "html_report":            "MANUL_HTML_REPORT",
+    "explain_mode":           "MANUL_EXPLAIN",
 }
 
 # browser_args is a list and cannot be round-tripped through a plain env string
@@ -174,6 +175,7 @@ _VALID_SCREENSHOT = ("on-fail", "always", "none")
 _raw_screenshot = (os.getenv("MANUL_SCREENSHOT") or "on-fail").strip().lower()
 SCREENSHOT: str = _raw_screenshot if _raw_screenshot in _VALID_SCREENSHOT else "on-fail"
 HTML_REPORT: bool = env_bool("MANUL_HTML_REPORT")
+EXPLAIN_MODE: bool = env_bool("MANUL_EXPLAIN")
 
 
 def _auto_populate_registry(url: str) -> str:

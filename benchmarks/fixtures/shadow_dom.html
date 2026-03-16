@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head><title>Shadow DOM Test</title></head>
+<body>
+  <h1>Shadow DOM Components</h1>
+
+  <div id="shadow-host-1"></div>
+  <div id="shadow-host-2"></div>
+
+  <script>
+    // Shadow host 1: search input inside shadow DOM
+    const host1 = document.getElementById('shadow-host-1');
+    const shadow1 = host1.attachShadow({ mode: 'open' });
+    shadow1.innerHTML = `
+      <style>
+        .shadow-form { padding: 16px; border: 1px solid #ccc; }
+        input { padding: 8px; margin: 4px 0; display: block; }
+        button { padding: 8px 16px; cursor: pointer; }
+      </style>
+      <div class="shadow-form">
+        <label>Search</label>
+        <input type="text" placeholder="Search products..." aria-label="Search" name="search">
+        <button type="button" aria-label="Submit Search">Search</button>
+      </div>
+    `;
+
+    // Shadow host 2: nested shadow with user card
+    const host2 = document.getElementById('shadow-host-2');
+    const shadow2 = host2.attachShadow({ mode: 'open' });
+    shadow2.innerHTML = `
+      <style>
+        .card { padding: 16px; border: 1px solid #999; margin-top: 12px; }
+        .card-title { font-weight: bold; }
+        button { margin-top: 8px; }
+      </style>
+      <div class="card">
+        <div class="card-title">User Profile</div>
+        <p>Email: user@example.com</p>
+        <button type="button" aria-label="Edit Profile">Edit</button>
+        <button type="button" aria-label="Delete Account" class="danger-btn">Delete</button>
+      </div>
+    `;
+  </script>
+</body>
+</html>

@@ -58,6 +58,7 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
     ("scan_page",   re.compile(r'\bSCAN\s+PAGE\b')),
     ("call_python", re.compile(r'\bCALL\s+PYTHON\b')),
     ("set_var",     re.compile(r'^\s*(?:\d+\.\s*)?SET\b')),
+    ("debug_vars",  re.compile(r'\bDEBUG\s+VARS\b')),
     ("debug",       re.compile(r'\b(?:DEBUG|PAUSE)\b')),
     ("done",        re.compile(r'\bDONE\b')),
 ]
@@ -65,7 +66,7 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
 # Legacy pre-compiled system-step pattern kept for backwards compatibility.
 # Prefer classify_step() for step classification.
 RE_SYSTEM_STEP = re.compile(
-    r'\b(?:STEP\s*\d*\s*:|NAVIGATE|OPEN\s+APP|MOCK\s+(?:GET|POST|PUT|PATCH|DELETE)|WAIT\s+FOR\s+RESPONSE|WAIT|SCROLL|EXTRACT|VERIFY\s+VISUAL|VERIFY\s+SOFTLY|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|SET|DEBUG|PAUSE|DONE)\b',
+    r'\b(?:STEP\s*\d*\s*:|NAVIGATE|OPEN\s+APP|MOCK\s+(?:GET|POST|PUT|PATCH|DELETE)|WAIT\s+FOR\s+RESPONSE|WAIT|SCROLL|EXTRACT|VERIFY\s+VISUAL|VERIFY\s+SOFTLY|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|SET|DEBUG\s+VARS|DEBUG|PAUSE|DONE)\b',
     re.IGNORECASE,
 )
 
@@ -109,7 +110,7 @@ def classify_step(step: str) -> str:
     ``"extract"``, ``"verify_visual"``, ``"verify_softly"``,
     ``"verify"``, ``"press_enter"``, ``"press"``, ``"right_click"``,
     ``"upload"``, ``"scan_page"``, ``"call_python"``, ``"set_var"``,
-    ``"debug"``, ``"done"``, or ``"action"``.
+    ``"debug_vars"``, ``"debug"``, ``"done"``, or ``"action"``.
     """
     # Fast-path: STEP markers are checked on the raw text BEFORE quote
     # stripping so that apostrophes in descriptions (e.g. "Pallas's cat")
