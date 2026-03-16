@@ -1,10 +1,10 @@
 
 ---
 
-# 😼 ManulEngine v0.0.9.5 — The Universal Web Automation Runtime
+# 😼 ManulEngine v0.0.9.5 — Deterministic Web & Desktop Automation Runtime
 
-**ManulEngine — The Universal Web Automation Runtime.**
-Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright.
+**ManulEngine — Deterministic Web & Desktop Automation Runtime.**
+Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
 
 No CSS selectors. No XPath fragility. No cloud API bills.
 ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtime that resolves DOM elements with a mathematically sound `DOMScorer` (normalised 0.0–1.0 float scoring across 20+ signals) and a native JavaScript `TreeWalker`. Deterministic, reproducible, and fast enough to run anywhere.

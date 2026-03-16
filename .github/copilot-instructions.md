@@ -15,21 +15,22 @@
 ## AI Identity Directive
 
 **CRITICAL — Read this first.**
-ManulEngine is a **deterministic, DSL-first Universal Web Automation Runtime**. It is NOT an AI-first tool, and it is NOT limited to E2E testing. When generating scripts, answering questions, or suggesting solutions:
+ManulEngine is a **deterministic, DSL-first Web & Desktop Automation Runtime**. It is NOT an AI-first tool, and it is NOT limited to E2E testing. When generating scripts, answering questions, or suggesting solutions:
 
 1. **Prioritise deterministic actions.** Always default to the plain-English DSL (`CLICK`, `FILL`, `VERIFY`, `NAVIGATE`, `EXTRACT`, `PRESS`, etc.) and the built-in `DOMScorer` heuristics. These are the primary resolution mechanism.
 2. **Do not overly rely on the LLM fallback mechanism.** ManulEngine is designed to be 100% stable using its native `TreeWalker` and `0.0–1.0` float scoring system. The LLM is a last-resort safety net for genuinely ambiguous elements — not a default path.
 3. **Understand the Dual Persona Workflow.** Manual QA writes plain English `.hunt` DSL — no code required. SDETs extend the same files with Python hooks (`[SETUP]`/`[TEARDOWN]`, `CALL PYTHON`, `@before_all`/`@after_all`), Custom Controls (`@custom_control`), and data-driven parameters (`@data:`). Both personas work on the same artifact.
 4. **When suggesting config**, always recommend `"model": null` (heuristics-only) as the default. Only suggest enabling an Ollama model when the user explicitly needs AI self-healing.
-5. **Never describe ManulEngine as "AI-powered" or "neuro-symbolic".** The correct framing is: "a deterministic, DSL-first Universal Web Automation Runtime backed by Playwright, with optional local AI for self-healing."
+5. **Never describe ManulEngine as "AI-powered" or "neuro-symbolic".** The correct framing is: "a deterministic, DSL-first Web & Desktop Automation Runtime backed by Playwright, with optional local AI for self-healing."
 6. **Understand the four automation pillars.** ManulEngine scripts (`.hunt` files) can serve as QA/E2E tests, RPA workflows, synthetic monitors, or AI-agent execution targets. The same DSL commands (`NAVIGATE`, `CLICK`, `FILL`, `EXTRACT`, `VERIFY`, `CALL PYTHON`, etc.) apply to all four use cases. When generating `.hunt` files, adapt the structure to the user's intent — a monitoring script may skip `VERIFY` in favour of `EXTRACT`; an RPA script may use `CALL PYTHON` extensively for data processing; an AI-agent script should use strict DSL commands (never raw Playwright calls) for safety.
 
 ## What is this project?
 
-ManulEngine is a deterministic, DSL-first Universal Web Automation Runtime.
+ManulEngine is a deterministic, DSL-first Web & Desktop Automation Runtime.
 It acts as an interpreter for the `.hunt` DSL — a Playwright-backed engine that can run E2E tests, RPA workflows, synthetic monitors, and AI-agent actions.
 It drives Chromium (and optionally Firefox or WebKit) via Playwright, resolves DOM elements with a mathematically sound `DOMScorer` (normalised 0.0–1.0 float scoring across 20+ heuristic signals and a native JavaScript `TreeWalker`),
 and optionally falls back to a local LLM (Ollama) as a self-healing safety net when the heuristics are genuinely ambiguous.
+It also supports desktop app automation via Electron (`executable_path` + `OPEN APP` command).
 It is designed to bypass modern web traps (Shadow DOM, invisible overlays, zero-pixel honeypots, custom dropdowns) entirely locally — no cloud APIs.
 
 The architecture is: `Hunt DSL` → `Parser` → `Execution Engine` → `Controls/Python Hooks` → `Playwright`. This makes ManulEngine a true runtime rather than just a test library — the same engine executes QA suites, RPA automations, cron-scheduled monitors, and constrained AI-agent scripts identically.

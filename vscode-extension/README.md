@@ -3,11 +3,11 @@
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
 
-The official IDE for the **ManulEngine Universal Web Automation Runtime**.
+The official IDE for the **ManulEngine Deterministic Web & Desktop Automation Runtime**.
 
 Author, run, and debug `.hunt` automation scripts for E2E testing, RPA workflows, synthetic monitoring, and AI-agent execution — all from a single editor. The extension provides Hunt DSL language support, one-click execution, interactive debug stepping, a Step Builder sidebar, configuration UI, and cache management for [ManulEngine](https://github.com/alexbeatnik/ManulEngine).
 
-ManulEngine is a Playwright-backed runtime that interprets plain-English `.hunt` DSL scripts deterministically — resolving DOM elements with blazing-fast JS heuristics (`DOMScorer` + `TreeWalker`), no CSS selectors, no cloud APIs. Whether you are writing QA test suites, automating repetitive business tasks, or building production health monitors, the workflow is the same: write a `.hunt` file, hit Run.
+ManulEngine is a Playwright-backed runtime that interprets plain-English `.hunt` DSL scripts deterministically — resolving DOM elements with blazing-fast JS heuristics (`DOMScorer` + `TreeWalker`), no CSS selectors, no cloud APIs. Automate browsers and desktop apps (Electron) with the same DSL. Whether you are writing QA test suites, automating repetitive business tasks, or building production health monitors, the workflow is the same: write a `.hunt` file, hit Run.
 
 > The Manul goes hunting and never returns without its prey.
 
@@ -27,11 +27,13 @@ ManulEngine bridges the gap between non-technical authors and engineering teams.
 
 ## VS Code Extension Features
 
-> Hunt DSL language support, one-click runner, interactive debug runner with gutter breakpoints, Step Builder for plain-English `.hunt` scripts, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) — the Universal Web Automation Runtime for E2E testing, RPA, synthetic monitoring, and AI-agent execution.
+> Hunt DSL language support, one-click runner, interactive debug runner with gutter breakpoints, Step Builder for plain-English `.hunt` scripts, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) — the Deterministic Web & Desktop Automation Runtime for E2E testing, RPA, synthetic monitoring, and AI-agent execution.
 
-## 🚀 What's New in v0.0.9.5 — Explain Mode
+## 🚀 What's New in v0.0.9.5 — Explain Mode & Hover Tooltips
 
 * **🔍 Run with Explain Mode (Editor Title Button):** A new `$(output)` icon button in the editor title bar (top-right) for `.hunt` files. One click runs the hunt file with `--explain` and streams the full heuristic scoring breakdown to the **ManulEngine: Explain Heuristics** output channel. Registered as `Manul: Run with Explain Mode` (`manul.runExplain`) command.
+* **💡 Hover Tooltips for Debug Scoring:** After running Explain Mode, hover over any actionable step in a `.hunt` file to see a rich Markdown tooltip showing the top-3 element candidates, per-channel score breakdown (text, attributes, semantics, proximity, cache), winner highlight, and 0.0–1.0 confidence scale — directly in your editor. No terminal or external tool needed.
+* **🖥️ Desktop App Testing:** Full support for Electron/Desktop app automation via `executable_path` config and the `OPEN APP` DSL command. Test desktop apps with the same `.hunt` DSL used for web automation.
 
 ### Previous highlights (v0.0.9.4)
 
