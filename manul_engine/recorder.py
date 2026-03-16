@@ -106,6 +106,11 @@ _RECORDER_JS = r"""
 
   // Click
   document.addEventListener('click', (e) => {
+    // Ignore clicks on <select> and its <option> children — the change event handles these semantically.
+    const rawTag = (e.target.tagName || '').toLowerCase();
+    if (rawTag === 'select') return;
+    if (rawTag === 'option' && e.target.closest('select')) return;
+
     const el = e.target.closest('a, button, [role="button"], [role="link"], [role="menuitem"], [role="tab"], [role="option"], input[type="submit"], input[type="button"]');
     if (!el) return;
     // Ignore clicks on text inputs — those are handled by the input event.
@@ -167,7 +172,7 @@ _RECORDER_JS = r"""
     if (tag !== 'select') return;
     const label = bestLabel(el);
     const selected = el.options[el.selectedIndex];
-    const optionText = selected ? (selected.textContent || '').trim() : el.value;
+    const optionText = selected ? (selected.text || selected.textContent || '').trim() : el.value;
     window.recordManulEvent(JSON.stringify({
       action: 'select',
       target: label,
