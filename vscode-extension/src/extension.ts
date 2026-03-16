@@ -19,6 +19,7 @@ import {
 import { DEFAULT_CONFIG_FILENAME, DEBUG_TERMINAL_NAME, TERMINAL_NAME, getConfigFileName } from "./constants";
 import { HuntDocumentFormatter } from "./formatter";
 import { SchedulerPanel } from "./schedulerPanel";
+import { ExplainLensProvider, explainHuntFile, disposeExplainChannel } from "./explainLensProvider";
 
 export function activate(context: vscode.ExtensionContext): void {
   // Output channel reused across debug runs from the editor button / context menu.
@@ -252,8 +253,19 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.commands.executeCommand("editor.action.formatDocument")
     )
   );
+
+  // ── Explain Heuristics CodeLens ────────────────────────────────────────────
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider(
+      { language: "hunt" },
+      new ExplainLensProvider()
+    ),
+    vscode.commands.registerCommand("manul.explainHuntFile", (uri?: vscode.Uri) =>
+      explainHuntFile(uri)
+    )
+  );
 }
 
 export function deactivate(): void {
-  // nothing to clean up (subscriptions handle it)
+  disposeExplainChannel();
 }

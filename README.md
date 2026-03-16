@@ -137,6 +137,16 @@ Example output for a `Click the 'Login' button` step:
 
 Set `"explain_mode": true` in `manul_engine_configuration.json` to enable it permanently, or use the `MANUL_EXPLAIN=true` environment variable for CI pipelines.
 
+### Visual Explainability in VS Code (Explain Step)
+
+The companion VS Code extension surfaces `--explain` directly in the editor. Every actionable step line (Click, Fill, Select, Verify, etc.) in a `.hunt` file gets a clickable **🔍 Explain Heuristics** CodeLens above it. Click any lens — the extension runs the entire hunt file with `--explain` and streams the score breakdown into a dedicated **ManulEngine: Explain Heuristics** output channel, auto-focused so you see results immediately.
+
+No more guessing why a test clicked the wrong element. The scoring math is one click away.
+
+![Explain Step Demo](link-to-gif)
+
+The CodeLens can be toggled off via `manulEngine.explainCodeLens` in VS Code settings. The `🔍` button also appears in the editor title bar for quick access.
+
 ---
 
 ## 🏛️ Beyond Testing: 4 Pillars of Automation
