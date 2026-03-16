@@ -142,7 +142,7 @@ An interactive sidebar panel for editing `manul_engine_configuration.json` witho
 - **Browser Args** — extra launch flags for the browser (comma-separated)
 - **Headless** — run browser headless
 - **Timeouts** — action and navigation timeouts in ms
-- **Persistent Controls Cache / Semantic Cache** — two separate cache toggles: **Persistent Controls Cache** (`controls_cache_enabled`) stores resolved locators on disk per site/page across runs; **Semantic Cache** (`semantic_cache_enabled`) remembers resolved elements within a single run (+200,000 score boost, resets when the process ends). Both default to enabled and can be toggled independently from the sidebar
+- **Persistent Controls Cache / Semantic Cache** — two separate cache toggles: **Persistent Controls Cache** (`controls_cache_enabled`) stores resolved locators on disk per site/page across runs; **Semantic Cache** (`semantic_cache_enabled`) remembers resolved elements within a single run (grants a 1.0 perfect confidence score on reuse, resets when the process ends). Both default to enabled and can be toggled independently from the sidebar
 - **Auto-Annotate Page Navigation** — when enabled, the engine automatically inserts `# 📍 Auto-Nav:` comments in the hunt file whenever the browser URL changes during a run (after clicks, form submissions, etc.) — not just on explicit `NAVIGATE` steps. Page names are resolved from `pages.json`; if no mapping is found the full URL is used instead
 - **Log truncation** — max length for element names and LLM thoughts in logs
 - **Workers** — max number of hunt files to run concurrently in Test Explorer (1–4)

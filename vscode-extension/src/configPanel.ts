@@ -221,6 +221,9 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
         <option value="chromium">Chromium (default)</option>
         <option value="firefox">Firefox</option>
         <option value="webkit">WebKit (Safari)</option>
+        <option value="chrome">Chrome (System)</option>
+        <option value="msedge">Edge (System)</option>
+        <option value="electron">Electron (Embedded View)</option>
       </select>
     </label>
     <div class="hint">Browser engine used by Playwright to run hunt tests.</div>
@@ -273,7 +276,7 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       <input type="checkbox" id="semantic_cache_enabled"/>
       <label for="semantic_cache_enabled">Semantic Cache</label>
     </div>
-    <div class="hint">Remembers resolved elements within a single run (+200,000 score boost on reuse). Disable for fully fresh resolution on every step — useful when debugging flaky tests.</div>
+    <div class="hint">Remembers resolved elements within a single run (grants a 1.0 perfect confidence score on reuse). Disable for fully fresh resolution on every step — useful when debugging flaky tests.</div>
 
     <label>log_name_maxlen
       <input type="number" id="log_name_maxlen" min="0"/>
@@ -389,7 +392,7 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       }
       sel.value = modelVal;
       g('headless').checked    = !!config.headless;
-      const _validBrowsers = ['chromium', 'firefox', 'webkit'];
+      const _validBrowsers = ['chromium', 'firefox', 'webkit', 'chrome', 'msedge', 'electron'];
       g('browser').value       = _validBrowsers.includes(config.browser) ? config.browser : 'chromium';
       g('browser_args').value  = Array.isArray(config.browser_args) ? config.browser_args.join(', ') : '';
       g('timeout').value       = config.timeout ?? 5000;

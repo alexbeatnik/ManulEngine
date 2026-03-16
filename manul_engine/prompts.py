@@ -82,7 +82,7 @@ if _CONFIG_PATH.exists():
 # If MANUL_MODEL is unset or empty, DEFAULT_MODEL is None — AI is fully disabled.
 DEFAULT_MODEL: "str | None" = os.getenv("MANUL_MODEL") or None
 HEADLESS_MODE = env_bool("MANUL_HEADLESS")
-_VALID_BROWSERS = ("chromium", "firefox", "webkit")
+_VALID_BROWSERS = ("chromium", "firefox", "webkit", "electron")
 _raw_browser = (os.getenv("MANUL_BROWSER") or "chromium").strip().lower()
 BROWSER: str = _raw_browser if _raw_browser in _VALID_BROWSERS else "chromium"
 # MANUL_BROWSER_ARGS: comma-or-space separated extra flags, e.g. "--disable-gpu, --lang=uk"

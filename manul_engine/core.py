@@ -60,7 +60,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         # None model → heuristics-only mode (AI fully disabled)
         self.model    = model    if model    is not None else prompts.DEFAULT_MODEL
         self.headless = headless if headless is not None else prompts.HEADLESS_MODE
-        _VALID_BROWSERS = ("chromium", "firefox", "webkit")
+        _VALID_BROWSERS = ("chromium", "firefox", "webkit", "electron")
         _b = (browser or prompts.BROWSER).strip().lower()
         self.browser: str = _b if _b in _VALID_BROWSERS else "chromium"
         self.browser_args: list[str] = list(browser_args) if browser_args is not None else list(prompts.BROWSER_ARGS)
@@ -948,25 +948,46 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         print(f"\n🐾 ManulEngine {mode_label}  |  browser: {self.browser}")
 
         async with async_playwright() as p:
-            _launch_args = ["--no-sandbox", "--start-maximized"] if self.browser == "chromium" else []
-            _launch_args = _launch_args + [a for a in self.browser_args if a not in _launch_args]
-            _launch_opts: dict = dict(headless=self.headless, args=_launch_args)
-            if self.channel:
-                if self.browser != "chromium":
-                    raise ValueError(
-                        f"'channel' is only supported for Chromium; "
-                        f"got browser={self.browser!r}, channel={self.channel!r}"
+            if self.browser == "electron":
+                # Electron: connect to a running Chromium instance via CDP.
+                _cdp_port = os.environ.get("MANUL_CDP_PORT", "9222")
+                _cdp_url = f"http://localhost:{_cdp_port}"
+                try:
+                    browser = await p.chromium.connect_over_cdp(_cdp_url)
+                except Exception as _cdp_exc:
+                    print(
+                        f"    ❌ Failed to connect to Electron via CDP at {_cdp_url}: {_cdp_exc}\n"
+                        f"    💡 Ensure the Electron app is running with "
+                        f"--remote-debugging-port={_cdp_port}"
                     )
-                _launch_opts["channel"] = self.channel
-            if self.executable_path:
-                _launch_opts["executable_path"] = self.executable_path
-            browser = await getattr(p, self.browser).launch(**_launch_opts)
-            ctx  = await browser.new_context(
-                no_viewport=True
-            ) if not self.headless else await browser.new_context(
-                viewport={"width": 1920, "height": 1080}
-            )
-            page = await ctx.new_page()
+                    return MissionResult(file=hunt_file or "", name="", status="fail")
+                # Reuse existing context/page from the Electron app.
+                if browser.contexts:
+                    ctx = browser.contexts[0]
+                    page = ctx.pages[0] if ctx.pages else await ctx.new_page()
+                else:
+                    ctx = await browser.new_context()
+                    page = await ctx.new_page()
+            else:
+                _launch_args = ["--no-sandbox", "--start-maximized"] if self.browser == "chromium" else []
+                _launch_args = _launch_args + [a for a in self.browser_args if a not in _launch_args]
+                _launch_opts: dict = dict(headless=self.headless, args=_launch_args)
+                if self.channel:
+                    if self.browser != "chromium":
+                        raise ValueError(
+                            f"'channel' is only supported for Chromium; "
+                            f"got browser={self.browser!r}, channel={self.channel!r}"
+                        )
+                    _launch_opts["channel"] = self.channel
+                if self.executable_path:
+                    _launch_opts["executable_path"] = self.executable_path
+                browser = await getattr(p, self.browser).launch(**_launch_opts)
+                ctx  = await browser.new_context(
+                    no_viewport=True
+                ) if not self.headless else await browser.new_context(
+                    viewport={"width": 1920, "height": 1080}
+                )
+                page = await ctx.new_page()
 
             _has_step_markers = bool(re.search(r'^\s*STEP\s*\d*\s*:', task, re.MULTILINE | re.IGNORECASE))
             _is_numbered = bool(re.match(r'^\s*\d+\.', task))
