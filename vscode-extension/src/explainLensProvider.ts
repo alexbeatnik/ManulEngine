@@ -146,14 +146,11 @@ function runExplain(
     spawnArgs.push(huntFile);
 
     try {
-      const proc = spawn(manulExe, spawnArgs, {
-        cwd,
-        env: {
-          ...process.env,
-          PYTHONUNBUFFERED: "1",
-          MANUL_AUTO_ANNOTATE: vscode.workspace.getConfiguration("manulEngine").get<boolean>("autoAnnotate", false) ? "1" : "0",
-        },
-      });
+      const env: NodeJS.ProcessEnv = { ...process.env, PYTHONUNBUFFERED: "1" };
+      if (vscode.workspace.getConfiguration("manulEngine").get<boolean>("autoAnnotate", false)) {
+        env.MANUL_AUTO_ANNOTATE = "1";
+      }
+      const proc = spawn(manulExe, spawnArgs, { cwd, env });
 
       proc.stdout?.on("data", (d: Buffer) => onData(d.toString()));
       proc.stderr?.on("data", (d: Buffer) => onData(d.toString()));

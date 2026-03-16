@@ -10,7 +10,6 @@ Tests:
   5. explain=False (default) does NOT attach _explain
   6. score_elements() passes explain flag through
   7. _print_explain() output format validation
-  8. classify_step does not confuse EXPLAIN with other keywords
 
 No network or browser required.
 """

@@ -117,7 +117,12 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         load_custom_controls(str(Path.cwd()))  # idempotent — skips if already loaded for this path
 
     def reset_session_state(self) -> None:
-        """Clear in-memory caches and variables. Useful for synthetic stateless tests."""
+        """Clear in-memory caches and runtime (row/step) variables.
+
+        Resets heuristic caches (``learned_elements``, ``last_xpath``)
+        and row/step-scoped variables via ``clear_runtime()``.
+        Mission- and global-scoped variables are preserved.
+        """
         self.memory.clear_runtime()
         self.learned_elements.clear()
         self.last_xpath = None
@@ -973,6 +978,10 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             _soft_errors: list[str] = []
             _screenshot_mode = screenshot_mode
             _current_logical_step: str | None = None  # active STEP label
+            # Clear per-mission scopes to avoid stale values leaking between
+            # runs of the same ManulEngine instance.
+            self.memory.clear_level(ScopedVariables.LEVEL_ROW)
+            self.memory.clear_level(ScopedVariables.LEVEL_MISSION)
             # Pre-populate scoped variable levels.
             # Level 4 (lowest): Global vars from CLI / lifecycle hooks.
             if global_vars:
