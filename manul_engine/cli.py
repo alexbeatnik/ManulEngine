@@ -43,6 +43,7 @@ Flags:
   --screenshot <mode>        — screenshot capture: on-fail (default), always, none
   --html-report              — generate a self-contained manul_report.html after the run
   --explain                  — print detailed heuristic score breakdown for each element resolution
+  --executable-path <path>   — absolute path to a custom browser or Electron app executable
 
 Scan-specific flags (only with `manul scan`):
   --output <file>            — output file for the draft (default: draft.hunt)
@@ -478,8 +479,8 @@ async def main() -> None:
     _non_flag_args = [
         a for i, a in enumerate(args)
         if a not in ("--headless", "--debug", "--html-report", "--explain")
-        and not (i > 0 and args[i - 1] in ("--browser", "--workers", "--output", "--break-lines", "--tags", "--retries", "--screenshot"))
-        and a not in ("--browser", "--workers", "--output", "--break-lines", "--tags", "--retries", "--screenshot")
+        and not (i > 0 and args[i - 1] in ("--browser", "--workers", "--output", "--break-lines", "--tags", "--retries", "--screenshot", "--executable-path"))
+        and a not in ("--browser", "--workers", "--output", "--break-lines", "--tags", "--retries", "--screenshot", "--executable-path")
     ]
     if _non_flag_args and _non_flag_args[0] == "scan":
         from manul_engine.scanner import scan_main
@@ -523,19 +524,32 @@ async def main() -> None:
             sys.exit(1)
         args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
     # Extract --browser <name> flag
-    _VALID_BROWSERS = {"chromium", "firefox", "webkit"}
+    _VALID_BROWSERS = {"chromium", "firefox", "webkit", "electron"}
     browser: str | None = None
     if "--browser" in args:
         idx = args.index("--browser")
         if idx + 1 >= len(args):
-            print("Error: --browser requires a browser name (chromium, firefox, webkit).", file=sys.stderr)
+            print("Error: --browser requires a browser name (chromium, firefox, webkit, electron).", file=sys.stderr)
             sys.exit(1)
         raw_candidate = args[idx + 1]
         candidate = raw_candidate.strip().lower()
         if candidate not in _VALID_BROWSERS:
-            print(f"Error: unsupported browser '{raw_candidate}'. Allowed: chromium, firefox, webkit.", file=sys.stderr)
+            print(f"Error: unsupported browser '{raw_candidate}'. Allowed: chromium, firefox, webkit, electron.", file=sys.stderr)
             sys.exit(1)
         browser = candidate
+        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+    # Extract --executable-path <path> flag
+    executable_path: str | None = None
+    if "--executable-path" in args:
+        idx = args.index("--executable-path")
+        if idx + 1 >= len(args):
+            print("Error: --executable-path requires a file path.", file=sys.stderr)
+            sys.exit(1)
+        executable_path = args[idx + 1].strip()
+        if not executable_path:
+            print("Error: --executable-path value cannot be empty.", file=sys.stderr)
+            sys.exit(1)
+        os.environ["MANUL_EXECUTABLE_PATH"] = executable_path
         args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
     # Extract --workers <n> flag
     # prompts.py (which maps JSON → env vars) hasn't been imported yet at this

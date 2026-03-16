@@ -233,6 +233,11 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
     </label>
     <div class="hint">Extra launch flags passed to the browser, comma-separated. Chromium always gets --no-sandbox --start-maximized.</div>
 
+    <label>executable_path
+      <input type="text" id="executable_path" placeholder="e.g. /usr/bin/discord or C:\\...\\Discord.exe"/>
+    </label>
+    <div class="hint">Absolute path to a custom Chromium-based browser or Electron app executable. Overrides the default browser if set.</div>
+
     <label>timeout (ms)
       <input type="number" id="timeout" min="500" step="500"/>
     </label>
@@ -358,6 +363,7 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
         headless: g('headless').checked,
         browser: g('browser').value,
         browser_args: g('browser_args').value.trim().split(/[,\s]+/).map(s => s.trim()).filter(Boolean),
+        executable_path: g('executable_path').value.trim() || null,
         timeout: parseInt(g('timeout').value, 10) || 5000,
         nav_timeout: parseInt(g('nav_timeout').value, 10) || 30000,
         ai_always: modelVal !== '' && g('ai_always').checked,
@@ -395,6 +401,7 @@ export class ConfigPanelProvider implements vscode.WebviewViewProvider {
       const _validBrowsers = ['chromium', 'firefox', 'webkit', 'chrome', 'msedge', 'electron'];
       g('browser').value       = _validBrowsers.includes(config.browser) ? config.browser : 'chromium';
       g('browser_args').value  = Array.isArray(config.browser_args) ? config.browser_args.join(', ') : '';
+      g('executable_path').value = config.executable_path ?? '';
       g('timeout').value       = config.timeout ?? 5000;
       g('nav_timeout').value   = config.nav_timeout ?? 30000;
       g('ai_always').checked   = !!config.ai_always;

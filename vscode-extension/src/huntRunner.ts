@@ -20,7 +20,25 @@ export function getBrowserFlags(): { args: string[]; env: Record<string, string>
   if (browser === "chrome" || browser === "msedge") {
     return { args: ["--browser", "chromium"], env: { MANUL_CHANNEL: browser } };
   }
+  if (browser === "electron") {
+    return { args: ["--browser", "electron"], env: {} };
+  }
   return { args: ["--browser", browser], env: {} };
+}
+
+/**
+ * Read executable_path from the project's manul_engine_configuration.json.
+ * Returns the trimmed string or undefined if not set.
+ */
+function readExecutablePath(workspaceRoot: string): string | undefined {
+  try {
+    const cfgPath = path.join(workspaceRoot, "manul_engine_configuration.json");
+    if (!fs.existsSync(cfgPath)) { return undefined; }
+    const raw = JSON.parse(fs.readFileSync(cfgPath, "utf-8"));
+    const ep = raw?.executable_path;
+    if (typeof ep === "string" && ep.trim()) { return ep.trim(); }
+  } catch { /* ignore */ }
+  return undefined;
 }
 
 /**
@@ -217,6 +235,7 @@ export function runHunt(
       // When the setting is false/unset, do NOT inject the env var — this lets the
       // project's manul_engine_configuration.json auto_annotate value take effect.
       const _autoAnnotate = _cfg.get<boolean>("autoAnnotate", false);
+      const _execPath = readExecutablePath(cwd);
       proc = spawn(manulExe, spawnArgs, {
         cwd,
         env: {
@@ -226,6 +245,7 @@ export function runHunt(
           PYTHONUNBUFFERED: "1",
           ...browserFlags.env,
           ...(_autoAnnotate ? { MANUL_AUTO_ANNOTATE: "true" } : {}),
+          ...(_execPath ? { MANUL_EXECUTABLE_PATH: _execPath } : {}),
         },
       });
     } catch (err) {
@@ -293,6 +313,7 @@ export function runHuntFileDebugPanel(
     let proc: ChildProcess;
     try {
       const _autoAnnotatePanel = _cfgPanel.get<boolean>("autoAnnotate", false);
+      const _execPathPanel = readExecutablePath(cwd);
       proc = spawn(manulExe, spawnArgs, {
         cwd,
         stdio: ["pipe", "pipe", "pipe"],
@@ -301,6 +322,7 @@ export function runHuntFileDebugPanel(
           PYTHONUNBUFFERED: "1",
           ...browserFlagsPanel.env,
           ...(_autoAnnotatePanel ? { MANUL_AUTO_ANNOTATE: "true" } : {}),
+          ...(_execPathPanel ? { MANUL_EXECUTABLE_PATH: _execPathPanel } : {}),
         },
       });
     } catch (err) {
