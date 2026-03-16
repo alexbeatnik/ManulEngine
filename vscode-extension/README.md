@@ -29,6 +29,12 @@ ManulEngine bridges the gap between non-technical authors and engineering teams.
 
 > Hunt DSL language support, one-click runner, interactive debug runner with gutter breakpoints, Step Builder for plain-English `.hunt` scripts, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) — the Universal Web Automation Runtime for E2E testing, RPA, synthetic monitoring, and AI-agent execution.
 
+## 🚀 What's New in v0.0.9.5 — Explain Mode
+
+* **🔍 Run with Explain Mode (Editor Title Button):** A new `$(output)` icon button in the editor title bar (top-right) for `.hunt` files. One click runs the hunt file with `--explain` and streams the full heuristic scoring breakdown to the **ManulEngine: Explain Heuristics** output channel. Registered as `Manul: Run with Explain Mode` (`manul.runExplain`) command.
+
+### Previous highlights (v0.0.9.4)
+
 ## 🚀 What's New in v0.0.9.4 — Hardening & Transparency
 
 * **🔍 Explainable Heuristics (`--explain`):** Run `manul --explain tests/` to see the top-3 candidates for every element resolution step, with full per-channel score breakdowns (text, attributes, semantics, proximity, cache). Audit exactly why ManulEngine chose a particular element — or didn't.
@@ -303,6 +309,10 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 ---
 
 ## Release Notes
+
+### 0.0.95
+- **🔍 Run with Explain Mode** — new `$(output)` editor title bar button for `.hunt` files (`Manul: Run with Explain Mode` / `manul.runExplain`). Runs the hunt file with `--explain` and streams the heuristic scoring breakdown to the dedicated output channel
+- Core engine bump to **0.0.9.5**
 
 ### 0.0.94
 - **🔍 Explainable Heuristics** — `--explain` mode shows top-3 candidates with full per-channel score breakdown for every element resolution step

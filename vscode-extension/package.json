@@ -2,7 +2,7 @@
   "name": "manul-engine",
   "displayName": "ManulEngine",
   "description": "Hunt file language support, test runner and configuration UI for ManulEngine browser automation",
-  "version": "0.0.94",
+  "version": "0.0.95",
   "publisher": "manul-engine",
   "icon": "images/icon128.png",
   "repository": {
@@ -160,9 +160,9 @@
         "icon": "$(calendar)"
       },
       {
-        "command": "manul.explainHuntFile",
-        "title": "ManulEngine: Explain Heuristics",
-        "icon": "$(search)"
+        "command": "manul.debug.explainStep",
+        "title": "Manul: Explain Current Step",
+        "icon": "$(lightbulb-autofix)"
       }
     ],
     "menus": {
@@ -183,14 +183,14 @@
           "group": "navigation@3"
         },
         {
+          "command": "manul.debug.explainStep",
+          "when": "resourceExtname == .hunt && manulDebugSessionActive",
+          "group": "navigation@3b"
+        },
+        {
           "command": "manul.formatHuntFile",
           "when": "resourceExtname == .hunt",
           "group": "navigation@4"
-        },
-        {
-          "command": "manul.explainHuntFile",
-          "when": "resourceExtname == .hunt",
-          "group": "navigation@5"
         }
       ],
       "explorer/context": [
@@ -285,11 +285,6 @@
             "Never capture screenshots"
           ],
           "description": "When to capture browser screenshots during test execution."
-        },
-        "manulEngine.explainCodeLens": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show '🔍 Explain Heuristics' CodeLens above actionable steps in .hunt files. Clicking it runs the file with --explain and shows the score breakdown."
         }
       }
     }

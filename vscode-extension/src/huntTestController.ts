@@ -4,6 +4,7 @@ import * as fs from "fs";
 import { findManulExecutable, runHunt, runHuntFileDebugPanel, getHuntBreakpointLines } from "./huntRunner";
 import { DebugControlPanel } from "./debugControlPanel";
 import { DEFAULT_CONFIG_FILENAME, TERMINAL_NAME, getConfigFileName } from "./constants";
+import { ExplainOutputParser, clearExplanations } from "./explainHoverProvider";
 
 // ── Concurrency helpers ────────────────────────────────────────────────────
 
@@ -378,9 +379,20 @@ export function createHuntTestController(
 
       // Collect break lines inside the closure so they are never passed
       // through _runItem (which would also forward them to the normal runner).
-      const debugRunFn: HuntRunFn = (exe, file, onData, tok) =>
-        runHuntFileDebugPanel(exe, file, onData, tok, getHuntBreakpointLines(file),
+      // Wrap onData to feed the explain parser so hover tooltips are populated.
+      const debugRunFn: HuntRunFn = (exe, file, onData, tok) => {
+        const fileUri = vscode.Uri.file(file).toString();
+        clearExplanations(fileUri);
+        const explainParser = new ExplainOutputParser(file);
+        const wrappedOnData = (chunk: string) => {
+          onData(chunk);
+          for (const line of chunk.split("\n")) {
+            explainParser.feed(line);
+          }
+        };
+        return runHuntFileDebugPanel(exe, file, wrappedOnData, tok, getHuntBreakpointLines(file),
           (step, idx) => panel.showPause(step, idx));
+      };
 
       try {
         for (const item of toRun) {

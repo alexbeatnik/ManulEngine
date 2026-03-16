@@ -22,7 +22,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from manul_engine.scoring import DOMScorer, WEIGHTS, SCALE, score_elements
+from manul_engine.scoring import DOMScorer, WEIGHTS, SCALE, MAX_THEORETICAL_SCORE, score_elements
 
 # ── Test helpers ──────────────────────────────────────────────────────────────
 
@@ -97,13 +97,17 @@ def _test_explain_keys() -> None:
     _assert(set(expl.keys()) == expected_keys,
             f"All 7 keys present: {sorted(expl.keys())}")
 
-    _assert(isinstance(expl["text"], int), "text is int")
-    _assert(isinstance(expl["attributes"], int), "attributes is int")
-    _assert(isinstance(expl["semantics"], int), "semantics is int")
-    _assert(isinstance(expl["proximity"], int), "proximity is int")
-    _assert(isinstance(expl["cache"], int), "cache is int")
+    _assert(isinstance(expl["text"], float), "text is float")
+    _assert(isinstance(expl["attributes"], float), "attributes is float")
+    _assert(isinstance(expl["semantics"], float), "semantics is float")
+    _assert(isinstance(expl["proximity"], float), "proximity is float")
+    _assert(isinstance(expl["cache"], float), "cache is float")
     _assert(isinstance(expl["penalty"], (int, float)), "penalty is numeric")
-    _assert(isinstance(expl["total"], int), "total is int")
+    _assert(isinstance(expl["total"], float), "total is float")
+
+    # All channel values and total must be in [0.0, 1.0]
+    for key in ("text", "attributes", "semantics", "proximity", "cache", "total"):
+        _assert(0.0 <= expl[key] <= 1.0, f"{key} in [0.0, 1.0]: {expl[key]}")
 
 
 # ── Section 3: Channel scores sum to total (no penalty) ─────────────────────
@@ -119,15 +123,15 @@ def _test_channel_sum() -> None:
     channel_sum = sum(expl[k] for k in ("text", "attributes", "semantics", "proximity", "cache"))
 
     if expl["penalty"] == 1.0:
-        _assert(expl["total"] == channel_sum,
-                f"total ({expl['total']}) == sum of channels ({channel_sum})")
+        _assert(abs(expl["total"] - channel_sum) < 0.01,
+                f"total ({expl['total']}) ≈ sum of channels ({channel_sum:.3f})")
     else:
-        # With penalty, total ≈ channel_sum * penalty
-        _assert(expl["total"] < channel_sum,
-                f"total ({expl['total']}) < sum ({channel_sum}) due to penalty {expl['penalty']}")
+        # With penalty, total < channel_sum
+        _assert(expl["total"] < channel_sum + 0.001,
+                f"total ({expl['total']}) < sum ({channel_sum:.3f}) due to penalty {expl['penalty']}")
 
-    _assert(expl["total"] == results[0]["score"],
-            "total matches el['score']")
+    _assert(expl["total"] == round(min(results[0]["score"] / MAX_THEORETICAL_SCORE, 1.0), 3),
+            "total matches normalized el['score']")
 
 
 # ── Section 4: Penalty multiplier for disabled elements ──────────────────────
@@ -142,8 +146,8 @@ def _test_penalty_disabled() -> None:
 
     _assert(expl["penalty"] == 0.0,
             f"Disabled penalty = 0.0, got {expl['penalty']}")
-    _assert(expl["total"] == 0,
-            f"Disabled element total = 0, got {expl['total']}")
+    _assert(expl["total"] == 0.0,
+            f"Disabled element total = 0.0, got {expl['total']}")
 
 
 # ── Section 5: explain=False does NOT attach _explain ────────────────────────
@@ -206,13 +210,13 @@ def _test_print_explain_format() -> None:
     el = _make_el(name="Login button", tag_name="button")
     el["score"] = 50000
     el["_explain"] = {
-        "text": 30000,
-        "attributes": 5000,
-        "semantics": 10000,
-        "proximity": 5000,
-        "cache": 0,
+        "text": 0.169,
+        "attributes": 0.028,
+        "semantics": 0.056,
+        "proximity": 0.028,
+        "cache": 0.0,
         "penalty": 1.0,
-        "total": 50000,
+        "total": 0.281,
     }
 
     old_stdout = sys.stdout
@@ -249,8 +253,11 @@ def _test_explain_multiple_elements() -> None:
     all_have_explain = all("_explain" in r for r in results)
     _assert(all_have_explain, "All scored elements have _explain when explain=True")
 
-    all_have_total = all(r["_explain"]["total"] == r["score"] for r in results)
-    _assert(all_have_total, "All _explain.total match el.score")
+    all_have_total = all(
+        r["_explain"]["total"] == round(min(r["score"] / MAX_THEORETICAL_SCORE, 1.0), 3)
+        for r in results
+    )
+    _assert(all_have_total, "All _explain.total match normalized el.score")
 
 
 # ── Run ───────────────────────────────────────────────────────────────────────

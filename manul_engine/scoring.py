@@ -100,6 +100,12 @@ WEIGHTS: dict[str, float] = {
 # Derived: SCALE = 3000 / (name_attr_exact * W_text) = 3000 / (0.0375 * 0.45)
 SCALE: int = 177_778
 
+# Maximum theoretical score used to normalise explain-mode output to
+# the ``[0.0, 1.0]`` confidence range.  Equals ``SCALE`` so that a
+# weighted sum of 1.0 maps to confidence 1.0.  Scores above this
+# (e.g. semantic cache hits at ~355k) are clamped via ``min(..., 1.0)``.
+MAX_THEORETICAL_SCORE: int = SCALE
+
 
 # ── DOMScorer class ───────────────────────────────────────────────────────────
 
@@ -588,14 +594,15 @@ class DOMScorer:
             el["score"] = round(weighted * scale)
 
             if self._explain:
+                _max = MAX_THEORETICAL_SCORE
                 el["_explain"] = {
-                    "text":       round(text_score * w["text"] * scale),
-                    "attributes": round(attr_score * w["attributes"] * scale),
-                    "semantics":  round(sem_score * w["semantics"] * scale),
-                    "proximity":  round(prox_score * w["proximity"] * scale),
-                    "cache":      round(cache_score * w["cache"] * scale),
+                    "text":       round(min(text_score * w["text"] * scale / _max, 1.0), 3),
+                    "attributes": round(min(attr_score * w["attributes"] * scale / _max, 1.0), 3),
+                    "semantics":  round(min(sem_score * w["semantics"] * scale / _max, 1.0), 3),
+                    "proximity":  round(min(prox_score * w["proximity"] * scale / _max, 1.0), 3),
+                    "cache":      round(min(cache_score * w["cache"] * scale / _max, 1.0), 3),
                     "penalty":    penalty_mult,
-                    "total":      el["score"],
+                    "total":      round(min(el["score"] / _max, 1.0), 3),
                 }
 
         return sorted(els, key=lambda x: x.get("score", 0), reverse=True)

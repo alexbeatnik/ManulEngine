@@ -244,7 +244,7 @@ export function runHuntFileDebugPanel(
   onData: (chunk: string) => void,
   token?: vscode.CancellationToken,
   breakLines?: number[],
-  onPause?: (step: string, idx: number) => Promise<"next" | "continue" | "highlight" | "debug-stop" | "stop-test">
+  onPause?: (step: string, idx: number) => Promise<"next" | "continue" | "highlight" | "explain" | "debug-stop" | "stop-test">
 ): Promise<number> {
   return new Promise((resolve, reject) => {
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(huntFile));
@@ -252,7 +252,9 @@ export function runHuntFileDebugPanel(
 
     // No --debug flag here: we only want to pause at explicit breakpoints
     // (--break-lines).  Adding --debug would pause before every step.
-    const spawnArgs = ["--workers", "1"];
+    // Always inject --explain so heuristic scoring data is available for
+    // the HoverProvider (tooltip on hover over step lines).
+    const spawnArgs = ["--explain", "--workers", "1"];
     if (breakLines && breakLines.length > 0) {
       spawnArgs.push("--break-lines", breakLines.join(","));
     }
@@ -307,7 +309,7 @@ export function runHuntFileDebugPanel(
           // Show the Webview panel (if onPause provided) or fall back to
           // a notification.  Either way write the response to stdin so the
           // blocked Python readline() unblocks.
-          const pausePromise: Thenable<"next" | "continue" | "highlight" | "debug-stop" | "stop-test"> = onPause
+          const pausePromise: Thenable<"next" | "continue" | "highlight" | "explain" | "debug-stop" | "stop-test"> = onPause
             ? onPause(step, idx)
             : (() => {
                 const shortStep = step.length > 100 ? step.substring(0, 100) + "…" : step;
@@ -323,7 +325,7 @@ export function runHuntFileDebugPanel(
                   );
               })();
           pausePromise.then(
-            (choice: "next" | "continue" | "highlight" | "debug-stop" | "stop-test") => {
+            (choice: "next" | "continue" | "highlight" | "explain" | "debug-stop" | "stop-test") => {
               // Guard against writing to stdin after the process has already
               // exited or the stream has been closed/destroyed (e.g. user
               // pressed Stop while the QuickPick was open).

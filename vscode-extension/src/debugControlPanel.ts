@@ -12,11 +12,12 @@
 import * as vscode from "vscode";
 import { exec, execFile } from "child_process";
 
-export type PauseChoice = "next" | "continue" | "highlight" | "debug-stop" | "stop-test";
+export type PauseChoice = "next" | "continue" | "highlight" | "explain" | "debug-stop" | "stop-test";
 
 const NEXT_LABEL  = "⏭  Next Step";
 const CONT_LABEL  = "▶  Continue All";
 const HIGH_LABEL  = "👁  Highlight Element";
+const EXPL_LABEL  = "💡  Explain Step";
 const DSTOP_LABEL = "⏹  Debug Stop";
 const SSTOP_LABEL = "🛑  Stop Test";
 
@@ -42,6 +43,8 @@ function tryRaiseWindow(stepIdx: number, stepText: string): void {
 export class DebugControlPanel {
   private static _instance: DebugControlPanel | undefined;
   private _activeQp: vscode.QuickPick<vscode.QuickPickItem> | undefined;
+  /** When true, the next onDidHide resolves with "explain" instead of "next". */
+  private _explainOnHide = false;
 
   private constructor(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -76,6 +79,7 @@ export class DebugControlPanel {
         { label: NEXT_LABEL },
         { label: CONT_LABEL },
         { label: HIGH_LABEL,  description: "Scroll the browser to the highlighted element" },
+        { label: EXPL_LABEL,  description: "Show heuristic score breakdown for this step" },
         { label: DSTOP_LABEL, description: "Skip all remaining breakpoints and run to end" },
         { label: SSTOP_LABEL, description: "Abort the test immediately" },
       ];
@@ -94,6 +98,8 @@ export class DebugControlPanel {
         const label = qp.selectedItems[0]?.label;
         if (label === HIGH_LABEL) {
           done("highlight");
+        } else if (label === EXPL_LABEL) {
+          done("explain");
         } else if (label === DSTOP_LABEL) {
           done("debug-stop");
         } else if (label === SSTOP_LABEL) {
@@ -103,8 +109,13 @@ export class DebugControlPanel {
         }
       });
 
-      // ESC or programmatic hide → treat as "next" so Python readline() unblocks.
-      qp.onDidHide(() => done("next"));
+      // ESC or programmatic hide → resolve with "next" (or "explain" if
+      // triggerExplain() fired) so Python readline() unblocks.
+      qp.onDidHide(() => {
+        const choice: PauseChoice = this._explainOnHide ? "explain" : "next";
+        this._explainOnHide = false;
+        done(choice);
+      });
 
       qp.show();
     });
@@ -117,6 +128,17 @@ export class DebugControlPanel {
    */
   abort(): void {
     this._activeQp?.hide();
+  }
+
+  /**
+   * Programmatically trigger "explain" from an external command.
+   * Hides the QuickPick so the pending showPause() promise resolves with
+   * "explain", which is sent to Python's stdin to print scoring data.
+   */
+  triggerExplain(): void {
+    if (!this._activeQp) { return; }
+    this._explainOnHide = true;
+    this._activeQp.hide();
   }
 
   /** Reset singleton so next run gets a fresh instance. */

@@ -48,7 +48,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.4
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.5
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
@@ -115,7 +115,7 @@ tests/
 benchmarks/
   run_benchmarks.py        Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
 vscode-extension/
-  package.json              Extension manifest (v0.0.94)
+  package.json              Extension manifest (v0.0.95)
   src:
     extension.ts            Activation, command registration, formatter registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
@@ -649,7 +649,7 @@ A companion extension that provides hunt file language support, Test Explorer in
 * Config panel reads/writes `manul_engine_configuration.json` at the workspace root using `_configPath()`. The config file name is resolved via `getConfigFileName()` from `constants.ts`, which reads the `manulEngine.configFile` VS Code setting.
 * Ollama model discovery: the panel fetches `http://localhost:11434/api/tags` on open and populates a `<select>` dropdown with installed model names (replaced legacy `<datalist>` + `<input>` to fix rendering offset in Electron webview). First option is always `null (heuristics-only)`. The stored model is always preserved as an option even when Ollama is offline.
 * `schedulerPanel.ts` — Advanced Scheduler Dashboard / Visual RPA Manager. `findAllHunts()` scans workspace for **all** `.hunt` files (not just scheduled ones), returns `HuntFileEntry[]` with `relPath`, `absUri`, and `schedule` (empty string if unscheduled). The webview splits files into **Scheduled Tasks** and **Unscheduled Tasks** sections with a **search bar** for filename filtering. Each file row has a `<select>` combobox (preset schedule options: None, every 30 seconds, every 1/5/15 minutes, every hour, daily at 09:00, weekly, Custom…), a hidden/disabled custom text `<input>` that activates when "Custom…" is selected, and an **Apply** button. Apply sends `{ command: 'updateSchedule', filePath: absUri, schedule: '...' }` to the extension. `mutateScheduleHeader(fileUri, schedule)` uses `vscode.WorkspaceEdit` to inject (after last `@`-prefixed metadata line), replace, or remove the `@schedule:` header. The file is saved after mutation and the webview refreshes automatically. **Run History & Sparklines:** `readRunHistory(wsRoot, limit=5)` reads `reports/run_history.json` (JSON Lines), returns a map of filename → last N `RunHistoryRecord` entries. `_sendAllFiles()` posts both `files` and `history` to the webview. The frontend renders a sparkline (pass=🟢, fail=🔴, flaky/warning=🟡) and a relative-time label ("3m ago") per file row.
-* `explainLensProvider.ts` — `ExplainLensProvider` implements `CodeLensProvider` for `.hunt` files. Displays a clickable **🔍 Explain Heuristics** lens above every actionable step line (Click, Fill, Select, Verify, etc.). Skips metadata (`@`), comments (`#`), system-only keywords (NAVIGATE, WAIT, DONE, etc.), and blank lines. Clicking the lens invokes the `manul.explainHuntFile` command, which spawns `manul --explain --workers 1 <huntFile>` and streams output to a dedicated `"ManulEngine: Explain Heuristics"` output channel (auto-focused). The channel name constant lives in `constants.ts` (`EXPLAIN_OUTPUT_CHANNEL`). The CodeLens is toggled via `manulEngine.explainCodeLens` VS Code setting (default: `true`). The command is also available as an editor title bar button (`$(search)` icon, `navigation@5`).
+* `explainLensProvider.ts` — `ExplainLensProvider` implements `CodeLensProvider` for `.hunt` files. Displays a clickable **🔍 Explain Heuristics** lens above every actionable step line (Click, Fill, Select, Verify, etc.). Skips metadata (`@`), comments (`#`), system-only keywords (NAVIGATE, WAIT, DONE, etc.), and blank lines. Clicking the lens invokes the `manul.explainHuntFile` command, which spawns `manul --explain --workers 1 <huntFile>` and streams output to a dedicated `"ManulEngine: Explain Heuristics"` output channel (auto-focused). The channel name constant lives in `constants.ts` (`EXPLAIN_OUTPUT_CHANNEL`). The CodeLens is toggled via `manulEngine.explainCodeLens` VS Code setting (default: `true`). A separate `manul.runExplain` command (title: "Manul: Run with Explain Mode", `$(output)` icon, `navigation@5`) is registered as the editor title bar button; it delegates to the same `explainHuntFile()` function.
 * Build: `cd vscode-extension && npm install && npm run compile`. Use `npx vsce package` to produce a `.vsix`. Press F5 in VS Code with the extension folder open to launch a dev Extension Host.
 
 ## Version Bump Checklist

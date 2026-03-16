@@ -16,6 +16,12 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 
 ---
 
+## 🚀 What's New in v0.0.9.5 — Explain Mode
+
+* **🔍 VS Code "Run with Explain Mode" Button:** The VS Code extension now adds a dedicated `$(output)` icon button in the editor title bar for `.hunt` files. One click runs the hunt with `--explain` and streams the full per-element heuristic scoring breakdown to the **ManulEngine: Explain Heuristics** output channel — no command palette required.
+
+### Previous highlights (v0.0.9.4)
+
 ## 🚀 What's New in v0.0.9.4 — Hardening & Transparency
 
 * **Explainable Heuristics (`--explain`):** Run any hunt with `manul --explain tests/smoke.hunt` to see a full per-element scoring breakdown for every step. The engine prints the top 3 candidates with their individual channel scores (Text, Attributes, Semantics, Proximity, Cache) and the final decision — making heuristic resolution fully transparent. No more "why did it click that?" mysteries. See the [Explainable Heuristics](#-explainable-heuristics----explain) section below.
@@ -990,4 +996,4 @@ ManulEngine is verified against **2358 synthetic DOM tests** across 45 test suit
 
 ---
 
-**Version:** 0.0.9.4 · **Status:** Hunting...
+**Version:** 0.0.9.5 · **Status:** Hunting...
