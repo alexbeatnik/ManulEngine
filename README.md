@@ -143,8 +143,6 @@ The companion VS Code extension surfaces `--explain` directly in the editor. Eve
 
 No more guessing why a test clicked the wrong element. The scoring math is one click away.
 
-![Explain Step Demo](link-to-gif)
-
 The CodeLens can be toggled off via `manulEngine.explainCodeLens` in VS Code settings. The `🔍` button also appears in the editor title bar for quick access.
 
 ---
@@ -301,7 +299,7 @@ The engine loads every `.py` file in `controls/` at startup. No configuration re
 
 ---
 
-## � State Management & Strict Scoping
+## 🧠 State Management & Strict Scoping
 
 ManulEngine enforces a **strict four-level variable precedence hierarchy** that eliminates state leakage between data-driven loop iterations and makes variable resolution fully deterministic:
 
@@ -363,7 +361,7 @@ Between `@data:` iterations, the engine clears Level 1 (Row) and Level 2 (Step) 
 
 ---
 
-## �📋 Static Variables — Clean Test Data, Zero Hardcoding
+## 📋 Static Variables — Clean Test Data, Zero Hardcoding
 
 Declare all test data at the top of your `.hunt` file with `@var:`. Values are injected into the engine’s memory before step 1 runs and can be referenced anywhere via `{placeholder}` — keeping your test logic clean and your data in one place.
 

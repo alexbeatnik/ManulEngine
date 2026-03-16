@@ -9,7 +9,7 @@
 
 import * as vscode from "vscode";
 import * as path from "path";
-import { findManulExecutable, runHunt } from "./huntRunner";
+import { findManulExecutable } from "./huntRunner";
 import { EXPLAIN_OUTPUT_CHANNEL } from "./constants";
 
 // ── Step-line detection ────────────────────────────────────────────────────
@@ -89,7 +89,7 @@ export async function explainHuntFile(uri?: vscode.Uri): Promise<void> {
 
   const channel = getExplainChannel();
   channel.clear();
-  channel.show(true); // reveal and focus
+  channel.show(); // reveal and focus
 
   const fileName = path.basename(target.fsPath);
   channel.appendLine(`🔍 ManulEngine Explain — ${fileName}`);
@@ -151,6 +151,7 @@ function runExplain(
         env: {
           ...process.env,
           PYTHONUNBUFFERED: "1",
+          MANUL_AUTO_ANNOTATE: vscode.workspace.getConfiguration("manulEngine").get<boolean>("autoAnnotate", false) ? "1" : "0",
         },
       });
 
