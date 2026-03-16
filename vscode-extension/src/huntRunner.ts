@@ -6,6 +6,24 @@ import * as vscode from "vscode";
 import { PAUSE_MARKER, DEBUG_TERMINAL_NAME } from "./constants";
 
 /**
+ * Read the manulEngine.browser setting and return the CLI flags needed.
+ * For native Playwright browsers (chromium, firefox, webkit) returns
+ * ["--browser", name].  For system-installed channel browsers (chrome,
+ * msedge) returns ["--browser", "chromium"] and sets MANUL_CHANNEL in
+ * the env so the JSON config override is not required.
+ */
+export function getBrowserFlags(): { args: string[]; env: Record<string, string> } {
+  const raw = vscode.workspace
+    .getConfiguration("manulEngine")
+    .get<string>("browser", "chromium");
+  const browser = (raw || "chromium").trim().toLowerCase();
+  if (browser === "chrome" || browser === "msedge") {
+    return { args: ["--browser", "chromium"], env: { MANUL_CHANNEL: browser } };
+  }
+  return { args: ["--browser", browser], env: {} };
+}
+
+/**
  * Probe candidate paths in order, then falls back to a one-time async
  * login-shell lookup using the user's configured shell (`vscode.env.shell` →
  * `$SHELL`), so fish/zsh/bash init scripts and tools like conda, pyenv, and
@@ -180,7 +198,8 @@ export function runHunt(
     try {
       // --workers 1 forces sequential mode so each Test Explorer invocation
       // runs directly in-process (no subprocess spawning overhead / recursion).
-      const spawnArgs = ["--workers", "1"];
+      const browserFlags = getBrowserFlags();
+      const spawnArgs = [...browserFlags.args, "--workers", "1"];
       if (breakLines && breakLines.length > 0) {
         spawnArgs.push("--break-lines", breakLines.join(","));
       }
@@ -205,6 +224,7 @@ export function runHunt(
           // Force Python to flush stdout immediately — without this, output
           // is block-buffered when piped and steps appear only at the end.
           PYTHONUNBUFFERED: "1",
+          ...browserFlags.env,
           ...(_autoAnnotate ? { MANUL_AUTO_ANNOTATE: "true" } : {}),
         },
       });
@@ -254,7 +274,8 @@ export function runHuntFileDebugPanel(
     // (--break-lines).  Adding --debug would pause before every step.
     // Always inject --explain so heuristic scoring data is available for
     // the HoverProvider (tooltip on hover over step lines).
-    const spawnArgs = ["--explain", "--workers", "1"];
+    const browserFlagsPanel = getBrowserFlags();
+    const spawnArgs = [...browserFlagsPanel.args, "--explain", "--workers", "1"];
     if (breakLines && breakLines.length > 0) {
       spawnArgs.push("--break-lines", breakLines.join(","));
     }
@@ -278,6 +299,7 @@ export function runHuntFileDebugPanel(
         env: {
           ...process.env,
           PYTHONUNBUFFERED: "1",
+          ...browserFlagsPanel.env,
           ...(_autoAnnotatePanel ? { MANUL_AUTO_ANNOTATE: "true" } : {}),
         },
       });
@@ -380,13 +402,15 @@ export async function runHuntFileDebugInTerminal(
   const isPowerShell = shellBase === "powershell.exe" || shellBase === "pwsh" || shellBase === "pwsh.exe";
   const breakLines = getHuntBreakpointLines(uri.fsPath);
   const breakFlag = breakLines.length > 0 ? ` --break-lines ${breakLines.join(",")}` : "";
+  const termBrowserFlags = getBrowserFlags();
+  const browserFlag = termBrowserFlags.args.length > 0 ? ` ${termBrowserFlags.args.join(" ")}` : "";
   const command = isPowerShell
-    ? `& "${manulExe}" --debug${breakFlag} "${uri.fsPath}"`
-    : `"${manulExe}" --debug${breakFlag} "${uri.fsPath}"`;
+    ? `& "${manulExe}"${browserFlag} --debug${breakFlag} "${uri.fsPath}"`
+    : `"${manulExe}"${browserFlag} --debug${breakFlag} "${uri.fsPath}"`;
   const terminal = vscode.window.createTerminal({
     name: DEBUG_TERMINAL_NAME,
     cwd: workspaceRoot,
-    env: { PYTHONUNBUFFERED: "1" },
+    env: { PYTHONUNBUFFERED: "1", ...termBrowserFlags.env },
   });
   terminal.show();
   terminal.sendText(command);

@@ -285,6 +285,19 @@
             "Never capture screenshots"
           ],
           "description": "When to capture browser screenshots during test execution."
+        },
+        "manulEngine.browser": {
+          "type": "string",
+          "default": "chromium",
+          "enum": ["chromium", "firefox", "webkit", "chrome", "msedge"],
+          "enumDescriptions": [
+            "Playwright bundled Chromium (default)",
+            "Playwright bundled Firefox",
+            "Playwright bundled WebKit",
+            "System Google Chrome (Chromium channel)",
+            "System Microsoft Edge (Chromium channel)"
+          ],
+          "description": "Browser engine to use for hunt execution. 'chrome' and 'msedge' use the system-installed browser via Playwright's channel mechanism."
         }
       }
     }

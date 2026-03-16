@@ -133,7 +133,17 @@ function runExplain(
     );
     const cwd = workspaceFolder?.uri.fsPath ?? path.dirname(huntFile);
 
-    const spawnArgs = ["--explain", "--workers", "1"];
+    // ── Browser selection from VS Code settings ────────────────────────────
+    const browserRaw = vscode.workspace
+      .getConfiguration("manulEngine")
+      .get<string>("browser", "chromium");
+    const browserVal = (browserRaw || "chromium").trim().toLowerCase();
+    const isChannel = browserVal === "chrome" || browserVal === "msedge";
+    const explainBrowserArgs = isChannel
+      ? ["--browser", "chromium"]
+      : ["--browser", browserVal];
+
+    const spawnArgs = [...explainBrowserArgs, "--explain", "--workers", "1"];
 
     // Pull reporting flags from VS Code settings (same as runHunt)
     const cfg = vscode.workspace.getConfiguration("manulEngine");
@@ -147,6 +157,7 @@ function runExplain(
 
     try {
       const env: NodeJS.ProcessEnv = { ...process.env, PYTHONUNBUFFERED: "1" };
+      if (isChannel) { env.MANUL_CHANNEL = browserVal; }
       if (vscode.workspace.getConfiguration("manulEngine").get<boolean>("autoAnnotate", false)) {
         env.MANUL_AUTO_ANNOTATE = "1";
       }
