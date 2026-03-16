@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Custom Dropdown Test</title>
+<style>
+  .custom-select { position: relative; width: 250px; margin: 20px 0; }
+  .custom-select-trigger {
+    padding: 10px; border: 1px solid #ccc; cursor: pointer;
+    background: #fff; display: flex; justify-content: space-between;
+  }
+  .custom-options {
+    display: none; position: absolute; top: 100%; left: 0; right: 0;
+    border: 1px solid #ccc; background: #fff; z-index: 100;
+    max-height: 200px; overflow-y: auto;
+  }
+  .custom-options.open { display: block; }
+  .custom-option {
+    padding: 8px 10px; cursor: pointer;
+  }
+  .custom-option:hover { background: #e9ecef; }
+  .custom-option.selected { background: #007bff; color: #fff; }
+</style>
+</head>
+<body>
+  <h1>Custom Dropdown (div-based)</h1>
+
+  <div class="custom-select" data-qa="shipping-method">
+    <div class="custom-select-trigger" role="combobox" aria-label="Shipping Method" aria-expanded="false">
+      <span>Select shipping...</span>
+      <span>▼</span>
+    </div>
+    <div class="custom-options" role="listbox" aria-label="Shipping options">
+      <div class="custom-option" role="option" data-value="standard">Standard (5-7 days)</div>
+      <div class="custom-option" role="option" data-value="express">Express (2-3 days)</div>
+      <div class="custom-option" role="option" data-value="overnight">Overnight (next day)</div>
+    </div>
+  </div>
+
+  <script>
+    const trigger = document.querySelector('.custom-select-trigger');
+    const options = document.querySelector('.custom-options');
+    trigger.addEventListener('click', () => {
+      options.classList.toggle('open');
+      trigger.setAttribute('aria-expanded', options.classList.contains('open'));
+    });
+    document.querySelectorAll('.custom-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        trigger.querySelector('span').textContent = opt.textContent;
+        options.classList.remove('open');
+        trigger.setAttribute('aria-expanded', 'false');
+        document.querySelectorAll('.custom-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+      });
+    });
+  </script>
+
+  <!-- Native select for comparison -->
+  <div style="margin: 20px 0;">
+    <label for="native-country">Country (native select)</label>
+    <select id="native-country" name="country" aria-label="Country">
+      <option value="">-- Choose --</option>
+      <option value="us">United States</option>
+      <option value="ca">Canada</option>
+      <option value="mx">Mexico</option>
+    </select>
+  </div>
+</body>
+</html>

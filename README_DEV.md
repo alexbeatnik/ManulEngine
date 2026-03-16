@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.0.9.3 — The Universal Web Automation Runtime
+# 😼 ManulEngine v0.0.9.4 — The Universal Web Automation Runtime
 
 **ManulEngine — The Universal Web Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright.
@@ -22,7 +22,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-│   ├── pyproject.toml                        Build config — package: manul-engine 0.0.9.3
+│   ├── pyproject.toml                        Build config — package: manul-engine 0.0.9.4
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
@@ -43,6 +43,7 @@ ManulEngine/
 │   ├── actions.py                    Action execution mixin (click, type, select, hover, drag, scan_page)
 │   ├── reporting.py                  StepResult, MissionResult, RunSummary dataclasses
 │   ├── reporter.py                   Interactive HTML report generator (dark theme, control panel, tag chips, base64 screenshots)
+│   ├── variables.py                  ScopedVariables — 4-level variable hierarchy (row, step, mission, global)
 │   └── test/
 │       ├── test_00_engine.py         Engine micro-suite (synthetic DOM via local HTML)
 │       ├── test_01_ecommerce.py      Scenario pack: ecommerce
@@ -90,12 +91,14 @@ ManulEngine/
 │   ├── saucedemo.hunt
 │   └── wikipedia.hunt
 ├── reports/                          Generated logs and HTML reports (auto-created, .gitignored)
+├── benchmarks/                       Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
+│   └── run_benchmarks.py            Benchmark runner: ManulEngine vs raw Playwright
 ├── prompts/                          LLM prompt templates for hunt file generation
 │   ├── README.md                     Usage guide (Copilot, ChatGPT, Claude, Ollama)
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 └── vscode-extension/                 VS Code extension (language support + UI)
-    └── package.json                  Extension manifest (v0.0.93)
+    └── package.json                  Extension manifest (v0.0.94)
     ├── src/
     │   ├── extension.ts              Activation, command registration, formatter registration
     │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
@@ -154,6 +157,14 @@ ManulEngine is not a test library bolted onto Playwright. It is a **runtime** �
 This architecture is what makes ManulEngine a **true runtime** rather than just a test library. The `.hunt` DSL is the instruction set. The parser and engine are the interpreter. Playwright is the I/O layer. Users write scripts — QA tests, RPA workflows, synthetic monitors, or AI-agent actions — in the same deterministic DSL, and the runtime executes them identically.
 
 ---
+
+## 🚀 What's New in v0.0.9.4 — Hardening & Transparency
+
+* **Explainable Heuristics (`--explain`):** `DOMScorer` can now emit a per-candidate channel breakdown (text, attributes, semantics, proximity, cache) alongside the final score. Enabled via `manul --explain tests/` or `MANUL_EXPLAIN=1`. The top-3 candidates for each resolution step are printed to the console with full score-channel details, making it trivial to audit why a particular element was chosen — or wasn't.
+* **Strict Variable Scoping (`ScopedVariables`):** The runtime memory system (`self.memory`) is replaced by a `ScopedVariables` 4-level hierarchy (Row → Step → Mission → Global). `@data:` row values are injected at `row` scope and auto-cleared between iterations; `EXTRACT` and `CALL PYTHON ... into {var}` capture at `step` scope; `@var:` declarations live at `mission` scope; lifecycle hooks (`@before_all`) populate `global` scope. Zero state leakage between data-driven iterations.
+* **Benchmark Suite (`benchmarks/`):** 12 adversarial tasks across 4 HTML fixtures (`dynamic_ids`, `overlapping`, `nested_tables`, `custom_dropdown`) comparing ManulEngine heuristic resolution against raw Playwright locators. Run with `python benchmarks/run_benchmarks.py`.
+
+### Previous highlights (v0.0.9.3)
 
 ## 🚀 What's New in v0.0.9.3 — The Scheduler Update
 
@@ -663,9 +674,9 @@ manul tests/mission.hunt
 
 ---
 
-## 🐾 Chaos Chamber Verified (2259 Tests)
+## 🐾 Chaos Chamber Verified (2358 Tests)
 
-The engine is battle-tested with **2259** synthetic DOM/unit tests across 43 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, and visibility edge cases.
+The engine is battle-tested with **2358** synthetic DOM/unit tests across 45 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, and visibility edge cases.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).
@@ -695,6 +706,8 @@ The engine is battle-tested with **2259** synthetic DOM/unit tests across 43 tes
 * **Self-Healing Cache unit suite:** `manul_engine/test/test_40_self_healing_cache.py` (stale detection, HEALED logging, cache auto-update, HTML reporter badge, 16 assertions).
 * **Recorder unit suite:** `manul_engine/test/test_41_recorder.py` (JS injection bridge, DSL step generator, step aggregation, hunt file output, no browser).
 * **Scheduler unit suite:** `manul_engine/test/test_42_scheduler.py` (`parse_schedule` all 6 expression forms, case insensitivity, error cases, `next_run_delay`, `_seconds_until_time/weekday`, ParsedHunt integration, Schedule immutability, all 7 weekday names, 51 assertions, no browser).
+* **Scoped Variables unit suite:** `manul_engine/test/test_43_scoped_variables.py` (`ScopedVariables` 4-level hierarchy, scope isolation, row-scope auto-clear for `@data:`, `DEBUG VARS` output, dict compatibility, 43 assertions, no browser).
+* **Explain Mode unit suite:** `manul_engine/test/test_44_explain_mode.py` (`DOMScorer` explain output, per-candidate channel breakdown, top-3 ranking, `--explain` CLI flag, `MANUL_EXPLAIN` env var, 27 assertions, no browser).
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
 Run the synthetic suite:
@@ -737,7 +750,7 @@ The `prompts/` directory contains ready-to-use LLM prompt templates that let you
 
 ## 🖱️ VS Code Extension
 
-The `vscode-extension/` directory contains a companion VS Code extension (v0.0.93) that provides:
+The `vscode-extension/` directory contains a companion VS Code extension (v0.0.94) that provides:
 
 | Feature | Details |
 | --- | --- |
@@ -748,6 +761,7 @@ The `vscode-extension/` directory contains a companion VS Code extension (v0.0.9
 | **Run commands** | `ManulEngine: Run Hunt File` (output panel) and `ManulEngine: Run Hunt File in Terminal` (raw CLI) |
 | **Debug run profile** | Test Explorer exposes a **Debug** run profile alongside the normal one; places gutter breakpoints (red dots) in `.hunt` files, pauses at each with a floating QuickPick overlay — **⏭ Next Step** / **▶ Continue All**. The Test Explorer **Stop** button aborts the run cleanly (no hanging QuickPick). On Linux, a system notification appears via `notify-send` when execution pauses. |
 | **Step Builder** | Sidebar buttons for every step type including **Open App**, **Set Variable**, **Verify Softly**, **Verify Visual**, **Mock Request**, **Wait Response**, **Debug / Pause** (inserts `DEBUG` step); **🐍 Call Python → Var** (inserts `CALL PYTHON module.function into {variable_name}` and captures the return value as a mission variable); **🔍 Live Page Scanner** — URL input + Run Scan button that invokes `manul scan <URL>` directly and opens the result in the editor |
+| **Explain Heuristics CodeLens** | **🔍 Explain Heuristics** CodeLens above every actionable step (Click, Fill, Select, Verify, etc.) in `.hunt` files. Clicking the lens runs the file with `--explain` and streams the scoring breakdown to a dedicated **ManulEngine: Explain Heuristics** output channel. Editor title bar `🔍` button for quick access. Toggle via `manulEngine.explainCodeLens` setting |
 | **Bounded concurrency** | Test Explorer respects `workers` config or `manulEngine.workers` VS Code setting (default: 1) |
 
 ### Extension behaviour notes
@@ -773,8 +787,8 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 ---
 
-**Version:** 0.0.9.3
+**Version:** 0.0.9.4
 
-**Codename:** The Scheduler Update
+**Codename:** Hardening & Transparency
 
 **Status:** Hunting...

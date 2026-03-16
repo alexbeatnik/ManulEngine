@@ -29,6 +29,15 @@ ManulEngine bridges the gap between non-technical authors and engineering teams.
 
 > Hunt DSL language support, one-click runner, interactive debug runner with gutter breakpoints, Step Builder for plain-English `.hunt` scripts, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) — the Universal Web Automation Runtime for E2E testing, RPA, synthetic monitoring, and AI-agent execution.
 
+## 🚀 What's New in v0.0.9.4 — Hardening & Transparency
+
+* **🔍 Explainable Heuristics (`--explain`):** Run `manul --explain tests/` to see the top-3 candidates for every element resolution step, with full per-channel score breakdowns (text, attributes, semantics, proximity, cache). Audit exactly why ManulEngine chose a particular element — or didn't.
+* **🧠 Visual Explainability (Explain Step CodeLens):** Every actionable step in `.hunt` files now shows a clickable **🔍 Explain Heuristics** CodeLens above it. Click the lens — the extension runs the file with `--explain` and streams the full scoring breakdown to a dedicated **ManulEngine: Explain Heuristics** output channel, auto-focused. No more guessing why a test clicked the wrong element. Toggle via `manulEngine.explainCodeLens` setting.
+* **📦 Strict Variable Scoping:** Runtime memory is now a 4-level hierarchy (Row → Step → Mission → Global). `@data:` row values auto-clear between iterations — zero state leakage across data-driven runs.
+* **🏋️ Benchmark Suite:** 12 adversarial tasks across 4 HTML fixtures comparing ManulEngine heuristics against raw Playwright locators. `python benchmarks/run_benchmarks.py`.
+
+### Previous highlights (v0.0.9.3)
+
 ## 🚀 What's New in v0.0.9.3 — The Scheduler Update
 
 * **📅 Advanced Scheduler Dashboard (Visual RPA Manager):** A dedicated editor Webview panel (`ManulEngine: Open Scheduler Dashboard` command) that scans the workspace for **all** `.hunt` files — not just scheduled ones. The dashboard splits files into **Scheduled Tasks** (files with an existing `@schedule:` header) and **Unscheduled Tasks** sections. A **live search bar** at the top filters both lists by filename. Each file row includes a **combobox** with preset schedule options (`every 5 minutes`, `hourly`, `daily at 09:00`, `Custom...`, etc.) and an **Apply** button that injects, updates, or removes the `@schedule:` header directly in the `.hunt` file — no manual editing required. The dashboard also shows a live status indicator (green when the daemon is running, grey when stopped) and provides **Start Daemon** / **Stop Daemon** buttons. Start spawns `manul daemon <tests_home> --headless` in a dedicated `"Manul Daemon"` terminal; Stop disposes the terminal. The dashboard command appears as a calendar icon in the title bar of all ManulEngine sidebar views.
@@ -156,6 +165,15 @@ A sidebar panel that lets you insert hunt steps with a single click — no typin
 - **Scan Page** — inserts `SCAN PAGE into draft.hunt`; when the engine executes this step it scans the current browser page for interactive elements and writes a ready-to-run draft hunt file to `tests_home/draft.hunt`
 - Each click appends to the currently open `.hunt` file and positions the cursor inside the first `''` pair for immediate editing
 - Requires the `.hunt` file to be the active editor tab.
+
+### 🔍 Visual Explainability (Explain Step)
+
+No more guessing why a step clicked the wrong element. The extension adds a **🔍 Explain Heuristics** CodeLens above every actionable step (Click, Fill, Select, Verify, etc.) in `.hunt` files. Click any lens to run the file with `--explain` and see the full per-element scoring breakdown — Text, Attributes, Semantics, Proximity, Cache — streamed into a dedicated **ManulEngine: Explain Heuristics** output channel that auto-focuses.
+
+- **CodeLens integration:** Clickable lens above each actionable step line — one click to see why the engine chose a specific element
+- **Dedicated output channel:** Scoring breakdown is routed to "ManulEngine: Explain Heuristics" — separate from test output
+- **Editor title bar button:** `🔍` icon for quick access without scrolling to a step line
+- **Toggle on/off:** `manulEngine.explainCodeLens` setting (default: `true`)
 
 ---
 
@@ -285,6 +303,13 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 ---
 
 ## Release Notes
+
+### 0.0.94
+- **🔍 Explainable Heuristics** — `--explain` mode shows top-3 candidates with full per-channel score breakdown for every element resolution step
+- **🧠 Visual Explainability (Explain Step CodeLens)** — clickable **🔍 Explain Heuristics** lens above every actionable step in `.hunt` files; runs the file with `--explain` and streams scoring breakdown to a dedicated output channel. Toggle via `manulEngine.explainCodeLens`. Editor title bar `🔍` button for quick access
+- **📦 Strict Variable Scoping** — 4-level `ScopedVariables` hierarchy (Row → Step → Mission → Global) with zero state leakage across `@data:` iterations
+- **🏋️ Benchmark Suite** — 12 adversarial tasks across 4 HTML fixtures (`dynamic_ids`, `overlapping`, `nested_tables`, `custom_dropdown`)
+- Core engine bump to **0.0.9.4**
 
 ### 0.0.93
 - **📅 Advanced Scheduler Dashboard** — `ManulEngine: Open Scheduler Dashboard` editor Webview panel. Displays **all** `.hunt` files in Scheduled / Unscheduled split view with live search, per-file combobox schedule editor (preset + custom expressions), and Apply button to inject/update/remove `@schedule:` headers directly in files. Start/Stop Daemon UI and live status indicator. Calendar icon in all sidebar view title bars

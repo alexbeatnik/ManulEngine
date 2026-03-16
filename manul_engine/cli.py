@@ -42,6 +42,7 @@ Flags:
   --retries <n>              — retry failed hunt files up to n times (pass on retry = flaky)
   --screenshot <mode>        — screenshot capture: on-fail (default), always, none
   --html-report              — generate a self-contained manul_report.html after the run
+  --explain                  — print detailed heuristic score breakdown for each element resolution
 
 Scan-specific flags (only with `manul scan`):
   --output <file>            — output file for the draft (default: draft.hunt)
@@ -272,6 +273,7 @@ async def _run_hunt_file(
     break_lines: "set[int] | None" = None,
     screenshot_mode: str = "none",
     global_vars: "dict[str, str] | None" = None,
+    explain: bool = False,
 ) -> MissionResult:
     filename = os.path.basename(path)
     print(f"\n{'='*60}")
@@ -309,11 +311,12 @@ async def _run_hunt_file(
         print(f"\n❌ SETUP failed — skipping mission and teardown for {filename}")
         return MissionResult(file=path, name=filename, status="fail", error="SETUP failed")
 
-    manul = ManulEngine(headless=headless, browser=browser, debug_mode=debug, break_steps=break_steps)
+    manul = ManulEngine(headless=headless, browser=browser, debug_mode=debug, break_steps=break_steps, explain_mode=explain)
     mission_result = MissionResult(file=path, name=filename, status="fail")
-    # Merge global lifecycle vars (lower priority) with per-file @var: declarations
-    # so that @var: can always override a global default.
-    merged_vars: dict[str, str] = {**(global_vars or {}), **hunt.parsed_vars}
+    # Feed global lifecycle vars and per-file @var: declarations as separate scopes
+    # so the engine can enforce strict precedence.
+    _global_scope: dict[str, str] = dict(global_vars or {})
+    _mission_scope: dict[str, str] = dict(hunt.parsed_vars)
 
     # ── Data-Driven Testing (@data:) ──────────────────────────────────────
     data_rows: list[dict[str, str]] = [{}]
@@ -335,7 +338,7 @@ async def _run_hunt_file(
                 print(f"\n{'─'*40}")
                 print(f"📊 Data row {row_idx + 1}/{len(data_rows)}: {row_data}")
                 print(f"{'─'*40}")
-            row_vars = {**merged_vars, **{str(k): str(v) for k, v in row_data.items()}}
+            row_vars = {str(k): str(v) for k, v in row_data.items()}
             manul.reset_session_state()
             mission_result = await manul.run_mission(
                 hunt.mission,
@@ -343,7 +346,9 @@ async def _run_hunt_file(
                 hunt_dir=hunt_dir,
                 hunt_file=path,
                 step_file_lines=hunt.step_file_lines,
-                initial_vars=row_vars,
+                initial_vars=_mission_scope,
+                global_vars=_global_scope,
+                row_vars=row_vars,
                 screenshot_mode=screenshot_mode,
             )
             all_step_results.extend(mission_result.steps)
@@ -472,7 +477,7 @@ async def main() -> None:
     # so that `manul --headless scan https://…` also works.
     _non_flag_args = [
         a for i, a in enumerate(args)
-        if a not in ("--headless", "--debug", "--html-report")
+        if a not in ("--headless", "--debug", "--html-report", "--explain")
         and not (i > 0 and args[i - 1] in ("--browser", "--workers", "--output", "--break-lines", "--tags", "--retries", "--screenshot"))
         and a not in ("--browser", "--workers", "--output", "--break-lines", "--tags", "--retries", "--screenshot")
     ]
@@ -501,7 +506,8 @@ async def main() -> None:
     headless = "--headless" in args
     debug = "--debug" in args
     html_report = "--html-report" in args
-    args = [a for a in args if a not in ("--headless", "--debug", "--html-report")]
+    explain = "--explain" in args
+    args = [a for a in args if a not in ("--headless", "--debug", "--html-report", "--explain")]
 
     # Extract --break-lines <n,n,...> flag (gutter breakpoints from VS Code).
     break_lines: set[int] = set()
@@ -620,6 +626,10 @@ async def main() -> None:
     if not html_report:
         html_report = _prompts_cli.HTML_REPORT
 
+    # Merge --explain with config/env
+    if not explain:
+        explain = _prompts_cli.EXPLAIN_MODE
+
     if not args:
         print(_USAGE)
         sys.exit(0)
@@ -720,6 +730,7 @@ async def main() -> None:
                     path, headless, browser, debug, break_lines,
                     screenshot_mode=screenshot_mode,
                     global_vars=_lc_ctx.variables,
+                    explain=explain,
                 )
                 mission_result.tags = file_tags
                 # ── Retry loop ────────────────────────────────────────────
@@ -730,6 +741,7 @@ async def main() -> None:
                             path, headless, browser, debug, break_lines,
                             screenshot_mode=screenshot_mode,
                             global_vars=_lc_ctx.variables,
+                            explain=explain,
                         )
                         mission_result.tags = file_tags
                         mission_result.attempts = attempt

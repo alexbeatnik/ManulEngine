@@ -1,0 +1,5080 @@
+
+======================================================================
+🧪  MANUL ENGINE LABORATORY — The Chaos Chamber (80 tests)
+======================================================================
+    ℹ️  No model configured — running in heuristics-only mode (AI disabled).
+    🎛️  Custom controls loaded: demo_custom.py
+
+🧬 1
+   🐾 Step : Fill 'Suggession Class' field with 'Ukraine'
+    ⚙️  DOM HEURISTICS: High confidence match (score 116845)
+   ✅ PASSED  → 'trap_legend_input'
+
+🧬 2
+   🐾 Step : Select 'Option 1' from the 'Dropdown' list
+    ⚙️  DOM HEURISTICS: High confidence match (score 183617)
+   ✅ PASSED  → 'trap_phantom_select'
+
+🧬 3
+   🐾 Step : Click the 'Submit Login' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 155840)
+   ✅ PASSED  → 'trap_real_btn'
+
+🧬 4
+   🐾 Step : Fill 'Cyber Password' field with 'secret'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 17394)
+   ✅ PASSED  → 'trap_shadow_input'
+
+🧬 5
+   🐾 Step : Click the 'Close Window' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 104845)
+   ✅ PASSED  → 'trap_aria_btn'
+
+🧬 6
+   🐾 Step : Click the 'Save' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 104578)
+   ✅ PASSED  → 'trap_btn_exact'
+
+🧬 7
+   🐾 Step : Click the checkbox for 'Accept Terms'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'trap_opacity_chk'
+
+🧬 8
+   🐾 Step : Fill 'Secret Token' field with '123'
+    ⚙️  DOM HEURISTICS: High confidence match (score 166845)
+   ✅ PASSED  → 'trap_placeholder_input'
+
+🧬 9
+   🐾 Step : Click the radio button for 'No'
+    ⚙️  DOM HEURISTICS: High confidence match (score 115045)
+   ✅ PASSED  → 'trap_radio_no'
+
+🧬 10
+   🐾 Step : Click the checkbox for 'Remember Me'
+    ⚙️  DOM HEURISTICS: High confidence match (score 153734)
+   ✅ PASSED  → 'trap_role_chk'
+
+🧬 11
+   🐾 Step : Click the 'Confirm Order' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 134578)
+   ✅ PASSED  → 'trap_qa_btn'
+
+🧬 12
+   🐾 Step : Click the 'Register Portal' link
+    ⚙️  DOM HEURISTICS: High confidence match (score 103956)
+   ✅ PASSED  → 'trap_link_login'
+
+🧬 13
+   🐾 Step : Fill 'Email' field in the Login Form section with 'ghost@manul.ai'
+    ⚙️  DOM HEURISTICS: High confidence match (score 132283)
+   ✅ PASSED  → 'trap_section_login'
+
+🧬 14
+   🐾 Step : Click the search button
+    ⚙️  DOM HEURISTICS: Context reuse match (score 16933)
+   ✅ PASSED  → 'trap_icon_search'
+
+🧬 15
+   🐾 Step : Click the 'Submit' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 104578)
+   ✅ PASSED  → 'trap_enabled_btn'
+
+🧬 16
+   🐾 Step : Fill 'Quantity' field with '5'
+    ⚙️  DOM HEURISTICS: High confidence match (score 116667)
+   ✅ PASSED  → 'trap_qty_input'
+
+🧬 17
+   🐾 Step : Click the checkbox for 'Newsletter'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104556)
+   ✅ PASSED  → 'trap_newsletter_chk'
+
+🧬 18
+   🐾 Step : Click the 'Delete' button for the selected item
+    ⚙️  DOM HEURISTICS: High confidence match (score 118533)
+   ✅ PASSED  → 'trap_delete_selected'
+
+🧬 19
+   🐾 Step : Fill 'Promo Code' field with 'MANUL2025'
+    ⚙️  DOM HEURISTICS: High confidence match (score 116845)
+   ✅ PASSED  → 'trap_readonly_input'
+
+🧬 20
+   🐾 Step : Click the 'Settings' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 104622)
+   ✅ PASSED  → 'trap_title_btn'
+
+🧬 21
+   🐾 Step : Click the 'Download' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 105445)
+   ✅ PASSED  → 'trap_download_btn'
+
+🧬 22
+   🐾 Step : Fill the 'password' field with 'hunter2'
+    ⚙️  DOM HEURISTICS: High confidence match (score 174134)
+   ✅ PASSED  → 'trap_pw_pass'
+
+🧬 23
+   🐾 Step : Fill 'Card Number' field with '4242 4242 4242 4242'
+    ⚙️  DOM HEURISTICS: High confidence match (score 137600)
+   ✅ PASSED  → 'trap_float_input'
+
+🧬 24
+   🐾 Step : Select the checkbox for product 'Laptop'
+    ⚙️  DOM HEURISTICS: High confidence match (score 56556)
+   ✅ PASSED  → 'trap_chk_laptop'
+
+🧬 25. Optional hidden
+   🐾 Step : Click the 'Accept Cookies' button if exists
+    ⚙️  DOM HEURISTICS: High confidence match (score 6400)
+    🖱️  Clicked 'Edit Profile'
+   ✅ PASSED  → Optional skipped
+
+🧬 26. Optional 0x0
+   🐾 Step : Click the 'Close Ad' button if exists
+    ⚙️  DOM HEURISTICS: High confidence match (score 6400)
+    🖱️  Clicked 'Edit Profile'
+   ✅ PASSED  → Optional skipped
+
+🧬 27. Decoy optional
+   🐾 Step : Fill 'Promotion Code if exists' field with 'DISCOUNT'
+    ⚙️  DOM HEURISTICS: High confidence match (score 108133)
+    ⌨️  Typed 'DISCOUNT' → 'Promotion Code if exists -> trap_promo_optional_input input text'
+    ⚙️  DOM HEURISTICS: High confidence match (score 117022)
+   ✅ PASSED  → 'trap_promo_optional_input' (Decoy bypass)
+
+🧬 28. Optional missing
+   🐾 Step : Click the 'Dismiss Popup' button optional
+    ⚙️  DOM HEURISTICS: High confidence match (score 6400)
+    🖱️  Clicked 'Edit Profile'
+   ✅ PASSED  → Optional skipped
+
+🧬 29
+   🐾 Step : Check the 'Agree to Terms' checkbox
+    ⚙️  DOM HEURISTICS: High confidence match (score 104578)
+   ✅ PASSED  → 'trap_check_agree_chk'
+
+🧬 30
+   🐾 Step : Uncheck the 'Auto-Renew' checkbox
+    ⚙️  DOM HEURISTICS: High confidence match (score 104578)
+   ✅ PASSED  → 'trap_uncheck_renew_chk'
+
+🧬 31
+   🐾 Step : Select 'Urgent' from the 'Priority' dropdown
+    ⚙️  DOM HEURISTICS: High confidence match (score 184484)
+   ✅ PASSED  → 'trap_priority_select'
+
+🧬 32
+   🐾 Step : Click the 'Banner Ad' button if exists
+    ⚙️  DOM HEURISTICS: High confidence match (score 6400)
+    🖱️  Clicked 'Edit Profile'
+   ✅ PASSED  → Optional skipped
+
+🧬 33
+   🐾 Step : Fill 'Shipping Address' field with '456 Oak Ave'
+    ⚙️  DOM HEURISTICS: High confidence match (score 134400)
+   ✅ PASSED  → 'trap_dqa_ship'
+
+🧬 34. JS Toggle
+   🐾 Step : Check the 'Enable Notifications' checkbox
+    ⚙️  DOM HEURISTICS: High confidence match (score 104045)
+    🖱️  Clicked 'Enable Notifications -> trap_jsclick_chk input checkbox'
+   ✅ PASSED  → 'trap_jsclick_chk' checked=True
+
+🧬 35. Textarea
+   🐾 Step : Fill 'Address' textarea with 'Selenium Avenue, 42'
+    ⚙️  DOM HEURISTICS: High confidence match (score 135245)
+   ✅ PASSED  → 'trap_addr_textarea'
+
+🧬 36. Exact match
+   🐾 Step : Click the 'Click Me' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 104845)
+   ✅ PASSED  → 'trap_singleclick_btn'
+
+🧬 37. Date
+   🐾 Step : Fill 'Start Date' field with '2026-01-01'
+    ⚙️  DOM HEURISTICS: High confidence match (score 127778)
+   ✅ PASSED  → 'trap_date_input'
+
+🧬 38. Search
+   🐾 Step : Fill 'Search Articles' field with 'Pallas cat'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178222)
+   ✅ PASSED  → 'trap_search_input'
+
+🧬 39. Paginator
+   🐾 Step : Click on page '3' in the pagination list
+    ⚙️  DOM HEURISTICS: High confidence match (score 107756)
+   ✅ PASSED  → 'trap_page_3'
+
+🧬 40. Days
+   🐾 Step : Click the checkbox for 'Wednesday'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'trap_day_wed'
+
+🧬 41. Select
+   🐾 Step : Select 'Japan' from the 'Country' dropdown
+    ⚙️  DOM HEURISTICS: High confidence match (score 184484)
+   ✅ PASSED  → 'trap_country_select'
+
+🧬 42. DblClick
+   🐾 Step : DOUBLE CLICK the 'Double Click Me' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 105022)
+    🖱️  Clicked 'Double Click Me'
+   ✅ PASSED  → 'trap_dblclick_btn' data-clicked='double'
+
+🧬 43. Hover
+   🐾 Step : HOVER over the 'Mouse Hover' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 109022)
+    🚁  Hovered 'Mouse Hover'
+   ✅ PASSED  → 'trap_hover_btn' data-hovered='yes'
+
+🧬 44. Select flow
+   🐾 Step : Select 'Japan' from the 'Country' dropdown
+    ⚙️  DOM HEURISTICS: High confidence match (score 184484)
+   ✅ PASSED  → 'trap_country_select' selected='Japan'
+
+🧬 45. Check
+   🐾 Step : Check the 'Accept Marketing' checkbox
+    ⚙️  DOM HEURISTICS: High confidence match (score 104045)
+    🖱️  Clicked 'Accept Marketing -> trap_toggle_chk input checkbox'
+   ✅ PASSED  → 'trap_toggle_chk' checked=True
+
+🧬 46. Uncheck
+   🐾 Step : Click the checkbox for 'Accept Marketing'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+    🖱️  Clicked 'Accept Marketing -> trap_toggle_chk input checkbox'
+   ✅ PASSED  → 'trap_toggle_chk' checked=False
+
+🧬 47
+   🐾 Step : Fill 'Full Name' field with 'Ghost Manul'
+    ⚙️  DOM HEURISTICS: High confidence match (score 105289)
+    ⌨️  Typed 'Ghost Manul' → 'Full Name -> norm_fullname input text'
+   ✅ PASSED  → 'norm_fullname' value='Ghost Manul'
+
+🧬 48
+   🐾 Step : Fill 'Work Email' field with 'ghost@manul.ai'
+    ⚙️  DOM HEURISTICS: High confidence match (score 115689)
+    ⌨️  Typed 'ghost@manul.ai' → 'Work Email -> norm_email input email'
+   ✅ PASSED  → 'norm_email' value='ghost@manul.ai'
+
+🧬 49
+   🐾 Step : Fill 'API Token' field with 'SuperSecret123'
+    ⚙️  DOM HEURISTICS: High confidence match (score 105022)
+    ⌨️  Typed 'SuperSecret123' → 'API Token -> norm_token input text'
+   ✅ PASSED  → 'norm_token' value='SuperSecret123'
+
+🧬 50
+   🐾 Step : Fill 'Comment' field with 'Great product, highly recommended'
+    ⚙️  DOM HEURISTICS: High confidence match (score 105445)
+    ⌨️  Typed 'Great product, highly recommended' → 'Comment -> norm_comment'
+   ✅ PASSED  → 'norm_comment' value='Great product, highly recommended'
+
+🧬 51
+   🐾 Step : Click the 'Send Message' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 104756)
+    🖱️  Clicked 'Send Message'
+   ✅ PASSED  → 'norm_submit_btn' data-done='yes'
+
+🧬 52
+   🐾 Step : Click the 'About Us' link
+    ⚙️  DOM HEURISTICS: High confidence match (score 104045)
+   ✅ PASSED  → 'norm_about_link'
+
+🧬 53
+   🐾 Step : Fill 'Coupon Code' field with 'MANUL2026'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104756)
+    ⌨️  Typed 'MANUL2026' → 'Coupon Code -> OLD input text'
+   ✅ PASSED  → 'norm_readonly' value='MANUL2026'
+
+🧬 54
+   🐾 Step : Fill 'Username' field with 'admin' and press Enter
+    ⚙️  DOM HEURISTICS: High confidence match (score 104578)
+    ⌨️  Typed 'admin' → 'Username -> norm_login_user input text'
+   ✅ PASSED  → 'norm_login_user' data-submitted='yes'
+
+🧬 55
+   🐾 Step : Click the radio button for 'Female'
+    ⚙️  DOM HEURISTICS: High confidence match (score 115489)
+    🖱️  Clicked 'Female -> gender input radio'
+   ✅ PASSED  → 'norm_radio_female' checked=True
+
+🧬 56
+   🐾 Step : Check the 'I Agree' checkbox
+    ⚙️  DOM HEURISTICS: High confidence match (score 104133)
+    🖱️  Clicked 'I Agree -> norm_agree_chk input checkbox'
+   ✅ PASSED  → 'norm_agree_chk' checked=True
+
+🧬 57. Verify checked
+   🐾 Step : VERIFY that 'I Agree' is checked.
+    ⚙️  DOM HEURISTICS: Scanning for ['i agree'] [CHECKED]
+    ✅ Checkbox checked=True
+   ✅ PASSED  → VERIFY returned True
+
+🧬 58
+   🐾 Step : Select 'Blue' from the 'Favorite Color' dropdown
+    ⚙️  DOM HEURISTICS: High confidence match (score 83900)
+   ✅ PASSED  → 'norm_color_select' selected='Blue'
+
+🧬 59. Verify Texts
+   🐾 Step : VERIFY that 'Operation completed successfully' is present.
+    ⚙️  DOM HEURISTICS: Scanning for ['operation completed successfully']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+    ⚙️  DOM HEURISTICS: Scanning for ['critical failure'] [MUST BE ABSENT]
+    ✅ Verified ABSENT — OK
+   ✅ FOLLOWUP  → VERIFY NOT returned True
+
+🧬 60. Extract Table
+   🐾 Step : EXTRACT the Price of 'Monitor' into {monitor_price}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: $299
+   ✅ PASSED  → {monitor_price} = '$299'
+
+🧬 61. Tailwind Button
+   📋 Messy Tailwind utility classes on a standard button.
+   🐾 Step : Click the 'Deploy Application' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 104756)
+   ✅ PASSED  → 'rw_tw_btn'
+
+🧬 62. SVG Profile (ARIA)
+   📋 Button has no text, only an SVG icon and aria-label. Very common in modern navbars.
+   🐾 Step : Click the 'User Profile' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 155467)
+   ✅ PASSED  → 'rw_svg_profile'
+
+🧬 63. Screen Reader Only Text
+   📋 Text is visually hidden via CSS (sr-only), but engine should still find and associate it.
+   🐾 Step : Click the 'View Notifications' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 5556)
+   ✅ PASSED  → 'rw_sr_bell'
+
+🧬 64. Custom Switch Role
+   📋 Div acting as a switch via role='switch'. Engine must recognize it as a valid toggle.
+   🐾 Step : Click the 'Dark Mode' switch
+    ⚙️  DOM HEURISTICS: High confidence match (score 157956)
+   ✅ PASSED  → 'rw_custom_switch'
+
+🧬 65. ContentEditable Field
+   📋 Rich text editor div with contenteditable='true'. Must be detected as an input field.
+   🐾 Step : Fill 'Message Body' field with 'Hello from Manul'
+    ⚙️  DOM HEURISTICS: High confidence match (score 164089)
+   ✅ PASSED  → 'rw_wysiwyg'
+
+🧬 66. Hidden File Upload Label
+   📋 Real input is hidden. User asks to click 'Upload Resume'. Should target the label.
+   🐾 Step : Click the 'Upload Resume' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 134622)
+   ✅ PASSED  → 'rw_file_label'
+
+🧬 67. Table Action by Test-ID
+   📋 Disambiguate a generic 'Edit' action inside a table using a specific data-testid.
+   🐾 Step : Click the 'Edit Profile' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 108489)
+   ✅ PASSED  → 'rw_edit_profile'
+
+🧬 68. E-commerce Card Data Extraction
+   📋 Extract specific data from a div-based layout (not a <table>), relying on text proximity.
+   🐾 Step : EXTRACT the price of 'Gaming Mouse' into {mouse_price}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: $59.99
+   ✅ PASSED  → {mouse_price} = '$59.99'
+
+🧬 69. Modal Close 'X'
+   📋 Common modal close button marked only with an 'X' symbol and aria-label.
+   🐾 Step : Click the 'Close dialog' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 105111)
+   ✅ PASSED  → 'rw_modal_close'
+
+🧬 70. Hamburger Menu
+   📋 Mobile menu trigger. Text is a unicode symbol, meaning comes from aria.
+   🐾 Step : Click the 'Open Navigation' menu
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'rw_hamburger'
+
+🧬 71. Social Login Image Button
+   📋 Button containing both an image (logo) and text.
+   🐾 Step : Click 'Continue with Google'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104133)
+   ✅ PASSED  → 'rw_google_btn'
+
+🧬 72. Inline Link within Paragraph
+   📋 Find and click a specific link embedded deeply inside a paragraph of text.
+   🐾 Step : Click the 'Terms of Service' link
+    ⚙️  DOM HEURISTICS: High confidence match (score 104222)
+   ✅ PASSED  → 'rw_terms_link'
+
+🧬 73. Wizard Next Step
+   📋 Button with an arrow symbol and compound text.
+   🐾 Step : Click 'Next: Shipping Details'
+    ⚙️  DOM HEURISTICS: High confidence match (score 4933)
+   ✅ PASSED  → 'rw_next_step'
+
+🧬 74. Div-based Radio Group (Star Rating)
+   📋 Clicking a specific star in a custom rating widget built with divs and roles.
+   🐾 Step : Click the '5 stars' rating
+    ⚙️  DOM HEURISTICS: High confidence match (score 50222)
+   ✅ PASSED  → 'rw_star_5'
+
+🧬 75. Load More Banner
+   📋 Wide button standard for infinite scroll loading.
+   🐾 Step : Click 'Load More Articles'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104400)
+   ✅ PASSED  → 'rw_load_more'
+
+🧬 76. Verify Form Error
+   📋 Verify that a dynamic inline error message appears correctly.
+   🐾 Step : VERIFY that 'Username is already taken.' is present.
+    ⚙️  DOM HEURISTICS: Scanning for ['username is already taken.']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 77. Floating Action Button (FAB)
+   📋 Click a purely visual FAB that only relies on a title attribute.
+   🐾 Step : Click the 'Create New Post' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 105111)
+   ✅ PASSED  → 'rw_fab_create'
+
+🧬 78. Multi-layered Span Button
+   📋 Button where the text is nested multiple levels deep in spans (React pattern).
+   🐾 Step : Click the 'Submit Order' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 104756)
+   ✅ PASSED  → 'rw_complex_btn'
+
+🧬 79. Extract Cart Badge
+   📋 Extract a specific number from a cart widget badge.
+   🐾 Step : EXTRACT the Cart count into {cart_count}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: 3
+   ✅ PASSED  → {cart_count} = '3'
+
+🧬 80. Video Play Button
+   📋 Find a button based on aria-label where visible text is an emoji.
+   🐾 Step : Click the 'Play Video' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 105111)
+   ✅ PASSED  → 'rw_play_btn'
+
+======================================================================
+📊 SCORE: 80/80 passed
+
+🏆 FLAWLESS VICTORY! The Manul engine is unbreakable!
+======================================================================
+
+======================================================================
+🛒 E-COMMERCE HELL: 100 REAL-WORLD TRAPS
+======================================================================
+    ℹ️  No model configured — running in heuristics-only mode (AI disabled).
+
+🧬 1
+   🐾 Step : Click 'Add to Cart'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'e1'
+
+🧬 2
+   🐾 Step : Click 'Add to Bag'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103333)
+   ✅ PASSED  → 'e2'
+
+🧬 3
+   🐾 Step : Click 'Add to Basket'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'e3'
+
+🧬 4
+   🐾 Step : Click 'Add Product'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'e4'
+
+🧬 5
+   🐾 Step : Click 'Buy Now'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'e5'
+
+🧬 6
+   🐾 Step : Click 'Pre-order'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'e7'
+
+🧬 7
+   🐾 Step : Click 'Toss in Cart'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50356)
+   ✅ PASSED  → 'e8'
+
+🧬 8
+   🐾 Step : Click 'Add'
+    ⚙️  DOM HEURISTICS: High confidence match (score 108511)
+   ✅ PASSED  → 'e9'
+
+🧬 9
+   🐾 Step : Click the 'Submit' button
+    ⚙️  DOM HEURISTICS: High confidence match (score 104578)
+   ✅ PASSED  → 'e10'
+
+🧬 10
+   🐾 Step : Click 'Add' (fallback)
+    ⚙️  DOM HEURISTICS: High confidence match (score 108511)
+   ✅ PASSED  → 'e9'
+
+🧬 11
+   🐾 Step : EXTRACT Regular price into {p}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: $49.99
+   ✅ PASSED  → {p} = '$49.99'
+
+🧬 12
+   🐾 Step : EXTRACT New price into {p}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: $39.99
+   ✅ PASSED  → {p} = '$39.99'
+
+🧬 13
+   🐾 Step : EXTRACT price of 'MacBook' into {p}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: $1200
+   ✅ PASSED  → {p} = '$1200'
+
+🧬 14
+   🐾 Step : EXTRACT £ price into {p}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: £15.00
+   ✅ PASSED  → {p} = '£15.00'
+
+🧬 15
+   🐾 Step : EXTRACT € price into {p}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: €99
+   ✅ PASSED  → {p} = '€99'
+
+🧬 16
+   🐾 Step : EXTRACT UAH price into {p}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: 1,450 UAH
+   ✅ PASSED  → {p} = '1,450 UAH'
+
+🧬 17
+   🐾 Step : EXTRACT Total into {p}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: 250.50 PLN
+   ✅ PASSED  → {p} = '250.50 PLN'
+
+🧬 18
+   🐾 Step : EXTRACT Final price into {p}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: $80
+   ✅ PASSED  → {p} = '$80'
+
+🧬 19
+   🐾 Step : EXTRACT Price into {p}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: Free
+   ✅ PASSED  → {p} = 'Free'
+
+🧬 20
+   🐾 Step : VERIFY that 'Contact for pricing' is present.
+    ⚙️  DOM HEURISTICS: Scanning for ['contact for pricing']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 21
+   🐾 Step : Click 'Small'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50178)
+   ✅ PASSED  → 'e21'
+
+🧬 22
+   🐾 Step : Click 'Medium'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50178)
+   ✅ PASSED  → 'e22'
+
+🧬 23
+   🐾 Step : Click 'Large'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50178)
+   ✅ PASSED  → 'e23'
+
+🧬 24
+   🐾 Step : Click the radio button for 'XL'
+    ⚙️  DOM HEURISTICS: AI disabled (threshold 0); using best candidate (score -56667)
+   ✅ PASSED  → 'e24_hidden'
+
+🧬 25
+   🐾 Step : Select 'XXL' from 'Size'
+    ⚙️  DOM HEURISTICS: High confidence match (score 79322)
+   ✅ PASSED  → 'e25'
+
+🧬 26
+   🐾 Step : Click 'Color Red'
+    ⚙️  DOM HEURISTICS: High confidence match (score 100578)
+   ✅ PASSED  → 'e26'
+
+🧬 27
+   🐾 Step : Click 'Color Blue'
+    ⚙️  DOM HEURISTICS: High confidence match (score 100800)
+   ✅ PASSED  → 'e27'
+
+🧬 28
+   🐾 Step : Click 'Green Variant'
+    ⚙️  DOM HEURISTICS: High confidence match (score 4933)
+   ✅ PASSED  → 'e28'
+
+🧬 29
+   🐾 Step : Click 'Black'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50178)
+   ✅ PASSED  → 'e29'
+
+🧬 30
+   🐾 Step : Click 'White Variant'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50356)
+   ✅ PASSED  → 'e30'
+
+🧬 31
+   🐾 Step : Click '-'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103333)
+   ✅ PASSED  → 'e31_minus'
+
+🧬 32
+   🐾 Step : Fill 'e32_qty' with '2'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50245)
+   ✅ PASSED  → 'e32_qty'
+
+🧬 33
+   🐾 Step : Click '+'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103333)
+   ✅ PASSED  → 'e33_plus'
+
+🧬 34
+   🐾 Step : Fill 'Item Quantity' with '5'
+    ⚙️  DOM HEURISTICS: High confidence match (score 164089)
+   ✅ PASSED  → 'e34'
+
+🧬 35
+   🐾 Step : Select '3' from 'Qty'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178850)
+   ✅ PASSED  → 'e35'
+
+🧬 36
+   🐾 Step : Fill 'Qty' field with '10'
+    ⚙️  DOM HEURISTICS: High confidence match (score 113467)
+   ✅ PASSED  → 'e36'
+
+🧬 37
+   🐾 Step : Fill 'Gift Wrap Qty' with '4'
+    ⚙️  DOM HEURISTICS: High confidence match (score 164267)
+   ✅ PASSED  → 'e37'
+
+🧬 38
+   🐾 Step : Click 'Increase quantity'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'e38'
+
+🧬 39
+   🐾 Step : Click 'Decrease quantity'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'e39'
+
+🧬 40
+   🐾 Step : Fill 'Minimum Order' with '2'
+    ⚙️  DOM HEURISTICS: High confidence match (score 164089)
+   ✅ PASSED  → 'e40_moq'
+
+🧬 41
+   🐾 Step : Click 'Standard'
+    ⚙️  DOM HEURISTICS: High confidence match (score 2178)
+   ✅ PASSED  → 'e41'
+
+🧬 42
+   🐾 Step : Click 'Express'
+    ⚙️  DOM HEURISTICS: High confidence match (score 2178)
+   ✅ PASSED  → 'e42'
+
+🧬 43
+   🐾 Step : Click 'Pickup'
+    ⚙️  DOM HEURISTICS: High confidence match (score 2178)
+   ✅ PASSED  → 'e43'
+
+🧬 44
+   🐾 Step : Click 'Next Day Delivery'
+    ⚙️  DOM HEURISTICS: High confidence match (score 51100)
+   ✅ PASSED  → 'e44'
+
+🧬 45
+   🐾 Step : Select 'DHL' from 'Courier'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178950)
+   ✅ PASSED  → 'e45'
+
+🧬 46
+   🐾 Step : Click 'Choose UPS'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'e46'
+
+🧬 47
+   🐾 Step : Click 'Select DHL'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50356)
+   ✅ PASSED  → 'e47'
+
+🧬 48
+   🐾 Step : Check the 'Gift Wrap' checkbox
+    ⚙️  DOM HEURISTICS: High confidence match (score 104045)
+   ✅ PASSED  → 'e48'
+
+🧬 49
+   🐾 Step : Check 'Add Insurance'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50533)
+   ✅ PASSED  → 'e49'
+
+🧬 50
+   🐾 Step : Click 'Calculate Shipping'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'e50'
+
+🧬 51
+   🐾 Step : Fill 'Discount Code' with 'SALE'
+    ⚙️  DOM HEURISTICS: High confidence match (score 113645)
+   ✅ PASSED  → 'e51'
+
+🧬 52
+   🐾 Step : Fill 'Got a promo code?' with 'TEST'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163822)
+   ✅ PASSED  → 'e52'
+
+🧬 53
+   🐾 Step : Fill 'Voucher' with 'FREE'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163689)
+   ✅ PASSED  → 'e53'
+
+🧬 54
+   🐾 Step : Click 'Apply Code'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'e54'
+
+🧬 55
+   🐾 Step : Click 'Redeem'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'e55'
+
+🧬 56
+   🐾 Step : Click 'Apply Coupon'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'e56'
+
+🧬 57
+   🐾 Step : Fill 'promo-input' with 'ABC'
+    ⚙️  DOM HEURISTICS: High confidence match (score 137928)
+   ✅ PASSED  → 'e57'
+
+🧬 58
+   🐾 Step : Click 'Apply' (promo-submit)
+    ⚙️  DOM HEURISTICS: High confidence match (score 190622)
+   ✅ PASSED  → 'e58'
+
+🧬 59
+   🐾 Step : VERIFY 'Enter Code' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['enter code']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 60
+   🐾 Step : Fill 'Enter Code' with '123'
+    ⚙️  DOM HEURISTICS: High confidence match (score 164089)
+   ✅ PASSED  → 'e60'
+
+🧬 61
+   🐾 Step : Fill 'First Name' in Shipping with 'John'
+    ⚙️  DOM HEURISTICS: High confidence match (score 165822)
+   ✅ PASSED  → 'e61'
+
+🧬 62
+   🐾 Step : Fill 'Last Name' in Shipping with 'Doe'
+    ⚙️  DOM HEURISTICS: High confidence match (score 165822)
+   ✅ PASSED  → 'e62'
+
+🧬 63
+   🐾 Step : Fill 'Street Address' in Shipping with 'Main St'
+    ⚙️  DOM HEURISTICS: High confidence match (score 165822)
+   ✅ PASSED  → 'e63'
+
+🧬 64
+   🐾 Step : Fill 'City' in Shipping with 'NY'
+    ⚙️  DOM HEURISTICS: High confidence match (score 165867)
+   ✅ PASSED  → 'e64'
+
+🧬 65
+   🐾 Step : Select 'NY' from 'State' in Shipping
+    ⚙️  DOM HEURISTICS: High confidence match (score 180950)
+   ✅ PASSED  → 'e65'
+
+🧬 66
+   🐾 Step : Fill 'ZIP Code' in Shipping with '10001'
+    ⚙️  DOM HEURISTICS: High confidence match (score 165822)
+   ✅ PASSED  → 'e66'
+
+🧬 67
+   🐾 Step : Fill 'Phone' in Shipping with '123'
+    ⚙️  DOM HEURISTICS: High confidence match (score 165645)
+   ✅ PASSED  → 'e67'
+
+🧬 68
+   🐾 Step : Fill 'Email' in Shipping with 'a@b.com'
+    ⚙️  DOM HEURISTICS: High confidence match (score 176311)
+   ✅ PASSED  → 'e68'
+
+🧬 69
+   🐾 Step : Uncheck 'Billing same as shipping'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50533)
+   ✅ PASSED  → 'e69'
+
+🧬 70
+   🐾 Step : Fill 'First Name' in Billing with 'Jane'
+    🧠 SEMANTIC CACHE: Reusing learned element (score 213822)
+   ✅ PASSED  → 'e70'
+
+🧬 71
+   🐾 Step : Fill 'Last Name' in Billing with 'Smith'
+    🧠 SEMANTIC CACHE: Reusing learned element (score 213822)
+   ✅ PASSED  → 'e71'
+
+🧬 72
+   🐾 Step : Fill 'Street Address' in Billing with 'Oak St'
+    🧠 SEMANTIC CACHE: Reusing learned element (score 213822)
+   ✅ PASSED  → 'e72'
+
+🧬 73
+   🐾 Step : Fill 'City' in Billing with 'LA'
+    🧠 SEMANTIC CACHE: Reusing learned element (score 213867)
+   ✅ PASSED  → 'e73'
+
+🧬 74
+   🐾 Step : Select 'CA' from 'State' in Billing
+    🧠 SEMANTIC CACHE: Reusing learned element (score 228950)
+   ✅ PASSED  → 'e74'
+
+🧬 75
+   🐾 Step : Fill 'ZIP Code' in Billing with '90001'
+    🧠 SEMANTIC CACHE: Reusing learned element (score 213822)
+   ✅ PASSED  → 'e75'
+
+🧬 76
+   🐾 Step : Fill 'Phone' in Billing with '999'
+    🧠 SEMANTIC CACHE: Reusing learned element (score 213645)
+   ✅ PASSED  → 'e76'
+
+🧬 77
+   🐾 Step : Fill 'Email' in Billing with 'c@d.com'
+    🧠 SEMANTIC CACHE: Reusing learned element (score 224311)
+   ✅ PASSED  → 'e77'
+
+🧬 78
+   🐾 Step : Fill 'Company' with 'Acme'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14267)
+   ✅ PASSED  → 'e78'
+
+🧬 79
+   🐾 Step : Fill 'Tax ID' with '123'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163467)
+   ✅ PASSED  → 'e79'
+
+🧬 80
+   🐾 Step : Click 'Continue to Payment'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'e80'
+
+🧬 81
+   🐾 Step : Click 'Credit Card'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50356)
+   ✅ PASSED  → 'e81'
+
+🧬 82
+   🐾 Step : Click 'PayPal'
+    ⚙️  DOM HEURISTICS: High confidence match (score 51178)
+   ✅ PASSED  → 'e82'
+
+🧬 83
+   🐾 Step : Click 'Pay with Apple Pay'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104106)
+   ✅ PASSED  → 'e83'
+
+🧬 84
+   🐾 Step : Fill 'Card Number' with '4444'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'e84'
+
+🧬 85
+   🐾 Step : Fill 'Expiration Date' with '12/26'
+    ⚙️  DOM HEURISTICS: High confidence match (score 164089)
+   ✅ PASSED  → 'e85'
+
+🧬 86
+   🐾 Step : Fill 'Security Code' with '123'
+    ⚙️  DOM HEURISTICS: High confidence match (score 164089)
+   ✅ PASSED  → 'e86'
+
+🧬 87
+   🐾 Step : Fill 'Name on Card' with 'Bob'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'e87'
+
+🧬 88
+   🐾 Step : Click 'Place Order'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'e88'
+
+🧬 89
+   🐾 Step : Click 'Pay $99.00'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'e89'
+
+🧬 90
+   🐾 Step : Click 'Save card for future'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50711)
+   ✅ PASSED  → 'e90'
+
+🧬 91
+   🐾 Step : Click 'Close Newsletter'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'e91'
+
+🧬 92
+   🐾 Step : Fill 'Subscribe for 10% off' with 'x@y.com'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163822)
+   ✅ PASSED  → 'e92'
+
+🧬 93
+   🐾 Step : Click 'Subscribe'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'e93'
+
+🧬 94
+   🐾 Step : Click 'No thanks'
+    ⚙️  DOM HEURISTICS: High confidence match (score 4311)
+   ✅ PASSED  → 'e94'
+
+🧬 95
+   🐾 Step : Click 'Write a Review'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104433)
+   ✅ PASSED  → 'e95'
+
+🧬 96
+   🐾 Step : Click '5 Stars'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50222)
+   ✅ PASSED  → 'e96'
+
+🧬 97
+   🐾 Step : Fill 'Review Title' with 'Awesome'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'e97'
+
+🧬 98
+   🐾 Step : Fill 'Your experience' with 'Good'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14444)
+   ✅ PASSED  → 'e98'
+
+🧬 99
+   🐾 Step : Click 'Submit Review'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'e99'
+
+🧬 100
+   🐾 Step : Click 'Hidden Spam Trap' if exists
+    ⚙️  DOM HEURISTICS: High confidence match (score 2133)
+    🖱️  Clicked 'Add to Cart'
+   ✅ PASSED  → Optional handled
+
+======================================================================
+📊 SCORE: 100/100 passed
+
+🏆 FLAWLESS VICTORY!
+======================================================================
+
+======================================================================
+💬 SOCIAL MEDIA HELL: 100 REAL-WORLD TRAPS
+======================================================================
+    ℹ️  No model configured — running in heuristics-only mode (AI disabled).
+
+🧬 1
+   🐾 Step : Click 'Like Post'
+    ⚙️  DOM HEURISTICS: High confidence match (score 154134)
+   ✅ PASSED  → 's1'
+
+🧬 2
+   🐾 Step : Click 'Unlike'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103556)
+   ✅ PASSED  → 's2'
+
+🧬 3
+   🐾 Step : Click 'Repost'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 's3'
+
+🧬 4
+   🐾 Step : Click 'Share via Direct Message'
+    ⚙️  DOM HEURISTICS: High confidence match (score 4844)
+   ✅ PASSED  → 's4'
+
+🧬 5
+   🐾 Step : Click 'Save to Bookmarks'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 's5'
+
+🧬 6
+   🐾 Step : Click the 'Report this post' link
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 's6'
+
+🧬 7
+   🐾 Step : Click 'Hide'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 's7'
+
+🧬 8
+   🐾 Step : Click 'More Options'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 's8'
+
+🧬 9
+   🐾 Step : Click 'Translate post'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 's9'
+
+🧬 10
+   🐾 Step : Click 'View 15 hidden replies'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50533)
+   ✅ PASSED  → 's10'
+
+🧬 11
+   🐾 Step : Fill 'Write a comment...' with 'Nice post!'
+    ⚙️  DOM HEURISTICS: High confidence match (score 167289)
+   ✅ PASSED  → 's11'
+
+🧬 12
+   🐾 Step : Click 'Reply'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 's13'
+
+🧬 13
+   🐾 Step : Click 'Reply'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 's13'
+
+🧬 14
+   🐾 Step : Fill 'Mention someone' with 'alex'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14444)
+   ✅ PASSED  → 's14'
+
+🧬 15
+   🐾 Step : Click '@alex_dev'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50000)
+   ✅ PASSED  → 's15'
+
+🧬 16
+   🐾 Step : Click '@manul_qa'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50000)
+   ✅ PASSED  → 's16'
+
+🧬 17
+   🐾 Step : Click 'Insert Emoji'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 's17'
+
+🧬 18
+   🐾 Step : Click 'Attach Photo'
+    ⚙️  DOM HEURISTICS: High confidence match (score 6622)
+   ✅ PASSED  → 's18_upload'
+
+🧬 19
+   🐾 Step : Click 'Sort by: Top'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 's19'
+
+🧬 20
+   🐾 Step : Click 'Load more comments'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 's20'
+
+🧬 21
+   🐾 Step : Fill 'Search chats' with 'Bob'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 's21'
+
+🧬 22
+   🐾 Step : Click 'New Message'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103556)
+   ✅ PASSED  → 's22'
+
+🧬 23
+   🐾 Step : Fill 'Type a message' with 'Hello!'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 's23'
+
+🧬 24
+   🐾 Step : Click 'Send Message'
+    ⚙️  DOM HEURISTICS: High confidence match (score 154134)
+   ✅ PASSED  → 's24'
+
+🧬 25
+   🐾 Step : Click 'Record Voice Memo'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104000)
+   ✅ PASSED  → 's25'
+
+🧬 26
+   🐾 Step : Click 'Video Call'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 's26'
+
+🧬 27
+   🐾 Step : Click 'Audio Call'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 's27'
+
+🧬 28
+   🐾 Step : Click 'Mute Chat'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 's28'
+
+🧬 29
+   🐾 Step : Click 'Block User'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 's29'
+
+🧬 30
+   🐾 Step : Click 'Message Requests'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 's30'
+
+🧬 31
+   🐾 Step : Click 'Follow'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 's31'
+
+🧬 32
+   🐾 Step : Click 'Following'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 's32'
+
+🧬 33
+   🐾 Step : Click 'Unfollow'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 's33'
+
+🧬 34
+   🐾 Step : Click 'Remove follower'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104106)
+   ✅ PASSED  → 's34'
+
+🧬 35
+   🐾 Step : Click 'Connect'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 's35'
+
+🧬 36
+   🐾 Step : Click 'Accept Request'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 's36'
+
+🧬 37
+   🐾 Step : Click 'Decline'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 's37'
+
+🧬 38
+   🐾 Step : EXTRACT Followers count into {f1}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: 1,200
+   ✅ PASSED  → {f1} = '1,200'
+
+🧬 39
+   🐾 Step : EXTRACT Following count into {f2}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: 350
+   ✅ PASSED  → {f2} = '350'
+
+🧬 40
+   🐾 Step : Click 'Subscribe'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 's40'
+
+🧬 41
+   🐾 Step : Click 'Edit Profile'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 's41'
+
+🧬 42
+   🐾 Step : Fill 'Display Name' with 'Admin'
+    ⚙️  DOM HEURISTICS: High confidence match (score 164089)
+   ✅ PASSED  → 's42'
+
+🧬 43
+   🐾 Step : Fill 'Bio' with 'Hello world'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163467)
+   ✅ PASSED  → 's43'
+
+🧬 44
+   🐾 Step : Fill 'Add Location' with 'Kyiv'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 's44'
+
+🧬 45
+   🐾 Step : Fill 'Website link' with 'x.com'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 's45'
+
+🧬 46
+   🐾 Step : Select 'He/Him' from 'Pronouns'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178950)
+   ✅ PASSED  → 's46'
+
+🧬 47
+   🐾 Step : Click 'Change Avatar'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 's47'
+
+🧬 48
+   🐾 Step : Click 'Change Cover Photo'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104000)
+   ✅ PASSED  → 's48'
+
+🧬 49
+   🐾 Step : Click 'Save Changes'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 's49'
+
+🧬 50
+   🐾 Step : Click 'Cancel'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 's50'
+
+🧬 51
+   🐾 Step : Click 'Private Account' switch
+    ⚙️  DOM HEURISTICS: High confidence match (score 157689)
+   ✅ PASSED  → 's51'
+
+🧬 52
+   🐾 Step : Click 'Show Activity Status'
+    ⚙️  DOM HEURISTICS: High confidence match (score 154534)
+   ✅ PASSED  → 's52'
+
+🧬 53
+   🐾 Step : Click the radio button for 'Everyone'
+    ⚙️  DOM HEURISTICS: High confidence match (score 114356)
+   ✅ PASSED  → 's53'
+
+🧬 54
+   🐾 Step : Click the radio button for 'Friends Only'
+    ⚙️  DOM HEURISTICS: High confidence match (score 114533)
+   ✅ PASSED  → 's54'
+
+🧬 55
+   🐾 Step : Click the radio button for 'Nobody'
+    ⚙️  DOM HEURISTICS: High confidence match (score 114356)
+   ✅ PASSED  → 's55'
+
+🧬 56
+   🐾 Step : Click 'Change Password'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 's56'
+
+🧬 57
+   🐾 Step : Click 'Enable 2FA'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 's57'
+
+🧬 58
+   🐾 Step : Click 'Active Sessions'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 's58'
+
+🧬 59
+   🐾 Step : Click 'Deactivate Account'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 's59'
+
+🧬 60
+   🐾 Step : Click 'Delete Account Permanently'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 's60'
+
+🧬 61
+   🐾 Step : Click 'Notifications'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103556)
+   ✅ PASSED  → 's61'
+
+🧬 62
+   🐾 Step : EXTRACT Notification count into {n}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: 5
+   ✅ PASSED  → {n} = '5'
+
+🧬 63
+   🐾 Step : Click 'Mark all as read'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 's62'
+
+🧬 64
+   🐾 Step : Click 'Filter by Mentions'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 's63'
+
+🧬 65
+   🐾 Step : Click 'Notification Settings'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 's64'
+
+🧬 66
+   🐾 Step : Click 'Alex liked your photo'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104045)
+   ✅ PASSED  → 's65'
+
+🧬 67
+   🐾 Step : Click 'Turn off notifications for this post'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104400)
+   ✅ PASSED  → 's66'
+
+🧬 68
+   🐾 Step : Click 'Verified' tab
+    ⚙️  DOM HEURISTICS: High confidence match (score 50178)
+   ✅ PASSED  → 's68'
+
+🧬 69
+   🐾 Step : Click 'Mentions' tab
+    ⚙️  DOM HEURISTICS: High confidence match (score 50178)
+   ✅ PASSED  → 's69'
+
+🧬 70
+   🐾 Step : Click 'Clear Notifications'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104106)
+   ✅ PASSED  → 's70'
+
+🧬 71
+   🐾 Step : Fill 'Search query' with 'Python'
+    ⚙️  DOM HEURISTICS: High confidence match (score 174756)
+   ✅ PASSED  → 's71'
+
+🧬 72
+   🐾 Step : Click 'Clear search'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 's72'
+
+🧬 73
+   🐾 Step : Click 'Trending'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 's73'
+
+🧬 74
+   🐾 Step : Click 'News'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 's74'
+
+🧬 75
+   🐾 Step : Click 'Sports'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 's75'
+
+🧬 76
+   🐾 Step : Click '#Manul'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 's76'
+
+🧬 77
+   🐾 Step : Click 'Search Settings'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 's77'
+
+🧬 78
+   🐾 Step : Click 'Clear recent searches'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 's78'
+
+🧬 79
+   🐾 Step : Click 'Show more trends'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 's79'
+
+🧬 80
+   🐾 Step : Fill 'Search messages...' with 'meeting'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 's80'
+
+🧬 81
+   🐾 Step : Click 'Join Group'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 's81'
+
+🧬 82
+   🐾 Step : Click 'Leave Group'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 's82'
+
+🧬 83
+   🐾 Step : Click 'Invite Friends'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 's83'
+
+🧬 84
+   🐾 Step : Click 'Going'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 's84'
+
+🧬 85
+   🐾 Step : Click 'Maybe'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 's85'
+
+🧬 86
+   🐾 Step : Click 'Can\'t Go'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 's86'
+
+🧬 87
+   🐾 Step : Click 'Create Event'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 's87'
+
+🧬 88
+   🐾 Step : Fill 'Event Name' with 'Party'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 's88'
+
+🧬 89
+   🐾 Step : Fill 'Event Description' with 'Fun'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 's89'
+
+🧬 90
+   🐾 Step : Click 'Publish Event'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 's90'
+
+🧬 91
+   🐾 Step : Click 'Next Story'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 's91'
+
+🧬 92
+   🐾 Step : Click 'Previous Story'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 's92'
+
+🧬 93
+   🐾 Step : Click 'Pause Story'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 's93'
+
+🧬 94
+   🐾 Step : Fill 'Reply to story' with 'Cool!'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14444)
+   ✅ PASSED  → 's94'
+
+🧬 95
+   🐾 Step : Click 'Send Reaction 💖'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 's95'
+
+🧬 96
+   🐾 Step : Click 'Send Reaction 🔥'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 's96'
+
+🧬 97
+   🐾 Step : Click 'Close Modal'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104106)
+   ✅ PASSED  → 's97'
+
+🧬 98
+   🐾 Step : Click 'Copy Link to Tweet'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 's98'
+
+🧬 99
+   🐾 Step : Click 'Pin to profile'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 's99'
+
+🧬 100
+   🐾 Step : Click 'Log Out'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 's100'
+
+======================================================================
+📊 SCORE: 100/100 passed
+
+🏆 FLAWLESS VICTORY!
+======================================================================
+
+======================================================================
+⚙️ SAAS & DASHBOARDS HELL: 100 REAL-WORLD TRAPS
+======================================================================
+    ℹ️  No model configured — running in heuristics-only mode (AI disabled).
+
+🧬 1
+   🐾 Step : Click 'Dashboard'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'a1'
+
+🧬 2
+   🐾 Step : Click 'User Management'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a2'
+
+🧬 3
+   🐾 Step : Click 'Billing & Plans'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a3'
+
+🧬 4
+   🐾 Step : Click 'Workspace Settings'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a4'
+
+🧬 5
+   🐾 Step : Click 'Collapse Sidebar'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'a5'
+
+🧬 6
+   🐾 Step : Click 'Help & Support'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a6'
+
+🧬 7
+   🐾 Step : Click 'API Keys'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a7'
+
+🧬 8
+   🐾 Step : Click 'Audit Logs'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a8'
+
+🧬 9
+   🐾 Step : Click 'Profile'
+    ⚙️  DOM HEURISTICS: High confidence match (score 108511)
+   ✅ PASSED  → 'a9'
+
+🧬 10
+   🐾 Step : Click 'Sign Out'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a10'
+
+🧬 11
+   🐾 Step : EXTRACT MRR into {mrr}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: $45,200
+   ✅ PASSED  → {mrr} = '$45,200'
+
+🧬 12
+   🐾 Step : Click 'Download Report'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a12'
+
+🧬 13
+   🐾 Step : EXTRACT Active Users into {au}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: 1,240
+   ✅ PASSED  → {au} = '1,240'
+
+🧬 14
+   🐾 Step : Click 'Refresh Data'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'a14'
+
+🧬 15
+   🐾 Step : Click 'Export to CSV'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a15'
+
+🧬 16
+   🐾 Step : Click 'Export to PDF'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a16'
+
+🧬 17
+   🐾 Step : Click 'Customize Dashboard'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a17'
+
+🧬 18
+   🐾 Step : Select 'Last 30 days' from dropdown
+    ⚙️  DOM HEURISTICS: High confidence match (score 78650)
+   ✅ PASSED  → 'a18'
+
+🧬 19
+   🐾 Step : Click 'Add Widget'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a19'
+
+🧬 20
+   🐾 Step : VERIFY that 'Server load high' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['server load high']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 21
+   🐾 Step : Fill 'Search users' with 'admin@'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14444)
+   ✅ PASSED  → 'a21'
+
+🧬 22
+   🐾 Step : Select 'Active' from 'Status'
+    ⚙️  DOM HEURISTICS: High confidence match (score 78517)
+   ✅ PASSED  → 'a22'
+
+🧬 23
+   🐾 Step : Select 'Admin' from 'Role'
+    ⚙️  DOM HEURISTICS: High confidence match (score 78517)
+   ✅ PASSED  → 'a23'
+
+🧬 24
+   🐾 Step : Fill 'Start Date' with '01/01/2026'
+    ⚙️  DOM HEURISTICS: High confidence match (score 174756)
+   ✅ PASSED  → 'a24'
+
+🧬 25
+   🐾 Step : Fill 'End Date' with '01/31/2026'
+    ⚙️  DOM HEURISTICS: High confidence match (score 174534)
+   ✅ PASSED  → 'a25'
+
+🧬 26
+   🐾 Step : Click 'Apply Filters'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a26'
+
+🧬 27
+   🐾 Step : Click 'Clear Filters'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a27'
+
+🧬 28
+   🐾 Step : Click 'Advanced Search'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'a28'
+
+🧬 29
+   🐾 Step : Check 'Show deleted records'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50711)
+   ✅ PASSED  → 'a29'
+
+🧬 30
+   🐾 Step : Click 'Save View'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a30'
+
+🧬 31
+   🐾 Step : Check 'Select All Rows'
+    ⚙️  DOM HEURISTICS: High confidence match (score 101156)
+   ✅ PASSED  → 'a31'
+
+🧬 32
+   🐾 Step : Click 'Sort Ascending'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'a32'
+
+🧬 33
+   🐾 Step : Check 'Select Alice'
+    ⚙️  DOM HEURISTICS: High confidence match (score 100978)
+   ✅ PASSED  → 'a33'
+
+🧬 34
+   🐾 Step : EXTRACT Role of 'Alice' into {r}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: Admin
+   ✅ PASSED  → {r} = 'Admin'
+
+🧬 35
+   🐾 Step : EXTRACT Status of 'Alice' into {s}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: Active
+   ✅ PASSED  → {s} = 'Active'
+
+🧬 36
+   🐾 Step : Click 'Edit Alice'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'a36'
+
+🧬 37
+   🐾 Step : Click 'Suspend Alice'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'a37'
+
+🧬 38
+   🐾 Step : Click 'More actions for Alice'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104000)
+   ✅ PASSED  → 'a38'
+
+🧬 39
+   🐾 Step : VERIFY that 'Bulk Delete' is DISABLED
+    ⚙️  DOM HEURISTICS: Scanning for ['bulk delete'] [DISABLED]
+    ✅ Element disabled=True
+   ✅ PASSED  → VERIFY returned True
+
+🧬 40
+   🐾 Step : Click 'Bulk Export'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a40'
+
+🧬 41
+   🐾 Step : VERIFY 'Showing 1 to 10' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['showing 1 to 10']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 42
+   🐾 Step : VERIFY that 'Previous' is DISABLED
+    ⚙️  DOM HEURISTICS: Scanning for ['previous'] [DISABLED]
+    ✅ Element disabled=True
+   ✅ PASSED  → VERIFY returned True
+
+🧬 43
+   🐾 Step : Click '1'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103333)
+   ✅ PASSED  → 'a43'
+
+🧬 44
+   🐾 Step : Click '2'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103333)
+   ✅ PASSED  → 'a44'
+
+🧬 45
+   🐾 Step : Click '3'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103333)
+   ✅ PASSED  → 'a45'
+
+🧬 46
+   🐾 Step : Click 'Next'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'a46'
+
+🧬 47
+   🐾 Step : Click 'Last'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'a47'
+
+🧬 48
+   🐾 Step : Select '50' from 'Rows per page'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178695)
+   ✅ PASSED  → 'a48'
+
+🧬 49
+   🐾 Step : Fill 'Go to page' with '5'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163467)
+   ✅ PASSED  → 'a49'
+
+🧬 50
+   🐾 Step : Click 'Go'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103333)
+   ✅ PASSED  → 'a50'
+
+🧬 51
+   🐾 Step : Click 'Invite User'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a51'
+
+🧬 52
+   🐾 Step : Fill 'colleague@' with 'test@test.com'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14444)
+   ✅ PASSED  → 'a52'
+
+🧬 53
+   🐾 Step : Click radio 'Admin'
+    ⚙️  DOM HEURISTICS: High confidence match (score 114356)
+   ✅ PASSED  → 'a53'
+
+🧬 54
+   🐾 Step : Click radio 'Editor'
+    ⚙️  DOM HEURISTICS: High confidence match (score 114356)
+   ✅ PASSED  → 'a54'
+
+🧬 55
+   🐾 Step : VERIFY that 'Viewer' is checked
+    ⚙️  DOM HEURISTICS: Scanning for ['viewer'] [CHECKED]
+    ✅ Checkbox checked=True
+   ✅ PASSED  → VERIFY returned True
+
+🧬 56
+   🐾 Step : Select 'Marketing' from 'Department'
+    ⚙️  DOM HEURISTICS: High confidence match (score 78817)
+   ✅ PASSED  → 'a56'
+
+🧬 57
+   🐾 Step : Check 'Send welcome email'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50711)
+   ✅ PASSED  → 'a57'
+
+🧬 58
+   🐾 Step : Click 'Send Invitation'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a58'
+
+🧬 59
+   🐾 Step : Click 'Cancel'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'a59'
+
+🧬 60
+   🐾 Step : Click 'Close Modal'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'a60'
+
+🧬 61
+   🐾 Step : Click 'Generate New API Key'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104045)
+   ✅ PASSED  → 'a61'
+
+🧬 62
+   🐾 Step : Fill 'Key Name' with 'Test'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14444)
+   ✅ PASSED  → 'a62'
+
+🧬 63
+   🐾 Step : Click 'Create Key'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a63'
+
+🧬 64
+   🐾 Step : EXTRACT API Key value into {k}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: sk_live_123456789
+   ✅ PASSED  → {k} = 'sk_live_123456789'
+
+🧬 65
+   🐾 Step : Click 'Reveal API Key'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103556)
+   ✅ PASSED  → 'a65'
+
+🧬 66
+   🐾 Step : Click 'Copy API Key'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103556)
+   ✅ PASSED  → 'a66'
+
+🧬 67
+   🐾 Step : Click 'Revoke Key'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a67'
+
+🧬 68
+   🐾 Step : Click 'Add Webhook'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a68'
+
+🧬 69
+   🐾 Step : Fill 'https://' with 'url'
+    ⚙️  DOM HEURISTICS: High confidence match (score 25111)
+   ✅ PASSED  → 'a69'
+
+🧬 70
+   🐾 Step : Click 'Enable Webhook' switch
+    ⚙️  DOM HEURISTICS: High confidence match (score 154134)
+   ✅ PASSED  → 'a70'
+
+🧬 71
+   🐾 Step : Click 'Upgrade to Enterprise'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a71'
+
+🧬 72
+   🐾 Step : Click 'Add Payment Method'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'a72'
+
+🧬 73
+   🐾 Step : Fill 'Cardholder Name' with 'Oleksii'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'a73'
+
+🧬 74
+   🐾 Step : Click 'Save Card'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a74'
+
+🧬 75
+   🐾 Step : Click 'Download Invoices'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a75'
+
+🧬 76
+   🐾 Step : Click 'Update Billing Email'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'a76'
+
+🧬 77
+   🐾 Step : Fill 'Tax ID' with 'UA123'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14267)
+   ✅ PASSED  → 'a77'
+
+🧬 78
+   🐾 Step : Click 'Cancel Subscription'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a78'
+
+🧬 79
+   🐾 Step : Click 'Terms of Service'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a79'
+
+🧬 80
+   🐾 Step : Click 'Contact Sales'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a80'
+
+🧬 81
+   🐾 Step : Fill 'Workspace Name' with 'Manul Labs'
+    ⚙️  DOM HEURISTICS: High confidence match (score 164089)
+   ✅ PASSED  → 'a81'
+
+🧬 82
+   🐾 Step : Click 'Upload Logo'
+    ⚙️  DOM HEURISTICS: High confidence match (score 100800)
+   ✅ PASSED  → 'a82'
+
+🧬 83
+   🐾 Step : Select 'EST' from 'Timezone'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178950)
+   ✅ PASSED  → 'a83'
+
+🧬 84
+   🐾 Step : Click 'Require MFA' switch
+    ⚙️  DOM HEURISTICS: High confidence match (score 7711)
+   ✅ PASSED  → 'a84'
+
+🧬 85
+   🐾 Step : Click 'Save Workspace Settings'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'a85'
+
+🧬 86
+   🐾 Step : Click 'Transfer Ownership'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a86'
+
+🧬 87
+   🐾 Step : Fill 'Transfer to email' with 'boss@'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'a87'
+
+🧬 88
+   🐾 Step : Select 'Ukrainian' from 'Language'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178950)
+   ✅ PASSED  → 'a88'
+
+🧬 89
+   🐾 Step : Click 'Sync Directory'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a89'
+
+🧬 90
+   🐾 Step : Click 'Clear Workspace Cache'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'a90'
+
+🧬 91
+   🐾 Step : Click 'Delete Workspace'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a91'
+
+🧬 92
+   🐾 Step : Fill 'Type workspace name' with 'Acme Corp'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14622)
+   ✅ PASSED  → 'a92'
+
+🧬 93
+   🐾 Step : VERIFY that 'Confirm Deletion' is disabled
+    ⚙️  DOM HEURISTICS: Scanning for ['confirm deletion'] [DISABLED]
+    ✅ Element disabled=True
+   ✅ PASSED  → VERIFY returned True
+
+🧬 94
+   🐾 Step : HOVER over 'Hover me for info'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50711)
+    🚁  Hovered 'Hover me for info'
+   ✅ PASSED  → execute_step succeeded
+
+🧬 95
+   🐾 Step : VERIFY that 'Cannot edit this' is disabled
+    ⚙️  DOM HEURISTICS: Scanning for ['cannot edit this'] [DISABLED]
+    ✅ Element disabled=True
+   ✅ PASSED  → VERIFY returned True
+
+🧬 96
+   🐾 Step : Fill 'Readonly data' with 'hacked'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104756)
+    ⌨️  Typed 'hacked' → 'Readonly data input text'
+   ✅ PASSED  → execute_step succeeded
+
+🧬 97
+   🐾 Step : Click 'Quick Action 1'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a97'
+
+🧬 98
+   🐾 Step : Click 'Quick Action 2'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'a98'
+
+🧬 99
+   🐾 Step : VERIFY 'Progress: 75%' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['progress: 75%']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 100
+   🐾 Step : Click 'Easter Egg Button' if exists
+    ⚙️  DOM HEURISTICS: High confidence match (score 6400)
+    🖱️  Clicked 'Apply Filters'
+   ✅ PASSED  → Optional handled
+
+======================================================================
+📊 SCORE: 100/100 passed
+
+🏆 FLAWLESS VICTORY!
+======================================================================
+
+======================================================================
+✈️ TRAVEL & BOOKING HELL: 100 REAL-WORLD TRAPS
+======================================================================
+    ℹ️  No model configured — running in heuristics-only mode (AI disabled).
+
+🧬 1
+   🐾 Step : Click the radio button for 'Round Trip'
+    ⚙️  DOM HEURISTICS: High confidence match (score 115533)
+   ✅ PASSED  → 't1'
+
+🧬 2
+   🐾 Step : Click the radio button for 'One Way'
+    ⚙️  DOM HEURISTICS: High confidence match (score 114533)
+   ✅ PASSED  → 't2'
+
+🧬 3
+   🐾 Step : Click the radio button for 'Multi-city'
+    ⚙️  DOM HEURISTICS: High confidence match (score 114533)
+   ✅ PASSED  → 't3'
+
+🧬 4
+   🐾 Step : Fill 'Flying from' with 'JFK'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 't4'
+
+🧬 5
+   🐾 Step : Click 'Swap Origin and Destination'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104000)
+   ✅ PASSED  → 't5'
+
+🧬 6
+   🐾 Step : Fill 'Flying to' with 'LHR'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163467)
+   ✅ PASSED  → 't6'
+
+🧬 7
+   🐾 Step : Check 'Direct flights only'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50711)
+   ✅ PASSED  → 't7'
+
+🧬 8
+   🐾 Step : Check 'Add nearby airports'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50711)
+   ✅ PASSED  → 't8'
+
+🧬 9
+   🐾 Step : Click 'Search Flights'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 't9'
+
+🧬 10
+   🐾 Step : Click 'Explore Deals'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 't10'
+
+🧬 11
+   🐾 Step : Click 'Depart'
+    ⚙️  DOM HEURISTICS: High confidence match (score 100178)
+   ✅ PASSED  → 't11'
+
+🧬 12
+   🐾 Step : Click 'Return'
+    ⚙️  DOM HEURISTICS: High confidence match (score 100178)
+   ✅ PASSED  → 't12'
+
+🧬 13
+   🐾 Step : Click 'Previous Month'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 't13'
+
+🧬 14
+   🐾 Step : EXTRACT current month into {m}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: March 2026
+   ✅ PASSED  → {m} = 'March 2026'
+
+🧬 15
+   🐾 Step : Click 'Next Month'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 't15'
+
+🧬 16
+   🐾 Step : Click 'March 10, 2026'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 't16'
+
+🧬 17
+   🐾 Step : Click 'March 15, 2026'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 't17'
+
+🧬 18
+   🐾 Step : VERIFY that 'March 20, 2026' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['march 20, 2026']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 19
+   🐾 Step : Click 'flexible'
+    ⚙️  DOM HEURISTICS: High confidence match (score 2711)
+   ✅ PASSED  → 't19'
+
+🧬 20
+   🐾 Step : Click 'Done (Dates)'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 't20'
+
+🧬 21
+   🐾 Step : Click 'Adult, Economy'
+    ⚙️  DOM HEURISTICS: High confidence match (score 3189)
+   ✅ PASSED  → 't21'
+
+🧬 22
+   🐾 Step : Click 'Decrease Adults'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 't22'
+
+🧬 23
+   🐾 Step : EXTRACT Adult count into {ac}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: 1
+   ✅ PASSED  → {ac} = '1'
+
+🧬 24
+   🐾 Step : Click 'Increase Adults'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 't24'
+
+🧬 25
+   🐾 Step : Click 'Decrease Children'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 't25'
+
+🧬 26
+   🐾 Step : EXTRACT Children count into {cc}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: 0
+   ✅ PASSED  → {cc} = '0'
+
+🧬 27
+   🐾 Step : Click 'Increase Children'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 't27'
+
+🧬 28
+   🐾 Step : Select 'Business' from 'Cabin Class'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178822)
+   ✅ PASSED  → 't28'
+
+🧬 29
+   🐾 Step : Click 'Apply Pax'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 't29'
+
+🧬 30
+   🐾 Step : Click 'Add Infant' if exists
+    ⚙️  DOM HEURISTICS: High confidence match (score 2461)
+    🖱️  Clicked 'Add Cabin Bag (+€15)'
+   ✅ PASSED  → Optional handled
+
+🧬 31
+   🐾 Step : Check 'Non-stop'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50533)
+   ✅ PASSED  → 't31'
+
+🧬 32
+   🐾 Step : Check '1 Stop'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50356)
+   ✅ PASSED  → 't32'
+
+🧬 33
+   🐾 Step : Check '2+ Stops'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50356)
+   ✅ PASSED  → 't33'
+
+🧬 34
+   🐾 Step : Click 'Clear All Airlines'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 't34'
+
+🧬 35
+   🐾 Step : Check 'Lufthansa'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50356)
+   ✅ PASSED  → 't35'
+
+🧬 36
+   🐾 Step : Check 'Ryanair'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50356)
+   ✅ PASSED  → 't36'
+
+🧬 37
+   🐾 Step : Fill 'Departure Time' with '50'
+    ⚙️  DOM HEURISTICS: High confidence match (score 164089)
+   ✅ PASSED  → 't37'
+
+🧬 38
+   🐾 Step : Select 'Duration (Shortest)' from 'Sort by'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178978)
+   ✅ PASSED  → 't38'
+
+🧬 39
+   🐾 Step : Click 'Reset Filters'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 't39'
+
+🧬 40
+   🐾 Step : Click 'Hide overnight flights' switch
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 't40'
+
+🧬 41
+   🐾 Step : EXTRACT Price of 'Lufthansa' into {p1}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: €129.00
+   ✅ PASSED  → {p1} = '€129.00'
+
+🧬 42
+   🐾 Step : Click 'Select Lufthansa flight'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104328)
+   ✅ PASSED  → 't42'
+
+🧬 43
+   🐾 Step : Click 'View Details'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 't43'
+
+🧬 44
+   🐾 Step : EXTRACT Price of 'Ryanair' into {p2}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: €19.99
+   ✅ PASSED  → {p2} = '€19.99'
+
+🧬 45
+   🐾 Step : Click 'Select Ryanair flight'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104328)
+   ✅ PASSED  → 't45'
+
+🧬 46
+   🐾 Step : Click 'Show more flights'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 't46'
+
+🧬 47
+   🐾 Step : Click 'Track Prices'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 't47'
+
+🧬 48
+   🐾 Step : Fill 'Email for price alerts' with 'a@b.c'
+    ⚙️  DOM HEURISTICS: High confidence match (score 174667)
+   ✅ PASSED  → 't48'
+
+🧬 49
+   🐾 Step : Click 'Set Alert'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 't49'
+
+🧬 50
+   🐾 Step : VERIFY that 'No flights found' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['no flights found']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 51
+   🐾 Step : Click 'Seat 1A'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50222)
+   ✅ PASSED  → 't51'
+
+🧬 52
+   🐾 Step : VERIFY 'Seat 1B' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['seat 1b']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 53
+   🐾 Step : Click 'Seat 1C'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50222)
+   ✅ PASSED  → 't53'
+
+🧬 54
+   🐾 Step : Click 'Skip Seat Selection'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 't54'
+
+🧬 55
+   🐾 Step : Click 'Confirm Seats'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 't55'
+
+🧬 56
+   🐾 Step : Click 'Extra Legroom'
+    ⚙️  DOM HEURISTICS: High confidence match (score 4489)
+   ✅ PASSED  → 't56'
+
+🧬 57
+   🐾 Step : Click 'Window Seat'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 't57'
+
+🧬 58
+   🐾 Step : Click 'Aisle Seat'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 't58'
+
+🧬 59
+   🐾 Step : Click 'View upper deck'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 't59'
+
+🧬 60
+   🐾 Step : VERIFY that 'Next Passenger' is disabled
+    ⚙️  DOM HEURISTICS: Scanning for ['next passenger'] [DISABLED]
+    ✅ Element disabled=True
+   ✅ PASSED  → VERIFY returned True
+
+🧬 61
+   🐾 Step : EXTRACT 'Personal Item' into {bag}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: Included
+   ✅ PASSED  → {bag} = 'Included'
+
+🧬 62
+   🐾 Step : Click 'Add Cabin Bag'
+    ⚙️  DOM HEURISTICS: High confidence match (score 4667)
+   ✅ PASSED  → 't62'
+
+🧬 63
+   🐾 Step : Select '1 (+€30)' from 'Checked Bags'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178972)
+   ✅ PASSED  → 't63'
+
+🧬 64
+   🐾 Step : Check 'Priority Boarding'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50533)
+   ✅ PASSED  → 't64'
+
+🧬 65
+   🐾 Step : Check 'Fast Track Security'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50711)
+   ✅ PASSED  → 't65'
+
+🧬 66
+   🐾 Step : Click radio 'Yes, protect my trip'
+    ⚙️  DOM HEURISTICS: High confidence match (score 114711)
+   ✅ PASSED  → 't66'
+
+🧬 67
+   🐾 Step : Click radio 'No, I will risk it'
+    ⚙️  DOM HEURISTICS: High confidence match (score 114533)
+   ✅ PASSED  → 't67'
+
+🧬 68
+   🐾 Step : Click 'Read Policy'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 't68'
+
+🧬 69
+   🐾 Step : Click 'Add Rental Car'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 't69'
+
+🧬 70
+   🐾 Step : Click 'Continue to Passenger Details'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 't70'
+
+🧬 71
+   🐾 Step : Select 'Mr' from 'Title'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178472)
+   ✅ PASSED  → 't71'
+
+🧬 72
+   🐾 Step : Fill 'First Name' with 'Oleksii'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14444)
+   ✅ PASSED  → 't72'
+
+🧬 73
+   🐾 Step : Fill 'Last Name' with 'Smith'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14444)
+   ✅ PASSED  → 't73'
+
+🧬 74
+   🐾 Step : Fill 'Date of Birth' with '1990-01-01'
+    ⚙️  DOM HEURISTICS: High confidence match (score 174756)
+   ✅ PASSED  → 't74'
+
+🧬 75
+   🐾 Step : Select 'Ukraine' from 'Nationality'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178950)
+   ✅ PASSED  → 't75'
+
+🧬 76
+   🐾 Step : Fill 'Passport Number' with 'XX12345'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 't76'
+
+🧬 77
+   🐾 Step : Fill 'Passport Expiry' with '2030-01-01'
+    ⚙️  DOM HEURISTICS: High confidence match (score 164089)
+   ✅ PASSED  → 't77'
+
+🧬 78
+   🐾 Step : Fill 'Contact Email' with 'q@q.com'
+    ⚙️  DOM HEURISTICS: High confidence match (score 174311)
+   ✅ PASSED  → 't78'
+
+🧬 79
+   🐾 Step : Fill 'Mobile Number' with '000'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 't79'
+
+🧬 80
+   🐾 Step : Click 'Save Passenger'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 't80'
+
+🧬 81
+   🐾 Step : Fill 'Where are you going?' with 'Tokyo'
+    ⚙️  DOM HEURISTICS: High confidence match (score 164000)
+   ✅ PASSED  → 't81'
+
+🧬 82
+   🐾 Step : Click 'Search Hotels'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 't82'
+
+🧬 83
+   🐾 Step : Check 'traveling for work'
+    ⚙️  DOM HEURISTICS: High confidence match (score 1711)
+   ✅ PASSED  → 't83'
+
+🧬 84
+   🐾 Step : Click 'Map View'
+    ⚙️  DOM HEURISTICS: High confidence match (score 4489)
+   ✅ PASSED  → 't84'
+
+🧬 85
+   🐾 Step : Select '5 Stars' from 'Star Rating'
+    ⚙️  DOM HEURISTICS: High confidence match (score 179000)
+   ✅ PASSED  → 't85'
+
+🧬 86
+   🐾 Step : Check 'Free Cancellation'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50533)
+   ✅ PASSED  → 't86'
+
+🧬 87
+   🐾 Step : Check 'Breakfast Included'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50533)
+   ✅ PASSED  → 't87'
+
+🧬 88
+   🐾 Step : Click 'Book Hilton'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103911)
+   ✅ PASSED  → 't88'
+
+🧬 89
+   🐾 Step : EXTRACT hotel price into {hp}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: $150/night
+   ✅ PASSED  → {hp} = '$150/night'
+
+🧬 90
+   🐾 Step : Click 'Read Guest Reviews'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 't90'
+
+🧬 91
+   🐾 Step : EXTRACT Flight Total into {ft}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: $250.00
+   ✅ PASSED  → {ft} = '$250.00'
+
+🧬 92
+   🐾 Step : EXTRACT Taxes into {tax}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: $45.50
+   ✅ PASSED  → {tax} = '$45.50'
+
+🧬 93
+   🐾 Step : EXTRACT Grand Total into {gt}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: $295.50
+   ✅ PASSED  → {gt} = '$295.50'
+
+🧬 94
+   🐾 Step : Fill 'Voucher Code' with 'SAVE50'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 12844)
+   ✅ PASSED  → 't94'
+
+🧬 95
+   🐾 Step : Click 'Apply Voucher'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 't95'
+
+🧬 96
+   🐾 Step : Check 'Terms & Conditions'
+    ⚙️  DOM HEURISTICS: High confidence match (score 1533)
+   ✅ PASSED  → 't96'
+
+🧬 97
+   🐾 Step : Check 'Hazmat Policy'
+    ⚙️  DOM HEURISTICS: High confidence match (score 1383)
+   ✅ PASSED  → 't97'
+
+🧬 98
+   🐾 Step : Click 'Pay Now'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 't98'
+
+🧬 99
+   🐾 Step : Click 'Save Cart'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 't99'
+
+🧬 100
+   🐾 Step : Click 'Back to Home'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 't100'
+
+======================================================================
+📊 SCORE: 100/100 passed
+
+🏆 FLAWLESS VICTORY!
+======================================================================
+
+======================================================================
+💰 FINTECH & CRYPTO HELL: 100 REAL-WORLD TRAPS
+======================================================================
+    ℹ️  No model configured — running in heuristics-only mode (AI disabled).
+
+🧬 1
+   🐾 Step : EXTRACT Total Balance into {tb}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: $124,500.00
+   ✅ PASSED  → {tb} = '$124,500.00'
+
+🧬 2
+   🐾 Step : Click 'Reveal Balance'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'f2'
+
+🧬 3
+   🐾 Step : EXTRACT Checking balance into {cb}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: $5,000.00
+   ✅ PASSED  → {cb} = '$5,000.00'
+
+🧬 4
+   🐾 Step : EXTRACT Savings balance into {sb}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: $119,500.00
+   ✅ PASSED  → {sb} = '$119,500.00'
+
+🧬 5
+   🐾 Step : Click 'Add Funds'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f5'
+
+🧬 6
+   🐾 Step : Click 'Withdraw'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'f6'
+
+🧬 7
+   🐾 Step : Click 'Quick Transfer'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f7'
+
+🧬 8
+   🐾 Step : Click 'Download Statements'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f8'
+
+🧬 9
+   🐾 Step : Click 'Hide zero balances' switch
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'f9'
+
+🧬 10
+   🐾 Step : Click 'Account Settings'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'f10'
+
+🧬 11
+   🐾 Step : Fill 'Recipient Name or IBAN' with 'UA12345'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163822)
+   ✅ PASSED  → 'f11'
+
+🧬 12
+   🐾 Step : Fill 'Amount to Send' with '500'
+    ⚙️  DOM HEURISTICS: High confidence match (score 164089)
+   ✅ PASSED  → 'f12'
+
+🧬 13
+   🐾 Step : Select 'EUR' from 'Currency'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178650)
+   ✅ PASSED  → 'f13'
+
+🧬 14
+   🐾 Step : Fill 'Reference' with 'Rent'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14267)
+   ✅ PASSED  → 'f14'
+
+🧬 15
+   🐾 Step : Click radio 'Standard (Free)'
+    ⚙️  DOM HEURISTICS: High confidence match (score 114533)
+   ✅ PASSED  → 'f15'
+
+🧬 16
+   🐾 Step : Click radio 'Instant'
+    ⚙️  DOM HEURISTICS: High confidence match (score 55689)
+   ✅ PASSED  → 'f16'
+
+🧬 17
+   🐾 Step : Click 'Review Transfer'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f17'
+
+🧬 18
+   🐾 Step : Click 'Save as Template'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f18'
+
+🧬 19
+   🐾 Step : Click 'Schedule for later'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'f19'
+
+🧬 20
+   🐾 Step : Click 'Cancel Transfer' if exists
+    ⚙️  DOM HEURISTICS: High confidence match (score 2461)
+    🖱️  Clicked 'Quick Transfer'
+   ✅ PASSED  → Optional handled
+
+🧬 21
+   🐾 Step : EXTRACT Crypto pair into {pair}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: BTC/USDT
+   ✅ PASSED  → {pair} = 'BTC/USDT'
+
+🧬 22
+   🐾 Step : Click 'Change Pair'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f22'
+
+🧬 23
+   🐾 Step : Click 'Buy' tab
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'f23'
+
+🧬 24
+   🐾 Step : Click 'Sell' tab
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'f24'
+
+🧬 25
+   🐾 Step : Select 'Limit' from 'Order Type'
+    ⚙️  DOM HEURISTICS: High confidence match (score 179172)
+   ✅ PASSED  → 'f25'
+
+🧬 26
+   🐾 Step : Fill 'Price (USDT)' with '90000'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'f26'
+
+🧬 27
+   🐾 Step : Fill 'Amount (BTC)' with '0.1'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'f27'
+
+🧬 28
+   🐾 Step : Fill 'Leverage Slider' with '10'
+    ⚙️  DOM HEURISTICS: High confidence match (score 164089)
+   ✅ PASSED  → 'f28'
+
+🧬 29
+   🐾 Step : Click 'Execute Buy'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f29'
+
+🧬 30
+   🐾 Step : VERIFY that 'Est. Fee: 0.1%' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['est. fee: 0.1%']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 31
+   🐾 Step : EXTRACT Coffee Shop amount into {amt}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: -$4.50
+   ✅ PASSED  → {amt} = '-$4.50'
+
+🧬 32
+   🐾 Step : EXTRACT Coffee Shop status into {stat}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: Completed
+   ✅ PASSED  → {stat} = 'Completed'
+
+🧬 33
+   🐾 Step : Click 'Dispute'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'f33'
+
+🧬 34
+   🐾 Step : EXTRACT Salary amount into {sal}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: +$5,000.00
+   ✅ PASSED  → {sal} = '+$5,000.00'
+
+🧬 35
+   🐾 Step : EXTRACT Salary status into {sstat}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: Pending
+   ✅ PASSED  → {sstat} = 'Pending'
+
+🧬 36
+   🐾 Step : Click 'View Receipt'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f36'
+
+🧬 37
+   🐾 Step : Click 'Load More Transactions'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'f37'
+
+🧬 38
+   🐾 Step : Fill 'Search transactions' with 'Uber'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'f38'
+
+🧬 39
+   🐾 Step : Click 'Export to CSV'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f39'
+
+🧬 40
+   🐾 Step : Click 'Export to PDF'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f40'
+
+🧬 41
+   🐾 Step : Fill 'Enter Current PIN' with '1111'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163822)
+   ✅ PASSED  → 'f41'
+
+🧬 42
+   🐾 Step : Fill 'Enter New PIN' with '2222'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163822)
+   ✅ PASSED  → 'f42'
+
+🧬 43
+   🐾 Step : Fill 'Confirm New PIN' with '2222'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163822)
+   ✅ PASSED  → 'f43'
+
+🧬 44
+   🐾 Step : Click 'Update PIN'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f44'
+
+🧬 45
+   🐾 Step : Fill 'OTP Code' with '654321'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 12994)
+   ✅ PASSED  → 'f45'
+
+🧬 46
+   🐾 Step : Click 'Verify OTP'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f46'
+
+🧬 47
+   🐾 Step : Click 'Resend SMS'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f47'
+
+🧬 48
+   🐾 Step : Click 'Enable FaceID' switch
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f48'
+
+🧬 49
+   🐾 Step : Click 'Register Hardware Key'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'f49'
+
+🧬 50
+   🐾 Step : Click 'Lock Account'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f50'
+
+🧬 51
+   🐾 Step : EXTRACT card ending into {end}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: 1234
+   ✅ PASSED  → {end} = '1234'
+
+🧬 52
+   🐾 Step : Click 'Show Card Details'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'f52'
+
+🧬 53
+   🐾 Step : Click 'Copy Card Number'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104000)
+   ✅ PASSED  → 'f53'
+
+🧬 54
+   🐾 Step : Click 'Freeze Card'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f54'
+
+🧬 55
+   🐾 Step : Click 'Report Lost/Stolen'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'f55'
+
+🧬 56
+   🐾 Step : Click 'Change Limits'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f56'
+
+🧬 57
+   🐾 Step : Fill 'Daily Limit' with '500'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'f57'
+
+🧬 58
+   🐾 Step : Click 'Save Limits'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f58'
+
+🧬 59
+   🐾 Step : Click 'Create Virtual Card'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'f59'
+
+🧬 60
+   🐾 Step : Click 'Online Purchases'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f60'
+
+🧬 61
+   🐾 Step : Fill 'Legal Name' with 'Oleksii'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'f61'
+
+🧬 62
+   🐾 Step : Fill 'Date of Birth' with '1990-01-01'
+    ⚙️  DOM HEURISTICS: High confidence match (score 174756)
+   ✅ PASSED  → 'f62'
+
+🧬 63
+   🐾 Step : Fill 'Residential Address' with 'Kyiv'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'f63'
+
+🧬 64
+   🐾 Step : Click 'Verify Identity (KYC)'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'f64'
+
+🧬 65
+   🐾 Step : Select 'Metal' from 'Account Tier'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178872)
+   ✅ PASSED  → 'f65'
+
+🧬 66
+   🐾 Step : Click radio 'Low Risk'
+    ⚙️  DOM HEURISTICS: High confidence match (score 115533)
+   ✅ PASSED  → 'f66'
+
+🧬 67
+   🐾 Step : Click radio 'Medium Risk'
+    ⚙️  DOM HEURISTICS: High confidence match (score 115533)
+   ✅ PASSED  → 'f67'
+
+🧬 68
+   🐾 Step : Click radio 'High Risk'
+    ⚙️  DOM HEURISTICS: High confidence match (score 115533)
+   ✅ PASSED  → 'f68'
+
+🧬 69
+   🐾 Step : Click 'Save Profile'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f69'
+
+🧬 70
+   🐾 Step : Click 'Tax Documents'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f70'
+
+🧬 71
+   🐾 Step : Fill 'Loan Amount' with '20000'
+    ⚙️  DOM HEURISTICS: High confidence match (score 164089)
+   ✅ PASSED  → 'f71'
+
+🧬 72
+   🐾 Step : VERIFY '$10,000' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['$10,000']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 73
+   🐾 Step : Select '24 Months' from 'Term'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178800)
+   ✅ PASSED  → 'f73'
+
+🧬 74
+   🐾 Step : EXTRACT Interest Rate into {rate}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: 5.99%
+   ✅ PASSED  → {rate} = '5.99%'
+
+🧬 75
+   🐾 Step : EXTRACT Monthly Payment into {pay}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: $860.00
+   ✅ PASSED  → {pay} = '$860.00'
+
+🧬 76
+   🐾 Step : Click 'Apply for Loan'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'f76'
+
+🧬 77
+   🐾 Step : Click 'View Amortization Schedule'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'f77'
+
+🧬 78
+   🐾 Step : Check 'Include Payment Protection'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50711)
+   ✅ PASSED  → 'f78'
+
+🧬 79
+   🐾 Step : Click 'Pay Early'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f79'
+
+🧬 80
+   🐾 Step : VERIFY 'Credit Score: 750' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['credit score: 750']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 81
+   🐾 Step : Click 'Create Portfolio'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f81'
+
+🧬 82
+   🐾 Step : Fill 'Ticker' with 'TSLA'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14267)
+   ✅ PASSED  → 'f82'
+
+🧬 83
+   🐾 Step : Click 'Search Asset'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f83'
+
+🧬 84
+   🐾 Step : Click 'Auto-Invest' switch
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f84'
+
+🧬 85
+   🐾 Step : Fill 'Auto-deposit amount' with '100'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163822)
+   ✅ PASSED  → 'f85'
+
+🧬 86
+   🐾 Step : Select 'Monthly' from 'Frequency'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178950)
+   ✅ PASSED  → 'f86'
+
+🧬 87
+   🐾 Step : Click 'Confirm Auto-Invest'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'f87'
+
+🧬 88
+   🐾 Step : Click 'Rebalance Portfolio'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f88'
+
+🧬 89
+   🐾 Step : EXTRACT YTD Return into {ytd}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: +12.4%
+   ✅ PASSED  → {ytd} = '+12.4%'
+
+🧬 90
+   🐾 Step : Click 'Withdraw Funds'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f90'
+
+🧬 91
+   🐾 Step : Click 'Stay Logged In'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f91'
+
+🧬 92
+   🐾 Step : Click 'Log Out Now'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'f92'
+
+🧬 93
+   🐾 Step : VERIFY 'Transfer Successful' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['transfer successful']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 94
+   🐾 Step : Click 'Dismiss Alert'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'f94'
+
+🧬 95
+   🐾 Step : Click 'Confirm' in transfer
+    ⚙️  DOM HEURISTICS: High confidence match (score 107067)
+   ✅ PASSED  → 'f95'
+
+🧬 96
+   🐾 Step : Click 'Confirm' to delete
+    ⚙️  DOM HEURISTICS: High confidence match (score 107067)
+   ✅ PASSED  → 'f96'
+
+🧬 97
+   🐾 Step : Click 'Confirm'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'f95'
+
+🧬 98
+   🐾 Step : Click 'Acknowledge Risk'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'f98'
+
+🧬 99
+   🐾 Step : Check 'I agree to the updated terms'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50889)
+   ✅ PASSED  → 'f99'
+
+🧬 100
+   🐾 Step : VERIFY that 'Finalize' is disabled
+    ⚙️  DOM HEURISTICS: Scanning for ['finalize'] [DISABLED]
+    ✅ Element disabled=True
+   ✅ PASSED  → VERIFY returned True
+
+======================================================================
+📊 SCORE: 100/100 passed
+
+🏆 FLAWLESS VICTORY!
+======================================================================
+
+======================================================================
+🎬 MEDIA & STREAMING HELL: 100 REAL-WORLD TRAPS
+======================================================================
+    ℹ️  No model configured — running in heuristics-only mode (AI disabled).
+
+🧬 1
+   🐾 Step : Click 'Play Video'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'm1'
+
+🧬 2
+   🐾 Step : Click 'Pause Video' if exists
+    ⚙️  DOM HEURISTICS: High confidence match (score 2356)
+    🖱️  Clicked '▶'
+   ✅ PASSED  → Optional handled
+
+🧬 3
+   🐾 Step : Click 'Rewind 10 seconds'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'm3'
+
+🧬 4
+   🐾 Step : Click 'Forward 10 seconds'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'm4'
+
+🧬 5
+   🐾 Step : Click 'Mute'
+    ⚙️  DOM HEURISTICS: High confidence match (score 153734)
+   ✅ PASSED  → 'm5'
+
+🧬 6
+   🐾 Step : Fill 'Volume' slider with '80'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163689)
+   ✅ PASSED  → 'm6'
+
+🧬 7
+   🐾 Step : Fill 'Timeline' with '500'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163689)
+   ✅ PASSED  → 'm7'
+
+🧬 8
+   🐾 Step : EXTRACT timestamp into {time}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: 12:34 / 45:00
+   ✅ PASSED  → {time} = '12:34 / 45:00'
+
+🧬 9
+   🐾 Step : Click 'Next Video'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'm9'
+
+🧬 10
+   🐾 Step : Click 'Miniplayer'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103556)
+   ✅ PASSED  → 'm10'
+
+🧬 11
+   🐾 Step : Click 'Settings'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103556)
+   ✅ PASSED  → 'm11'
+
+🧬 12
+   🐾 Step : Click 'Subtitles/closed captions'
+    ⚙️  DOM HEURISTICS: High confidence match (score 5800)
+   ✅ PASSED  → 'm12'
+
+🧬 13
+   🐾 Step : Click 'Theater mode'
+    ⚙️  DOM HEURISTICS: High confidence match (score 5578)
+   ✅ PASSED  → 'm13'
+
+🧬 14
+   🐾 Step : Click 'Fullscreen'
+    ⚙️  DOM HEURISTICS: High confidence match (score 5356)
+   ✅ PASSED  → 'm14'
+
+🧬 15
+   🐾 Step : Select '4K' from 'Playback Quality'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178695)
+   ✅ PASSED  → 'm15'
+
+🧬 16
+   🐾 Step : Select '1.5x' from 'Playback Speed'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178695)
+   ✅ PASSED  → 'm16'
+
+🧬 17
+   🐾 Step : Click 'Report playback issue'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'm17'
+
+🧬 18
+   🐾 Step : Click 'Annotations' switch
+    ⚙️  DOM HEURISTICS: High confidence match (score 153734)
+   ✅ PASSED  → 'm18'
+
+🧬 19
+   🐾 Step : Click 'Ambient Mode'
+    ⚙️  DOM HEURISTICS: High confidence match (score 154134)
+   ✅ PASSED  → 'm19'
+
+🧬 20
+   🐾 Step : Click 'Loop video'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'm20'
+
+🧬 21
+   🐾 Step : EXTRACT video title into {title}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: 10 Hours of Manul Cats Meowing
+   ✅ PASSED  → {title} = '10 Hours of Manul Cats Meowing'
+
+🧬 22
+   🐾 Step : EXTRACT views into {views}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: 1,500,000 views
+   ✅ PASSED  → {views} = '1,500,000 views'
+
+🧬 23
+   🐾 Step : Click 'Like this video'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104000)
+   ✅ PASSED  → 'm23'
+
+🧬 24
+   🐾 Step : Click 'Dislike this video'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104000)
+   ✅ PASSED  → 'm24'
+
+🧬 25
+   🐾 Step : Click 'Share'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'm25'
+
+🧬 26
+   🐾 Step : Click 'Download'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'm26'
+
+🧬 27
+   🐾 Step : Click 'Save to playlist'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104106)
+   ✅ PASSED  → 'm27'
+
+🧬 28
+   🐾 Step : Click 'Subscribe'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'm28'
+
+🧬 29
+   🐾 Step : Click 'Join channel'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104106)
+   ✅ PASSED  → 'm29'
+
+🧬 30
+   🐾 Step : Click 'More actions'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'm30'
+
+🧬 31
+   🐾 Step : VERIFY '1,204 Comments' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['1,204 comments']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 32
+   🐾 Step : Click 'Sort by'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'm32'
+
+🧬 33
+   🐾 Step : Click 'Top comments'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'm33'
+
+🧬 34
+   🐾 Step : Click 'Newest first'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'm34'
+
+🧬 35
+   🐾 Step : Fill 'Add a comment...' with 'Awesome!'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'm35'
+
+🧬 36
+   🐾 Step : VERIFY that 'Comment' is disabled
+    ⚙️  DOM HEURISTICS: Scanning for ['comment'] [DISABLED]
+    ✅ Element disabled=True
+   ✅ PASSED  → VERIFY returned True
+
+🧬 37
+   🐾 Step : Click 'Cancel'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'm37'
+
+🧬 38
+   🐾 Step : Click 'Like comment'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'm38'
+
+🧬 39
+   🐾 Step : Click 'Reply'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'm39'
+
+🧬 40
+   🐾 Step : Click 'View 5 replies'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'm40'
+
+🧬 41
+   🐾 Step : Click 'Autoplay' toggle
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'm41'
+
+🧬 42
+   🐾 Step : Click 'Funny Dogs Compilation'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'm42'
+
+🧬 43
+   🐾 Step : Click 'Add to queue' (first)
+    ⚙️  DOM HEURISTICS: High confidence match (score 103556)
+   ✅ PASSED  → 'm43'
+
+🧬 44
+   🐾 Step : Click 'Nature Documentary'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'm44'
+
+🧬 45
+   🐾 Step : Click 'Show more'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'm46'
+
+🧬 46
+   🐾 Step : VERIFY 'Playlist: Favorites' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['playlist: favorites']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 47
+   🐾 Step : Click 'Shuffle playlist'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'm48'
+
+🧬 48
+   🐾 Step : Click 'Save playlist'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'm49'
+
+🧬 49
+   🐾 Step : Click 'Hide playlist'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'm50'
+
+🧬 51
+   🐾 Step : VERIFY 'Stranger Manuls' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['stranger manuls']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 52
+   🐾 Step : Click 'Play'
+    ⚙️  DOM HEURISTICS: High confidence match (score 9311)
+   ✅ PASSED  → 'm52'
+
+🧬 53
+   🐾 Step : Click 'More Info'
+    ⚙️  DOM HEURISTICS: High confidence match (score 4489)
+   ✅ PASSED  → 'm53'
+
+🧬 54
+   🐾 Step : Click 'Mute trailer'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'm54'
+
+🧬 55
+   🐾 Step : VERIFY 'Trending Now' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['trending now']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 56
+   🐾 Step : Click 'Scroll Left'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'm56'
+
+🧬 57
+   🐾 Step : Click 'Movie 1'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50178)
+   ✅ PASSED  → 'm57'
+
+🧬 58
+   🐾 Step : Click 'Scroll Right'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'm59'
+
+🧬 59
+   🐾 Step : Click 'Add to My List'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103556)
+   ✅ PASSED  → 'm60'
+
+🧬 61
+   🐾 Step : Select 'Season 2' from 'Season Selector'
+    ⚙️  DOM HEURISTICS: High confidence match (score 179395)
+   ✅ PASSED  → 'm61'
+
+🧬 62
+   🐾 Step : VERIFY 'The Beginning' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['the beginning']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 63
+   🐾 Step : Click 'Play Episode 1'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'm63'
+
+🧬 64
+   🐾 Step : Click 'Download Episode 1'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'm64'
+
+🧬 65
+   🐾 Step : VERIFY 'The Middle' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['the middle']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 66
+   🐾 Step : Click 'Play Episode 2'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'm66'
+
+🧬 67
+   🐾 Step : Click 'Resume from 15:00'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'm67'
+
+🧬 68
+   🐾 Step : Click 'Play from beginning'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'm68'
+
+🧬 69
+   🐾 Step : Click 'Rate this title'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'm69'
+
+🧬 70
+   🐾 Step : Click 'Remove from My List'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104000)
+   ✅ PASSED  → 'm70'
+
+🧬 71
+   🐾 Step : Click 'Save to Your Library'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104000)
+   ✅ PASSED  → 'm72'
+
+🧬 72
+   🐾 Step : Click 'Enable shuffle'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'm73'
+
+🧬 73
+   🐾 Step : Click 'Previous track'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'm74'
+
+🧬 74
+   🐾 Step : Click 'Pause/Play'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'm75'
+
+🧬 75
+   🐾 Step : Click 'Next track'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'm76'
+
+🧬 76
+   🐾 Step : Click 'Enable repeat'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'm77'
+
+🧬 77
+   🐾 Step : Click 'Lyrics'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103556)
+   ✅ PASSED  → 'm78'
+
+🧬 78
+   🐾 Step : Click 'Queue'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103556)
+   ✅ PASSED  → 'm79'
+
+🧬 79
+   🐾 Step : Click 'Connect to a device'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'm80'
+
+🧬 81
+   🐾 Step : Fill 'Movies, shows, and more' with 'Matrix'
+    ⚙️  DOM HEURISTICS: High confidence match (score 164000)
+   ✅ PASSED  → 'm81'
+
+🧬 82
+   🐾 Step : Click 'Clear Search'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'm82'
+
+🧬 83
+   🐾 Step : Click 'Filter by Genre'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'm83'
+
+🧬 84
+   🐾 Step : Click the checkbox for 'Action'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'm84'
+
+🧬 85
+   🐾 Step : Check 'Comedy'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50178)
+   ✅ PASSED  → 'm85'
+
+🧬 86
+   🐾 Step : Check 'Sci-Fi'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50178)
+   ✅ PASSED  → 'm86'
+
+🧬 87
+   🐾 Step : Click 'Apply Filters'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'm87'
+
+🧬 88
+   🐾 Step : Click 'Podcasts'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'm88'
+
+🧬 89
+   🐾 Step : Click 'Audiobooks'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'm89'
+
+🧬 90
+   🐾 Step : Click 'Live Radio'
+    ⚙️  DOM HEURISTICS: AI disabled (threshold 0); using best candidate (score -2978)
+   ✅ PASSED  → 'm90'
+
+🧬 91
+   🐾 Step : VERIFY 'Ad ends in 5' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['ad ends in 5']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 92
+   🐾 Step : Click 'Skip Ad'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'm92'
+
+🧬 93
+   🐾 Step : Click 'Learn More'
+    ⚙️  DOM HEURISTICS: High confidence match (score 107133)
+   ✅ PASSED  → 'm93'
+
+🧬 94
+   🐾 Step : VERIFY 'Are you still watching?' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['are you still watching?']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 95
+   🐾 Step : Click 'Continue Watching'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'm95'
+
+🧬 96
+   🐾 Step : Click 'Go to Homepage'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'm96'
+
+🧬 97
+   🐾 Step : VERIFY 'inappropriate for some users' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['inappropriate for some users']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 98
+   🐾 Step : Click 'I understand and wish to proceed'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104045)
+   ✅ PASSED  → 'm98'
+
+🧬 99
+   🐾 Step : Click 'Go back'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'm99'
+
+🧬 100
+   🐾 Step : Click 'Claim Free Premium' if exists
+    ⚙️  DOM HEURISTICS: High confidence match (score 2133)
+    🖱️  Clicked '▶'
+   ✅ PASSED  → Optional handled
+
+======================================================================
+📊 SCORE: 97/97 passed
+
+🏆 FLAWLESS VICTORY!
+======================================================================
+
+======================================================================
+🏛️ GOV & HEALTHCARE HELL: 100 REAL-WORLD TRAPS
+======================================================================
+    ℹ️  No model configured — running in heuristics-only mode (AI disabled).
+
+🧬 1
+   🐾 Step : Fill 'Social Security Number' with '123-45-6789'
+    ⚙️  DOM HEURISTICS: High confidence match (score 113822)
+   ✅ PASSED  → 'h1'
+
+🧬 2
+   🐾 Step : Fill 'Date of Birth' with '1980-01-01'
+    ⚙️  DOM HEURISTICS: High confidence match (score 124311)
+   ✅ PASSED  → 'h2'
+
+🧬 3
+   🐾 Step : Click 'Authenticate'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'h3'
+
+🧬 4
+   🐾 Step : Click 'Forgot ID?'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'h4'
+
+🧬 5
+   🐾 Step : Select 'Passport' from 'ID Type'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178600)
+   ✅ PASSED  → 'h5'
+
+🧬 6
+   🐾 Step : Fill 'Document Number' with 'A123'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'h6'
+
+🧬 7
+   🐾 Step : Check 'I am not a robot'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50533)
+   ✅ PASSED  → 'h7'
+
+🧬 8
+   🐾 Step : Click 'Audio Captcha'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'h8'
+
+🧬 9
+   🐾 Step : VERIFY that 'Verify Captcha' is disabled
+    ⚙️  DOM HEURISTICS: Scanning for ['verify captcha'] [DISABLED]
+    ✅ Element disabled=True
+   ✅ PASSED  → VERIFY returned True
+
+🧬 10
+   🐾 Step : VERIFY 'Session expires' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['session expires']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 11
+   🐾 Step : Fill 'First Name' with 'John'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'h11'
+
+🧬 12
+   🐾 Step : Fill 'Middle Initial' with 'Q'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'h12'
+
+🧬 13
+   🐾 Step : Fill 'Last Name' with 'Public'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'h13'
+
+🧬 14
+   🐾 Step : Select 'Jr.' from 'Suffix'
+    ⚙️  DOM HEURISTICS: High confidence match (score 78117)
+   ✅ PASSED  → 'h14'
+
+🧬 15
+   🐾 Step : Click the radio button for 'Male'
+    ⚙️  DOM HEURISTICS: High confidence match (score 114356)
+   ✅ PASSED  → 'h15'
+
+🧬 16
+   🐾 Step : Click the radio button for 'Female'
+    ⚙️  DOM HEURISTICS: High confidence match (score 114356)
+   ✅ PASSED  → 'h16'
+
+🧬 17
+   🐾 Step : Select 'Single' from 'Marital Status'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178872)
+   ✅ PASSED  → 'h17'
+
+🧬 18
+   🐾 Step : Fill 'Maiden Name' with 'Smith'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14444)
+   ✅ PASSED  → 'h18'
+
+🧬 19
+   🐾 Step : Fill 'Place of Birth' with 'Dallas'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14444)
+   ✅ PASSED  → 'h19'
+
+🧬 20
+   🐾 Step : Click 'Validate Identity'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'h20'
+
+🧬 21
+   🐾 Step : Fill 'Address Line 1' with '123 Elm St'
+    ⚙️  DOM HEURISTICS: High confidence match (score 113645)
+   ✅ PASSED  → 'h21'
+
+🧬 22
+   🐾 Step : Fill 'Apt/Suite' with '4B'
+    ⚙️  DOM HEURISTICS: High confidence match (score 113645)
+   ✅ PASSED  → 'h22'
+
+🧬 23
+   🐾 Step : Fill 'City' with 'Austin'
+    ⚙️  DOM HEURISTICS: High confidence match (score 113467)
+   ✅ PASSED  → 'h23'
+
+🧬 24
+   🐾 Step : Select 'TX' from 'State'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178428)
+   ✅ PASSED  → 'h24'
+
+🧬 25
+   🐾 Step : Fill 'ZIP Code' with '73301'
+    ⚙️  DOM HEURISTICS: High confidence match (score 113645)
+   ✅ PASSED  → 'h25'
+
+🧬 26
+   🐾 Step : Fill 'County' with 'Travis'
+    ⚙️  DOM HEURISTICS: High confidence match (score 113467)
+   ✅ PASSED  → 'h26'
+
+🧬 27
+   🐾 Step : Check 'Mailing address same as residential'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50889)
+   ✅ PASSED  → 'h27'
+
+🧬 28
+   🐾 Step : Fill 'Primary Phone' with '555-0100'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'h28'
+
+🧬 29
+   🐾 Step : Fill 'Email Address' with 'john@test.gov'
+    ⚙️  DOM HEURISTICS: High confidence match (score 174311)
+   ✅ PASSED  → 'h29'
+
+🧬 30
+   🐾 Step : Click 'Update Contact Info'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'h30'
+
+🧬 31
+   🐾 Step : Check 'Diabetes'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50356)
+   ✅ PASSED  → 'h31'
+
+🧬 32
+   🐾 Step : Check 'Hypertension'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50356)
+   ✅ PASSED  → 'h32'
+
+🧬 33
+   🐾 Step : Check 'Asthma'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50356)
+   ✅ PASSED  → 'h33'
+
+🧬 34
+   🐾 Step : Check 'None of the above'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50711)
+   ✅ PASSED  → 'h34'
+
+🧬 35
+   🐾 Step : Fill 'surgeries' field with 'Appendectomy'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 13267)
+   ✅ PASSED  → 'h35'
+
+🧬 36
+   🐾 Step : Fill 'Current Medications' with 'Aspirin'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14444)
+   ✅ PASSED  → 'h36'
+
+🧬 37
+   🐾 Step : Click 'Add Medication'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'h37'
+
+🧬 38
+   🐾 Step : Fill 'Allergies' with 'Penicillin'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14267)
+   ✅ PASSED  → 'h38'
+
+🧬 39
+   🐾 Step : Click 'Add Allergy'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'h39'
+
+🧬 40
+   🐾 Step : Check 'No known allergies'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50533)
+   ✅ PASSED  → 'h40'
+
+🧬 41
+   🐾 Step : Select 'Medicare' from 'Insurance Provider'
+    ⚙️  DOM HEURISTICS: High confidence match (score 179172)
+   ✅ PASSED  → 'h41'
+
+🧬 42
+   🐾 Step : Fill 'Policy Number' with 'POL123'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'h42'
+
+🧬 43
+   🐾 Step : Fill 'Group ID' with 'GRP456'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163467)
+   ✅ PASSED  → 'h43'
+
+🧬 44
+   🐾 Step : Click 'Upload Insurance Card (Front)'
+    ⚙️  DOM HEURISTICS: High confidence match (score 54978)
+   ✅ PASSED  → 'h44'
+
+🧬 45
+   🐾 Step : Click 'Upload Insurance Card (Back)'
+    ⚙️  DOM HEURISTICS: High confidence match (score 54978)
+   ✅ PASSED  → 'h45'
+
+🧬 46
+   🐾 Step : Click 'Verify Coverage'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'h46'
+
+🧬 47
+   🐾 Step : EXTRACT coverage Status into {cov_stat}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: Active
+   ✅ PASSED  → {cov_stat} = 'Active'
+
+🧬 48
+   🐾 Step : Fill 'Primary Care Physician' with 'Dr. House'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163822)
+   ✅ PASSED  → 'h48'
+
+🧬 49
+   🐾 Step : Click 'Search Providers'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'h49'
+
+🧬 50
+   🐾 Step : Check 'primary policyholder'
+    ⚙️  DOM HEURISTICS: High confidence match (score 1383)
+   ✅ PASSED  → 'h50'
+
+🧬 51
+   🐾 Step : Click 'Schedule New Appointment'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'h51'
+
+🧬 52
+   🐾 Step : Select 'Annual Physical' from 'Reason for Visit'
+    ⚙️  DOM HEURISTICS: High confidence match (score 179350)
+   ✅ PASSED  → 'h52'
+
+🧬 53
+   🐾 Step : Fill 'Preferred Date' with '2026-05-10'
+    ⚙️  DOM HEURISTICS: High confidence match (score 174756)
+   ✅ PASSED  → 'h53'
+
+🧬 54
+   🐾 Step : Select 'Morning' from 'Preferred Time'
+    ⚙️  DOM HEURISTICS: High confidence match (score 179172)
+   ✅ PASSED  → 'h54'
+
+🧬 55
+   🐾 Step : Click 'Find Available Slots'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'h55'
+
+🧬 56
+   🐾 Step : Click '09:00 AM'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103333)
+   ✅ PASSED  → 'h56'
+
+🧬 57
+   🐾 Step : Click '10:30 AM'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103333)
+   ✅ PASSED  → 'h57'
+
+🧬 58
+   🐾 Step : Click 'Confirm Appointment'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'h58'
+
+🧬 59
+   🐾 Step : Click 'Cancel Appointment'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'h59'
+
+🧬 60
+   🐾 Step : Click 'Reschedule'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'h60'
+
+🧬 61
+   🐾 Step : Click 'Toggle High Contrast'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104000)
+   ✅ PASSED  → 'h61'
+
+🧬 62
+   🐾 Step : Click 'Increase Text Size'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104000)
+   ✅ PASSED  → 'h62'
+
+🧬 63
+   🐾 Step : Click 'Decrease Text Size'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104000)
+   ✅ PASSED  → 'h63'
+
+🧬 64
+   🐾 Step : Select 'Español' from 'Language Translation'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178995)
+   ✅ PASSED  → 'h64'
+
+🧬 65
+   🐾 Step : Click 'Skip to main content'
+    ⚙️  DOM HEURISTICS: High confidence match (score 154534)
+   ✅ PASSED  → 'h65'
+
+🧬 66
+   🐾 Step : Click 'Print Page'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'h66'
+
+🧬 67
+   🐾 Step : Click 'Download PDF'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'h67'
+
+🧬 68
+   🐾 Step : Click 'Chat with Virtual Assistant'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104045)
+   ✅ PASSED  → 'h68'
+
+🧬 69
+   🐾 Step : Click 'Contact Live Agent'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'h69'
+
+🧬 70
+   🐾 Step : Click 'Leave Feedback'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'h70'
+
+🧬 71
+   🐾 Step : VERIFY that 'HIPAA Privacy Notice' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['hipaa privacy notice']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 72
+   🐾 Step : Check 'receipt of the Privacy Notice'
+    ⚙️  DOM HEURISTICS: High confidence match (score 1889)
+   ✅ PASSED  → 'h72'
+
+🧬 73
+   🐾 Step : Check 'telehealth services'
+    ⚙️  DOM HEURISTICS: High confidence match (score 1383)
+   ✅ PASSED  → 'h73'
+
+🧬 74
+   🐾 Step : Click 'Sign here'
+    ⚙️  DOM HEURISTICS: High confidence match (score 100800)
+   ✅ PASSED  → 'h74'
+
+🧬 75
+   🐾 Step : Click 'Clear Signature'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'h75'
+
+🧬 76
+   🐾 Step : Fill 'Type name to sign' with 'John Public'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163822)
+   ✅ PASSED  → 'h76'
+
+🧬 77
+   🐾 Step : Fill 'Signature Date' with '2026-02-26'
+    ⚙️  DOM HEURISTICS: High confidence match (score 174756)
+   ✅ PASSED  → 'h77'
+
+🧬 78
+   🐾 Step : Fill 'Relationship to patient' with 'Self'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'h78'
+
+🧬 79
+   🐾 Step : Click 'Accept & Sign'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'h79'
+
+🧬 80
+   🐾 Step : Click 'Decline'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'h80'
+
+🧬 81
+   🐾 Step : Click 'Download W-2'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'h81'
+
+🧬 82
+   🐾 Step : Click 'View Record'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'h82'
+
+🧬 83
+   🐾 Step : Click 'Open PDF'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'h83'
+
+🧬 84
+   🐾 Step : Click 'Request Medical Records'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'h84'
+
+🧬 85
+   🐾 Step : Click 'Appeal Tax Decision'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'h85'
+
+🧬 86
+   🐾 Step : Fill 'Search records by year' with '2025'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163822)
+   ✅ PASSED  → 'h86'
+
+🧬 87
+   🐾 Step : Click 'Search Records'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'h87'
+
+🧬 88
+   🐾 Step : Select 'Health' from 'Filter Records'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178872)
+   ✅ PASSED  → 'h88'
+
+🧬 89
+   🐾 Step : EXTRACT Total documents into {docs}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: 14
+   ✅ PASSED  → {docs} = '14'
+
+🧬 90
+   🐾 Step : Click 'Upload New Document'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'h90'
+
+🧬 91
+   🐾 Step : Click 'Save Draft'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'h91'
+
+🧬 92
+   🐾 Step : Click 'Next Section'
+    ⚙️  DOM HEURISTICS: High confidence match (score 4489)
+   ✅ PASSED  → 'h92'
+
+🧬 93
+   🐾 Step : Click 'Previous Section'
+    ⚙️  DOM HEURISTICS: High confidence match (score 4489)
+   ✅ PASSED  → 'h93'
+
+🧬 94
+   🐾 Step : Click 'SUBMIT APPLICATION'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'h94'
+
+🧬 95
+   🐾 Step : Click 'CLEAR FORM'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'h95'
+
+🧬 96
+   🐾 Step : VERIFY that 'Are you sure you want to submit' is NOT present
+    ⚙️  DOM HEURISTICS: Scanning for ['are you sure you want to submit'] [MUST BE ABSENT]
+    ✅ Verified ABSENT — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 97
+   🐾 Step : Click 'Yes, Submit'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'h97'
+
+🧬 98
+   🐾 Step : Click 'No, Go Back'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'h98'
+
+🧬 99
+   🐾 Step : VERIFY that 'Processing...' is disabled
+    ⚙️  DOM HEURISTICS: Scanning for ['processing...'] [DISABLED]
+    ✅ Element disabled=True
+   ✅ PASSED  → VERIFY returned True
+
+🧬 100
+   🐾 Step : Click 'Secure Logout'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'h100'
+
+======================================================================
+📊 SCORE: 100/100 passed
+
+🏆 FLAWLESS VICTORY!
+======================================================================
+
+======================================================================
+💼 CRM, ATS & PM HELL: 100 REAL-WORLD TRAPS
+======================================================================
+    ℹ️  No model configured — running in heuristics-only mode (AI disabled).
+
+🧬 1
+   🐾 Step : Fill 'Search leads' with 'Acme'
+    ⚙️  DOM HEURISTICS: High confidence match (score 25111)
+   ✅ PASSED  → 'c1'
+
+🧬 2
+   🐾 Step : Click 'Global Create'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104106)
+   ✅ PASSED  → 'c2'
+
+🧬 3
+   🐾 Step : Click 'Notifications'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103556)
+   ✅ PASSED  → 'c3'
+
+🧬 4
+   🐾 Step : Click 'Pipelines'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'c4'
+
+🧬 5
+   🐾 Step : Click 'Candidates'
+    ⚙️  DOM HEURISTICS: High confidence match (score 4311)
+   ✅ PASSED  → 'c5'
+
+🧬 6
+   🐾 Step : Click 'Reports'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'c6'
+
+🧬 7
+   🐾 Step : Click 'Recent Items'
+    ⚙️  DOM HEURISTICS: High confidence match (score 4489)
+   ✅ PASSED  → 'c7'
+
+🧬 8
+   🐾 Step : Click 'Settings'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103556)
+   ✅ PASSED  → 'c8'
+
+🧬 9
+   🐾 Step : Click 'My Profile'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'c9'
+
+🧬 10
+   🐾 Step : Click 'Log Out'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c10'
+
+🧬 11
+   🐾 Step : EXTRACT text of 'Acme Corp Deal' into {deal}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: Acme Corp Deal
+   ✅ PASSED  → {deal} = 'Acme Corp Deal'
+
+🧬 12
+   🐾 Step : Click 'Move to Contacted'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c12'
+
+🧬 13
+   🐾 Step : Click 'Move to Closed Won'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'c13'
+
+🧬 14
+   🐾 Step : Click 'Move to Closed Lost'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'c14'
+
+🧬 15
+   🐾 Step : Click 'Add Column'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c15'
+
+🧬 16
+   🐾 Step : Fill 'Column Name' with 'On Hold'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'c16'
+
+🧬 17
+   🐾 Step : Click 'Save Column'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c17'
+
+🧬 18
+   🐾 Step : Click 'Filter Board'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104106)
+   ✅ PASSED  → 'c18'
+
+🧬 19
+   🐾 Step : Select 'List' from 'Board View'
+    ⚙️  DOM HEURISTICS: High confidence match (score 115172)
+   ✅ PASSED  → 'c19'
+
+🧬 20
+   🐾 Step : Click 'Export Board'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c20'
+
+🧬 21
+   🐾 Step : Fill 'Lead Name' with 'Elon Musk'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'c21'
+
+🧬 22
+   🐾 Step : Fill 'Company Name' with 'SpaceX'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'c22'
+
+🧬 23
+   🐾 Step : Fill 'Contact Email' with 'elon@x.com'
+    ⚙️  DOM HEURISTICS: High confidence match (score 174311)
+   ✅ PASSED  → 'c23'
+
+🧬 24
+   🐾 Step : Fill 'Phone Number' with '12345'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'c24'
+
+🧬 25
+   🐾 Step : Select 'Inbound' from 'Lead Source'
+    ⚙️  DOM HEURISTICS: High confidence match (score 78245)
+   ✅ PASSED  → 'c25'
+
+🧬 26
+   🐾 Step : Fill 'Expected Revenue' with '1000000'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 17889)
+   ✅ PASSED  → 'c26'
+
+🧬 27
+   🐾 Step : Fill 'Estimated Close Date' with '2026-12-31'
+    ⚙️  DOM HEURISTICS: High confidence match (score 175156)
+   ✅ PASSED  → 'c27'
+
+🧬 28
+   🐾 Step : Select 'Alex Dev' from 'Assignee'
+    ⚙️  DOM HEURISTICS: High confidence match (score 179128)
+   ✅ PASSED  → 'c28'
+
+🧬 29
+   🐾 Step : Click 'Save Lead'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c29'
+
+🧬 30
+   🐾 Step : Click 'Cancel'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'c30'
+
+🧬 31
+   🐾 Step : Click 'Log a Call'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c31'
+
+🧬 32
+   🐾 Step : Click 'Send Email'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c32'
+
+🧬 33
+   🐾 Step : Click 'Add Note'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c33'
+
+🧬 34
+   🐾 Step : Click 'Schedule Meeting'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c34'
+
+🧬 35
+   🐾 Step : Click 'Create Task'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c35'
+
+🧬 36
+   🐾 Step : Fill 'Write your note' with 'Client called'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14622)
+   ✅ PASSED  → 'c36'
+
+🧬 37
+   🐾 Step : Click 'Attach File'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c37'
+
+🧬 38
+   🐾 Step : Click '@ Mention'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'c38'
+
+🧬 39
+   🐾 Step : Click 'Save Note'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c39'
+
+🧬 40
+   🐾 Step : VERIFY 'Note saved successfully' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['note saved successfully']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 41
+   🐾 Step : Fill 'Ticket Title' with 'Server FIXED'
+    ⚙️  DOM HEURISTICS: High confidence match (score 105022)
+   ✅ PASSED  → 'c41'
+
+🧬 42
+   🐾 Step : Select 'Resolved' from 'Status'
+    ⚙️  DOM HEURISTICS: High confidence match (score 78595)
+   ✅ PASSED  → 'c42'
+
+🧬 43
+   🐾 Step : Select 'Critical' from 'Priority'
+    ⚙️  DOM HEURISTICS: High confidence match (score 78595)
+   ✅ PASSED  → 'c43'
+
+🧬 44
+   🐾 Step : Click 'Remove Bug tag'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103556)
+   ✅ PASSED  → 'c44'
+
+🧬 45
+   🐾 Step : Fill 'Add tag...' with 'Urgent'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'c45'
+
+🧬 46
+   🐾 Step : Click 'Add'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'c46'
+
+🧬 47
+   🐾 Step : Click 'Link Issue'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c47'
+
+🧬 48
+   🐾 Step : Click 'Clone Ticket'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c48'
+
+🧬 49
+   🐾 Step : Click 'Watch Ticket'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104106)
+   ✅ PASSED  → 'c49'
+
+🧬 50
+   🐾 Step : Click 'Vote on Ticket'
+    ⚙️  DOM HEURISTICS: High confidence match (score 104106)
+   ✅ PASSED  → 'c50'
+
+🧬 51
+   🐾 Step : EXTRACT Candidate name into {cand}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: Sarah Connor
+   ✅ PASSED  → {cand} = 'Sarah Connor'
+
+🧬 52
+   🐾 Step : Click 'View Resume'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c52'
+
+🧬 53
+   🐾 Step : Click 'LinkedIn Profile'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c53'
+
+🧬 54
+   🐾 Step : Select 'Offer' from 'Stage'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178650)
+   ✅ PASSED  → 'c54'
+
+🧬 55
+   🐾 Step : Click 'Move to Offer'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c55'
+
+🧬 56
+   🐾 Step : Click 'Reject Candidate'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c56'
+
+🧬 57
+   🐾 Step : Select 'Not a fit' from 'Rejection Reason'
+    ⚙️  DOM HEURISTICS: High confidence match (score 179200)
+   ✅ PASSED  → 'c57'
+
+🧬 58
+   🐾 Step : Click 'Send Rejection Email'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'c58'
+
+🧬 59
+   🐾 Step : Click 'Schedule Interview'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c59'
+
+🧬 60
+   🐾 Step : Click 'Request Feedback'
+    ⚙️  DOM HEURISTICS: High confidence match (score 4489)
+   ✅ PASSED  → 'c60'
+
+🧬 61
+   🐾 Step : Check 'Select All Leads'
+    ⚙️  DOM HEURISTICS: High confidence match (score 101156)
+   ✅ PASSED  → 'c61'
+
+🧬 62
+   🐾 Step : Check 'Select Lead 1'
+    ⚙️  DOM HEURISTICS: High confidence match (score 100978)
+   ✅ PASSED  → 'c62'
+
+🧬 63
+   🐾 Step : EXTRACT Score of 'John Doe' into {s}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: 85
+   ✅ PASSED  → {s} = '85'
+
+🧬 64
+   🐾 Step : Click 'Edit' for lead
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'c64'
+
+🧬 65
+   🐾 Step : Click 'Bulk Assign'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c65'
+
+🧬 66
+   🐾 Step : Click 'Bulk Delete'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c66'
+
+🧬 67
+   🐾 Step : Click 'Merge Duplicates'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c67'
+
+🧬 68
+   🐾 Step : Click 'Add to Campaign'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c68'
+
+🧬 69
+   🐾 Step : Click 'Change Status'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c69'
+
+🧬 70
+   🐾 Step : VERIFY that 'Apply Bulk Action' is disabled
+    ⚙️  DOM HEURISTICS: Scanning for ['apply bulk action'] [DISABLED]
+    ✅ Element disabled=True
+   ✅ PASSED  → VERIFY returned True
+
+🧬 71
+   🐾 Step : Select 'Status' from 'Filter Field'
+    ⚙️  DOM HEURISTICS: High confidence match (score 179172)
+   ✅ PASSED  → 'c71'
+
+🧬 72
+   🐾 Step : Select 'Equals' from 'Filter Operator'
+    ⚙️  DOM HEURISTICS: High confidence match (score 179022)
+   ✅ PASSED  → 'c72'
+
+🧬 73
+   🐾 Step : Fill 'Filter Value' with 'Open'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'c73'
+
+🧬 74
+   🐾 Step : Click 'Add Condition'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c74'
+
+🧬 75
+   🐾 Step : Click 'Apply Filter'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c75'
+
+🧬 76
+   🐾 Step : Click 'Remove Filter'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'c76'
+
+🧬 77
+   🐾 Step : Fill 'Save filter as' with 'Active'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14444)
+   ✅ PASSED  → 'c77'
+
+🧬 78
+   🐾 Step : Click 'Save Filter'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c78'
+
+🧬 79
+   🐾 Step : Select 'My Open Leads' from 'Saved Filters'
+    ⚙️  DOM HEURISTICS: High confidence match (score 179650)
+   ✅ PASSED  → 'c79'
+
+🧬 80
+   🐾 Step : Click 'Clear All'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c80'
+
+🧬 81
+   🐾 Step : Select 'Time to Hire' from 'Report Type'
+    ⚙️  DOM HEURISTICS: High confidence match (score 179200)
+   ✅ PASSED  → 'c81'
+
+🧬 82
+   🐾 Step : Fill 'Report Start Date' with '2026-01-01'
+    ⚙️  DOM HEURISTICS: High confidence match (score 175156)
+   ✅ PASSED  → 'c82'
+
+🧬 83
+   🐾 Step : Fill 'Report End Date' with '2026-01-31'
+    ⚙️  DOM HEURISTICS: High confidence match (score 174934)
+   ✅ PASSED  → 'c83'
+
+🧬 84
+   🐾 Step : Click 'Generate Report'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c84'
+
+🧬 85
+   🐾 Step : EXTRACT Total Deals into {td}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: 145
+   ✅ PASSED  → {td} = '145'
+
+🧬 86
+   🐾 Step : Click 'Download Excel'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c86'
+
+🧬 87
+   🐾 Step : Click 'Download PDF'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c87'
+
+🧬 88
+   🐾 Step : Click 'Share via Email'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'c88'
+
+🧬 89
+   🐾 Step : Click 'Schedule Report'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c89'
+
+🧬 90
+   🐾 Step : Click 'Include deleted records' switch
+    ⚙️  DOM HEURISTICS: High confidence match (score 154534)
+   ✅ PASSED  → 'c90'
+
+🧬 91
+   🐾 Step : Click 'Create Workflow Rule'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'c91'
+
+🧬 92
+   🐾 Step : Fill 'Rule Name' with 'Auto-assign'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'c92'
+
+🧬 93
+   🐾 Step : Select 'On Create' from 'Trigger Event'
+    ⚙️  DOM HEURISTICS: High confidence match (score 179022)
+   ✅ PASSED  → 'c93'
+
+🧬 94
+   🐾 Step : Select 'Update Field' from 'Action'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178978)
+   ✅ PASSED  → 'c94'
+
+🧬 95
+   🐾 Step : Click 'Save Workflow'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'c95'
+
+🧬 96
+   🐾 Step : Click 'Create Custom Field'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103227)
+   ✅ PASSED  → 'c96'
+
+🧬 97
+   🐾 Step : Fill 'Field Label' with 'Skype ID'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'c97'
+
+🧬 98
+   🐾 Step : Select 'Text' from 'Field Type'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178872)
+   ✅ PASSED  → 'c98'
+
+🧬 99
+   🐾 Step : Click 'Save Field'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103049)
+   ✅ PASSED  → 'c99'
+
+🧬 100
+   🐾 Step : Click 'Unlock Admin Mode' if exists
+    ⚙️  DOM HEURISTICS: High confidence match (score 2133)
+    🖱️  Clicked '➕ Create'
+   ✅ PASSED  → Optional handled
+
+======================================================================
+📊 SCORE: 100/100 passed
+
+🏆 FLAWLESS VICTORY!
+======================================================================
+
+======================================================================
+🎓 EDTECH & E-LEARNING HELL: 100 REAL-WORLD TRAPS
+======================================================================
+    ℹ️  No model configured — running in heuristics-only mode (AI disabled).
+
+🧬 1
+   🐾 Step : Fill 'Search courses' with 'Python'
+    ⚙️  DOM HEURISTICS: High confidence match (score 25111)
+   ✅ PASSED  → 'l1'
+
+🧬 2
+   🐾 Step : Select 'Data Science' from 'Category'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178978)
+   ✅ PASSED  → 'l2'
+
+🧬 3
+   🐾 Step : Click 'Enroll for Free'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'l3'
+
+🧬 4
+   🐾 Step : Click 'View Syllabus'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l4'
+
+🧬 5
+   🐾 Step : Click 'Bookmark Course'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'l5'
+
+🧬 6
+   🐾 Step : Click radio 'Beginner'
+    ⚙️  DOM HEURISTICS: High confidence match (score 114356)
+   ✅ PASSED  → 'l6'
+
+🧬 7
+   🐾 Step : Click radio 'Advanced'
+    ⚙️  DOM HEURISTICS: High confidence match (score 114356)
+   ✅ PASSED  → 'l7'
+
+🧬 8
+   🐾 Step : Click 'Apply Filters'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l8'
+
+🧬 9
+   🐾 Step : Click 'Clear All'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l9'
+
+🧬 10
+   🐾 Step : Click 'Instructor Bio'
+    ⚙️  DOM HEURISTICS: High confidence match (score 4489)
+   ✅ PASSED  → 'l10'
+
+🧬 11
+   🐾 Step : Click 'Previous Lecture'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l11'
+
+🧬 12
+   🐾 Step : Click 'Next Lecture'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l12'
+
+🧬 13
+   🐾 Step : Click 'Auto-advance' switch
+    ⚙️  DOM HEURISTICS: High confidence match (score 154134)
+   ✅ PASSED  → 'l13'
+
+🧬 14
+   🐾 Step : Click 'Show Transcript'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l14'
+
+🧬 15
+   🐾 Step : Click 'Take Notes'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l15'
+
+🧬 16
+   🐾 Step : Select '2x' from 'Speed'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178772)
+   ✅ PASSED  → 'l16'
+
+🧬 17
+   🐾 Step : Check 'Mark as Complete'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50533)
+   ✅ PASSED  → 'l17'
+
+🧬 18
+   🐾 Step : Click 'Download Slides'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l18'
+
+🧬 19
+   🐾 Step : Click 'Ask Question in Q&A'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l19'
+
+🧬 20
+   🐾 Step : Click 'Report Audio Issue'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'l20'
+
+🧬 21
+   🐾 Step : Click radio 'A snake'
+    ⚙️  DOM HEURISTICS: High confidence match (score 114356)
+   ✅ PASSED  → 'l21'
+
+🧬 22
+   🐾 Step : Click radio 'A programming language'
+    ⚙️  DOM HEURISTICS: High confidence match (score 114533)
+   ✅ PASSED  → 'l22'
+
+🧬 23
+   🐾 Step : Check 'div'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50356)
+   ✅ PASSED  → 'l23'
+
+🧬 24
+   🐾 Step : Check 'span'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50356)
+   ✅ PASSED  → 'l24'
+
+🧬 25
+   🐾 Step : Check 'fakeTag'
+    ⚙️  DOM HEURISTICS: High confidence match (score 50356)
+   ✅ PASSED  → 'l25'
+
+🧬 26
+   🐾 Step : Click 'Clear my choices'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l26'
+
+🧬 27
+   🐾 Step : Click 'Submit Quiz'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l27'
+
+🧬 28
+   🐾 Step : VERIFY that 'Review Answers' is disabled
+    ⚙️  DOM HEURISTICS: Scanning for ['review answers'] [DISABLED]
+    ✅ Element disabled=True
+   ✅ PASSED  → VERIFY returned True
+
+🧬 29
+   🐾 Step : EXTRACT Quiz Score into {qs}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: 85%
+   ✅ PASSED  → {qs} = '85%'
+
+🧬 30
+   🐾 Step : Click 'Retake Quiz'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l30'
+
+🧬 31
+   🐾 Step : Fill 'def' field with 'main'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163467)
+   ✅ PASSED  → 'l31'
+
+🧬 32
+   🐾 Step : Fill 'Code Editor' with 'print(1)'
+    ⚙️  DOM HEURISTICS: High confidence match (score 164089)
+   ✅ PASSED  → 'l32'
+
+🧬 33
+   🐾 Step : Click 'Run Code'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l33'
+
+🧬 34
+   🐾 Step : Click 'Submit Code'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l34'
+
+🧬 35
+   🐾 Step : EXTRACT console output into {out}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: invalid syntax
+   ✅ PASSED  → {out} = 'invalid syntax'
+
+🧬 36
+   🐾 Step : Click 'Hint'
+    ⚙️  DOM HEURISTICS: High confidence match (score 4533)
+   ✅ PASSED  → 'l36'
+
+🧬 37
+   🐾 Step : Click 'View Solution'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l37'
+
+🧬 38
+   🐾 Step : Click 'Reset Workspace'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l38'
+
+🧬 39
+   🐾 Step : Click 'Upload Source File'
+    ⚙️  DOM HEURISTICS: High confidence match (score 101200)
+   ✅ PASSED  → 'l39'
+
+🧬 40
+   🐾 Step : Select 'Java' from 'Language'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178800)
+   ✅ PASSED  → 'l40'
+
+🧬 41
+   🐾 Step : Fill 'Search discussions' with 'help'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14444)
+   ✅ PASSED  → 'l41'
+
+🧬 42
+   🐾 Step : Click 'Create New Thread'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'l42'
+
+🧬 43
+   🐾 Step : Fill 'Thread Title' with 'Bug in Lecture 2'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'l43'
+
+🧬 44
+   🐾 Step : Fill 'Type your question here' with 'Audio is missing.'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14800)
+   ✅ PASSED  → 'l44'
+
+🧬 45
+   🐾 Step : Click 'Post Thread'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l45'
+
+🧬 46
+   🐾 Step : Click 'Upvote Post'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'l46'
+
+🧬 47
+   🐾 Step : Click 'Downvote Post'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103778)
+   ✅ PASSED  → 'l47'
+
+🧬 48
+   🐾 Step : Click 'Reply to Thread'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l48'
+
+🧬 49
+   🐾 Step : Click 'Mark as Answer'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l49'
+
+🧬 50
+   🐾 Step : Click 'Subscribe to updates'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l50'
+
+🧬 51
+   🐾 Step : EXTRACT Project title into {proj}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: Web Scraper
+   ✅ PASSED  → {proj} = 'Web Scraper'
+
+🧬 52
+   🐾 Step : Click 'Upload Assignment'
+    ⚙️  DOM HEURISTICS: High confidence match (score 100800)
+   ✅ PASSED  → 'l52'
+
+🧬 53
+   🐾 Step : Fill 'Google Drive Link' with 'http://link'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 13172)
+   ✅ PASSED  → 'l53'
+
+🧬 54
+   🐾 Step : Fill 'Add comments for grader' with 'Done'
+    ⚙️  DOM HEURISTICS: High confidence match (score 164000)
+   ✅ PASSED  → 'l54'
+
+🧬 55
+   🐾 Step : Check 'Honor Code'
+    ⚙️  DOM HEURISTICS: High confidence match (score 1383)
+   ✅ PASSED  → 'l55'
+
+🧬 56
+   🐾 Step : Click 'Submit Assignment'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l56'
+
+🧬 57
+   🐾 Step : Click 'Withdraw Submission'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l57'
+
+🧬 58
+   🐾 Step : Click 'View Grading Rubric'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'l58'
+
+🧬 59
+   🐾 Step : Click 'Request Extension'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l59'
+
+🧬 60
+   🐾 Step : VERIFY 'Status: Not Submitted' is present
+    ⚙️  DOM HEURISTICS: Scanning for ['status: not submitted']
+    ✅ Verified — OK
+   ✅ PASSED  → VERIFY returned True
+
+🧬 61
+   🐾 Step : EXTRACT Final Grade into {fg}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: A-
+   ✅ PASSED  → {fg} = 'A-'
+
+🧬 62
+   🐾 Step : Click 'Download Transcript'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l62'
+
+🧬 63
+   🐾 Step : EXTRACT Course Progress into {cp}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: 75%
+   ✅ PASSED  → {cp} = '75%'
+
+🧬 64
+   🐾 Step : Click 'Request Regrade'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l64'
+
+🧬 65
+   🐾 Step : Select 'Spring 2026' from 'Semester'
+    ⚙️  DOM HEURISTICS: High confidence match (score 178978)
+   ✅ PASSED  → 'l65'
+
+🧬 66
+   🐾 Step : EXTRACT GPA into {gpa}
+    ⚙️  DOM HEURISTICS: Extracting data via JS…
+    📦 COLLECTED: 3.8
+   ✅ PASSED  → {gpa} = '3.8'
+
+🧬 67
+   🐾 Step : Click 'Share Grades'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l67'
+
+🧬 68
+   🐾 Step : Click 'View Weighting'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l68'
+
+🧬 69
+   🐾 Step : Fill 'Enter target grade' with '95'
+    ⚙️  DOM HEURISTICS: Context reuse match (score 14622)
+   ✅ PASSED  → 'l69'
+
+🧬 70
+   🐾 Step : Click 'Calculate'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103511)
+   ✅ PASSED  → 'l70'
+
+🧬 71
+   🐾 Step : Click 'Start Reviewing'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l71'
+
+🧬 72
+   🐾 Step : Select '10' from 'Criterion 1'
+    ⚙️  DOM HEURISTICS: High confidence match (score 81339)
+   ✅ PASSED  → 'l72'
+
+🧬 73
+   🐾 Step : Select '5' from 'Criterion 2'
+    ⚙️  DOM HEURISTICS: High confidence match (score 81339)
+   ✅ PASSED  → 'l73'
+
+🧬 74
+   🐾 Step : Fill 'Constructive Feedback' with 'Great job'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'l74'
+
+🧬 75
+   🐾 Step : Click 'Submit Review'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l75'
+
+🧬 76
+   🐾 Step : Click 'Flag for Plagiarism'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'l76'
+
+🧬 77
+   🐾 Step : Click 'Save Draft Review'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'l77'
+
+🧬 78
+   🐾 Step : Click 'View Student Submission'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'l78'
+
+🧬 79
+   🐾 Step : Click 'Show Rubric Guidelines'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'l79'
+
+🧬 80
+   🐾 Step : VERIFY that 'Next Submission' is disabled
+    ⚙️  DOM HEURISTICS: Scanning for ['next submission'] [DISABLED]
+    ✅ Element disabled=True
+   ✅ PASSED  → VERIFY returned True
+
+🧬 81
+   🐾 Step : Click 'Create New Course'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103867)
+   ✅ PASSED  → 'l81'
+
+🧬 82
+   🐾 Step : Click 'Edit Syllabus'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l82'
+
+🧬 83
+   🐾 Step : Click 'Post Announcement'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l83'
+
+🧬 84
+   🐾 Step : Fill 'Message to Students' with 'Welcome!'
+    ⚙️  DOM HEURISTICS: High confidence match (score 163645)
+   ✅ PASSED  → 'l84'
+
+🧬 85
+   🐾 Step : Click 'Send Message'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l85'
+
+🧬 86
+   🐾 Step : Click 'Open Gradebook'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l86'
+
+🧬 87
+   🐾 Step : Click 'Publish Grades'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)
+   ✅ PASSED  → 'l87'
+
+🧬 88
+   🐾 Step : Click 'Export Analytics'
+    ⚙️  DOM HEURISTICS: High confidence match (score 103689)

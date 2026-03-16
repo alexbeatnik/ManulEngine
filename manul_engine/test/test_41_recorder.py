@@ -218,6 +218,19 @@ async def run_suite() -> bool:
     _assert("'keydown'" in _RECORDER_JS,
             "JS listens to keydown events")
 
+    # ── 10b. Click handler skips <select> and <option> elements ───────────
+    # The guard must appear BEFORE the closest() call so that clicks on
+    # a <select> wrapped in [role="button"] are still suppressed.
+    _assert("=== 'select'" in _RECORDER_JS and "return" in _RECORDER_JS,
+            "JS click handler has explicit <select> skip guard")
+
+    _assert("=== 'option'" in _RECORDER_JS and ".closest('select')" in _RECORDER_JS,
+            "JS click handler skips <option> inside <select>")
+
+    # ── 10c. Change handler uses .text for option text ────────────────────
+    _assert("selected.text" in _RECORDER_JS,
+            "JS change handler uses HTMLOptionElement.text property")
+
     _assert("debounce" in _RECORDER_JS.lower(),
             "JS has input debouncing logic")
 

@@ -19,6 +19,9 @@ export const DEBUG_TERMINAL_NAME = "ManulEngine Debug";
 /** Terminal name for the background daemon process. */
 export const DAEMON_TERMINAL_NAME = "Manul Daemon";
 
+/** Output channel name for Explain Heuristics output. */
+export const EXPLAIN_OUTPUT_CHANNEL = "ManulEngine: Explain Heuristics";
+
 /**
  * Read the effective config file name from VS Code settings,
  * falling back to the default.

@@ -123,6 +123,7 @@ class DOMScorer:
         is_blind: bool,
         learned_elements: dict,
         last_xpath: str | None,
+        explain: bool = False,
     ) -> None:
         self._step_l = step.lower()
         self._mode = mode
@@ -130,6 +131,7 @@ class DOMScorer:
         self._is_blind = is_blind
         self._last_xpath = last_xpath
         self._has_search_texts = bool(search_texts)
+        self._explain = explain
 
         # Pre-compute search terms once
         self._terms: list[_SearchTerm] = [_SearchTerm(t) for t in search_texts]
@@ -555,6 +557,9 @@ class DOMScorer:
         Combines normalised ``[0.0, 1.0]`` sub-scores via the ``WEIGHTS``
         dictionary, applies the penalty multiplier, and scales the result
         to the integer range expected by ``core.py``.
+
+        When ``self._explain`` is True, each element dict receives an
+        ``"_explain"`` key containing the per-channel score breakdown.
         """
         w = WEIGHTS
         scale = SCALE
@@ -582,6 +587,17 @@ class DOMScorer:
 
             el["score"] = round(weighted * scale)
 
+            if self._explain:
+                el["_explain"] = {
+                    "text":       round(text_score * w["text"] * scale),
+                    "attributes": round(attr_score * w["attributes"] * scale),
+                    "semantics":  round(sem_score * w["semantics"] * scale),
+                    "proximity":  round(prox_score * w["proximity"] * scale),
+                    "cache":      round(cache_score * w["cache"] * scale),
+                    "penalty":    penalty_mult,
+                    "total":      el["score"],
+                }
+
         return sorted(els, key=lambda x: x.get("score", 0), reverse=True)
 
 
@@ -596,6 +612,7 @@ def score_elements(
     is_blind: bool,
     learned_elements: dict,
     last_xpath: "str | None",
+    explain: bool = False,
 ) -> list[dict]:
     """Score and rank DOM elements against a given step.
 
@@ -604,5 +621,6 @@ def score_elements(
     scorer = DOMScorer(
         step, mode, search_texts, target_field,
         is_blind, learned_elements, last_xpath,
+        explain=explain,
     )
     return scorer.score_all(els)
