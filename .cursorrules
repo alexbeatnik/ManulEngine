@@ -11,7 +11,9 @@ Follow these rules before generating code, documentation, architecture notes, or
 
 ## 1. Architectural Boundaries
 
-### Electron security
+### Electron security (Manul Studio Electron app — separate repo)
+
+- These rules apply only to the Manul Studio Electron app in a separate repository, not to the VS Code extension in this repo.
 
 - Never use Node.js built-in modules such as `fs`, `path`, or `child_process` directly inside React components.
 - All system-level operations must go through IPC channels exposed in `preload.ts` and handled in `main.ts`.

@@ -123,12 +123,6 @@ A sidebar panel that lets you insert hunt steps with a single click — no typin
 
 No more guessing why a step clicked the wrong element. Run a hunt in **Debug Mode** (via Test Explorer Debug profile or `--break-lines`), then **hover over any step line** in the `.hunt` file. A rich Markdown tooltip appears instantly, showing the full per-element scoring breakdown — Text, Attributes, Semantics, Proximity, Cache — attached to the exact line.
 
-Taken together, the runtime plus extension expose three explainability layers:
-
-- `manul --explain` for raw CLI scoring output.
-- `🔍 Explain Current Step` in the editor title bar during debug pause.
-- Hover tooltips on resolved `.hunt` steps after a debug run.
-
 - **Hover tooltips:** Rich Markdown tooltip on each resolved step line — see exactly why the engine chose a specific element
 - **Dedicated output channel:** Scoring breakdown is also routed to "ManulEngine: Explain Heuristics" — separate from test output
 - **Editor title bar button:** `🔍 Explain Current Step` icon during debug pause for quick access
@@ -148,9 +142,9 @@ Taken together, the runtime plus extension expose three explainability layers:
 
 - **ManulEngine** installed in the workspace or globally:
   ```bash
-pip install manul-engine==0.0.9.6          # global / user
-# or in a project venv:
-pip install -e .
+  pip install manul-engine==0.0.9.6          # global / user
+  # or in a project venv:
+  pip install -e .
   ```
 - **Python 3.11+**
 - **Playwright** browsers (installed by ManulEngine's setup)

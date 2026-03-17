@@ -548,4 +548,6 @@ That matters because the point of the README is not just positioning. It is also
 
 ## License
 
+**Version:** 0.0.9.6
+
 Apache-2.0.
