@@ -95,6 +95,8 @@ Changes are saved to `manul_engine_configuration.json` at the workspace root. An
 
 The runtime config file includes the full engine key set, including `browser_args`, `ai_always`, `ai_policy`, `ai_threshold`, `controls_cache_dir`, `tests_home`, `auto_annotate`, `retries`, `screenshot`, and `html_report` in addition to the more commonly edited fields above.
 
+The root README is intended to remain the public runtime reference for that same config surface, including the full key table and representative `MANUL_*` override examples. The panel edits the full runtime config file, not a reduced extension-specific subset.
+
 ### 🗂️ Cache Browser
 The **Cache** sidebar tree shows per-site cache entries created by ManulEngine's persistent controls cache. You can:
 - Browse sites and their cached page entries
@@ -120,6 +122,12 @@ A sidebar panel that lets you insert hunt steps with a single click — no typin
 ### 🔍 Visual Explainability (Hover Tooltips)
 
 No more guessing why a step clicked the wrong element. Run a hunt in **Debug Mode** (via Test Explorer Debug profile or `--break-lines`), then **hover over any step line** in the `.hunt` file. A rich Markdown tooltip appears instantly, showing the full per-element scoring breakdown — Text, Attributes, Semantics, Proximity, Cache — attached to the exact line.
+
+Taken together, the runtime plus extension expose three explainability layers:
+
+- `manul --explain` for raw CLI scoring output.
+- `🔍 Explain Current Step` in the editor title bar during debug pause.
+- Hover tooltips on resolved `.hunt` steps after a debug run.
 
 - **Hover tooltips:** Rich Markdown tooltip on each resolved step line — see exactly why the engine chose a specific element
 - **Dedicated output channel:** Scoring breakdown is also routed to "ManulEngine: Explain Heuristics" — separate from test output

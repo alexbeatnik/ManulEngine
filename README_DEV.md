@@ -24,7 +24,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-│   ├── pyproject.toml                        Build config — package: manul-engine 0.0.9.6
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.6
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
@@ -172,6 +172,8 @@ This architecture is what makes ManulEngine a **true runtime** rather than just 
 
 ## ✨ Key Features
 
+The public README is expected to preserve a richer runtime-reference layer, not only product positioning. In practice that means keeping explicit sections for explainability layers, four automation pillars, desktop automation, state/hook orchestration, and benchmark/test coverage.
+
 ### 🔍 Why ManulEngine?
 
 Most "AI testing" tools are cloud-dependent wrappers that trade speed and reliability for hype. ManulEngine takes the opposite approach.
@@ -181,6 +183,16 @@ Most "AI testing" tools are cloud-dependent wrappers that trade speed and reliab
 **Dual Persona Workflow — Testing for Humans, Power for Engineers.** QA engineers write `.hunt` files in a plain-English DSL — no programming required. SDETs extend the same files with Python hooks, Custom Controls, and data-driven parameters. Both personas work on the same artifact.
 
 **Optional AI Fallback — Off by Default.** AI (Ollama / local micro-LLMs) is **turned off by default** (`"model": null`). When enabled, it acts as a self-healing fallback — only invoked when heuristic confidence drops below a threshold. No cloud calls. No per-click charges. No flaky non-determinism in your CI pipeline.
+
+### 🔍 Explainability Layers
+
+The public/runtime docs should describe explainability as a multi-layer workflow:
+
+- CLI `--explain` for raw candidate ranking and per-channel breakdowns.
+- VS Code title bar action for step-local explain requests during a debug pause.
+- VS Code hover tooltips for line-attached breakdowns after debug runs.
+
+This is part of the product definition, not a side note.
 
 ### ⚡ Heuristics Engine — The Mathematical Core
 
@@ -496,6 +508,8 @@ ollama serve
 
 Create `manul_engine_configuration.json` in your project root. All keys are optional.
 Environment variables (`MANUL_*`) always override JSON values — useful for CI/CD.
+
+The public README is expected to keep the full current runtime surface area plus representative `MANUL_*` override examples. Do not collapse it to a minimal JSON snippet unless it is clearly labelled as a minimal example.
 
 ```json
 {

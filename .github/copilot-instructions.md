@@ -30,6 +30,7 @@ ManulEngine is a **deterministic, DSL-first Web & Desktop Automation Runtime**. 
 4. **When suggesting config**, always recommend `"model": null` (heuristics-only) as the default. Only suggest enabling an Ollama model when the user explicitly needs AI self-healing.
 5. **Never describe ManulEngine as "AI-powered" or "neuro-symbolic".** The correct framing is: "a deterministic, DSL-first Web & Desktop Automation Runtime backed by Playwright, with optional local AI for self-healing."
 6. **Understand the four automation pillars.** ManulEngine scripts (`.hunt` files) can serve as QA/E2E tests, RPA workflows, synthetic monitors, or AI-agent execution targets. The same DSL commands (`NAVIGATE`, `CLICK`, `FILL`, `EXTRACT`, `VERIFY`, `CALL PYTHON`, etc.) apply to all four use cases. When generating `.hunt` files, adapt the structure to the user's intent — a monitoring script may skip `VERIFY` in favour of `EXTRACT`; an RPA script may use `CALL PYTHON` extensively for data processing; an AI-agent script should use strict DSL commands (never raw Playwright calls) for safety.
+7. **When updating public docs, keep the runtime-reference layer intact.** README.md is not only a landing page. It should retain concrete sections for explainability layers, configuration surface, automation pillars, desktop automation, hooks/variables orchestration, and test/benchmark coverage.
 
 ## What is this project?
 
@@ -486,6 +487,7 @@ Suggested config for heuristics-only (recommended default — no Ollama needed):
 ```
 
 When documenting the configuration in public-facing docs, do not present a shortened JSON snippet as if it were the full key set. Either label it clearly as a minimal example or include the full current runtime surface area.
+The public README should keep the configuration key table and representative `MANUL_*` override examples because users rely on it as the shortest runtime reference, not only as marketing-facing intro text.
 
 Suggested config for enterprise browser (e.g. Chrome stable or Edge):
 
