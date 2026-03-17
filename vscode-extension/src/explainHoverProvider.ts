@@ -158,7 +158,9 @@ export class ExplainOutputParser {
       .map((l) => l.replace(/^\s{4}/, ""))
       .join("\n");
 
-    const md = `**🔍 Heuristic Explanation** — Step ${this._currentStep}\n\n\`\`\`\n${cleaned}\n\`\`\``;
+    // Prevent code-fence injection: neutralize any embedded ``` sequences
+    const sanitized = cleaned.replace(/```/g, "\u200B```");
+    const md = `**🔍 Heuristic Explanation** — Step ${this._currentStep}\n\n\`\`\`\n${sanitized}\n\`\`\``;
     setExplanation(this._fileUri, fileLine, md);
   }
 }
@@ -176,7 +178,7 @@ export class ExplainHoverProvider implements vscode.HoverProvider {
     if (!explanation) { return undefined; }
 
     const md = new vscode.MarkdownString(explanation);
-    md.isTrusted = true;
+    md.isTrusted = false;
 
     const lineRange = document.lineAt(position.line).range;
     return new vscode.Hover(md, lineRange);

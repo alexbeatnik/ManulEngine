@@ -960,7 +960,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                         f"    💡 Ensure the Electron app is running with "
                         f"--remote-debugging-port={_cdp_port}"
                     )
-                    return MissionResult(file=hunt_file or "", name="", status="fail")
+                    return MissionResult(file=hunt_file or "", name=os.path.basename(hunt_file) if hunt_file else "", status="fail")
                 # Reuse existing context/page from the Electron app.
                 if browser.contexts:
                     ctx = browser.contexts[0]
@@ -1008,7 +1008,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                 print("    ❌ No plan produced. If you're running without Ollama, provide a numbered or unnumbered step list.")
 
             if not plan:
-                return MissionResult(file=hunt_file or "", name="", status="fail")
+                return MissionResult(file=hunt_file or "", name=os.path.basename(hunt_file) if hunt_file else "", status="fail")
 
             ok = True
             done = False

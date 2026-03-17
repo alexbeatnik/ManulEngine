@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as os from "os";
 import { execFile, spawn, ChildProcess } from "child_process";
 import * as vscode from "vscode";
-import { PAUSE_MARKER, DEBUG_TERMINAL_NAME } from "./constants";
+import { PAUSE_MARKER, DEBUG_TERMINAL_NAME, getConfigFileName } from "./constants";
 
 /**
  * Read the manulEngine.browser setting and return the CLI flags needed.
@@ -11,12 +11,23 @@ import { PAUSE_MARKER, DEBUG_TERMINAL_NAME } from "./constants";
  * ["--browser", name].  For system-installed channel browsers (chrome,
  * msedge) returns ["--browser", "chromium"] and sets MANUL_CHANNEL in
  * the env so the JSON config override is not required.
+ *
+ * If the browser setting is not explicitly set in VS Code (i.e. only the
+ * default value applies), this returns empty args/env so that
+ * manul_engine_configuration.json controls the browser selection.
  */
 export function getBrowserFlags(): { args: string[]; env: Record<string, string> } {
-  const raw = vscode.workspace
-    .getConfiguration("manulEngine")
-    .get<string>("browser", "chromium");
-  const browser = (raw || "chromium").trim().toLowerCase();
+  const cfg = vscode.workspace.getConfiguration("manulEngine");
+  const inspected = cfg.inspect<string>("browser");
+  const explicitValue =
+    inspected?.workspaceFolderValue ??
+    inspected?.workspaceValue ??
+    inspected?.globalValue;
+  // No explicit override in VS Code: let the JSON config / engine defaults decide.
+  if (!explicitValue) {
+    return { args: [], env: {} };
+  }
+  const browser = explicitValue.trim().toLowerCase();
   if (browser === "chrome" || browser === "msedge") {
     return { args: ["--browser", "chromium"], env: { MANUL_CHANNEL: browser } };
   }
@@ -27,12 +38,13 @@ export function getBrowserFlags(): { args: string[]; env: Record<string, string>
 }
 
 /**
- * Read executable_path from the project's manul_engine_configuration.json.
- * Returns the trimmed string or undefined if not set.
+ * Read executable_path from the project's config file (name resolved via
+ * getConfigFileName / manulEngine.configFile). Returns the trimmed string
+ * or undefined if not set.
  */
 function readExecutablePath(workspaceRoot: string): string | undefined {
   try {
-    const cfgPath = path.join(workspaceRoot, "manul_engine_configuration.json");
+    const cfgPath = path.join(workspaceRoot, getConfigFileName());
     if (!fs.existsSync(cfgPath)) { return undefined; }
     const raw = JSON.parse(fs.readFileSync(cfgPath, "utf-8"));
     const ep = raw?.executable_path;

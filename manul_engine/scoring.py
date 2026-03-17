@@ -596,11 +596,11 @@ class DOMScorer:
             if self._explain:
                 _max = MAX_THEORETICAL_SCORE
                 el["_explain"] = {
-                    "text":       round(min(text_score * w["text"] * scale / _max, 1.0), 3),
-                    "attributes": round(min(attr_score * w["attributes"] * scale / _max, 1.0), 3),
-                    "semantics":  round(min(sem_score * w["semantics"] * scale / _max, 1.0), 3),
-                    "proximity":  round(min(prox_score * w["proximity"] * scale / _max, 1.0), 3),
-                    "cache":      round(min(cache_score * w["cache"] * scale / _max, 1.0), 3),
+                    "text":       round(text_score * w["text"] * scale / _max, 3),
+                    "attributes": round(attr_score * w["attributes"] * scale / _max, 3),
+                    "semantics":  round(sem_score * w["semantics"] * scale / _max, 3),
+                    "proximity":  round(prox_score * w["proximity"] * scale / _max, 3),
+                    "cache":      round(cache_score * w["cache"] * scale / _max, 3),
                     "penalty":    penalty_mult,
                     "total":      round(min(el["score"] / _max, 1.0), 3),
                 }

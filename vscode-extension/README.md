@@ -40,7 +40,7 @@ ManulEngine bridges the gap between non-technical authors and engineering teams.
 ## 🚀 What's New in v0.0.9.4 — Hardening & Transparency
 
 * **🔍 Explainable Heuristics (`--explain`):** Run `manul --explain tests/` to see the top-3 candidates for every element resolution step, with full per-channel score breakdowns (text, attributes, semantics, proximity, cache). Audit exactly why ManulEngine chose a particular element — or didn't.
-* **🧠 Visual Explainability (Explain Step CodeLens):** Every actionable step in `.hunt` files now shows a clickable **🔍 Explain Heuristics** CodeLens above it. Click the lens — the extension runs the file with `--explain` and streams the full scoring breakdown to a dedicated **ManulEngine: Explain Heuristics** output channel, auto-focused. No more guessing why a test clicked the wrong element. Toggle via `manulEngine.explainCodeLens` setting.
+* **🧠 Visual Explainability (Hover Tooltips):** Debug mode now auto-injects `--explain`. After a debug run, **hover over any step line** in a `.hunt` file to see the full per-element scoring breakdown (Text, Attributes, Semantics, Proximity, Cache) as a rich Markdown tooltip — attached to the exact line, no output channel needed. During a debug pause, click the `🔍 Explain Current Step` title bar button to trigger an explain action on the paused step.
 * **📦 Strict Variable Scoping:** Runtime memory is now a 4-level hierarchy (Row → Step → Mission → Global). `@data:` row values auto-clear between iterations — zero state leakage across data-driven runs.
 * **🏋️ Benchmark Suite:** 12 adversarial tasks across 4 HTML fixtures comparing ManulEngine heuristics against raw Playwright locators. `python benchmarks/run_benchmarks.py`.
 
@@ -174,14 +174,13 @@ A sidebar panel that lets you insert hunt steps with a single click — no typin
 - Each click appends to the currently open `.hunt` file and positions the cursor inside the first `''` pair for immediate editing
 - Requires the `.hunt` file to be the active editor tab.
 
-### 🔍 Visual Explainability (Explain Step)
+### 🔍 Visual Explainability (Hover Tooltips)
 
-No more guessing why a step clicked the wrong element. The extension adds a **🔍 Explain Heuristics** CodeLens above every actionable step (Click, Fill, Select, Verify, etc.) in `.hunt` files. Click any lens to run the file with `--explain` and see the full per-element scoring breakdown — Text, Attributes, Semantics, Proximity, Cache — streamed into a dedicated **ManulEngine: Explain Heuristics** output channel that auto-focuses.
+No more guessing why a step clicked the wrong element. Run a hunt in **Debug Mode** (via Test Explorer Debug profile or `--break-lines`), then **hover over any step line** in the `.hunt` file. A rich Markdown tooltip appears instantly, showing the full per-element scoring breakdown — Text, Attributes, Semantics, Proximity, Cache — attached to the exact line.
 
-- **CodeLens integration:** Clickable lens above each actionable step line — one click to see why the engine chose a specific element
-- **Dedicated output channel:** Scoring breakdown is routed to "ManulEngine: Explain Heuristics" — separate from test output
-- **Editor title bar button:** `🔍` icon for quick access without scrolling to a step line
-- **Toggle on/off:** `manulEngine.explainCodeLens` setting (default: `true`)
+- **Hover tooltips:** Rich Markdown tooltip on each resolved step line — see exactly why the engine chose a specific element
+- **Dedicated output channel:** Scoring breakdown is also routed to "ManulEngine: Explain Heuristics" — separate from test output
+- **Editor title bar button:** `🔍 Explain Current Step` icon during debug pause for quick access
 
 ---
 
@@ -313,12 +312,12 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 ## Release Notes
 
 ### 0.0.95
-- **🔍 Run with Explain Mode** — new `$(output)` editor title bar button for `.hunt` files (`Manul: Run with Explain Mode` / `manul.runExplain`). Runs the hunt file with `--explain` and streams the heuristic scoring breakdown to the dedicated output channel
+- **🔍 Run with Explain Mode** — new `$(output)` editor title bar button for `.hunt` files (`Manul: Explain Current Step` / `manul.debug.explainStep`). Triggers explain on the current debug-paused step
 - Core engine bump to **0.0.9.5**
 
 ### 0.0.94
 - **🔍 Explainable Heuristics** — `--explain` mode shows top-3 candidates with full per-channel score breakdown for every element resolution step
-- **🧠 Visual Explainability (Explain Step CodeLens)** — clickable **🔍 Explain Heuristics** lens above every actionable step in `.hunt` files; runs the file with `--explain` and streams scoring breakdown to a dedicated output channel. Toggle via `manulEngine.explainCodeLens`. Editor title bar `🔍` button for quick access
+- **🧠 Visual Explainability (Hover Tooltips)** — debug mode auto-injects `--explain`; hover over any resolved step line to see the full per-channel scoring breakdown as a rich Markdown tooltip. `🔍 Explain Current Step` title bar button during debug pause
 - **📦 Strict Variable Scoping** — 4-level `ScopedVariables` hierarchy (Row → Step → Mission → Global) with zero state leakage across `@data:` iterations
 - **🏋️ Benchmark Suite** — 12 adversarial tasks across 4 HTML fixtures (`dynamic_ids`, `overlapping`, `nested_tables`, `custom_dropdown`)
 - Core engine bump to **0.0.9.4**

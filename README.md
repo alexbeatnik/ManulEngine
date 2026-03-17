@@ -12,7 +12,7 @@ No CSS selectors. No XPath fragility. No cloud API bills. No black boxes.
 > The Manul goes hunting and never returns without its prey.
 
 > **Zero AI required. Zero cloud dependency. Zero flakiness by design.**
-> Playwright speed. Heuristic precision. Full scoring transparency — via CLI, CodeLens, or **Hover tooltips in your IDE**. Optional local micro-LLMs via Ollama — only when you need them.
+> Playwright speed. Heuristic precision. Full scoring transparency — via CLI or **Hover tooltips in your IDE**. Optional local micro-LLMs via Ollama — only when you need them.
 
 ---
 
@@ -28,9 +28,8 @@ The `DOMScorer` uses a strict, normalised **0.0 to 1.0 confidence scale** across
 
 The companion VS Code extension now offers **three layers of explainability**, all without leaving the editor:
 
-1. **`[🔍 Explain]` CodeLens** — A clickable lens above every actionable step. One click runs the hunt with `--explain` and streams the full scoring breakdown to a dedicated output channel.
-2. **`🔍` Title Bar Button** — One-click "Run with Explain Mode" from the editor title bar.
-3. **Hover Tooltips in Debug Mode** — **The killer DX feature.** Run a hunt in Debug Mode, then simply **hover your mouse over any step** in the `.hunt` file. A rich tooltip appears instantly, showing the exact mathematical breakdown of *why* the engine selected a specific DOM element — candidate rankings, per-channel scores, and the final decision. No terminal. No output channel. Just hover.
+1. **`🔍` Title Bar Button** — One-click "Explain Current Step" from the editor title bar during a Debug session.
+2. **Hover Tooltips in Debug Mode** — **The killer DX feature.** Run a hunt in Debug Mode, then simply **hover your mouse over any step** in the `.hunt` file. A rich tooltip appears instantly, showing the exact mathematical breakdown of *why* the engine selected a specific DOM element — candidate rankings, per-channel scores, and the final decision. No terminal. No output channel. Just hover.
 
 ![Demo: Hover over a step in debug mode to see the heuristic breakdown](link)
 
@@ -183,12 +182,12 @@ Example output for a `Click the 'Login' button` step:
     └─ ✅ Decision: Selected "Login button" with score 0.593
 ```
 
-### IDE: CodeLens & Title Bar
+### IDE: Title Bar & Hover Tooltips
 
 The VS Code extension surfaces `--explain` directly in the editor:
 
-- **🔍 Explain Heuristics CodeLens** — A clickable lens above every actionable step line. One click streams the full score breakdown into a dedicated **ManulEngine: Explain Heuristics** output channel.
-- **🔍 Title Bar Button** — One-click "Run with Explain Mode" from the editor title bar. No command palette needed.
+- **🔍 Explain Current Step (Title Bar Button)** — During a Debug session, click the `🔍` icon in the editor title bar to trigger an explain action on the current paused step.
+- **🔍 Hover Tooltips in Debug Mode** — After running a hunt in Debug Mode, hover over any step line to see the full heuristic breakdown as a rich Markdown tooltip.
 
 ### IDE: Hover Tooltips in Debug Mode (Killer Feature)
 
@@ -207,7 +206,7 @@ No terminal scrolling. No output channel switching. The explanation is **attache
 - **Deterministic auditability.** Every score is a reproducible mathematical result. Same page, same step, same breakdown. Every time.
 - **No AI required.** The explain output comes from the heuristic scorer, not an LLM. It works in heuristics-only mode (`"model": null`) — the recommended default.
 
-The CodeLens can be toggled via `manulEngine.explainCodeLens` in VS Code settings. Set `"explain_mode": true` in `manul_engine_configuration.json` or `MANUL_EXPLAIN=true` for CI pipelines.
+In VS Code, you can see this explain output directly via hover tooltips on `.hunt` steps during Debug mode, or by clicking the `🔍 Explain Current Step` title bar button while paused at a breakpoint. Set `MANUL_EXPLAIN=true` for CI pipelines.
 
 ---
 

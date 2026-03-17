@@ -184,7 +184,7 @@
         },
         {
           "command": "manul.debug.explainStep",
-          "when": "resourceExtname == .hunt && manulDebugSessionActive",
+          "when": "resourceExtname == .hunt",
           "group": "navigation@3b"
         },
         {
