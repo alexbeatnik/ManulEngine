@@ -536,6 +536,8 @@ The public README is expected to keep the full current runtime surface area plus
   "channel": null,
   "executable_path": null,
 
+  "workers": 1,
+
   "retries": 0,
   "screenshot": "on-fail",
   "html_report": false

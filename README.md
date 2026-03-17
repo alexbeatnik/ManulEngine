@@ -438,24 +438,25 @@ Useful capabilities that were getting lost when the README was trimmed too aggre
 @var: {password} = secret123
 
 [SETUP]
-CALL PYTHON db_helpers.seed_admin_user
+    CALL PYTHON db_helpers.seed_admin_user
 [END SETUP]
 
 STEP 1: Login
-  NAVIGATE to https://example.com/login
-  Fill 'Email' field with '{email}'
-  Fill 'Password' field with '{password}'
-  Click the 'Sign In' button
-  VERIFY that 'Dashboard' is present
+    NAVIGATE to https://example.com/login
+    Fill 'Email' field with '{email}'
+    Fill 'Password' field with '{password}'
+    Click the 'Sign In' button
+    VERIFY that 'Dashboard' is present
 
 STEP 2: OTP verification
-  Click the 'Send OTP' button
-  CALL PYTHON api_helpers.fetch_otp "{email}" into {otp}
-  Fill 'OTP' field with '{otp}'
-  VERIFY that 'Welcome' is present
+    Click the 'Send OTP' button
+    CALL PYTHON api_helpers.fetch_otp "{email}" into {otp}
+    Fill 'OTP' field with '{otp}'
+    Click the 'Verify' button
+    VERIFY that 'Welcome' is present
 
 [TEARDOWN]
-CALL PYTHON db_helpers.clean_database
+    CALL PYTHON db_helpers.clean_database
 [END TEARDOWN]
 ```
 

@@ -148,9 +148,9 @@ Taken together, the runtime plus extension expose three explainability layers:
 
 - **ManulEngine** installed in the workspace or globally:
   ```bash
-   pip install manul-engine==0.0.9.6          # global / user
-  # or in a project venv:
-  pip install -e .
+pip install manul-engine==0.0.9.6          # global / user
+# or in a project venv:
+pip install -e .
   ```
 - **Python 3.11+**
 - **Playwright** browsers (installed by ManulEngine's setup)
@@ -268,6 +268,11 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 - Documentation refresh: alpha status, explainability-first positioning, and desktop automation guidance
 
 ### 0.0.95
+- **🧠 Visual Explainability in VS Code** — debug runs auto-inject `--explain`; hover over any resolved step line in a `.hunt` file to see the full per-channel scoring breakdown as a rich Markdown tooltip
+- **💡 Explain Mode Editor Button** — `Manul: Explain Current Step` editor title bar button during debug pause for step-local explanation requests
+- Core engine bump to **0.0.9.5**
+
+### 0.0.94
 - **🔍 Explainable Heuristics** — `--explain` mode shows top-3 candidates with full per-channel score breakdown for every element resolution step
 - **🧠 Visual Explainability (Hover Tooltips)** — debug mode auto-injects `--explain`; hover over any resolved step line to see the full per-channel scoring breakdown as a rich Markdown tooltip. `🔍 Explain Current Step` title bar button during debug pause
 - **📦 Strict Variable Scoping** — 4-level `ScopedVariables` hierarchy (Row → Step → Mission → Global) with zero state leakage across `@data:` iterations
