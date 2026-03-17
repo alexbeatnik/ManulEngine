@@ -3,7 +3,7 @@
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
 
-The official IDE for the **ManulEngine Deterministic Web & Desktop Automation Runtime**.
+The official VS Code extension for the **ManulEngine Deterministic Web & Desktop Automation Runtime**.
 
 Author, run, and debug `.hunt` automation scripts for E2E testing, RPA workflows, synthetic monitoring, and AI-agent execution — all from a single editor. The extension provides Hunt DSL language support, one-click execution, interactive debug stepping, a Step Builder sidebar, configuration UI, and cache management for [ManulEngine](https://github.com/alexbeatnik/ManulEngine).
 
@@ -207,7 +207,7 @@ No more guessing why a step clicked the wrong element. Run a hunt in **Debug Mod
 
 - **ManulEngine** installed in the workspace or globally:
   ```bash
-  pip install manul-engine          # global / user
+   pip install manul-engine==0.0.9.6          # global / user
   # or in a project venv:
   pip install -e .
   ```
@@ -254,7 +254,7 @@ The extension probes the following locations in order (platform-aware):
 
 1. Install ManulEngine:
    ```bash
-   pip install manul-engine
+   pip install manul-engine==0.0.9.6
    playwright install chromium
    ```
 

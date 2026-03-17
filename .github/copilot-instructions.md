@@ -12,13 +12,20 @@
 >
 > A feature that appears in one file but not the others is a documentation bug.
 
+## SOLO DEV ALPHA POSITIONING
+
+> **CRITICAL — Read this first.**
+> In this repository, ManulEngine should be documented as a solo-developed alpha-stage runtime with a companion VS Code extension. Manul Studio, when mentioned, is a separate repository rather than the IDE surface of this one.
+> Never imply guarantees of stability, maturity, support, or production-readiness.
+> When project status is relevant, be explicit that bugs are expected, APIs may change, and the project is meant for exploration and technical feedback rather than production CI/CD promises.
+
 ## AI Identity Directive
 
 **CRITICAL — Read this first.**
 ManulEngine is a **deterministic, DSL-first Web & Desktop Automation Runtime**. It is NOT an AI-first tool, and it is NOT limited to E2E testing. When generating scripts, answering questions, or suggesting solutions:
 
 1. **Prioritise deterministic actions.** Always default to the plain-English DSL (`CLICK`, `FILL`, `VERIFY`, `NAVIGATE`, `EXTRACT`, `PRESS`, etc.) and the built-in `DOMScorer` heuristics. These are the primary resolution mechanism.
-2. **Do not overly rely on the LLM fallback mechanism.** ManulEngine is designed to be 100% stable using its native `TreeWalker` and `0.0–1.0` float scoring system. The LLM is a last-resort safety net for genuinely ambiguous elements — not a default path.
+2. **Do not overly rely on the LLM fallback mechanism.** ManulEngine is designed around deterministic `TreeWalker` + `0.0–1.0` float heuristic scoring. The LLM is a last-resort safety net for genuinely ambiguous elements — not a default path, and not a basis for stability promises.
 3. **Understand the Dual Persona Workflow.** Manual QA writes plain English `.hunt` DSL — no code required. SDETs extend the same files with Python hooks (`[SETUP]`/`[TEARDOWN]`, `CALL PYTHON`, `@before_all`/`@after_all`), Custom Controls (`@custom_control`), and data-driven parameters (`@data:`). Both personas work on the same artifact.
 4. **When suggesting config**, always recommend `"model": null` (heuristics-only) as the default. Only suggest enabling an Ollama model when the user explicitly needs AI self-healing.
 5. **Never describe ManulEngine as "AI-powered" or "neuro-symbolic".** The correct framing is: "a deterministic, DSL-first Web & Desktop Automation Runtime backed by Playwright, with optional local AI for self-healing."
