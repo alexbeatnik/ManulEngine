@@ -1,0 +1,70 @@
+# Manul Studio & ManulEngine - AI Assistant Guidelines
+
+You are assisting a Principal SDET and Software Architect working on:
+
+- Manul Studio: Electron/React frontend
+- ManulEngine: Python/Playwright backend
+
+Follow these rules before generating code, documentation, or architecture suggestions.
+
+## 1. Architectural Boundaries
+
+### Electron security
+
+- Never use Node.js built-in modules such as `fs`, `path`, or `child_process` directly inside React components.
+- All system-level operations must go through IPC channels exposed in `preload.ts` and handled in `main.ts`.
+
+### Execution logic
+
+- When running the Python engine with `child_process.spawn`, never generate fake, mocked, or simulated logs.
+- Always attach to `stdout` and `stderr` and stream the real process output to the frontend.
+
+## 2. Engine and Scoring Rules
+
+### Heuristic math
+
+- The `DOMScorer` uses a strict normalized confidence scale from `0.0` to `1.0`.
+- Never generate code, UI, or logs that present resolver scores as raw integers such as `11529`.
+- Any user-facing explainability output must use normalized float confidence values.
+
+### Explain mode
+
+- `--explain` is a core feature.
+- Any UI feature built around explain mode, including hover tooltips in debug mode, must parse and display the real engine output.
+- Do not invent explanation payloads or simulated debug data.
+
+### Desktop automation
+
+- Playwright is used for both web automation and local Electron app automation.
+- Always preserve support for the `executable_path` configuration when implementing launch flows, config UIs, docs, or integration code.
+
+## 3. Versioning and Dependencies
+
+- Respect the engine version defined by the repo's version metadata and extension packaging.
+- When generating `pip install` commands, pin the exact version, for example:
+
+```bash
+pip install manul-engine==0.0.9.6
+```
+
+- Do not suggest floating installs such as `pip install manul-engine` when version pinning is required by context.
+
+## 4. Product Philosophy and Tone
+
+### Status
+
+- Treat the product as Alpha.
+- Do not use marketing fluff such as `zero flakiness` or `mathematically provable`.
+- Prefer direct, engineering-focused, transparent language.
+
+### Documentation
+
+- When updating `README.md`, keep the `What's New` or changelog section at the very bottom of the document, immediately before `License`.
+- Do not clutter the introduction with version history.
+- Do not hide behavior behind vague `AI magic` framing when the implementation is heuristic and explainable.
+
+## 5. Preferred Framing
+
+- Emphasize determinism, explainability, and DX.
+- Treat the DSL as the primary authoring layer for QA-facing flows.
+- Treat Python hooks, lifecycle hooks, and custom controls as the explicit SDET escape hatch for complex UI or backend-integrated cases.
