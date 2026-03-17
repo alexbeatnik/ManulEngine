@@ -2,7 +2,7 @@
   "name": "manul-engine",
   "displayName": "ManulEngine",
   "description": "Hunt file language support, test runner and configuration UI for ManulEngine browser automation",
-  "version": "0.0.94",
+  "version": "0.0.95",
   "publisher": "manul-engine",
   "icon": "images/icon128.png",
   "repository": {
@@ -160,9 +160,9 @@
         "icon": "$(calendar)"
       },
       {
-        "command": "manul.explainHuntFile",
-        "title": "ManulEngine: Explain Heuristics",
-        "icon": "$(search)"
+        "command": "manul.debug.explainStep",
+        "title": "Manul: Explain Current Step",
+        "icon": "$(lightbulb-autofix)"
       }
     ],
     "menus": {
@@ -183,14 +183,14 @@
           "group": "navigation@3"
         },
         {
+          "command": "manul.debug.explainStep",
+          "when": "resourceExtname == .hunt",
+          "group": "navigation@3b"
+        },
+        {
           "command": "manul.formatHuntFile",
           "when": "resourceExtname == .hunt",
           "group": "navigation@4"
-        },
-        {
-          "command": "manul.explainHuntFile",
-          "when": "resourceExtname == .hunt",
-          "group": "navigation@5"
         }
       ],
       "explorer/context": [
@@ -286,10 +286,19 @@
           ],
           "description": "When to capture browser screenshots during test execution."
         },
-        "manulEngine.explainCodeLens": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show '🔍 Explain Heuristics' CodeLens above actionable steps in .hunt files. Clicking it runs the file with --explain and shows the score breakdown."
+        "manulEngine.browser": {
+          "type": "string",
+          "default": "chromium",
+          "enum": ["chromium", "firefox", "webkit", "chrome", "msedge", "electron"],
+          "enumDescriptions": [
+            "Playwright bundled Chromium (default)",
+            "Playwright bundled Firefox",
+            "Playwright bundled WebKit",
+            "System Google Chrome (Chromium channel)",
+            "System Microsoft Edge (Chromium channel)",
+            "Electron (Embedded View)"
+          ],
+          "description": "Browser engine to use for hunt execution. 'chrome' and 'msedge' use the system-installed browser via Playwright's channel mechanism."
         }
       }
     }

@@ -1,4 +1,5 @@
 {
+  "_note": "ManulEngine configuration. All keys are optional. Env vars MANUL_* always override.",
   "model": null,
   "headless": false,
   "browser": "chromium",

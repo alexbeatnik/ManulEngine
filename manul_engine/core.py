@@ -60,7 +60,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         # None model → heuristics-only mode (AI fully disabled)
         self.model    = model    if model    is not None else prompts.DEFAULT_MODEL
         self.headless = headless if headless is not None else prompts.HEADLESS_MODE
-        _VALID_BROWSERS = ("chromium", "firefox", "webkit")
+        _VALID_BROWSERS = ("chromium", "firefox", "webkit", "electron")
         _b = (browser or prompts.BROWSER).strip().lower()
         self.browser: str = _b if _b in _VALID_BROWSERS else "chromium"
         self.browser_args: list[str] = list(browser_args) if browser_args is not None else list(prompts.BROWSER_ARGS)
@@ -104,6 +104,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         self._debug_continue = False   # set to True by 'Continue All' in debug session
         self._user_break_steps: set[int] = set(break_steps) if break_steps else set()
         self.break_steps: set[int] = set(self._user_break_steps)
+        # Last element-resolution scoring data — used by 'explain' debug command.
+        self._last_explain_data: tuple[str, list[str], list[dict]] | None = None
         # Tracks how many annotation lines have been inserted into the hunt file
         # during this run, so subsequent NAVIGATE steps can offset their line numbers.
         self._annotate_line_offset: int = 0
@@ -509,6 +511,16 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                         except Exception:
                             pass
                         continue  # loop: re-emit the marker
+                    elif resp == "explain":
+                        # Print the heuristic score breakdown for the last resolved
+                        # element, then re-emit the pause marker so the user stays
+                        # paused and can pick another action.
+                        if self._last_explain_data:
+                            _es, _et, _etop = self._last_explain_data
+                            self._print_explain(_es, _et, _etop)
+                        else:
+                            print("    ℹ️  No element resolution data for this step.")
+                        continue  # loop: re-emit the marker
                     elif resp == "debug-stop":
                         # Clear ALL breakpoints (including user-defined gutter ones)
                         # so execution runs to the end without further pauses.
@@ -636,20 +648,22 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             expl = el.get("_explain")
             if expl:
                 print(f"    │")
-                print(f"    │  #{rank}  <{tag}> \"{name}\"  → Total: {score}")
-                print(f"    │       Text:       {expl['text']:>+8d}")
-                print(f"    │       Attributes: {expl['attributes']:>+8d}")
-                print(f"    │       Semantics:  {expl['semantics']:>+8d}")
-                print(f"    │       Proximity:  {expl['proximity']:>+8d}")
-                print(f"    │       Cache:      {expl['cache']:>+8d}")
+                print(f"    │  #{rank}  <{tag}> \"{name}\"  → Total: {expl['total']:.3f}")
+                print(f"    │       Text:       {expl['text']:>+.3f}")
+                print(f"    │       Attributes: {expl['attributes']:>+.3f}")
+                print(f"    │       Semantics:  {expl['semantics']:>+.3f}")
+                print(f"    │       Proximity:  {expl['proximity']:>+.3f}")
+                print(f"    │       Cache:      {expl['cache']:>+.3f}")
                 if expl["penalty"] < 1.0:
                     print(f"    │       Penalty:    ×{expl['penalty']:.1f}")
             else:
                 print(f"    │  #{rank}  <{tag}> \"{name}\"  → Score: {score}")
         winner = top[0]
+        winner_expl = winner.get("_explain")
         winner_name = compact_log_field(winner.get("name", ""), "MANUL_LOG_NAME_MAXLEN")
+        winner_display = f"{winner_expl['total']:.3f}" if winner_expl else str(winner.get("score", 0))
         print(f"    │")
-        print(f"    └─ ✅ Decision: Selected \"{winner_name}\" with score {winner.get('score', 0)}")
+        print(f"    └─ ✅ Decision: Selected \"{winner_name}\" with score {winner_display}")
         print()
 
     # ── Scoring (delegates to scoring module) ─
@@ -765,6 +779,9 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         scored     = self._score_elements(els, step, mode, search_texts, target_field, is_blind)
         top        = scored[:8]
         best_score = top[0].get("score", 0)
+
+        # Store scoring data for on-demand explain during debug pauses.
+        self._last_explain_data = (step, list(search_texts), list(top[:3]))
 
         # ── Explain mode: print per-element score breakdown ──────────────
         if self.explain_mode and top:
@@ -931,25 +948,46 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         print(f"\n🐾 ManulEngine {mode_label}  |  browser: {self.browser}")
 
         async with async_playwright() as p:
-            _launch_args = ["--no-sandbox", "--start-maximized"] if self.browser == "chromium" else []
-            _launch_args = _launch_args + [a for a in self.browser_args if a not in _launch_args]
-            _launch_opts: dict = dict(headless=self.headless, args=_launch_args)
-            if self.channel:
-                if self.browser != "chromium":
-                    raise ValueError(
-                        f"'channel' is only supported for Chromium; "
-                        f"got browser={self.browser!r}, channel={self.channel!r}"
+            if self.browser == "electron":
+                # Electron: connect to a running Chromium instance via CDP.
+                _cdp_port = os.environ.get("MANUL_CDP_PORT", "9222")
+                _cdp_url = f"http://localhost:{_cdp_port}"
+                try:
+                    browser = await p.chromium.connect_over_cdp(_cdp_url)
+                except Exception as _cdp_exc:
+                    print(
+                        f"    ❌ Failed to connect to Electron via CDP at {_cdp_url}: {_cdp_exc}\n"
+                        f"    💡 Ensure the Electron app is running with "
+                        f"--remote-debugging-port={_cdp_port}"
                     )
-                _launch_opts["channel"] = self.channel
-            if self.executable_path:
-                _launch_opts["executable_path"] = self.executable_path
-            browser = await getattr(p, self.browser).launch(**_launch_opts)
-            ctx  = await browser.new_context(
-                no_viewport=True
-            ) if not self.headless else await browser.new_context(
-                viewport={"width": 1920, "height": 1080}
-            )
-            page = await ctx.new_page()
+                    return MissionResult(file=hunt_file or "", name=os.path.basename(hunt_file) if hunt_file else "", status="fail")
+                # Reuse existing context/page from the Electron app.
+                if browser.contexts:
+                    ctx = browser.contexts[0]
+                    page = ctx.pages[0] if ctx.pages else await ctx.new_page()
+                else:
+                    ctx = await browser.new_context()
+                    page = await ctx.new_page()
+            else:
+                _launch_args = ["--no-sandbox", "--start-maximized"] if self.browser == "chromium" else []
+                _launch_args = _launch_args + [a for a in self.browser_args if a not in _launch_args]
+                _launch_opts: dict = dict(headless=self.headless, args=_launch_args)
+                if self.channel:
+                    if self.browser != "chromium":
+                        raise ValueError(
+                            f"'channel' is only supported for Chromium; "
+                            f"got browser={self.browser!r}, channel={self.channel!r}"
+                        )
+                    _launch_opts["channel"] = self.channel
+                if self.executable_path:
+                    _launch_opts["executable_path"] = self.executable_path
+                browser = await getattr(p, self.browser).launch(**_launch_opts)
+                ctx  = await browser.new_context(
+                    no_viewport=True
+                ) if not self.headless else await browser.new_context(
+                    viewport={"width": 1920, "height": 1080}
+                )
+                page = await ctx.new_page()
 
             _has_step_markers = bool(re.search(r'^\s*STEP\s*\d*\s*:', task, re.MULTILINE | re.IGNORECASE))
             _is_numbered = bool(re.match(r'^\s*\d+\.', task))
@@ -970,7 +1008,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                 print("    ❌ No plan produced. If you're running without Ollama, provide a numbered or unnumbered step list.")
 
             if not plan:
-                return MissionResult(file=hunt_file or "", name="", status="fail")
+                return MissionResult(file=hunt_file or "", name=os.path.basename(hunt_file) if hunt_file else "", status="fail")
 
             ok = True
             done = False

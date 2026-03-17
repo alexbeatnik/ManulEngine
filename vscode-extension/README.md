@@ -3,11 +3,11 @@
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
 
-The official IDE for the **ManulEngine Universal Web Automation Runtime**.
+The official IDE for the **ManulEngine Deterministic Web & Desktop Automation Runtime**.
 
 Author, run, and debug `.hunt` automation scripts for E2E testing, RPA workflows, synthetic monitoring, and AI-agent execution — all from a single editor. The extension provides Hunt DSL language support, one-click execution, interactive debug stepping, a Step Builder sidebar, configuration UI, and cache management for [ManulEngine](https://github.com/alexbeatnik/ManulEngine).
 
-ManulEngine is a Playwright-backed runtime that interprets plain-English `.hunt` DSL scripts deterministically — resolving DOM elements with blazing-fast JS heuristics (`DOMScorer` + `TreeWalker`), no CSS selectors, no cloud APIs. Whether you are writing QA test suites, automating repetitive business tasks, or building production health monitors, the workflow is the same: write a `.hunt` file, hit Run.
+ManulEngine is a Playwright-backed runtime that interprets plain-English `.hunt` DSL scripts deterministically — resolving DOM elements with blazing-fast JS heuristics (`DOMScorer` + `TreeWalker`), no CSS selectors, no cloud APIs. Automate browsers and desktop apps (Electron) with the same DSL. Whether you are writing QA test suites, automating repetitive business tasks, or building production health monitors, the workflow is the same: write a `.hunt` file, hit Run.
 
 > The Manul goes hunting and never returns without its prey.
 
@@ -27,12 +27,20 @@ ManulEngine bridges the gap between non-technical authors and engineering teams.
 
 ## VS Code Extension Features
 
-> Hunt DSL language support, one-click runner, interactive debug runner with gutter breakpoints, Step Builder for plain-English `.hunt` scripts, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) — the Universal Web Automation Runtime for E2E testing, RPA, synthetic monitoring, and AI-agent execution.
+> Hunt DSL language support, one-click runner, interactive debug runner with gutter breakpoints, Step Builder for plain-English `.hunt` scripts, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) — the Deterministic Web & Desktop Automation Runtime for E2E testing, RPA, synthetic monitoring, and AI-agent execution.
+
+## 🚀 What's New in v0.0.9.5 — Explain Mode & Hover Tooltips
+
+* **🔍 Run with Explain Mode (Editor Title Button):** A new `$(output)` icon button in the editor title bar (top-right) for `.hunt` files. One click runs the hunt file with `--explain` and streams the full heuristic scoring breakdown to the **ManulEngine: Explain Heuristics** output channel. Registered as `Manul: Run with Explain Mode` (`manul.runExplain`) command.
+* **💡 Hover Tooltips for Debug Scoring:** After running Explain Mode, hover over any actionable step in a `.hunt` file to see a rich Markdown tooltip showing the top-3 element candidates, per-channel score breakdown (text, attributes, semantics, proximity, cache), winner highlight, and 0.0–1.0 confidence scale — directly in your editor. No terminal or external tool needed.
+* **🖥️ Desktop App Testing:** Full support for Electron/Desktop app automation via `executable_path` config and the `OPEN APP` DSL command. Test desktop apps with the same `.hunt` DSL used for web automation.
+
+### Previous highlights (v0.0.9.4)
 
 ## 🚀 What's New in v0.0.9.4 — Hardening & Transparency
 
 * **🔍 Explainable Heuristics (`--explain`):** Run `manul --explain tests/` to see the top-3 candidates for every element resolution step, with full per-channel score breakdowns (text, attributes, semantics, proximity, cache). Audit exactly why ManulEngine chose a particular element — or didn't.
-* **🧠 Visual Explainability (Explain Step CodeLens):** Every actionable step in `.hunt` files now shows a clickable **🔍 Explain Heuristics** CodeLens above it. Click the lens — the extension runs the file with `--explain` and streams the full scoring breakdown to a dedicated **ManulEngine: Explain Heuristics** output channel, auto-focused. No more guessing why a test clicked the wrong element. Toggle via `manulEngine.explainCodeLens` setting.
+* **🧠 Visual Explainability (Hover Tooltips):** Debug mode now auto-injects `--explain`. After a debug run, **hover over any step line** in a `.hunt` file to see the full per-element scoring breakdown (Text, Attributes, Semantics, Proximity, Cache) as a rich Markdown tooltip — attached to the exact line, no output channel needed. During a debug pause, click the `🔍 Explain Current Step` title bar button to trigger an explain action on the paused step.
 * **📦 Strict Variable Scoping:** Runtime memory is now a 4-level hierarchy (Row → Step → Mission → Global). `@data:` row values auto-clear between iterations — zero state leakage across data-driven runs.
 * **🏋️ Benchmark Suite:** 12 adversarial tasks across 4 HTML fixtures comparing ManulEngine heuristics against raw Playwright locators. `python benchmarks/run_benchmarks.py`.
 
@@ -136,7 +144,7 @@ An interactive sidebar panel for editing `manul_engine_configuration.json` witho
 - **Browser Args** — extra launch flags for the browser (comma-separated)
 - **Headless** — run browser headless
 - **Timeouts** — action and navigation timeouts in ms
-- **Persistent Controls Cache / Semantic Cache** — two separate cache toggles: **Persistent Controls Cache** (`controls_cache_enabled`) stores resolved locators on disk per site/page across runs; **Semantic Cache** (`semantic_cache_enabled`) remembers resolved elements within a single run (+200,000 score boost, resets when the process ends). Both default to enabled and can be toggled independently from the sidebar
+- **Persistent Controls Cache / Semantic Cache** — two separate cache toggles: **Persistent Controls Cache** (`controls_cache_enabled`) stores resolved locators on disk per site/page across runs; **Semantic Cache** (`semantic_cache_enabled`) remembers resolved elements within a single run (grants a 1.0 perfect confidence score on reuse, resets when the process ends). Both default to enabled and can be toggled independently from the sidebar
 - **Auto-Annotate Page Navigation** — when enabled, the engine automatically inserts `# 📍 Auto-Nav:` comments in the hunt file whenever the browser URL changes during a run (after clicks, form submissions, etc.) — not just on explicit `NAVIGATE` steps. Page names are resolved from `pages.json`; if no mapping is found the full URL is used instead
 - **Log truncation** — max length for element names and LLM thoughts in logs
 - **Workers** — max number of hunt files to run concurrently in Test Explorer (1–4)
@@ -166,14 +174,13 @@ A sidebar panel that lets you insert hunt steps with a single click — no typin
 - Each click appends to the currently open `.hunt` file and positions the cursor inside the first `''` pair for immediate editing
 - Requires the `.hunt` file to be the active editor tab.
 
-### 🔍 Visual Explainability (Explain Step)
+### 🔍 Visual Explainability (Hover Tooltips)
 
-No more guessing why a step clicked the wrong element. The extension adds a **🔍 Explain Heuristics** CodeLens above every actionable step (Click, Fill, Select, Verify, etc.) in `.hunt` files. Click any lens to run the file with `--explain` and see the full per-element scoring breakdown — Text, Attributes, Semantics, Proximity, Cache — streamed into a dedicated **ManulEngine: Explain Heuristics** output channel that auto-focuses.
+No more guessing why a step clicked the wrong element. Run a hunt in **Debug Mode** (via Test Explorer Debug profile or `--break-lines`), then **hover over any step line** in the `.hunt` file. A rich Markdown tooltip appears instantly, showing the full per-element scoring breakdown — Text, Attributes, Semantics, Proximity, Cache — attached to the exact line.
 
-- **CodeLens integration:** Clickable lens above each actionable step line — one click to see why the engine chose a specific element
-- **Dedicated output channel:** Scoring breakdown is routed to "ManulEngine: Explain Heuristics" — separate from test output
-- **Editor title bar button:** `🔍` icon for quick access without scrolling to a step line
-- **Toggle on/off:** `manulEngine.explainCodeLens` setting (default: `true`)
+- **Hover tooltips:** Rich Markdown tooltip on each resolved step line — see exactly why the engine chose a specific element
+- **Dedicated output channel:** Scoring breakdown is also routed to "ManulEngine: Explain Heuristics" — separate from test output
+- **Editor title bar button:** `🔍 Explain Current Step` icon during debug pause for quick access
 
 ---
 
@@ -304,9 +311,13 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 
 ## Release Notes
 
+### 0.0.95
+- **🔍 Run with Explain Mode** — new `$(output)` editor title bar button for `.hunt` files (`Manul: Explain Current Step` / `manul.debug.explainStep`). Triggers explain on the current debug-paused step
+- Core engine bump to **0.0.9.5**
+
 ### 0.0.94
 - **🔍 Explainable Heuristics** — `--explain` mode shows top-3 candidates with full per-channel score breakdown for every element resolution step
-- **🧠 Visual Explainability (Explain Step CodeLens)** — clickable **🔍 Explain Heuristics** lens above every actionable step in `.hunt` files; runs the file with `--explain` and streams scoring breakdown to a dedicated output channel. Toggle via `manulEngine.explainCodeLens`. Editor title bar `🔍` button for quick access
+- **🧠 Visual Explainability (Hover Tooltips)** — debug mode auto-injects `--explain`; hover over any resolved step line to see the full per-channel scoring breakdown as a rich Markdown tooltip. `🔍 Explain Current Step` title bar button during debug pause
 - **📦 Strict Variable Scoping** — 4-level `ScopedVariables` hierarchy (Row → Step → Mission → Global) with zero state leakage across `@data:` iterations
 - **🏋️ Benchmark Suite** — 12 adversarial tasks across 4 HTML fixtures (`dynamic_ids`, `overlapping`, `nested_tables`, `custom_dropdown`)
 - Core engine bump to **0.0.9.4**

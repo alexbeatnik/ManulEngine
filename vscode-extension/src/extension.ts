@@ -19,7 +19,7 @@ import {
 import { DEFAULT_CONFIG_FILENAME, DEBUG_TERMINAL_NAME, TERMINAL_NAME, getConfigFileName } from "./constants";
 import { HuntDocumentFormatter } from "./formatter";
 import { SchedulerPanel } from "./schedulerPanel";
-import { ExplainLensProvider, explainHuntFile, disposeExplainChannel } from "./explainLensProvider";
+import { ExplainHoverProvider, ExplainOutputParser, clearExplanations } from "./explainHoverProvider";
 
 export function activate(context: vscode.ExtensionContext): void {
   // Output channel reused across debug runs from the editor button / context menu.
@@ -108,11 +108,21 @@ export function activate(context: vscode.ExtensionContext): void {
       debugOutputChannel.show(true);
       debugOutputChannel.appendLine(`🐾 ManulEngine Debug — ${path.basename(target.fsPath)}`);
       const panel = DebugControlPanel.getInstance(context);
+      // Clear previous explain cache for this file and set up the parser
+      const fileUri = target.toString();
+      clearExplanations(fileUri);
+      const explainParser = new ExplainOutputParser(target.fsPath);
       try {
         await runHuntFileDebugPanel(
           manulExe,
           target.fsPath,
-          (chunk) => debugOutputChannel.append(chunk),
+          (chunk) => {
+            debugOutputChannel.append(chunk);
+            // Feed each line to the explain parser to capture scoring data
+            for (const line of chunk.split("\n")) {
+              explainParser.feed(line);
+            }
+          },
           undefined,
           breakLines,
           (step, idx) => panel.showPause(step, idx)
@@ -208,6 +218,12 @@ export function activate(context: vscode.ExtensionContext): void {
       terminal.sendText("h");
     }),
 
+    vscode.commands.registerCommand("manul.debug.explainStep", () => {
+      // Kept for backward compatibility — triggers explain on active QuickPick.
+      const panel = DebugControlPanel.getInstance(context);
+      panel.triggerExplain();
+    }),
+
     vscode.commands.registerCommand("manul.refreshCache", () =>
       cacheProvider.refresh()
     ),
@@ -254,18 +270,17 @@ export function activate(context: vscode.ExtensionContext): void {
     )
   );
 
-  // ── Explain Heuristics CodeLens ────────────────────────────────────────────
+  // ── Explain Heuristics HoverProvider ────────────────────────────────────────
+  // Shows explain scoring data as hover tooltips on lines that were resolved
+  // during a debug run (--explain is auto-injected in debug mode).
   context.subscriptions.push(
-    vscode.languages.registerCodeLensProvider(
+    vscode.languages.registerHoverProvider(
       { language: "hunt" },
-      new ExplainLensProvider()
-    ),
-    vscode.commands.registerCommand("manul.explainHuntFile", (uri?: vscode.Uri) =>
-      explainHuntFile(uri)
+      new ExplainHoverProvider()
     )
   );
 }
 
 export function deactivate(): void {
-  disposeExplainChannel();
+  // no-op — cleanup handled by subscriptions
 }

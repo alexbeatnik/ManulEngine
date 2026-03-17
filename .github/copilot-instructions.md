@@ -15,21 +15,22 @@
 ## AI Identity Directive
 
 **CRITICAL — Read this first.**
-ManulEngine is a **deterministic, DSL-first Universal Web Automation Runtime**. It is NOT an AI-first tool, and it is NOT limited to E2E testing. When generating scripts, answering questions, or suggesting solutions:
+ManulEngine is a **deterministic, DSL-first Web & Desktop Automation Runtime**. It is NOT an AI-first tool, and it is NOT limited to E2E testing. When generating scripts, answering questions, or suggesting solutions:
 
 1. **Prioritise deterministic actions.** Always default to the plain-English DSL (`CLICK`, `FILL`, `VERIFY`, `NAVIGATE`, `EXTRACT`, `PRESS`, etc.) and the built-in `DOMScorer` heuristics. These are the primary resolution mechanism.
 2. **Do not overly rely on the LLM fallback mechanism.** ManulEngine is designed to be 100% stable using its native `TreeWalker` and `0.0–1.0` float scoring system. The LLM is a last-resort safety net for genuinely ambiguous elements — not a default path.
 3. **Understand the Dual Persona Workflow.** Manual QA writes plain English `.hunt` DSL — no code required. SDETs extend the same files with Python hooks (`[SETUP]`/`[TEARDOWN]`, `CALL PYTHON`, `@before_all`/`@after_all`), Custom Controls (`@custom_control`), and data-driven parameters (`@data:`). Both personas work on the same artifact.
 4. **When suggesting config**, always recommend `"model": null` (heuristics-only) as the default. Only suggest enabling an Ollama model when the user explicitly needs AI self-healing.
-5. **Never describe ManulEngine as "AI-powered" or "neuro-symbolic".** The correct framing is: "a deterministic, DSL-first Universal Web Automation Runtime backed by Playwright, with optional local AI for self-healing."
+5. **Never describe ManulEngine as "AI-powered" or "neuro-symbolic".** The correct framing is: "a deterministic, DSL-first Web & Desktop Automation Runtime backed by Playwright, with optional local AI for self-healing."
 6. **Understand the four automation pillars.** ManulEngine scripts (`.hunt` files) can serve as QA/E2E tests, RPA workflows, synthetic monitors, or AI-agent execution targets. The same DSL commands (`NAVIGATE`, `CLICK`, `FILL`, `EXTRACT`, `VERIFY`, `CALL PYTHON`, etc.) apply to all four use cases. When generating `.hunt` files, adapt the structure to the user's intent — a monitoring script may skip `VERIFY` in favour of `EXTRACT`; an RPA script may use `CALL PYTHON` extensively for data processing; an AI-agent script should use strict DSL commands (never raw Playwright calls) for safety.
 
 ## What is this project?
 
-ManulEngine is a deterministic, DSL-first Universal Web Automation Runtime.
+ManulEngine is a deterministic, DSL-first Web & Desktop Automation Runtime.
 It acts as an interpreter for the `.hunt` DSL — a Playwright-backed engine that can run E2E tests, RPA workflows, synthetic monitors, and AI-agent actions.
 It drives Chromium (and optionally Firefox or WebKit) via Playwright, resolves DOM elements with a mathematically sound `DOMScorer` (normalised 0.0–1.0 float scoring across 20+ heuristic signals and a native JavaScript `TreeWalker`),
 and optionally falls back to a local LLM (Ollama) as a self-healing safety net when the heuristics are genuinely ambiguous.
+It also supports desktop app automation via Electron (`executable_path` + `OPEN APP` command).
 It is designed to bypass modern web traps (Shadow DOM, invisible overlays, zero-pixel honeypots, custom dropdowns) entirely locally — no cloud APIs.
 
 The architecture is: `Hunt DSL` → `Parser` → `Execution Engine` → `Controls/Python Hooks` → `Playwright`. This makes ManulEngine a true runtime rather than just a test library — the same engine executes QA suites, RPA automations, cron-scheduled monitors, and constrained AI-agent scripts identically.
@@ -48,7 +49,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.4
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.5
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
@@ -115,7 +116,7 @@ tests/
 benchmarks/
   run_benchmarks.py        Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
 vscode-extension/
-  package.json              Extension manifest (v0.0.94)
+  package.json              Extension manifest (v0.0.95)
   src:
     extension.ts            Activation, command registration, formatter registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
@@ -127,7 +128,8 @@ vscode-extension/
     formatter.ts            DocumentFormattingEditProvider for .hunt files (4-space action indent)
     debugControlPanel.ts    Singleton QuickPick overlay for interactive debug stepping
     constants.ts            Shared constants (DEFAULT_CONFIG_FILENAME, PAUSE_MARKER, terminal names, getConfigFileName(), EXPLAIN_OUTPUT_CHANNEL)
-    explainLensProvider.ts  CodeLens provider for .hunt files (Explain Heuristics lens + --explain execution + output channel)
+    explainLensProvider.ts  CodeLens provider for .hunt files (legacy — not registered in extension.ts)
+    explainHoverProvider.ts  Stores per-line explanation data from --explain debug runs; serves as HoverProvider for .hunt files
   syntaxes/hunt.tmLanguage.json  Hunt file syntax grammar
 ```
 
@@ -649,7 +651,8 @@ A companion extension that provides hunt file language support, Test Explorer in
 * Config panel reads/writes `manul_engine_configuration.json` at the workspace root using `_configPath()`. The config file name is resolved via `getConfigFileName()` from `constants.ts`, which reads the `manulEngine.configFile` VS Code setting.
 * Ollama model discovery: the panel fetches `http://localhost:11434/api/tags` on open and populates a `<select>` dropdown with installed model names (replaced legacy `<datalist>` + `<input>` to fix rendering offset in Electron webview). First option is always `null (heuristics-only)`. The stored model is always preserved as an option even when Ollama is offline.
 * `schedulerPanel.ts` — Advanced Scheduler Dashboard / Visual RPA Manager. `findAllHunts()` scans workspace for **all** `.hunt` files (not just scheduled ones), returns `HuntFileEntry[]` with `relPath`, `absUri`, and `schedule` (empty string if unscheduled). The webview splits files into **Scheduled Tasks** and **Unscheduled Tasks** sections with a **search bar** for filename filtering. Each file row has a `<select>` combobox (preset schedule options: None, every 30 seconds, every 1/5/15 minutes, every hour, daily at 09:00, weekly, Custom…), a hidden/disabled custom text `<input>` that activates when "Custom…" is selected, and an **Apply** button. Apply sends `{ command: 'updateSchedule', filePath: absUri, schedule: '...' }` to the extension. `mutateScheduleHeader(fileUri, schedule)` uses `vscode.WorkspaceEdit` to inject (after last `@`-prefixed metadata line), replace, or remove the `@schedule:` header. The file is saved after mutation and the webview refreshes automatically. **Run History & Sparklines:** `readRunHistory(wsRoot, limit=5)` reads `reports/run_history.json` (JSON Lines), returns a map of filename → last N `RunHistoryRecord` entries. `_sendAllFiles()` posts both `files` and `history` to the webview. The frontend renders a sparkline (pass=🟢, fail=🔴, flaky/warning=🟡) and a relative-time label ("3m ago") per file row.
-* `explainLensProvider.ts` — `ExplainLensProvider` implements `CodeLensProvider` for `.hunt` files. Displays a clickable **🔍 Explain Heuristics** lens above every actionable step line (Click, Fill, Select, Verify, etc.). Skips metadata (`@`), comments (`#`), system-only keywords (NAVIGATE, WAIT, DONE, etc.), and blank lines. Clicking the lens invokes the `manul.explainHuntFile` command, which spawns `manul --explain --workers 1 <huntFile>` and streams output to a dedicated `"ManulEngine: Explain Heuristics"` output channel (auto-focused). The channel name constant lives in `constants.ts` (`EXPLAIN_OUTPUT_CHANNEL`). The CodeLens is toggled via `manulEngine.explainCodeLens` VS Code setting (default: `true`). The command is also available as an editor title bar button (`$(search)` icon, `navigation@5`).
+* `explainLensProvider.ts` — Legacy `ExplainLensProvider` CodeLens provider source file. Currently **not registered** in `extension.ts` or `package.json` (commands `manul.explainHuntFile` / `manul.runExplain` and setting `manulEngine.explainCodeLens` are not contributed). The file remains in the source tree for potential future use but is dead code. The active explain UI is the `ExplainHoverProvider` (see below).
+* `explainHoverProvider.ts` — `ExplainHoverProvider` implements `HoverProvider` for `.hunt` files. During debug runs, `--explain` is auto-injected; `ExplainOutputParser` parses stdout explain blocks (`┌─ 🔍 EXPLAIN` … `└─ ✅ Decision`) keyed by file line number. When the user hovers over a resolved step line, a rich Markdown tooltip with the per-channel scoring breakdown is shown. A separate `manul.debug.explainStep` command (title: "Manul: Explain Current Step", `$(lightbulb-autofix)` icon) is contributed in `package.json` as an editor title bar button; it calls `DebugControlPanel.triggerExplain()` to send `"explain"` via stdin to the paused Python process. The explain output channel name constant lives in `constants.ts` (`EXPLAIN_OUTPUT_CHANNEL`).
 * Build: `cd vscode-extension && npm install && npm run compile`. Use `npx vsce package` to produce a `.vsix`. Press F5 in VS Code with the extension folder open to launch a dev Extension Host.
 
 ## Version Bump Checklist

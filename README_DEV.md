@@ -1,10 +1,10 @@
 
 ---
 
-# 😼 ManulEngine v0.0.9.4 — The Universal Web Automation Runtime
+# 😼 ManulEngine v0.0.9.5 — Deterministic Web & Desktop Automation Runtime
 
-**ManulEngine — The Universal Web Automation Runtime.**
-Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright.
+**ManulEngine — Deterministic Web & Desktop Automation Runtime.**
+Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
 
 No CSS selectors. No XPath fragility. No cloud API bills.
 ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtime that resolves DOM elements with a mathematically sound `DOMScorer` (normalised 0.0–1.0 float scoring across 20+ signals) and a native JavaScript `TreeWalker`. Deterministic, reproducible, and fast enough to run anywhere.
@@ -22,7 +22,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-│   ├── pyproject.toml                        Build config — package: manul-engine 0.0.9.4
+│   ├── pyproject.toml                        Build config — package: manul-engine 0.0.9.5
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
@@ -98,7 +98,7 @@ ManulEngine/
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 └── vscode-extension/                 VS Code extension (language support + UI)
-    └── package.json                  Extension manifest (v0.0.94)
+    └── package.json                  Extension manifest (v0.0.95)
     ├── src/
     │   ├── extension.ts              Activation, command registration, formatter registration
     │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
@@ -157,6 +157,12 @@ ManulEngine is not a test library bolted onto Playwright. It is a **runtime** �
 This architecture is what makes ManulEngine a **true runtime** rather than just a test library. The `.hunt` DSL is the instruction set. The parser and engine are the interpreter. Playwright is the I/O layer. Users write scripts — QA tests, RPA workflows, synthetic monitors, or AI-agent actions — in the same deterministic DSL, and the runtime executes them identically.
 
 ---
+
+## 🚀 What's New in v0.0.9.5 — Explain Mode
+
+* **Run with Explain Mode (VS Code Button):** New `manul.runExplain` command with `$(output)` icon in the editor title bar for `.hunt` files. One click runs the hunt file with `--explain --workers 1` and streams the full heuristic scoring breakdown to the **ManulEngine: Explain Heuristics** output channel. Available alongside the existing CodeLens-based `manul.explainHuntFile`.
+
+### Previous highlights (v0.0.9.4)
 
 ## 🚀 What's New in v0.0.9.4 — Hardening & Transparency
 
@@ -750,7 +756,7 @@ The `prompts/` directory contains ready-to-use LLM prompt templates that let you
 
 ## 🖱️ VS Code Extension
 
-The `vscode-extension/` directory contains a companion VS Code extension (v0.0.94) that provides:
+The `vscode-extension/` directory contains a companion VS Code extension (v0.0.95) that provides:
 
 | Feature | Details |
 | --- | --- |
@@ -787,8 +793,8 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 ---
 
-**Version:** 0.0.9.4
+**Version:** 0.0.9.5
 
-**Codename:** Hardening & Transparency
+**Codename:** Explain Mode
 
 **Status:** Hunting...

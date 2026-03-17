@@ -3,7 +3,55 @@ import * as fs from "fs";
 import * as os from "os";
 import { execFile, spawn, ChildProcess } from "child_process";
 import * as vscode from "vscode";
-import { PAUSE_MARKER, DEBUG_TERMINAL_NAME } from "./constants";
+import { PAUSE_MARKER, DEBUG_TERMINAL_NAME, getConfigFileName } from "./constants";
+
+/**
+ * Read the manulEngine.browser setting and return the CLI flags needed.
+ * For native Playwright browsers (chromium, firefox, webkit) returns
+ * ["--browser", name].  For system-installed channel browsers (chrome,
+ * msedge) returns ["--browser", "chromium"] and sets MANUL_CHANNEL in
+ * the env so the JSON config override is not required.
+ *
+ * If the browser setting is not explicitly set in VS Code (i.e. only the
+ * default value applies), this returns empty args/env so that
+ * manul_engine_configuration.json controls the browser selection.
+ */
+export function getBrowserFlags(): { args: string[]; env: Record<string, string> } {
+  const cfg = vscode.workspace.getConfiguration("manulEngine");
+  const inspected = cfg.inspect<string>("browser");
+  const explicitValue =
+    inspected?.workspaceFolderValue ??
+    inspected?.workspaceValue ??
+    inspected?.globalValue;
+  // No explicit override in VS Code: let the JSON config / engine defaults decide.
+  if (!explicitValue) {
+    return { args: [], env: {} };
+  }
+  const browser = explicitValue.trim().toLowerCase();
+  if (browser === "chrome" || browser === "msedge") {
+    return { args: ["--browser", "chromium"], env: { MANUL_CHANNEL: browser } };
+  }
+  if (browser === "electron") {
+    return { args: ["--browser", "electron"], env: {} };
+  }
+  return { args: ["--browser", browser], env: {} };
+}
+
+/**
+ * Read executable_path from the project's config file (name resolved via
+ * getConfigFileName / manulEngine.configFile). Returns the trimmed string
+ * or undefined if not set.
+ */
+function readExecutablePath(workspaceRoot: string): string | undefined {
+  try {
+    const cfgPath = path.join(workspaceRoot, getConfigFileName());
+    if (!fs.existsSync(cfgPath)) { return undefined; }
+    const raw = JSON.parse(fs.readFileSync(cfgPath, "utf-8"));
+    const ep = raw?.executable_path;
+    if (typeof ep === "string" && ep.trim()) { return ep.trim(); }
+  } catch { /* ignore */ }
+  return undefined;
+}
 
 /**
  * Probe candidate paths in order, then falls back to a one-time async
@@ -180,7 +228,8 @@ export function runHunt(
     try {
       // --workers 1 forces sequential mode so each Test Explorer invocation
       // runs directly in-process (no subprocess spawning overhead / recursion).
-      const spawnArgs = ["--workers", "1"];
+      const browserFlags = getBrowserFlags();
+      const spawnArgs = [...browserFlags.args, "--workers", "1"];
       if (breakLines && breakLines.length > 0) {
         spawnArgs.push("--break-lines", breakLines.join(","));
       }
@@ -198,6 +247,7 @@ export function runHunt(
       // When the setting is false/unset, do NOT inject the env var — this lets the
       // project's manul_engine_configuration.json auto_annotate value take effect.
       const _autoAnnotate = _cfg.get<boolean>("autoAnnotate", false);
+      const _execPath = readExecutablePath(cwd);
       proc = spawn(manulExe, spawnArgs, {
         cwd,
         env: {
@@ -205,7 +255,9 @@ export function runHunt(
           // Force Python to flush stdout immediately — without this, output
           // is block-buffered when piped and steps appear only at the end.
           PYTHONUNBUFFERED: "1",
+          ...browserFlags.env,
           ...(_autoAnnotate ? { MANUL_AUTO_ANNOTATE: "true" } : {}),
+          ...(_execPath ? { MANUL_EXECUTABLE_PATH: _execPath } : {}),
         },
       });
     } catch (err) {
@@ -244,7 +296,7 @@ export function runHuntFileDebugPanel(
   onData: (chunk: string) => void,
   token?: vscode.CancellationToken,
   breakLines?: number[],
-  onPause?: (step: string, idx: number) => Promise<"next" | "continue" | "highlight" | "debug-stop" | "stop-test">
+  onPause?: (step: string, idx: number) => Promise<"next" | "continue" | "highlight" | "explain" | "debug-stop" | "stop-test">
 ): Promise<number> {
   return new Promise((resolve, reject) => {
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(huntFile));
@@ -252,7 +304,10 @@ export function runHuntFileDebugPanel(
 
     // No --debug flag here: we only want to pause at explicit breakpoints
     // (--break-lines).  Adding --debug would pause before every step.
-    const spawnArgs = ["--workers", "1"];
+    // Always inject --explain so heuristic scoring data is available for
+    // the HoverProvider (tooltip on hover over step lines).
+    const browserFlagsPanel = getBrowserFlags();
+    const spawnArgs = [...browserFlagsPanel.args, "--explain", "--workers", "1"];
     if (breakLines && breakLines.length > 0) {
       spawnArgs.push("--break-lines", breakLines.join(","));
     }
@@ -270,13 +325,16 @@ export function runHuntFileDebugPanel(
     let proc: ChildProcess;
     try {
       const _autoAnnotatePanel = _cfgPanel.get<boolean>("autoAnnotate", false);
+      const _execPathPanel = readExecutablePath(cwd);
       proc = spawn(manulExe, spawnArgs, {
         cwd,
         stdio: ["pipe", "pipe", "pipe"],
         env: {
           ...process.env,
           PYTHONUNBUFFERED: "1",
+          ...browserFlagsPanel.env,
           ...(_autoAnnotatePanel ? { MANUL_AUTO_ANNOTATE: "true" } : {}),
+          ...(_execPathPanel ? { MANUL_EXECUTABLE_PATH: _execPathPanel } : {}),
         },
       });
     } catch (err) {
@@ -307,7 +365,7 @@ export function runHuntFileDebugPanel(
           // Show the Webview panel (if onPause provided) or fall back to
           // a notification.  Either way write the response to stdin so the
           // blocked Python readline() unblocks.
-          const pausePromise: Thenable<"next" | "continue" | "highlight" | "debug-stop" | "stop-test"> = onPause
+          const pausePromise: Thenable<"next" | "continue" | "highlight" | "explain" | "debug-stop" | "stop-test"> = onPause
             ? onPause(step, idx)
             : (() => {
                 const shortStep = step.length > 100 ? step.substring(0, 100) + "…" : step;
@@ -323,7 +381,7 @@ export function runHuntFileDebugPanel(
                   );
               })();
           pausePromise.then(
-            (choice: "next" | "continue" | "highlight" | "debug-stop" | "stop-test") => {
+            (choice: "next" | "continue" | "highlight" | "explain" | "debug-stop" | "stop-test") => {
               // Guard against writing to stdin after the process has already
               // exited or the stream has been closed/destroyed (e.g. user
               // pressed Stop while the QuickPick was open).
@@ -378,13 +436,15 @@ export async function runHuntFileDebugInTerminal(
   const isPowerShell = shellBase === "powershell.exe" || shellBase === "pwsh" || shellBase === "pwsh.exe";
   const breakLines = getHuntBreakpointLines(uri.fsPath);
   const breakFlag = breakLines.length > 0 ? ` --break-lines ${breakLines.join(",")}` : "";
+  const termBrowserFlags = getBrowserFlags();
+  const browserFlag = termBrowserFlags.args.length > 0 ? ` ${termBrowserFlags.args.join(" ")}` : "";
   const command = isPowerShell
-    ? `& "${manulExe}" --debug${breakFlag} "${uri.fsPath}"`
-    : `"${manulExe}" --debug${breakFlag} "${uri.fsPath}"`;
+    ? `& "${manulExe}"${browserFlag} --debug${breakFlag} "${uri.fsPath}"`
+    : `"${manulExe}"${browserFlag} --debug${breakFlag} "${uri.fsPath}"`;
   const terminal = vscode.window.createTerminal({
     name: DEBUG_TERMINAL_NAME,
     cwd: workspaceRoot,
-    env: { PYTHONUNBUFFERED: "1" },
+    env: { PYTHONUNBUFFERED: "1", ...termBrowserFlags.env },
   });
   terminal.show();
   terminal.sendText(command);
