@@ -478,6 +478,8 @@ Suggested config for heuristics-only (recommended default — no Ollama needed):
 }
 ```
 
+When documenting the configuration in public-facing docs, do not present a shortened JSON snippet as if it were the full key set. Either label it clearly as a minimal example or include the full current runtime surface area.
+
 Suggested config for enterprise browser (e.g. Chrome stable or Edge):
 
 ```json

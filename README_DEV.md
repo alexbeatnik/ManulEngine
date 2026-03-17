@@ -158,7 +158,7 @@ This architecture is what makes ManulEngine a **true runtime** rather than just 
 
 ---
 
-## 🚀  v0.0.9.6 — Alpha Docs, Explainability, and Version Sync
+## 🚀 What's New in v0.0.9.6 — Alpha Docs, Explainability, and Version Sync
 
 * **Alpha positioning clarified:** Public and internal docs now describe the project as an alpha-stage runtime with strong architecture and evolving APIs. The language was rewritten to avoid absolute claims and focus on deterministic behavior, explainability, and DX.
 * **README rewrite:** The public README now centers on explainable heuristics, Manul Studio hover-based scoring inspection, desktop automation through `executable_path` + `OPEN APP`, dual-persona authoring, and the smart recorder's semantic handling of native `<select>` change events.
@@ -565,7 +565,6 @@ Environment variables (`MANUL_*`) always override JSON values — useful for CI/
 
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
-  "workers": 1,
   "tests_home": "tests",
   "auto_annotate": false,
 

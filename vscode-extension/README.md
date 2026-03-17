@@ -160,6 +160,8 @@ An interactive sidebar panel for editing `manul_engine_configuration.json` witho
 
 Changes are saved to `manul_engine_configuration.json` at the workspace root. An **Add Default Prompts** button copies built-in prompt templates into `prompts/` if they don't already exist. A *Generate Default Config* button creates the file if it doesn't exist yet.
 
+The runtime config file includes the full engine key set, including `browser_args`, `ai_always`, `ai_policy`, `ai_threshold`, `controls_cache_dir`, `tests_home`, `auto_annotate`, `retries`, `screenshot`, and `html_report` in addition to the more commonly edited fields above.
+
 ### 🗂️ Cache Browser
 The **Cache** sidebar tree shows per-site cache entries created by ManulEngine's persistent controls cache. You can:
 - Browse sites and their cached page entries
