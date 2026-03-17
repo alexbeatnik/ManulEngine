@@ -12,17 +12,25 @@
 >
 > A feature that appears in one file but not the others is a documentation bug.
 
+## SOLO DEV ALPHA POSITIONING
+
+> **CRITICAL — Read this first.**
+> In this repository, ManulEngine should be documented as a solo-developed alpha-stage runtime with a companion VS Code extension. Manul Studio, when mentioned, is a separate repository rather than the IDE surface of this one.
+> Never imply guarantees of stability, maturity, support, or production-readiness.
+> When project status is relevant, be explicit that bugs are expected, APIs may change, and the project is meant for exploration and technical feedback rather than production CI/CD promises.
+
 ## AI Identity Directive
 
 **CRITICAL — Read this first.**
 ManulEngine is a **deterministic, DSL-first Web & Desktop Automation Runtime**. It is NOT an AI-first tool, and it is NOT limited to E2E testing. When generating scripts, answering questions, or suggesting solutions:
 
 1. **Prioritise deterministic actions.** Always default to the plain-English DSL (`CLICK`, `FILL`, `VERIFY`, `NAVIGATE`, `EXTRACT`, `PRESS`, etc.) and the built-in `DOMScorer` heuristics. These are the primary resolution mechanism.
-2. **Do not overly rely on the LLM fallback mechanism.** ManulEngine is designed to be 100% stable using its native `TreeWalker` and `0.0–1.0` float scoring system. The LLM is a last-resort safety net for genuinely ambiguous elements — not a default path.
+2. **Do not overly rely on the LLM fallback mechanism.** ManulEngine is designed around deterministic `TreeWalker` + `0.0–1.0` float heuristic scoring. The LLM is a last-resort safety net for genuinely ambiguous elements — not a default path, and not a basis for stability promises.
 3. **Understand the Dual Persona Workflow.** Manual QA writes plain English `.hunt` DSL — no code required. SDETs extend the same files with Python hooks (`[SETUP]`/`[TEARDOWN]`, `CALL PYTHON`, `@before_all`/`@after_all`), Custom Controls (`@custom_control`), and data-driven parameters (`@data:`). Both personas work on the same artifact.
 4. **When suggesting config**, always recommend `"model": null` (heuristics-only) as the default. Only suggest enabling an Ollama model when the user explicitly needs AI self-healing.
 5. **Never describe ManulEngine as "AI-powered" or "neuro-symbolic".** The correct framing is: "a deterministic, DSL-first Web & Desktop Automation Runtime backed by Playwright, with optional local AI for self-healing."
 6. **Understand the four automation pillars.** ManulEngine scripts (`.hunt` files) can serve as QA/E2E tests, RPA workflows, synthetic monitors, or AI-agent execution targets. The same DSL commands (`NAVIGATE`, `CLICK`, `FILL`, `EXTRACT`, `VERIFY`, `CALL PYTHON`, etc.) apply to all four use cases. When generating `.hunt` files, adapt the structure to the user's intent — a monitoring script may skip `VERIFY` in favour of `EXTRACT`; an RPA script may use `CALL PYTHON` extensively for data processing; an AI-agent script should use strict DSL commands (never raw Playwright calls) for safety.
+7. **When updating public docs, keep the runtime-reference layer intact.** README.md is not only a landing page. It should retain concrete sections for explainability layers, configuration surface, automation pillars, desktop automation, hooks/variables orchestration, and test/benchmark coverage.
 
 ## What is this project?
 
@@ -49,7 +57,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.5
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.6
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
@@ -116,7 +124,7 @@ tests/
 benchmarks/
   run_benchmarks.py        Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
 vscode-extension/
-  package.json              Extension manifest (v0.0.95)
+  package.json              Extension manifest (v0.0.96)
   src:
     extension.ts            Activation, command registration, formatter registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
@@ -477,6 +485,9 @@ Suggested config for heuristics-only (recommended default — no Ollama needed):
   "controls_cache_enabled": true
 }
 ```
+
+When documenting the configuration in public-facing docs, do not present a shortened JSON snippet as if it were the full key set. Either label it clearly as a minimal example or include the full current runtime surface area.
+The public README should keep the configuration key table and representative `MANUL_*` override examples because users rely on it as the shortest runtime reference, not only as marketing-facing intro text.
 
 Suggested config for enterprise browser (e.g. Chrome stable or Edge):
 

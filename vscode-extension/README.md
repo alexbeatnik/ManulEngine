@@ -3,7 +3,7 @@
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
 
-The official IDE for the **ManulEngine Deterministic Web & Desktop Automation Runtime**.
+The official VS Code extension for the **ManulEngine Deterministic Web & Desktop Automation Runtime**.
 
 Author, run, and debug `.hunt` automation scripts for E2E testing, RPA workflows, synthetic monitoring, and AI-agent execution — all from a single editor. The extension provides Hunt DSL language support, one-click execution, interactive debug stepping, a Step Builder sidebar, configuration UI, and cache management for [ManulEngine](https://github.com/alexbeatnik/ManulEngine).
 
@@ -11,8 +11,10 @@ ManulEngine is a Playwright-backed runtime that interprets plain-English `.hunt`
 
 > The Manul goes hunting and never returns without its prey.
 
-> **Zero AI required. Zero cloud dependency. Zero flakiness by design.**
-> Playwright speed. Heuristic precision. Optional local micro-LLMs via Ollama — only when you need them.
+> **Status: Alpha.**
+> **Developed by a single person.**
+>
+> The extension and runtime are feature-rich, but they are still being battle-tested on real-world projects. There are no promises or guarantees of stability. The goal is strong debugging ergonomics and transparent execution, not inflated claims.
 
 ---
 
@@ -28,67 +30,6 @@ ManulEngine bridges the gap between non-technical authors and engineering teams.
 ## VS Code Extension Features
 
 > Hunt DSL language support, one-click runner, interactive debug runner with gutter breakpoints, Step Builder for plain-English `.hunt` scripts, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) — the Deterministic Web & Desktop Automation Runtime for E2E testing, RPA, synthetic monitoring, and AI-agent execution.
-
-## 🚀 What's New in v0.0.9.5 — Explain Mode & Hover Tooltips
-
-* **🔍 Run with Explain Mode (Editor Title Button):** A new `$(output)` icon button in the editor title bar (top-right) for `.hunt` files. One click runs the hunt file with `--explain` and streams the full heuristic scoring breakdown to the **ManulEngine: Explain Heuristics** output channel. Registered as `Manul: Run with Explain Mode` (`manul.runExplain`) command.
-* **💡 Hover Tooltips for Debug Scoring:** After running Explain Mode, hover over any actionable step in a `.hunt` file to see a rich Markdown tooltip showing the top-3 element candidates, per-channel score breakdown (text, attributes, semantics, proximity, cache), winner highlight, and 0.0–1.0 confidence scale — directly in your editor. No terminal or external tool needed.
-* **🖥️ Desktop App Testing:** Full support for Electron/Desktop app automation via `executable_path` config and the `OPEN APP` DSL command. Test desktop apps with the same `.hunt` DSL used for web automation.
-
-### Previous highlights (v0.0.9.4)
-
-## 🚀 What's New in v0.0.9.4 — Hardening & Transparency
-
-* **🔍 Explainable Heuristics (`--explain`):** Run `manul --explain tests/` to see the top-3 candidates for every element resolution step, with full per-channel score breakdowns (text, attributes, semantics, proximity, cache). Audit exactly why ManulEngine chose a particular element — or didn't.
-* **🧠 Visual Explainability (Hover Tooltips):** Debug mode now auto-injects `--explain`. After a debug run, **hover over any step line** in a `.hunt` file to see the full per-element scoring breakdown (Text, Attributes, Semantics, Proximity, Cache) as a rich Markdown tooltip — attached to the exact line, no output channel needed. During a debug pause, click the `🔍 Explain Current Step` title bar button to trigger an explain action on the paused step.
-* **📦 Strict Variable Scoping:** Runtime memory is now a 4-level hierarchy (Row → Step → Mission → Global). `@data:` row values auto-clear between iterations — zero state leakage across data-driven runs.
-* **🏋️ Benchmark Suite:** 12 adversarial tasks across 4 HTML fixtures comparing ManulEngine heuristics against raw Playwright locators. `python benchmarks/run_benchmarks.py`.
-
-### Previous highlights (v0.0.9.3)
-
-## 🚀 What's New in v0.0.9.3 — The Scheduler Update
-
-* **📅 Advanced Scheduler Dashboard (Visual RPA Manager):** A dedicated editor Webview panel (`ManulEngine: Open Scheduler Dashboard` command) that scans the workspace for **all** `.hunt` files — not just scheduled ones. The dashboard splits files into **Scheduled Tasks** (files with an existing `@schedule:` header) and **Unscheduled Tasks** sections. A **live search bar** at the top filters both lists by filename. Each file row includes a **combobox** with preset schedule options (`every 5 minutes`, `hourly`, `daily at 09:00`, `Custom...`, etc.) and an **Apply** button that injects, updates, or removes the `@schedule:` header directly in the `.hunt` file — no manual editing required. The dashboard also shows a live status indicator (green when the daemon is running, grey when stopped) and provides **Start Daemon** / **Stop Daemon** buttons. Start spawns `manul daemon <tests_home> --headless` in a dedicated `"Manul Daemon"` terminal; Stop disposes the terminal. The dashboard command appears as a calendar icon in the title bar of all ManulEngine sidebar views.
-* **`@schedule:` Header Support:** Hunt files now support `@schedule: every 5 minutes` (and other expressions: `every N seconds/minutes/hours`, `daily at HH:MM`, `every monday`, `every friday at 14:30`). The engine's built-in scheduler runs these files on their declared schedule via `manul daemon <directory>` — no external cron required.
-* **🔴 Record Session Button:** The Step Builder sidebar includes a **Record Session** button — enter a URL and click to launch `manul record <URL>` in the integrated terminal, capturing browser actions as `.hunt` DSL in real time.
-* **Self-Healing Controls Cache:** Stale cache entries are detected and auto-healed at runtime. `🩹 HEALED` events in the HTML report.
-
-### Previous highlights (v0.0.9.2)
-
-## 🚀 What's New in v0.0.9.2 — The Mastermind
-
-* **🎨 Auto-Formatter for `.hunt` Files:** Press `Shift+Alt+F` (or enable Format on Save) to auto-format any `.hunt` file. Action lines and inline comments under `STEP` or hook blocks are indented with 4 spaces; metadata headers (`@context:`, `@var:`, `@tags:`, `@data:`), `STEP` headers, hook block markers (`[SETUP]`/`[TEARDOWN]`), top-level comments, and `DONE.` remain flush-left.
-* **`SET` Command:** `SET {variable} = value` assigns or overrides a runtime variable mid-flight. Both `{braced}` and bare-key forms accepted. Syntax-highlighted in `.hunt` files.
-* **YAML-Like Indentation:** Hunt files now support clean hierarchical formatting — action lines can be indented under `STEP` headers. The parser strips all leading whitespace before processing.
-* **Enterprise Browser & Electron Support:** New `channel` and `executable_path` config keys in the Config Panel — target installed browser channels (`"chrome"`, `"msedge"`) or custom executables (Electron). Env var overrides: `MANUL_CHANNEL`, `MANUL_EXECUTABLE_PATH`.
-* **`OPEN APP` Command:** New DSL command for Electron/Desktop app testing — attaches to the app's default window instead of navigating to a URL. Syntax-highlighted in `.hunt` files.
-
-### Previous highlights (v0.0.9.1)
-
-## 🚀 What's New in v0.0.9.1 — Enterprise DSL
-
-* **Data-Driven Testing (`@data:`):** Declare `@data: users.csv` or `@data: data.json` in hunt file headers. The engine loads each row and reruns the mission with row values injected as `{placeholders}`. Supports JSON and CSV.
-* **Network Interception:** `MOCK GET "/api/users" with 'mocks/users.json'` intercepts requests via Playwright `page.route()`. `WAIT FOR RESPONSE "/api/data"` blocks until a matching response arrives. Syntax-highlighted in `.hunt` files.
-* **Visual Regression:** `VERIFY VISUAL 'Logo'` takes an element screenshot and compares it against a stored baseline. Baselines saved in `visual_baselines/` next to the hunt file.
-* **Soft Assertions:** `VERIFY SOFTLY that 'Warning' is present` records a failure but continues execution. Soft failures surface as `"warning"` status in CLI and HTML reporter.
-* **Reporter Warning Status:** Amber `⚠️ Warning` badges, step-level warning styling, soft-errors block, and a "Show Warnings" filter checkbox.
-
-### Previous highlights (v0.0.9.0)
-
-## 🚀 What's New in v0.0.9.0 — The Power User Update
-
-* **`VERIFY ... is ENABLED`:** State verification now supports both `ENABLED` and `DISABLED` checks. The Step Builder includes a dedicated 🔓 **Verify enabled** button alongside the existing 🔒 **Verify disabled** button.
-* **`CALL PYTHON` with Arguments:** Hook functions and inline `CALL PYTHON` steps now accept positional arguments — static strings, unquoted tokens, and `{var}` placeholders resolved at runtime. The Step Builder offers four Python step variants: plain call, call with args, call with capture, and call with args + capture.
-* **`ENABLED` Syntax Highlighting:** The `ENABLED` keyword is now highlighted in `.hunt` files alongside `DISABLED`, `NOT`, and other state modifiers.
-
-### Previous highlights
-* **Normalised Heuristic Scoring (DOMScorer):** Scoring rewritten with `0.0–1.0` float arithmetic. Five weighted channels — `cache`, `semantics`, `text`, `attributes`, `proximity` — combined via `WEIGHTS` dict and `SCALE=177,778`. `data-qa` exact match is the single strongest signal. Penalties are clean multipliers: disabled ×0.0, hidden ×0.1.
-* **TreeWalker-Based DOM Scanner:** `SNAPSHOT_JS` walks the DOM with `document.createTreeWalker()` and a `PRUNE` set. Subtrees rejected in one hop — zero wasted traversal. Visibility via `checkVisibility()` API with `offsetWidth/offsetHeight` fallback.
-* **Safe iframe Support:** `_snapshot()` iterates `page.frames`, injects snapshot JS per frame, tags elements with `frame_index`. Cross-origin frames silently skipped; stale indices fall back to main frame.
-* **Clean, Unnumbered DSL:** Scripts read like plain English (`NAVIGATE to url` instead of `1. NAVIGATE to url`).
-* **Logical STEP Grouping:** `STEP [optional number]: [Description]` blocks map manual QA cases directly into `.hunt` files.
-* **Interactive Enterprise HTML Reporter:** Dual-mode, zero-dependency reporter with native HTML5 accordions, auto-expanding failures, Flexbox layout, **"Show Only Failed" toggle**, and **tag filter chips**.
-* **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, `@after_group` orchestrate DB seeding and auth. `ctx.variables` serialise across parallel `--workers`.
 
 ## Features
 
@@ -152,6 +93,10 @@ An interactive sidebar panel for editing `manul_engine_configuration.json` witho
 
 Changes are saved to `manul_engine_configuration.json` at the workspace root. An **Add Default Prompts** button copies built-in prompt templates into `prompts/` if they don't already exist. A *Generate Default Config* button creates the file if it doesn't exist yet.
 
+The runtime config file includes the full engine key set, including `browser_args`, `ai_always`, `ai_policy`, `ai_threshold`, `controls_cache_dir`, `tests_home`, `auto_annotate`, `retries`, `screenshot`, and `html_report` in addition to the more commonly edited fields above.
+
+The root README is intended to remain the public runtime reference for that same config surface, including the full key table and representative `MANUL_*` override examples. The panel edits the full runtime config file, not a reduced extension-specific subset.
+
 ### 🗂️ Cache Browser
 The **Cache** sidebar tree shows per-site cache entries created by ManulEngine's persistent controls cache. You can:
 - Browse sites and their cached page entries
@@ -197,7 +142,7 @@ No more guessing why a step clicked the wrong element. Run a hunt in **Debug Mod
 
 - **ManulEngine** installed in the workspace or globally:
   ```bash
-  pip install manul-engine          # global / user
+  pip install manul-engine==0.0.9.6          # global / user
   # or in a project venv:
   pip install -e .
   ```
@@ -244,7 +189,7 @@ The extension probes the following locations in order (platform-aware):
 
 1. Install ManulEngine:
    ```bash
-   pip install manul-engine
+   pip install manul-engine==0.0.9.6
    playwright install chromium
    ```
 
@@ -311,8 +256,14 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 
 ## Release Notes
 
+### 0.0.96
+
+- Core engine bump to **0.0.9.6**
+- Documentation refresh: alpha status, explainability-first positioning, and desktop automation guidance
+
 ### 0.0.95
-- **🔍 Run with Explain Mode** — new `$(output)` editor title bar button for `.hunt` files (`Manul: Explain Current Step` / `manul.debug.explainStep`). Triggers explain on the current debug-paused step
+- **🧠 Visual Explainability in VS Code** — debug runs auto-inject `--explain`; hover over any resolved step line in a `.hunt` file to see the full per-channel scoring breakdown as a rich Markdown tooltip
+- **💡 Explain Mode Editor Button** — `Manul: Explain Current Step` editor title bar button during debug pause for step-local explanation requests
 - Core engine bump to **0.0.9.5**
 
 ### 0.0.94

@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.0.9.5 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.6 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -11,8 +11,10 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 
 > The Manul goes hunting and never returns without its prey.
 
-> **Zero AI required. Zero cloud dependency. Zero flakiness by design.**
-> Playwright speed. Heuristic precision. Optional local micro-LLMs via Ollama — only when you need them.
+> **Status: Alpha.**
+> **Developed by a single person.**
+>
+> The architecture is strong, but the project is still being battle-tested on real-world DOMs. Bugs are expected, APIs may evolve, and there are no promises or guarantees of stability. The goal is transparent failure analysis rather than inflated promises.
 
 ---
 
@@ -22,7 +24,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-│   ├── pyproject.toml                        Build config — package: manul-engine 0.0.9.5
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.6
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
@@ -98,7 +100,7 @@ ManulEngine/
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 └── vscode-extension/                 VS Code extension (language support + UI)
-    └── package.json                  Extension manifest (v0.0.95)
+    └── package.json                  Extension manifest (v0.0.96)
     ├── src/
     │   ├── extension.ts              Activation, command registration, formatter registration
     │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
@@ -156,50 +158,6 @@ ManulEngine is not a test library bolted onto Playwright. It is a **runtime** �
 
 This architecture is what makes ManulEngine a **true runtime** rather than just a test library. The `.hunt` DSL is the instruction set. The parser and engine are the interpreter. Playwright is the I/O layer. Users write scripts — QA tests, RPA workflows, synthetic monitors, or AI-agent actions — in the same deterministic DSL, and the runtime executes them identically.
 
----
-
-## 🚀 What's New in v0.0.9.5 — Explain Mode
-
-* **Run with Explain Mode (VS Code Button):** New `manul.runExplain` command with `$(output)` icon in the editor title bar for `.hunt` files. One click runs the hunt file with `--explain --workers 1` and streams the full heuristic scoring breakdown to the **ManulEngine: Explain Heuristics** output channel. Available alongside the existing CodeLens-based `manul.explainHuntFile`.
-
-### Previous highlights (v0.0.9.4)
-
-## 🚀 What's New in v0.0.9.4 — Hardening & Transparency
-
-* **Explainable Heuristics (`--explain`):** `DOMScorer` can now emit a per-candidate channel breakdown (text, attributes, semantics, proximity, cache) alongside the final score. Enabled via `manul --explain tests/` or `MANUL_EXPLAIN=1`. The top-3 candidates for each resolution step are printed to the console with full score-channel details, making it trivial to audit why a particular element was chosen — or wasn't.
-* **Strict Variable Scoping (`ScopedVariables`):** The runtime memory system (`self.memory`) is replaced by a `ScopedVariables` 4-level hierarchy (Row → Step → Mission → Global). `@data:` row values are injected at `row` scope and auto-cleared between iterations; `EXTRACT` and `CALL PYTHON ... into {var}` capture at `step` scope; `@var:` declarations live at `mission` scope; lifecycle hooks (`@before_all`) populate `global` scope. Zero state leakage between data-driven iterations.
-* **Benchmark Suite (`benchmarks/`):** 12 adversarial tasks across 4 HTML fixtures (`dynamic_ids`, `overlapping`, `nested_tables`, `custom_dropdown`) comparing ManulEngine heuristic resolution against raw Playwright locators. Run with `python benchmarks/run_benchmarks.py`.
-
-### Previous highlights (v0.0.9.3)
-
-## 🚀 What's New in v0.0.9.3 — The Scheduler Update
-
-* **Built-in Scheduler (`@schedule:` + `manul daemon`):** `parse_hunt_file()` extracts the new `@schedule:` header into the 10th field of `ParsedHunt`. `manul_engine/scheduler.py` implements `parse_schedule()` (6 regex patterns: interval N units, unit shorthands, daily at HH:MM, every weekday, every weekday at HH:MM) returning a frozen `Schedule` dataclass, plus `next_run_delay()` and `_seconds_until_time/weekday()` helpers. `daemon_main(args)` is the CLI entry point: discovers `*.hunt` files with `@schedule:`, launches one `asyncio.Task` per file in an infinite sleep→run→log loop, and runs forever. No external dependencies (no APScheduler, no cron). The `manul daemon <directory>` subcommand is routed in `cli.py` alongside `scan` and `record`.
-* **Advanced Scheduler Dashboard (VS Code Extension):** `schedulerPanel.ts` — a `WebviewPanel`-based Visual RPA Manager. `findAllHunts()` scans workspace for **all** `.hunt` files (reads first 20 lines per file, early-exits on step lines), returning both scheduled and unscheduled entries. HTML renders a **search bar** (filters by filename), **Scheduled Tasks** / **Unscheduled Tasks** split sections, per-file schedule editor (preset `<select>` combobox + custom text input + Apply button), status dot (green when running, grey when stopped), and Start/Stop/Refresh controls. `mutateScheduleHeader()` uses `vscode.WorkspaceEdit` to inject, replace, or remove `@schedule:` lines in `.hunt` files. The `updateSchedule` message handler bridges the webview UI to the file mutation logic. Start spawns `manul daemon <tests_home> --headless` in a `"Manul Daemon"` terminal; Stop disposes it. Command `manul-engine.openScheduler` registered in `extension.ts` with a `$(calendar)` icon in all sidebar view titles.
-* **Persistent Run History & Sparklines:** `reporting.py` exposes `append_run_history(mission)` — appends a JSON Lines record (`file`, `name`, `timestamp`, `status`, `duration_ms`) to `reports/run_history.json`. Hooked in `cli.py` (sequential loop, parallel subprocess results, `@before_all`/`@before_group` failure paths) and `scheduler.py` (`_run_scheduled_job()`). `schedulerPanel.ts` imports `fs`, adds `RunHistoryRecord` interface and `readRunHistory(wsRoot, limit=5)` function that parses the JSON Lines file and returns the last N records per filename. `_sendAllFiles()` posts `{ files, history }` to the webview. Frontend JS renders a sparkline (colour-coded dots: green=pass, red=fail, yellow=flaky/warning) and relative-time label ("3m ago") per file row.
-* **Self-Healing Controls Cache:** The persistent controls cache now detects stale entries. When a cached locator no longer matches any live DOM candidate, the engine re-resolves via heuristics, updates the cache, and logs `🩹 HEALED`. Stale-but-unhealed entries surface as `⚠️ STALE` warnings in the HTML report.
-* **Semantic Test Recorder (`manul record`):** `recorder.py` injects a recording overlay into the browser; user actions (click, type, navigate) are captured and translated into `.hunt` DSL in real time. `manul record <URL>` launches the recorder and saves a hunt file to `tests_home/`.
-
-### Previous highlights (v0.0.9.2)
-
-## 🚀 What's New in v0.0.9.2 — The Mastermind
-
-* **YAML-Like Indentation:** The step parser (`run_mission()`) now strips all leading whitespace from every step line before classification. Hunt files can use clean hierarchical formatting — action lines indented under `STEP` headers — without affecting execution. Tabs and mixed indentation are handled identically. The VS Code extension ships a built-in **Auto-Formatter** (registered as a `DocumentFormattingEditProvider` in `formatter.ts`) that enforces 4-space indentation for action lines under `STEP` blocks.
-* **`SET` Command — Mid-Flight Variable Assignment:** `SET {variable} = value` is classified by `classify_step()` as `"set_var"` and handled directly in the step loop. Regex: `^SET\s+\{?(\w+)\}?\s*=\s*(.+)$`. Both `{braced}` and bare-key forms accepted. Quoted values are auto-unquoted via `strip('"').strip("'")`. The variable is written to `self.memory[key]` immediately. Works alongside `@var:` (pre-populated via `initial_vars` before step 1) and `EXTRACT` (populated mid-flight from DOM text).
-* **Enterprise Browser & Electron Support:** New `channel` and `executable_path` config keys in `prompts.py` (`_KEY_MAP` entries + module constants). `core.py` `__init__` reads `prompts.CHANNEL` / `prompts.EXECUTABLE_PATH`; `run_mission()` builds a `_launch_opts` dict and conditionally adds `channel` / `executable_path` kwargs to `browser.launch()`. Enables targeting installed browser channels (`"chrome"`, `"msedge"`) or custom executables (Electron). Env var overrides: `MANUL_CHANNEL`, `MANUL_EXECUTABLE_PATH`.
-* **`OPEN APP` — Desktop/Electron Attachment:** New step kind `"open_app"` in `classify_step()` (regex: `\bOPEN\s+APP\b`). Handler `_handle_open_app(page, ctx)` in `actions.py` returns `tuple[bool, page]` — checks `ctx.pages` for an existing Electron window, falls back to `ctx.wait_for_event("page")`, then calls `wait_for_load_state("domcontentloaded")`. The `page` variable in `run_mission()` is reassigned from the returned tuple because the handler returns the Electron app's actual window (different from the initially-created empty page).
-* **VS Code Auto-Formatter (`formatter.ts`):** New `DocumentFormattingEditProvider` for `.hunt` files. Classifies each line as metadata (`@context:`, `@var:`, `@tags:`, `@data:`, `@blueprint:`), hook block (`[SETUP]`, `[TEARDOWN]`, `[END SETUP]`, `[END TEARDOWN]`), comment (`#`), STEP header, `DONE.`, or action — and indents actions with 4 spaces. All other line types remain flush-left. Registered via `vscode.languages.registerDocumentFormattingEditProvider('hunt', ...)`.
-
-### Previous highlights (v0.0.9.1)
-
-## 🚀 What's New in v0.0.9.1 — Enterprise DSL
-
-* **Data-Driven Testing (`@data:`):** Declare `@data: users.csv` or `@data: data.json` in any `.hunt` file header. The engine loads each row (JSON array-of-objects or CSV via `DictReader`) and reruns the entire mission with row values injected as `{placeholders}`. Implemented in `cli.py` — `parse_hunt_file()` extracts the path into `ParsedHunt.data_file`; `_load_data_file()` resolves the path relative to hunt dir → CWD; `_run_hunt_file()` iterates rows, calls `manul.reset_session_state()` between iterations, and aggregates step results and soft errors.
-* **Network Interception (`MOCK` / `WAIT FOR RESPONSE`):** `MOCK GET "/api/users" with 'mocks/users.json'` intercepts matching requests via Playwright `page.route()` with glob pattern `**{path}` and fulfills them from a local JSON file. `WAIT FOR RESPONSE "/api/data"` blocks until a matching network response arrives (uses `page.wait_for_response()` with substring match). Handlers in `actions.py`: `_handle_mock()`, `_handle_wait_for_response()`.
-* **Visual Regression (`VERIFY VISUAL`):** `VERIFY VISUAL 'Logo'` resolves the element via heuristics, takes `loc.screenshot()`, saves a baseline PNG in `visual_baselines/` next to the hunt file on first run, and pixel-compares on subsequent runs. Uses PIL/Pillow `ImageChops.difference` when available (configurable threshold, default 1%), falls back to raw byte comparison. Handler: `_handle_verify_visual()`, static helper: `_compare_images()`.
-* **Soft Assertions (`VERIFY SOFTLY`):** `VERIFY SOFTLY that 'Warning' is present` delegates to `_handle_verify()` (strips `SOFTLY` keyword) but does **not** break the step loop on failure. Failures are recorded in `_soft_errors: list[str]` and surfaced as `"warning"` status in `MissionResult`. The run continues to completion. Handler: `_handle_verify_softly()`.
-* **HTML Reporter — Warning Status:** New amber `⚠️ Warning` stat card, `badge-warning` / `step-warning` / `status-warning` CSS classes, `soft-errors` block with `<ul>` list inside mission details, and a "Show Warnings" filter checkbox in the control panel (mutual exclusion with "Show Only Failed"). `RunSummary.warning` counter; pass-rate includes warnings.
-
 ### Previous Engine Overhaul
 
 ## 🚀 What's New: The Engine Overhaul
@@ -214,6 +172,8 @@ This architecture is what makes ManulEngine a **true runtime** rather than just 
 
 ## ✨ Key Features
 
+The public README is expected to preserve a richer runtime-reference layer, not only product positioning. In practice that means keeping explicit sections for explainability layers, four automation pillars, desktop automation, state/hook orchestration, and benchmark/test coverage.
+
 ### 🔍 Why ManulEngine?
 
 Most "AI testing" tools are cloud-dependent wrappers that trade speed and reliability for hype. ManulEngine takes the opposite approach.
@@ -223,6 +183,16 @@ Most "AI testing" tools are cloud-dependent wrappers that trade speed and reliab
 **Dual Persona Workflow — Testing for Humans, Power for Engineers.** QA engineers write `.hunt` files in a plain-English DSL — no programming required. SDETs extend the same files with Python hooks, Custom Controls, and data-driven parameters. Both personas work on the same artifact.
 
 **Optional AI Fallback — Off by Default.** AI (Ollama / local micro-LLMs) is **turned off by default** (`"model": null`). When enabled, it acts as a self-healing fallback — only invoked when heuristic confidence drops below a threshold. No cloud calls. No per-click charges. No flaky non-determinism in your CI pipeline.
+
+### 🔍 Explainability Layers
+
+The public/runtime docs should describe explainability as a multi-layer workflow:
+
+- CLI `--explain` for raw candidate ranking and per-channel breakdowns.
+- VS Code title bar action for step-local explain requests during a debug pause.
+- VS Code hover tooltips for line-attached breakdowns after debug runs.
+
+This is part of the product definition, not a side note.
 
 ### ⚡ Heuristics Engine — The Mathematical Core
 
@@ -522,7 +492,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine
+pip install manul-engine==0.0.9.6
 playwright install chromium
 ```
 
@@ -538,6 +508,8 @@ ollama serve
 
 Create `manul_engine_configuration.json` in your project root. All keys are optional.
 Environment variables (`MANUL_*`) always override JSON values — useful for CI/CD.
+
+The public README is expected to keep the full current runtime surface area plus representative `MANUL_*` override examples. Do not collapse it to a minimal JSON snippet unless it is clearly labelled as a minimal example.
 
 ```json
 {
@@ -558,12 +530,13 @@ Environment variables (`MANUL_*`) always override JSON values — useful for CI/
 
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
-  "workers": 1,
   "tests_home": "tests",
   "auto_annotate": false,
 
   "channel": null,
   "executable_path": null,
+
+  "workers": 1,
 
   "retries": 0,
   "screenshot": "on-fail",
@@ -756,7 +729,7 @@ The `prompts/` directory contains ready-to-use LLM prompt templates that let you
 
 ## 🖱️ VS Code Extension
 
-The `vscode-extension/` directory contains a companion VS Code extension (v0.0.95) that provides:
+The `vscode-extension/` directory contains a companion VS Code extension (v0.0.96 for the `0.0.9.6` runtime line) that provides:
 
 | Feature | Details |
 | --- | --- |
@@ -793,8 +766,59 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 ---
 
-**Version:** 0.0.9.5
+**Version:** 0.0.9.6
 
 **Codename:** Explain Mode
 
 **Status:** Hunting...
+
+---
+
+## 🚀 What's New in v0.0.9.6 — Alpha Docs, Explainability, and Version Sync
+
+* **Alpha positioning clarified:** Public and internal docs now describe the project as an alpha-stage runtime with strong architecture and evolving APIs. The language was rewritten to avoid absolute claims and focus on deterministic behavior, explainability, and DX.
+* **README rewrite:** The public README now centers on explainable heuristics, VS Code extension hover-based scoring inspection, desktop automation through `executable_path` + `OPEN APP`, dual-persona authoring, and the smart recorder's semantic handling of native `<select>` change events.
+
+### Previous highlights (v0.0.9.5)
+
+## 🚀 What's New in v0.0.9.5 — Explain Mode
+
+* **Run with Explain Mode (VS Code Button):** New `manul.runExplain` command with `$(output)` icon in the editor title bar for `.hunt` files. One click runs the hunt file with `--explain --workers 1` and streams the full heuristic scoring breakdown to the **ManulEngine: Explain Heuristics** output channel. Available alongside the existing CodeLens-based `manul.explainHuntFile`.
+
+### Previous highlights (v0.0.9.4)
+
+## 🚀 What's New in v0.0.9.4 — Hardening & Transparency
+
+* **Explainable Heuristics (`--explain`):** `DOMScorer` can now emit a per-candidate channel breakdown (text, attributes, semantics, proximity, cache) alongside the final score. Enabled via `manul --explain tests/` or `MANUL_EXPLAIN=1`. The top-3 candidates for each resolution step are printed to the console with full score-channel details, making it trivial to audit why a particular element was chosen — or wasn't.
+* **Strict Variable Scoping (`ScopedVariables`):** The runtime memory system (`self.memory`) is replaced by a `ScopedVariables` 4-level hierarchy (Row → Step → Mission → Global). `@data:` row values are injected at `row` scope and auto-cleared between iterations; `EXTRACT` and `CALL PYTHON ... into {var}` capture at `step` scope; `@var:` declarations live at `mission` scope; lifecycle hooks (`@before_all`) populate `global` scope. Zero state leakage between data-driven iterations.
+* **Benchmark Suite (`benchmarks/`):** 12 adversarial tasks across 4 HTML fixtures (`dynamic_ids`, `overlapping`, `nested_tables`, `custom_dropdown`) comparing ManulEngine heuristic resolution against raw Playwright locators. Run with `python benchmarks/run_benchmarks.py`.
+
+### Previous highlights (v0.0.9.3)
+
+## 🚀 What's New in v0.0.9.3 — The Scheduler Update
+
+* **Built-in Scheduler (`@schedule:` + `manul daemon`):** `parse_hunt_file()` extracts the new `@schedule:` header into the 10th field of `ParsedHunt`. `manul_engine/scheduler.py` implements `parse_schedule()` (6 regex patterns: interval N units, unit shorthands, daily at HH:MM, every weekday, every weekday at HH:MM) returning a frozen `Schedule` dataclass, plus `next_run_delay()` and `_seconds_until_time/weekday()` helpers. `daemon_main(args)` is the CLI entry point: discovers `*.hunt` files with `@schedule:`, launches one `asyncio.Task` per file in an infinite sleep→run→log loop, and runs forever. No external dependencies (no APScheduler, no cron). The `manul daemon <directory>` subcommand is routed in `cli.py` alongside `scan` and `record`.
+* **Advanced Scheduler Dashboard (VS Code Extension):** `schedulerPanel.ts` — a `WebviewPanel`-based Visual RPA Manager. `findAllHunts()` scans workspace for **all** `.hunt` files (reads first 20 lines per file, early-exits on step lines), returning both scheduled and unscheduled entries. HTML renders a **search bar** (filters by filename), **Scheduled Tasks** / **Unscheduled Tasks** split sections, per-file schedule editor (preset `<select>` combobox + custom text input + Apply button), status dot (green when running, grey when stopped), and Start/Stop/Refresh controls. `mutateScheduleHeader()` uses `vscode.WorkspaceEdit` to inject, replace, or remove `@schedule:` lines in `.hunt` files. The `updateSchedule` message handler bridges the webview UI to the file mutation logic. Start spawns `manul daemon <tests_home> --headless` in a `"Manul Daemon"` terminal; Stop disposes it. Command `manul-engine.openScheduler` registered in `extension.ts` with a `$(calendar)` icon in all sidebar view titles.
+* **Persistent Run History & Sparklines:** `reporting.py` exposes `append_run_history(mission)` — appends a JSON Lines record (`file`, `name`, `timestamp`, `status`, `duration_ms`) to `reports/run_history.json`. Hooked in `cli.py` (sequential loop, parallel subprocess results, `@before_all`/`@before_group` failure paths) and `scheduler.py` (`_run_scheduled_job()`). `schedulerPanel.ts` imports `fs`, adds `RunHistoryRecord` interface and `readRunHistory(wsRoot, limit=5)` function that parses the JSON Lines file and returns the last N records per filename. `_sendAllFiles()` posts `{ files, history }` to the webview. Frontend JS renders a sparkline (colour-coded dots: green=pass, red=fail, yellow=flaky/warning) and relative-time label ("3m ago") per file row.
+* **Self-Healing Controls Cache:** The persistent controls cache now detects stale entries. When a cached locator no longer matches any live DOM candidate, the engine re-resolves via heuristics, updates the cache, and logs `🩹 HEALED`. Stale-but-unhealed entries surface as `⚠️ STALE` warnings in the HTML report.
+* **Semantic Test Recorder (`manul record`):** `recorder.py` injects a recording overlay into the browser; user actions (click, type, navigate) are captured and translated into `.hunt` DSL in real time. `manul record <URL>` launches the recorder and saves a hunt file to `tests_home/`.
+
+### Previous highlights (v0.0.9.2)
+
+## 🚀 What's New in v0.0.9.2 — The Mastermind
+
+* **YAML-Like Indentation:** The step parser (`run_mission()`) now strips all leading whitespace from every step line before classification. Hunt files can use clean hierarchical formatting — action lines indented under `STEP` headers — without affecting execution. Tabs and mixed indentation are handled identically. The VS Code extension ships a built-in **Auto-Formatter** (registered as a `DocumentFormattingEditProvider` in `formatter.ts`) that enforces 4-space indentation for action lines under `STEP` blocks.
+* **`SET` Command — Mid-Flight Variable Assignment:** `SET {variable} = value` is classified by `classify_step()` as `"set_var"` and handled directly in the step loop. Regex: `^SET\s+\{?(\w+)\}?\s*=\s*(.+)$`. Both `{braced}` and bare-key forms accepted. Quoted values are auto-unquoted via `strip('"').strip("'")`. The variable is written to `self.memory[key]` immediately. Works alongside `@var:` (pre-populated via `initial_vars` before step 1) and `EXTRACT` (populated mid-flight from DOM text).
+* **Enterprise Browser & Electron Support:** New `channel` and `executable_path` config keys in `prompts.py` (`_KEY_MAP` entries + module constants). `core.py` `__init__` reads `prompts.CHANNEL` / `prompts.EXECUTABLE_PATH`; `run_mission()` builds a `_launch_opts` dict and conditionally adds `channel` / `executable_path` kwargs to `browser.launch()`. Enables targeting installed browser channels (`"chrome"`, `"msedge"`) or custom executables (Electron). Env var overrides: `MANUL_CHANNEL`, `MANUL_EXECUTABLE_PATH`.
+* **`OPEN APP` — Desktop/Electron Attachment:** New step kind `"open_app"` in `classify_step()` (regex: `\bOPEN\s+APP\b`). Handler `_handle_open_app(page, ctx)` in `actions.py` returns `tuple[bool, page]` — checks `ctx.pages` for an existing Electron window, falls back to `ctx.wait_for_event("page")`, then calls `wait_for_load_state("domcontentloaded")`. The `page` variable in `run_mission()` is reassigned from the returned tuple because the handler returns the Electron app's actual window (different from the initially-created empty page).
+* **VS Code Auto-Formatter (`formatter.ts`):** New `DocumentFormattingEditProvider` for `.hunt` files. Classifies each line as metadata (`@context:`, `@var:`, `@tags:`, `@data:`, `@blueprint:`), hook block (`[SETUP]`, `[TEARDOWN]`, `[END SETUP]`, `[END TEARDOWN]`), comment (`#`), STEP header, `DONE.`, or action — and indents actions with 4 spaces. All other line types remain flush-left. Registered via `vscode.languages.registerDocumentFormattingEditProvider('hunt', ...)`.
+
+### Previous highlights (v0.0.9.1)
+
+## 🚀 What's New in v0.0.9.1 — Enterprise DSL
+
+* **Data-Driven Testing (`@data:`):** Declare `@data: users.csv` or `@data: data.json` in any `.hunt` file header. The engine loads each row (JSON array-of-objects or CSV via `DictReader`) and reruns the entire mission with row values injected as `{placeholders}`. Implemented in `cli.py` — `parse_hunt_file()` extracts the path into `ParsedHunt.data_file`; `_load_data_file()` resolves the path relative to hunt dir → CWD; `_run_hunt_file()` iterates rows, calls `manul.reset_session_state()` between iterations, and aggregates step results and soft errors.
+* **Network Interception (`MOCK` / `WAIT FOR RESPONSE`):** `MOCK GET "/api/users" with 'mocks/users.json'` intercepts matching requests via Playwright `page.route()` with glob pattern `**{path}` and fulfills them from a local JSON file. `WAIT FOR RESPONSE "/api/data"` blocks until a matching network response arrives (uses `page.wait_for_response()` with substring match). Handlers in `actions.py`: `_handle_mock()`, `_handle_wait_for_response()`.
+* **Visual Regression (`VERIFY VISUAL`):** `VERIFY VISUAL 'Logo'` resolves the element via heuristics, takes `loc.screenshot()`, saves a baseline PNG in `visual_baselines/` next to the hunt file on first run, and pixel-compares on subsequent runs. Uses PIL/Pillow `ImageChops.difference` when available (configurable threshold, default 1%), falls back to raw byte comparison. Handler: `_handle_verify_visual()`, static helper: `_compare_images()`.
+* **Soft Assertions (`VERIFY SOFTLY`):** `VERIFY SOFTLY that 'Warning' is present` delegates to `_handle_verify()` (strips `SOFTLY` keyword) but does **not** break the step loop on failure. Failures are recorded in `_soft_errors: list[str]` and surfaced as `"warning"` status in `MissionResult`. The run continues to completion. Handler: `_handle_verify_softly()`.
+* **HTML Reporter — Warning Status:** New amber `⚠️ Warning` stat card, `badge-warning` / `step-warning` / `status-warning` CSS classes, `soft-errors` block with `<ul>` list inside mission details, and a "Show Warnings" filter checkbox in the control panel (mutual exclusion with "Show Only Failed"). `RunSummary.warning` counter; pass-rate includes warnings.
