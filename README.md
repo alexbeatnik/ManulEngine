@@ -16,7 +16,7 @@ Deterministic, DSL-first web and desktop automation on top of Playwright, with e
 
 **This project is currently in Alpha. While the core architecture is solid, it is actively being battle-tested. Bugs are expected, APIs may evolve, and there are no promises about stability.**
 
-ManulEngine is deliberately positioned as an engineering tool, not a marketing story. It is being built in the open by one person. The core claim is transparency: when a step works, you should understand why; when it fails, you should have enough signal to diagnose it.
+ManulEngine is deliberately positioned as an engineering tool, not a marketing story. The core claim is transparency: when a step works, you should understand why; when it fails, you should have enough signal to diagnose it.
 
 ## Core Philosophy
 

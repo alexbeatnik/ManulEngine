@@ -12,7 +12,9 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 > The Manul goes hunting and never returns without its prey.
 
 > **Status: Alpha.**
-> The architecture is strong, but the project is still being battle-tested on real-world DOMs. Bugs are expected, APIs may evolve, and the goal is transparent failure analysis rather than inflated promises.
+> **Developed by a single person.**
+>
+> The architecture is strong, but the project is still being battle-tested on real-world DOMs. Bugs are expected, APIs may evolve, and there are no promises or guarantees of stability. The goal is transparent failure analysis rather than inflated promises.
 
 ---
 
