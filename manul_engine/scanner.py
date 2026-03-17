@@ -36,21 +36,21 @@ def _is_useful(identifier: str, kind: str) -> bool:
     return True
 
 
-def _map_to_step(step_num: int, kind: str, identifier: str) -> str:
-    """Convert a scanned element into a single numbered hunt step."""
+def _map_to_step(kind: str, identifier: str) -> str:
+    """Convert a scanned element into a plain hunt action line (no number prefix)."""
     i = identifier.strip()
     if kind == "input":
-        return f"{step_num}. Fill '{i}' with ''"
+        return f"Fill '{i}' with ''"
     if kind == "select":
-        return f"{step_num}. Select '' from '{i}' dropdown"
+        return f"Select '' from '{i}' dropdown"
     if kind == "checkbox":
-        return f"{step_num}. Check the checkbox for '{i}'"
+        return f"Check the checkbox for '{i}'"
     if kind == "radio":
-        return f"{step_num}. Click the radio button for '{i}'"
+        return f"Click the radio button for '{i}'"
     if kind == "link":
-        return f"{step_num}. Click the '{i}' link"
+        return f"Click the '{i}' link"
     # button / role=button / fallback
-    return f"{step_num}. Click the '{i}' button"
+    return f"Click the '{i}' button"
 
 
 def build_hunt(url: str, elements: list[dict]) -> str:
@@ -73,8 +73,9 @@ def build_hunt(url: str, elements: list[dict]) -> str:
         f"@context: Auto-generated scan for {url}",
         "@title: scan-draft",
         "",
-        "1. NAVIGATE to " + url,
-        "2. WAIT 2",
+        f"STEP 1:\n    NAVIGATE to {url}",
+        "",
+        f"STEP 2:\n    WAIT 2",
         "",
     ]
 
@@ -93,11 +94,12 @@ def build_hunt(url: str, elements: list[dict]) -> str:
             continue
         seen_labels.add(dedup_key)
 
-        lines.append(_map_to_step(step, kind, identifier))
+        action = _map_to_step(kind, identifier)
+        lines.append(f"STEP {step}:\n    {action}")
+        lines.append("")
         step += 1
 
-    lines.append("")
-    lines.append(f"{step}. DONE.")
+    lines.append("DONE.")
 
     return "\n".join(lines) + "\n"
 
