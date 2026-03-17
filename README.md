@@ -279,14 +279,14 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.6
+pip install manul-engine==0.0.9.7
 playwright install
 ```
 
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.6"
+pip install "manul-engine[ai]==0.0.9.7"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -536,6 +536,11 @@ Representative coverage areas include Shadow DOM, iframe routing, DOMScorer weig
 
 That matters because the point of the README is not just positioning. It is also the shortest complete runtime reference.
 
+## What's New in v0.0.9.7
+
+- New VS Code extension icon.
+- Version bump across all project files.
+
 ## What's New in v0.0.9.6
 
 - The public README was rewritten around the actual current posture of the project: alpha-stage, technically ambitious, but still being battle-tested.
@@ -548,6 +553,6 @@ That matters because the point of the README is not just positioning. It is also
 
 ## License
 
-**Version:** 0.0.9.6
+**Version:** 0.0.9.7
 
 Apache-2.0.

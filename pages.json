@@ -22,5 +22,9 @@
     "https://en.wikipedia.org/": {
         "Domain": "Auto: en.wikipedia.org/wiki/Main_Page",
         "https://en.wikipedia.org/wiki/Main_Page": "Auto: en.wikipedia.org/wiki/Main_Page"
+    },
+    "https://www.facebook.com/": {
+        "Domain": "Auto: www.facebook.com",
+        "https://www.facebook.com/": "Auto: www.facebook.com"
     }
 }

@@ -256,6 +256,11 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 
 ## Release Notes
 
+### 0.0.97
+
+- New extension icon
+- Core engine bump to **0.0.9.7**
+
 ### 0.0.96
 
 - Core engine bump to **0.0.9.6**
