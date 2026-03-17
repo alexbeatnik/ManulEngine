@@ -49,7 +49,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.5
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.6
 manul_engine/
   __init__.py              public API — re-exports ManulEngine
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
@@ -116,7 +116,7 @@ tests/
 benchmarks/
   run_benchmarks.py        Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
 vscode-extension/
-  package.json              Extension manifest (v0.0.95)
+  package.json              Extension manifest (v0.0.96)
   src:
     extension.ts            Activation, command registration, formatter registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root

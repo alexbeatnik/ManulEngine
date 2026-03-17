@@ -1,7 +1,7 @@
 
 ---
 
-# 😼 ManulEngine v0.0.9.5 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.6 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -11,8 +11,8 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 
 > The Manul goes hunting and never returns without its prey.
 
-> **Zero AI required. Zero cloud dependency. Zero flakiness by design.**
-> Playwright speed. Heuristic precision. Optional local micro-LLMs via Ollama — only when you need them.
+> **Status: Alpha.**
+> The architecture is strong, but the project is still being battle-tested on real-world DOMs. Bugs are expected, APIs may evolve, and the goal is transparent failure analysis rather than inflated promises.
 
 ---
 
@@ -22,7 +22,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-│   ├── pyproject.toml                        Build config — package: manul-engine 0.0.9.5
+│   ├── pyproject.toml                        Build config — package: manul-engine 0.0.9.6
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine
@@ -98,7 +98,7 @@ ManulEngine/
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 └── vscode-extension/                 VS Code extension (language support + UI)
-    └── package.json                  Extension manifest (v0.0.95)
+    └── package.json                  Extension manifest (v0.0.96)
     ├── src/
     │   ├── extension.ts              Activation, command registration, formatter registration
     │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
@@ -157,6 +157,13 @@ ManulEngine is not a test library bolted onto Playwright. It is a **runtime** �
 This architecture is what makes ManulEngine a **true runtime** rather than just a test library. The `.hunt` DSL is the instruction set. The parser and engine are the interpreter. Playwright is the I/O layer. Users write scripts — QA tests, RPA workflows, synthetic monitors, or AI-agent actions — in the same deterministic DSL, and the runtime executes them identically.
 
 ---
+
+## 🚀  v0.0.9.6 — Alpha Docs, Explainability, and Version Sync
+
+* **Alpha positioning clarified:** Public and internal docs now describe the project as an alpha-stage runtime with strong architecture and evolving APIs. The language was rewritten to avoid absolute claims and focus on deterministic behavior, explainability, and DX.
+* **README rewrite:** The public README now centers on explainable heuristics, Manul Studio hover-based scoring inspection, desktop automation through `executable_path` + `OPEN APP`, dual-persona authoring, and the smart recorder's semantic handling of native `<select>` change events.
+
+### Previous highlights (v0.0.9.5)
 
 ## 🚀 What's New in v0.0.9.5 — Explain Mode
 
@@ -756,7 +763,7 @@ The `prompts/` directory contains ready-to-use LLM prompt templates that let you
 
 ## 🖱️ VS Code Extension
 
-The `vscode-extension/` directory contains a companion VS Code extension (v0.0.95) that provides:
+The `vscode-extension/` directory contains a companion VS Code extension (v0.0.96 for the `0.0.9.6` runtime line) that provides:
 
 | Feature | Details |
 | --- | --- |
@@ -793,7 +800,7 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 ---
 
-**Version:** 0.0.9.5
+**Version:** 0.0.9.6
 
 **Codename:** Explain Mode
 

@@ -11,8 +11,8 @@ ManulEngine is a Playwright-backed runtime that interprets plain-English `.hunt`
 
 > The Manul goes hunting and never returns without its prey.
 
-> **Zero AI required. Zero cloud dependency. Zero flakiness by design.**
-> Playwright speed. Heuristic precision. Optional local micro-LLMs via Ollama — only when you need them.
+> **Status: Alpha.**
+> The extension and runtime are feature-rich, but they are still being battle-tested on real-world projects. The goal is strong debugging ergonomics and transparent execution, not inflated claims.
 
 ---
 
@@ -28,6 +28,14 @@ ManulEngine bridges the gap between non-technical authors and engineering teams.
 ## VS Code Extension Features
 
 > Hunt DSL language support, one-click runner, interactive debug runner with gutter breakpoints, Step Builder for plain-English `.hunt` scripts, configuration UI, and cache browser for [ManulEngine](https://github.com/alexbeatnik/ManulEngine) — the Deterministic Web & Desktop Automation Runtime for E2E testing, RPA, synthetic monitoring, and AI-agent execution.
+
+## 🚀 What's New in v0.0.9.6 — Alpha UX Positioning and Runtime Sync
+
+* **Runtime sync:** Extension docs are now aligned with ManulEngine `0.0.9.6` and the extension manifest `0.0.96`.
+* **Explainability-first messaging:** The extension is documented as an inspection and debugging surface for deterministic heuristics, especially the `[🔍 Explain]` action and hover-based score breakdowns in Debug mode.
+* **Desktop automation positioning:** The docs now explicitly frame `executable_path` + `OPEN APP` as a first-class workflow for Electron apps.
+
+### Previous highlights (v0.0.9.5)
 
 ## 🚀 What's New in v0.0.9.5 — Explain Mode & Hover Tooltips
 
@@ -311,11 +319,12 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 
 ## Release Notes
 
-### 0.0.95
-- **🔍 Run with Explain Mode** — new `$(output)` editor title bar button for `.hunt` files (`Manul: Explain Current Step` / `manul.debug.explainStep`). Triggers explain on the current debug-paused step
-- Core engine bump to **0.0.9.5**
+### 0.0.96
 
-### 0.0.94
+- Core engine bump to **0.0.9.6**
+- Documentation refresh: alpha status, explainability-first positioning, and desktop automation guidance
+
+### 0.0.95
 - **🔍 Explainable Heuristics** — `--explain` mode shows top-3 candidates with full per-channel score breakdown for every element resolution step
 - **🧠 Visual Explainability (Hover Tooltips)** — debug mode auto-injects `--explain`; hover over any resolved step line to see the full per-channel scoring breakdown as a rich Markdown tooltip. `🔍 Explain Current Step` title bar button during debug pause
 - **📦 Strict Variable Scoping** — 4-level `ScopedVariables` hierarchy (Row → Step → Mission → Global) with zero state leakage across `@data:` iterations
