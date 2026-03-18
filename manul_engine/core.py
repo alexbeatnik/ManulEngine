@@ -37,7 +37,7 @@ from .js_scripts import SNAPSHOT_JS
 from .scoring import score_elements
 from .actions import _ActionsMixin
 from .cache import _ControlsCacheMixin
-from .controls import load_custom_controls, get_custom_control
+from .controls import load_custom_controls, get_custom_control, extract_required_controls
 from .reporting import StepResult, MissionResult
 from .variables import ScopedVariables
 
@@ -55,6 +55,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         disable_cache:  bool          = False,
         semantic_cache: "bool | None" = None,     # None → read from config/env
         explain_mode:   bool          = False,
+        required_controls: "set[str] | None" = None,  # lazy-load: filenames from extract_required_controls
         **_kwargs,
     ):
         # None model → heuristics-only mode (AI fully disabled)
@@ -116,7 +117,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             print("    ℹ️  No model configured — running in heuristics-only mode (AI disabled).")
         if self.debug_mode:
             print("    🐛 Debug mode ON — engine will pause before each step.")
-        load_custom_controls(str(Path.cwd()))  # idempotent — skips if already loaded for this path
+        load_custom_controls(str(Path.cwd()), required_modules=required_controls)
 
     def reset_session_state(self) -> None:
         """Clear in-memory caches and runtime (row/step) variables.

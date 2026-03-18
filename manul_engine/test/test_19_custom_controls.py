@@ -26,8 +26,11 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 
 from manul_engine.controls import (
     _CUSTOM_CONTROLS,
+    _LOADED_FILES,
     custom_control,
+    extract_required_controls,
     get_custom_control,
+    load_custom_controls,
 )
 
 # ── Test helpers ──────────────────────────────────────────────────────────────
@@ -265,6 +268,111 @@ async def _test_interception() -> None:
         _CUSTOM_CONTROLS.update(saved)
 
 
+# ── Section 3: Pre-flight extraction & lazy loading ──────────────────────────
+
+def _test_extraction_and_lazy_loading() -> None:
+    import tempfile
+    import shutil
+
+    print("\n  ── Pre-flight extraction & lazy loading ─────────────────────")
+
+    # Create a temporary workspace with a controls/ directory.
+    tmpdir = tempfile.mkdtemp(prefix="manul_ctrl_test_")
+    controls_dir = os.path.join(tmpdir, "controls")
+    os.makedirs(controls_dir)
+
+    try:
+        # Write two control files — one matching and one not.
+        with open(os.path.join(controls_dir, "booking.py"), "w") as f:
+            f.write(
+                "from manul_engine.controls import custom_control\n"
+                "@custom_control(page='Booking Page', target='React Datepicker')\n"
+                "async def handle(page, action_type, value): pass\n"
+            )
+        with open(os.path.join(controls_dir, "admin.py"), "w") as f:
+            f.write(
+                "from manul_engine.controls import custom_control\n"
+                "@custom_control(page='Admin Page', target='User Table')\n"
+                "async def handle(page, action_type, value): pass\n"
+            )
+        # Also a file that should be skipped (underscore prefix).
+        with open(os.path.join(controls_dir, "_internal.py"), "w") as f:
+            f.write("# internal helper — should never be imported\n")
+
+        # 3a. extract_required_controls finds only the matching file.
+        mission = "Fill 'React Datepicker' with '2026-12-25'"
+        needed = extract_required_controls(mission, tmpdir)
+        _assert(
+            needed == {"booking.py"},
+            "extract finds only the file with matching target",
+            f"got={needed}",
+        )
+
+        # 3b. extract with no matching targets returns empty set.
+        mission_no_match = "Click the 'Submit' button"
+        needed_empty = extract_required_controls(mission_no_match, tmpdir)
+        _assert(
+            needed_empty == set(),
+            "extract returns empty set when no control matches",
+            f"got={needed_empty}",
+        )
+
+        # 3c. extract with multiple targets finds all matching files.
+        mission_both = "Fill 'React Datepicker' with 'today'\nClick 'User Table'"
+        needed_both = extract_required_controls(mission_both, tmpdir)
+        _assert(
+            needed_both == {"booking.py", "admin.py"},
+            "extract finds multiple matching files",
+            f"got={needed_both}",
+        )
+
+        # 3d. extract with no controls/ directory returns empty set.
+        empty_dir = tempfile.mkdtemp(prefix="manul_no_ctrl_")
+        try:
+            needed_no_dir = extract_required_controls(mission, empty_dir)
+            _assert(
+                needed_no_dir == set(),
+                "extract returns empty set when controls/ dir absent",
+                f"got={needed_no_dir}",
+            )
+        finally:
+            shutil.rmtree(empty_dir)
+
+        # 3e. Lazy load only the targeted file — registry gets only that handler.
+        saved = dict(_CUSTOM_CONTROLS)
+        saved_files = set(_LOADED_FILES)
+        _CUSTOM_CONTROLS.clear()
+        _LOADED_FILES.clear()
+        try:
+            load_custom_controls(tmpdir, required_modules={"booking.py"})
+            _assert(
+                get_custom_control("Booking Page", "React Datepicker") is not None,
+                "lazy-loaded booking.py registered its handler",
+            )
+            _assert(
+                get_custom_control("Admin Page", "User Table") is None,
+                "admin.py was NOT loaded (lazy mode skipped it)",
+            )
+
+            # 3f. Per-file idempotency: calling again does not re-import.
+            # Replace the handler — if re-imported, it would be overwritten.
+            sentinel = lambda p, a, v: None  # noqa: E731
+            _CUSTOM_CONTROLS[("booking page", "react datepicker")] = sentinel
+            load_custom_controls(tmpdir, required_modules={"booking.py"})
+            _assert(
+                get_custom_control("Booking Page", "React Datepicker") is sentinel,
+                "per-file idempotency: second lazy call did not re-import",
+            )
+        finally:
+            _CUSTOM_CONTROLS.clear()
+            _CUSTOM_CONTROLS.update(saved)
+            _LOADED_FILES.clear()
+            _LOADED_FILES.update(saved_files)
+
+    finally:
+        shutil.rmtree(tmpdir)
+
+
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 async def run_suite() -> bool:
@@ -278,11 +386,12 @@ async def run_suite() -> bool:
 
     _test_registry()
     await _test_interception()
+    _test_extraction_and_lazy_loading()
 
     total = _PASS + _FAIL
     print(f"\n📊 SCORE: {_PASS}/{total} passed")
     if _PASS == total:
-        print("👑 19/19 PERFECT! CUSTOM CONTROLS ARE ROCK SOLID! 👑")
+        print(f"👑 {total}/{total} PERFECT! CUSTOM CONTROLS ARE ROCK SOLID! 👑")
     return _PASS == total
 
 

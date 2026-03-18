@@ -33,6 +33,7 @@ Both sync and async handlers are supported.
 from __future__ import annotations
 
 import importlib.util
+import re
 from pathlib import Path
 from typing import Callable
 
@@ -40,10 +41,16 @@ from typing import Callable
 # key: (page_name_lower, target_name_lower) → handler callable
 _CUSTOM_CONTROLS: dict[tuple[str, str], Callable] = {}
 
-# Tracks which workspace dirs have already been loaded to prevent re-execution
-# of control module top-level code when multiple ManulEngine instances are
-# created in the same process (e.g. synthetic test suite).
+# Tracks which workspace dirs have been fully (eagerly) loaded to prevent
+# re-execution when multiple ManulEngine instances are created in the same
+# process (e.g. synthetic test suite).
 _LOADED_DIRS: set[str] = set()
+
+# Per-file idempotency: tracks individual files that have been imported
+# (by resolved absolute path).  Shared between eager and lazy modes so a
+# file that was already lazily loaded is never re-imported by a later eager
+# call, and vice versa.
+_LOADED_FILES: set[str] = set()
 
 
 def custom_control(page: str, target: str) -> Callable:
@@ -74,35 +81,112 @@ def get_custom_control(page_name: str, target_name: str) -> Callable | None:
     return _CUSTOM_CONTROLS.get(key)
 
 
-def load_custom_controls(workspace_dir: str) -> None:
-    """Dynamically import all ``.py`` files in ``<workspace_dir>/controls/``.
+# ── Pre-compiled regex for source-level target extraction ─────────────────────
+# Matches @custom_control(page="...", target="...") with single or double quotes.
+_RE_DECORATOR_TARGET = re.compile(
+    r'@custom_control\s*\([^)]*target\s*=\s*["\']([^"\']+)["\']',
+)
 
-    Idempotent: if *workspace_dir* has already been loaded in this process,
-    the call is a no-op.  This prevents repeated execution of module-level code
-    (e.g. print statements, expensive imports) when multiple ``ManulEngine``
-    instances are created in the same process.
+# Matches CALL PYTHON <module>.<function> — captures the module part.
+_RE_CALL_PYTHON_MODULE = re.compile(
+    r'\bCALL\s+PYTHON\s+([A-Za-z_][A-Za-z0-9_.]*)\.([A-Za-z_][A-Za-z0-9_]*)\b',
+    re.IGNORECASE,
+)
+
+
+def extract_required_controls(
+    mission_text: str,
+    workspace_dir: str,
+) -> set[str]:
+    """Pre-flight scan: identify which ``controls/*.py`` files are needed.
+
+    Parses the mission text for quoted target strings, then scans each
+    ``.py`` file in ``<workspace_dir>/controls/`` at the **source level**
+    (no import) for ``@custom_control(... target="...")`` decorators whose
+    target matches any quoted token from the hunt steps.
+
+    Returns a set of **filenames** (e.g. ``{"booking.py", "checkout.py"}``).
+    Returns an empty set when no controls directory exists or no matches
+    are found.
+    """
+    controls_dir = Path(workspace_dir).resolve() / "controls"
+    if not controls_dir.is_dir():
+        return set()
+
+    # Collect all quoted target strings from the mission steps (lowered).
+    step_targets: set[str] = set()
+    for match in re.finditer(r'"([^"]+)"|'  r"'([^']+)'", mission_text):
+        token = (match.group(1) or match.group(2)).strip().lower()
+        if token:
+            step_targets.add(token)
+
+    if not step_targets:
+        return set()
+
+    needed: set[str] = set()
+    for py_file in sorted(controls_dir.glob("*.py")):
+        if py_file.name.startswith("_"):
+            continue
+        try:
+            source = py_file.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for m in _RE_DECORATOR_TARGET.finditer(source):
+            declared_target = m.group(1).strip().lower()
+            if declared_target in step_targets:
+                needed.add(py_file.name)
+                break  # one match is enough to mark this file
+    return needed
+
+
+def load_custom_controls(
+    workspace_dir: str,
+    required_modules: "set[str] | None" = None,
+) -> None:
+    """Import custom control modules from ``<workspace_dir>/controls/``.
+
+    **Lazy mode (recommended):** pass *required_modules* — a set of filenames
+    (e.g. ``{"checkout.py"}``) obtained from :func:`extract_required_controls`.
+    Only those files are imported, skipping the rest of the directory.
+
+    **Eager mode (backward compat):** omit *required_modules*. All ``.py``
+    files (excluding ``_``-prefixed) are imported — the legacy behaviour.
+
+    Idempotent per file: each source file is imported at most once per
+    process, regardless of how many ``ManulEngine`` instances are created.
 
     Each file is executed in an isolated module so that ``@custom_control``
     decorators register into the global ``_CUSTOM_CONTROLS`` dict.
-    Files whose names start with ``_`` (e.g. ``__init__.py``) are skipped.
     Errors in individual files are printed but do not abort engine startup.
 
     Args:
         workspace_dir: Absolute path to the user's project root (typically CWD).
+        required_modules: Optional set of filenames to load.  When ``None``,
+            every non-underscore ``.py`` file in ``controls/`` is loaded
+            (eager mode).
     """
     resolved = str(Path(workspace_dir).resolve())
-    if resolved in _LOADED_DIRS:
-        return
-
     controls_dir = Path(resolved) / "controls"
     if not controls_dir.is_dir():
         return
-    # Only mark as loaded after confirming the controls directory exists, so a
-    # later call can still pick up the directory if it is created after this one.
-    _LOADED_DIRS.add(resolved)
 
-    for py_file in sorted(controls_dir.glob("*.py")):
-        if py_file.name.startswith("_"):
+    if required_modules is not None:
+        # Targeted (lazy) loading — only import specifically requested files.
+        candidates = [controls_dir / name for name in sorted(required_modules)]
+    else:
+        # Eager loading (legacy) — skip entirely if this dir was already loaded.
+        if resolved in _LOADED_DIRS:
+            return
+        candidates = sorted(controls_dir.glob("*.py"))
+        # Mark directory as fully loaded so repeated eager calls are no-ops.
+        _LOADED_DIRS.add(resolved)
+
+    for py_file in candidates:
+        if not py_file.is_file() or py_file.name.startswith("_"):
+            continue
+        # Per-file idempotency: skip files already imported in this process.
+        file_key = str(py_file.resolve())
+        if file_key in _LOADED_FILES:
             continue
         try:
             mod_name = f"_manul_custom_{py_file.stem}"
@@ -112,6 +196,8 @@ def load_custom_controls(workspace_dir: str) -> None:
             fresh_module = importlib.util.module_from_spec(spec)
             fresh_module.__file__ = str(py_file)
             spec.loader.exec_module(fresh_module)  # type: ignore[union-attr]
-            print(f"    🎛️  Custom controls loaded: {py_file.name}")
+            _LOADED_FILES.add(file_key)
+            _label = "Lazy" if required_modules is not None else "Eager"
+            print(f"    🎛️  Custom controls loaded: {py_file.name} ({_label} loaded)")
         except Exception as exc:
             print(f"    ⚠️  Custom controls: failed to load '{py_file.name}': {exc}")
