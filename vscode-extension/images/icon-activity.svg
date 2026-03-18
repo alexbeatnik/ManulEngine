@@ -1,12 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="white">
-  <!-- Main palm pad -->
-  <ellipse cx="50" cy="72" rx="30" ry="24"/>
-  <!-- Top-left toe -->
-  <ellipse cx="12" cy="43" rx="12" ry="16" transform="rotate(-20 12 43)"/>
-  <!-- Top-center-left toe -->
-  <ellipse cx="36" cy="24" rx="12" ry="16" transform="rotate(-5 36 24)"/>
-  <!-- Top-center-right toe -->
-  <ellipse cx="64" cy="24" rx="12" ry="16" transform="rotate(5 64 24)"/>
-  <!-- Top-right toe -->
-  <ellipse cx="88" cy="43" rx="12" ry="16" transform="rotate(20 88 43)"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+  <!-- Manul cat head with goggles — bold monochrome for VS Code activity bar -->
+  <defs>
+    <mask id="m">
+      <rect width="24" height="24" fill="black"/>
+      <!-- Head silhouette in white = visible area -->
+      <!-- Ears -->
+      <polygon points="3,9 5.5,1.5 9.5,8" fill="white"/>
+      <polygon points="21,9 18.5,1.5 14.5,8" fill="white"/>
+      <!-- Main head -->
+      <ellipse cx="12" cy="12.5" rx="9.5" ry="8.5" fill="white"/>
+      <!-- Cheeks -->
+      <ellipse cx="5" cy="15" rx="4.5" ry="3.5" fill="white"/>
+      <ellipse cx="19" cy="15" rx="4.5" ry="3.5" fill="white"/>
+      <!-- Chin -->
+      <ellipse cx="12" cy="20" rx="6" ry="3.5" fill="white"/>
+      <!-- Cut out goggle details in black = transparent -->
+      <!-- Band -->
+      <rect x="1" y="9" width="22" height="2.5" rx="1" fill="black"/>
+      <!-- Left goggle ring -->
+      <circle cx="8.5" cy="12" r="4.2" fill="black"/>
+      <circle cx="8.5" cy="12" r="3.2" fill="white"/>
+      <circle cx="8.5" cy="12" r="2.2" fill="black"/>
+      <!-- Right goggle ring -->
+      <circle cx="15.5" cy="12" r="4.2" fill="black"/>
+      <circle cx="15.5" cy="12" r="3.2" fill="white"/>
+      <circle cx="15.5" cy="12" r="2.2" fill="black"/>
+      <!-- Nose -->
+      <ellipse cx="12" cy="16.2" rx="1.2" ry="0.8" fill="black"/>
+    </mask>
+  </defs>
+  <rect width="24" height="24" fill="currentColor" mask="url(#m)"/>
 </svg>

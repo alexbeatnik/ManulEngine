@@ -57,9 +57,10 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.6
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.7
 manul_engine/
-  __init__.py              public API — re-exports ManulEngine
+  __init__.py              public API — re-exports ManulEngine, ManulSession
+  api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
   cache.py                 _ControlsCacheMixin (persistent per-site controls cache)
   actions.py               _ActionsMixin (navigate, scroll, extract, verify, drag, press, right_click, upload, _execute_step, scan_page)
@@ -112,6 +113,7 @@ manul_engine/
     test_42_scheduler.py         Built-in Scheduler — parse_schedule, next_run_delay, ParsedHunt integration (51 assertions, no browser)
     test_43_scoped_variables.py  ScopedVariables 4-level hierarchy, scope isolation, dict compat (43 assertions, no browser)
     test_44_explain_mode.py      DOMScorer explain output, channel breakdown, --explain CLI flag (27 assertions, no browser)
+    test_45_api.py               ManulSession public Python API facade (47 assertions, no browser)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
@@ -124,7 +126,7 @@ tests/
 benchmarks/
   run_benchmarks.py        Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
 vscode-extension/
-  package.json              Extension manifest (v0.0.96)
+  package.json              Extension manifest (v0.0.97)
   src:
     extension.ts            Activation, command registration, formatter registration
     huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
@@ -375,7 +377,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 
 ## Code patterns to follow
 
-* Import: `from manul_engine import ManulEngine` (never `engine` or `framework`).
+* Import: `from manul_engine import ManulEngine` (never `engine` or `framework`). For the programmatic API: `from manul_engine import ManulSession`.
 * `scoring.py` owns `DOMScorer` class — normalised `0.0–1.0` float scoring with five weighted channels (`WEIGHTS` dict: cache=2.0, text=0.45, attributes=0.25, semantics=0.60, proximity=0.10). `SCALE=177,778` maps the weighted float to integer thresholds expected by `core.py`. `score_elements()` is the backward-compatible entry point that delegates to `DOMScorer.score_all()`. Receives `learned_elements` and `last_xpath` as kwargs. Pre-compiled regex loaded at module import; per-element strings normalised in `_preprocess()`.
 * **Safety first in `scoring.py`:** Always cast fetched attributes using `str(el.get("...", ""))`. JavaScript can pass objects (like `SVGAnimatedString` for SVG icons) instead of strings, which will crash Python's `.lower()`.
 * **iframe routing in `core.py`:** `_snapshot()` iterates `page.frames`, evaluates `SNAPSHOT_JS` per frame, tags elements with `frame_index`. `_frame_for(page, el)` resolves the correct Playwright `Frame` by index with stale fallback to main frame. All 12+ locator call-sites in `actions.py` route through the resolved frame. Cross-origin frames are silently skipped (3-retry, 1.5s backoff on `closed` errors).
@@ -582,6 +584,68 @@ Example — WRONG (do not do this):
 ```
 
 The page name in `@custom_control(page=...)` must match the value returned by `lookup_page_name(page.url)`, i.e. what is mapped in `pages.json` for the target URL.
+
+---
+
+## Public Python API (`ManulSession`)
+
+`api.py` owns `ManulSession` — a high-level async context manager for programmatic browser automation in pure Python. It manages its own Playwright lifecycle and routes all element-resolution calls through the full ManulEngine pipeline (cache → heuristics → optional LLM fallback). Callers never need to think about selectors.
+
+**Import:** `from manul_engine import ManulSession`
+
+**Constructor parameters** mirror `ManulEngine`'s: `model`, `headless`, `browser`, `browser_args`, `ai_threshold`, `disable_cache`, `semantic_cache`, `channel`, `executable_path`.
+
+**Lifecycle:**
+* `async with ManulSession(...) as session:` — launches browser, opens page; tears down on exit.
+* `start()` / `close()` — explicit lifecycle for non-context-manager usage.
+
+**Core methods** (all async, all route through the smart pipeline):
+* `navigate(url)` — loads URL, waits for DOM settlement.
+* `click(target, double=False)` — click or double-click.
+* `fill(target, text)` — type into a field.
+* `select(option, target)` — dropdown selection.
+* `hover(target)`, `drag(source, destination)`, `right_click(target)`.
+* `press(key, target=None)` — key press, optionally on a resolved element.
+* `upload(file_path, target)` — file upload.
+* `scroll(target=None)` — scroll page or container.
+* `verify(target, present=True, enabled=None, checked=None)` — assertion.
+* `extract(target, variable=None)` — extract text, optionally into memory.
+* `wait(seconds)` — hard sleep.
+* `run_steps(steps, context)` — execute raw DSL multi-line steps against the current open page (reuses browser session, does not launch/teardown).
+
+**Properties:** `page` (active Playwright Page), `engine` (underlying ManulEngine), `memory` (ScopedVariables store).
+
+**Internally**, each method generates a synthetic DSL step string and calls the appropriate `ManulEngine._execute_step` / `_handle_*` handler — the same code path used by `.hunt` file execution.
+
+**Usage (pure Python, no .hunt files needed):**
+```python
+from manul_engine import ManulSession
+
+async with ManulSession(headless=True) as session:
+    await session.navigate("https://example.com/login")
+    await session.fill("Username field", "admin")
+    await session.fill("Password field", "secret")
+    await session.click("Log in button")
+    await session.verify("Welcome")
+    price = await session.extract("Product Price")
+```
+
+**Usage (mixing programmatic API with DSL snippets):**
+```python
+async with ManulSession() as session:
+    await session.navigate("https://example.com")
+    result = await session.run_steps("""
+        STEP 1: Search
+            Fill 'Search' with 'ManulEngine'
+            PRESS Enter
+            VERIFY that 'Results' is present
+    """)
+    assert result.status == "pass"
+```
+
+**When to recommend ManulSession vs .hunt files:**
+* Recommend `ManulSession` when the user wants to write automation in pure Python, integrate with existing pytest suites, build RPA scripts, or use ManulEngine as a library.
+* Recommend `.hunt` files when the user wants shared QA artifacts readable by non-technical stakeholders, or when using the VS Code extension's Test Explorer / debug features.
 
 ---
 

@@ -1,7 +1,11 @@
 
 ---
 
-# 😼 ManulEngine v0.0.9.6 — Deterministic Web & Desktop Automation Runtime
+<p align="center">
+  <img src="images/manul.png" alt="ManulEngine mascot" width="180" />
+</p>
+
+# 😼 ManulEngine v0.0.9.7 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -24,10 +28,11 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.6
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.7
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
-│   ├── __init__.py                   Public API — exports ManulEngine
+│   ├── __init__.py                   Public API — exports ManulEngine, ManulSession
+│   ├── api.py                        ManulSession — public Python API facade (async context manager, Playwright lifecycle)
 │   ├── cli.py                        Installed CLI entry point (`manul` command + `manul scan` + `manul record` + `manul daemon` subcommands)
 │   ├── lifecycle.py                  Global Lifecycle Hook Registry (@before_all, @after_all, @before_group, @after_group)
 │   ├── hooks.py                      [SETUP] / [TEARDOWN] hook parser and executor
@@ -81,6 +86,9 @@ ManulEngine/
 │       ├── test_40_self_healing_cache.py Unit: Self-Healing Controls Cache — stale detection, HEALED logging, cache auto-update (16 assertions)
 │       ├── test_41_recorder.py      Unit: Semantic Test Recorder — JS bridge, DSL generator, step aggregation (no browser)
 │       └── test_42_scheduler.py     Unit: Built-in Scheduler — parse_schedule, next_run_delay, ParsedHunt integration (51 assertions, no browser)
+│       ├── test_43_scoped_variables.py Unit: ScopedVariables 4-level hierarchy, scope isolation, dict compat (43 assertions, no browser)
+│       ├── test_44_explain_mode.py   Unit: DOMScorer explain output, channel breakdown, --explain CLI flag (27 assertions, no browser)
+│       └── test_45_api.py            Unit: ManulSession public Python API facade (47 assertions, no browser)
 ├── controls/                         User-owned custom Python handlers (auto-loaded at engine startup)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
@@ -100,7 +108,7 @@ ManulEngine/
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 └── vscode-extension/                 VS Code extension (language support + UI)
-    └── package.json                  Extension manifest (v0.0.96)
+    └── package.json                  Extension manifest (v0.0.97)
     ├── src/
     │   ├── extension.ts              Activation, command registration, formatter registration
     │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
@@ -437,6 +445,28 @@ DONE.
 
 ---
 
+### 🐍 Public Python API (`ManulSession`)
+
+`ManulSession` is a high-level async context manager for programmatic browser automation in pure Python. It manages its own Playwright lifecycle and routes all element-resolution calls through the full ManulEngine pipeline (cache → heuristics → optional LLM fallback). Callers never need to think about selectors.
+
+```python
+from manul_engine import ManulSession
+
+async with ManulSession(headless=True) as session:
+    await session.navigate("https://example.com/login")
+    await session.fill("Username field", "admin")
+    await session.fill("Password field", "secret")
+    await session.click("Log in button")
+    await session.verify("Welcome")
+    price = await session.extract("Product Price")
+```
+
+Core methods: `navigate`, `click`, `fill`, `select`, `hover`, `drag`, `right_click`, `press`, `upload`, `scroll`, `verify`, `extract`, `wait`, `run_steps`. Properties: `page`, `engine`, `memory`.
+
+`run_steps()` accepts a multi-line DSL string and executes it against the already-open browser — useful for mixing programmatic Python with `.hunt` DSL snippets.
+
+---
+
 ### 🛡️ Ironclad JS Fallbacks
 
 Modern websites love to hide elements behind invisible overlays, custom dropdowns, and zero-pixel traps. Manul primarily uses Playwright interactions with `force=True` plus retries/self-healing; for Shadow DOM elements it falls back to direct JS helpers (`window.manulClick`, `window.manulType`) to keep execution moving.
@@ -492,7 +522,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.6
+pip install manul-engine==0.0.9.7
 playwright install chromium
 ```
 
@@ -653,9 +683,9 @@ manul tests/mission.hunt
 
 ---
 
-## 🐾 Chaos Chamber Verified (2358 Tests)
+## 🐾 Chaos Chamber Verified (2414 Tests)
 
-The engine is battle-tested with **2358** synthetic DOM/unit tests across 45 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, and visibility edge cases.
+The engine is battle-tested with **2414** synthetic DOM/unit tests across 46 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, and visibility edge cases.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).
@@ -687,6 +717,7 @@ The engine is battle-tested with **2358** synthetic DOM/unit tests across 45 tes
 * **Scheduler unit suite:** `manul_engine/test/test_42_scheduler.py` (`parse_schedule` all 6 expression forms, case insensitivity, error cases, `next_run_delay`, `_seconds_until_time/weekday`, ParsedHunt integration, Schedule immutability, all 7 weekday names, 51 assertions, no browser).
 * **Scoped Variables unit suite:** `manul_engine/test/test_43_scoped_variables.py` (`ScopedVariables` 4-level hierarchy, scope isolation, row-scope auto-clear for `@data:`, `DEBUG VARS` output, dict compatibility, 43 assertions, no browser).
 * **Explain Mode unit suite:** `manul_engine/test/test_44_explain_mode.py` (`DOMScorer` explain output, per-candidate channel breakdown, top-3 ranking, `--explain` CLI flag, `MANUL_EXPLAIN` env var, 27 assertions, no browser).
+* **Public Python API unit suite:** `manul_engine/test/test_45_api.py` (`ManulSession` constructor pass-through, page guard, step string generation, navigate/wait/scroll/extract/memory lifecycle, `run_steps` DSL dispatch, 47 assertions, no browser).
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
 Run the synthetic suite:
@@ -766,9 +797,9 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 ---
 
-**Version:** 0.0.9.6
+**Version:** 0.0.9.7
 
-**Codename:** Explain Mode
+**Codename:** New Look — ManulSession
 
 **Status:** Hunting...
 

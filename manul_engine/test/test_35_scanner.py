@@ -60,26 +60,26 @@ def _test_is_useful():
 def _test_map_to_step():
     print("\n── _map_to_step() type mapping ──")
 
-    r = _map_to_step(1, "input", "Email")
+    r = _map_to_step("input", "Email")
     _assert("Fill" in r and "'Email'" in r, f"input → Fill step: {r}")
 
-    r = _map_to_step(2, "select", "Country")
+    r = _map_to_step("select", "Country")
     _assert("Select" in r and "'Country'" in r and "dropdown" in r, f"select → Select step: {r}")
 
-    r = _map_to_step(3, "checkbox", "Terms")
+    r = _map_to_step("checkbox", "Terms")
     _assert("Check" in r and "'Terms'" in r and "checkbox" in r, f"checkbox → Check step: {r}")
 
-    r = _map_to_step(4, "radio", "Male")
+    r = _map_to_step("radio", "Male")
     _assert("radio" in r and "'Male'" in r, f"radio → radio step: {r}")
 
-    r = _map_to_step(5, "link", "About Us")
+    r = _map_to_step("link", "About Us")
     _assert("Click" in r and "'About Us'" in r and "link" in r, f"link → Click link step: {r}")
 
-    r = _map_to_step(6, "button", "Submit")
+    r = _map_to_step("button", "Submit")
     _assert("Click" in r and "'Submit'" in r and "button" in r, f"button → Click button step: {r}")
 
-    # Step number embedding
-    _assert(r.startswith("6."), f"step number prefix: {r}")
+    # No number prefix — plain action text
+    _assert(not r[0].isdigit(), f"no number prefix: {r}")
 
 
 # ── Part 3: build_hunt() assembly ─────────────────────────────────────────────
@@ -130,10 +130,9 @@ def _test_build_hunt_filters_noise():
     result = build_hunt("https://example.com", elements)
 
     _assert("'Real Button'" in result, "real button kept")
-    # The noise elements should be filtered out; the step after WAIT should be Real Button at step 3
-    lines = [l.strip() for l in result.split("\n") if l.strip()]
-    action_lines = [l for l in lines if l and l[0].isdigit() and "NAVIGATE" not in l and "WAIT" not in l and "DONE" not in l]
-    _assert(len(action_lines) == 1, f"only 1 action step after filtering noise, got {len(action_lines)}")
+    # Count STEP lines that are not STEP 1 (NAV) or STEP 2 (WAIT)
+    step_lines = [l for l in result.split("\n") if l.startswith("STEP ") and not l.startswith("STEP 1:") and not l.startswith("STEP 2:")]
+    _assert(len(step_lines) == 1, f"only 1 action STEP after filtering noise, got {len(step_lines)}")
 
 
 def _test_build_hunt_step_numbering():
@@ -145,11 +144,11 @@ def _test_build_hunt_step_numbering():
     ]
     result = build_hunt("https://example.com", elements)
 
-    # Steps should be: 1. NAVIGATE, 2. WAIT, 3. Alpha, 4. Beta, 5. Gamma, 6. DONE
-    _assert("1. NAVIGATE" in result, "step 1 is NAVIGATE")
-    _assert("2. WAIT" in result, "step 2 is WAIT")
-    _assert("3. Click" in result, "step 3 is first action")
-    _assert("6. DONE" in result, "step 6 is DONE (3 actions + NAV + WAIT)")
+    # Steps should be: STEP 1: NAV, STEP 2: WAIT, STEP 3: Alpha, STEP 4: Beta, STEP 5: Gamma, DONE.
+    _assert("STEP 1:" in result and "NAVIGATE" in result, "STEP 1 is NAVIGATE")
+    _assert("STEP 2:" in result and "WAIT" in result, "STEP 2 is WAIT")
+    _assert("STEP 3:" in result and "Click" in result, "STEP 3 is first action")
+    _assert(result.rstrip().endswith("DONE."), "file ends with flush-left DONE.")
 
 
 # ── Part 4: SCAN_JS browser integration ──────────────────────────────────────

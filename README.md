@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="images/manul.png" alt="ManulEngine mascot" width="180" />
+</p>
+
 # ManulEngine
 
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
@@ -220,6 +224,38 @@ When the generic resolver should not be forced to understand a bespoke widget, M
 
 That balance is intentional: keep the common path readable, and keep the edge cases programmable.
 
+### Public Python API (`ManulSession`)
+
+For users who prefer writing automation in pure Python — or want to integrate ManulEngine into existing pytest suites, RPA scripts, or library code — the runtime exports `ManulSession`: an async context manager that owns the Playwright lifecycle and exposes clean methods for navigation, clicks, fills, verifications, and extraction. Every call routes through the same smart-resolution pipeline (cache → heuristics → optional LLM fallback) used by `.hunt` file execution.
+
+```python
+from manul_engine import ManulSession
+
+async with ManulSession(headless=True) as session:
+    await session.navigate("https://example.com/login")
+    await session.fill("Username field", "admin")
+    await session.fill("Password field", "secret")
+    await session.click("Log in button")
+    await session.verify("Welcome")
+    price = await session.extract("Product Price")
+```
+
+`ManulSession` can also execute raw DSL snippets against the already-open browser via `run_steps()`:
+
+```python
+async with ManulSession() as session:
+    await session.navigate("https://example.com")
+    result = await session.run_steps("""
+        STEP 1: Search
+            Fill 'Search' with 'ManulEngine'
+            PRESS Enter
+            VERIFY that 'Results' is present
+    """)
+    assert result.status == "pass"
+```
+
+Use `ManulSession` when you want programmatic control. Use `.hunt` files when you want shared QA artifacts readable by non-technical stakeholders.
+
 ### State, variables, and scope
 
 Variable handling is strict rather than ad hoc. The runtime supports `@var:`, `EXTRACT`, `SET`, and `CALL PYTHON ... into {var}` with deterministic placeholder substitution in downstream steps.
@@ -279,14 +315,14 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.6
+pip install manul-engine==0.0.9.7
 playwright install
 ```
 
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.6"
+pip install "manul-engine[ai]==0.0.9.7"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -536,6 +572,12 @@ Representative coverage areas include Shadow DOM, iframe routing, DOMScorer weig
 
 That matters because the point of the README is not just positioning. It is also the shortest complete runtime reference.
 
+## What's New in v0.0.9.7
+
+- **Public Python API (`ManulSession`)** — a high-level async context manager for programmatic browser automation in pure Python. Wraps the full ManulEngine pipeline (cache → heuristics → optional LLM fallback) with clean methods like `navigate`, `click`, `fill`, `extract`, `verify`, and `run_steps`. No `.hunt` files needed.
+- New VS Code extension icon.
+- Version bump across all project files.
+
 ## What's New in v0.0.9.6
 
 - The public README was rewritten around the actual current posture of the project: alpha-stage, technically ambitious, but still being battle-tested.
@@ -548,6 +590,6 @@ That matters because the point of the README is not just positioning. It is also
 
 ## License
 
-**Version:** 0.0.9.6
+**Version:** 0.0.9.7
 
 Apache-2.0.
