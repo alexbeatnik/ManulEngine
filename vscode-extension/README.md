@@ -278,6 +278,7 @@ See the [ManulEngine README](https://github.com/alexbeatnik/ManulEngine) for the
 
 ### 0.0.97
 
+- **Public Python API (`ManulSession`)** — programmatic async context manager for browser automation in pure Python, no `.hunt` files required
 - New extension icon
 - Core engine bump to **0.0.9.7**
 

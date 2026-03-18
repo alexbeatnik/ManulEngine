@@ -799,7 +799,7 @@ Press **F5** in VS Code (with the extension folder open) to launch a dev Extensi
 
 **Version:** 0.0.9.7
 
-**Codename:** New Look
+**Codename:** New Look — ManulSession
 
 **Status:** Hunting...
 

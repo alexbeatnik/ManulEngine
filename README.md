@@ -574,6 +574,7 @@ That matters because the point of the README is not just positioning. It is also
 
 ## What's New in v0.0.9.7
 
+- **Public Python API (`ManulSession`)** — a high-level async context manager for programmatic browser automation in pure Python. Wraps the full ManulEngine pipeline (cache → heuristics → optional LLM fallback) with clean methods like `navigate`, `click`, `fill`, `extract`, `verify`, and `run_steps`. No `.hunt` files needed.
 - New VS Code extension icon.
 - Version bump across all project files.
 
