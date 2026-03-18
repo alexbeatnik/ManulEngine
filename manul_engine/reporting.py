@@ -30,6 +30,17 @@ class StepResult:
 
 
 @dataclass
+class BlockResult:
+    """Outcome of a logical STEP block within a mission."""
+
+    name:        str
+    status:      str = "pass"            # "pass" | "fail" | "warning"
+    duration_ms: float = 0.0
+    error:       str | None = None
+    actions:     list[StepResult] = field(default_factory=list)
+
+
+@dataclass
 class MissionResult:
     """Outcome of executing a single ``.hunt`` file (possibly with retries)."""
     file:        str                     # absolute path to the .hunt file
@@ -39,6 +50,7 @@ class MissionResult:
     duration_ms: float = 0.0            # wall clock ms (total, including retries)
     error:       str | None = None       # last error message when status == "fail"
     steps:       list[StepResult] = field(default_factory=list)
+    blocks:      list[BlockResult] = field(default_factory=list)
     tags:        list[str] = field(default_factory=list)   # @tags from .hunt file
     soft_errors: list[str] = field(default_factory=list)   # collected VERIFY SOFTLY failures
 

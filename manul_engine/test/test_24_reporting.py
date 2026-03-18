@@ -26,7 +26,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from manul_engine.reporting import StepResult, MissionResult, RunSummary
+from manul_engine.reporting import StepResult, MissionResult, RunSummary, BlockResult
 
 # ── Test helpers ──────────────────────────────────────────────────────────────
 
@@ -75,6 +75,7 @@ def _test_mission_result() -> None:
     _assert(mr_pass.duration_ms == 0.0, "MissionResult.duration_ms defaults to 0.0")
     _assert(mr_pass.error is None, "MissionResult.error defaults to None")
     _assert(mr_pass.steps == [], "MissionResult.steps defaults to empty list")
+    _assert(mr_pass.blocks == [], "MissionResult.blocks defaults to empty list")
     _assert(bool(mr_pass) is True, "MissionResult(status='pass') is truthy")
 
     mr_fail = MissionResult(file="/tmp/fail.hunt", name="fail.hunt", status="fail", error="Step 3 timeout")
@@ -89,6 +90,26 @@ def _test_mission_result() -> None:
     mr_b = MissionResult(file="b", name="b")
     mr_a.steps.append(StepResult(index=1, text="test"))
     _assert(len(mr_b.steps) == 0, "MissionResult step lists are independent (no shared mutable default)")
+
+
+def _test_block_result() -> None:
+    print("\n  ── BlockResult data model ─────────────────────────────────")
+
+    br = BlockResult(name="STEP 1: Login")
+    _assert(br.name == "STEP 1: Login", "BlockResult.name stored")
+    _assert(br.status == "pass", "BlockResult.status defaults to 'pass'")
+    _assert(br.duration_ms == 0.0, "BlockResult.duration_ms defaults to 0.0")
+    _assert(br.error is None, "BlockResult.error defaults to None")
+    _assert(br.actions == [], "BlockResult.actions defaults to empty list")
+
+    br_fail = BlockResult(
+        name="STEP 2: Verify",
+        status="fail",
+        error="Verification failed",
+        actions=[StepResult(index=3, text="VERIFY that 'Dashboard' is present", status="fail")],
+    )
+    _assert(br_fail.status == "fail", "BlockResult explicit fail status stored")
+    _assert(br_fail.actions[0].status == "fail", "BlockResult actions preserve child step status")
 
 
 # ── Section 3: RunSummary defaults ────────────────────────────────────────────
@@ -210,6 +231,7 @@ async def run_suite() -> bool:
 
     _test_step_result()
     _test_mission_result()
+    _test_block_result()
     _test_run_summary()
     _test_config_defaults()
     _test_run_mission_signature()

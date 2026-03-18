@@ -283,13 +283,21 @@ async def _run_hunt_file(
 
     hunt = parse_hunt_file(path)
 
-    # Map file line numbers (from editor gutter breakpoints) to step indices.
+    # Map file line numbers (from editor gutter breakpoints) to action indices.
+    # STEP headers now map to the first action inside their block.
     _break_lines = break_lines or set()
-    break_steps: set[int] = {
-        step_idx
-        for step_idx, file_line in enumerate(hunt.step_file_lines, 1)
-        if file_line in _break_lines
-    }
+    from .helpers import parse_hunt_blocks
+    break_steps: set[int] = set()
+    if _break_lines:
+        action_index = 0
+        for block in parse_hunt_blocks(hunt.mission, hunt.step_file_lines):
+            block_start_action = action_index + 1
+            if block.block_line in _break_lines and block.actions:
+                break_steps.add(block_start_action)
+            for file_line in block.action_lines:
+                action_index += 1
+                if file_line in _break_lines:
+                    break_steps.add(action_index)
 
     if not hunt.mission:
         print(f"⚠️  Skipping {filename}: empty or comments-only.")
