@@ -56,8 +56,7 @@ def _test_constructor() -> None:
     _assert(isinstance(s.memory, ScopedVariables), "memory is ScopedVariables")
 
     s2 = ManulSession()
-    _assert(s2.engine.model is not None or s2.engine.model is None,
-            "default constructor succeeds")
+    _assert(s2.engine is not None, "default constructor succeeds")
 
     s3 = ManulSession(model="qwen2.5:0.5b", ai_threshold=500)
     _assert(s3.engine.model == "qwen2.5:0.5b", "model passed through")
@@ -399,7 +398,7 @@ async def _test_run_steps() -> None:
     dsl = """\
 STEP 1: Open the site
     NAVIGATE to https://example.com
-    WAIT 1
+    WAIT 0
 
 STEP 2: Log in
     Fill 'Username' with 'admin'

@@ -36,6 +36,23 @@ from .variables import ScopedVariables
 from .reporting import StepResult, MissionResult
 
 
+def _quote_for_dsl(text: str) -> str:
+    """Safely wrap *text* in quotes for Manul DSL steps.
+
+    Uses single quotes by default, but switches to double quotes when the
+    string contains a single quote.  If both quote types are present, a
+    ``ValueError`` is raised.
+    """
+    if "'" in text and '"' in text:
+        raise ValueError(
+            "ManulSession step text cannot contain both single and double "
+            "quotes; please simplify the target/text."
+        )
+    if "'" in text:
+        return f'"{text}"'
+    return f"'{text}'"
+
+
 class ManulSession:
     """High-level async context manager for programmatic browser automation.
 
@@ -85,10 +102,25 @@ class ManulSession:
         self._pw = await self._pw_cm.__aenter__()
         p = self._pw
 
+        # Playwright 'channel' is only supported for Chromium.
+        if eng.channel and eng.browser != "chromium":
+            raise ValueError(
+                f"Playwright 'channel' is only supported for browser='chromium'; "
+                f"got browser={eng.browser!r}"
+            )
+
         if eng.browser == "electron":
             _cdp_port = os.environ.get("MANUL_CDP_PORT", "9222")
             _cdp_url = f"http://localhost:{_cdp_port}"
-            self._browser = await p.chromium.connect_over_cdp(_cdp_url)
+            try:
+                self._browser = await p.chromium.connect_over_cdp(_cdp_url)
+            except Exception as exc:
+                raise RuntimeError(
+                    f"Failed to connect to Electron app over CDP at {_cdp_url}. "
+                    f"Ensure the target app is running with "
+                    f"'--remote-debugging-port={_cdp_port}' enabled and that "
+                    f"the port is accessible. Original error: {exc}"
+                ) from exc
             if self._browser.contexts:
                 self._context = self._browser.contexts[0]
                 self._page = self._context.pages[0] if self._context.pages else await self._context.new_page()
@@ -195,7 +227,7 @@ class ManulSession:
             ``True`` if the action succeeded.
         """
         verb = "DOUBLE CLICK" if double else "Click"
-        step = f"{verb} the '{target}'"
+        step = f"{verb} the {_quote_for_dsl(target)}"
         return await self._engine._execute_step(self.page, step, step_idx=0)
 
     async def fill(self, target: str, text: str) -> bool:
@@ -208,7 +240,7 @@ class ManulSession:
         Returns:
             ``True`` if the action succeeded.
         """
-        step = f"Fill '{target}' with '{text}'"
+        step = f"Fill {_quote_for_dsl(target)} with {_quote_for_dsl(text)}"
         return await self._engine._execute_step(self.page, step, step_idx=0)
 
     async def select(self, option: str, target: str) -> bool:
@@ -221,7 +253,7 @@ class ManulSession:
         Returns:
             ``True`` if the action succeeded.
         """
-        step = f"Select '{option}' from the '{target}' dropdown"
+        step = f"Select {_quote_for_dsl(option)} from the {_quote_for_dsl(target)} dropdown"
         return await self._engine._execute_step(self.page, step, step_idx=0)
 
     async def hover(self, target: str) -> bool:
@@ -230,7 +262,7 @@ class ManulSession:
         Returns:
             ``True`` if the action succeeded.
         """
-        step = f"HOVER over the '{target}'"
+        step = f"HOVER over the {_quote_for_dsl(target)}"
         return await self._engine._execute_step(self.page, step, step_idx=0)
 
     async def drag(self, source: str, destination: str) -> bool:
@@ -239,7 +271,7 @@ class ManulSession:
         Returns:
             ``True`` if the action succeeded.
         """
-        step = f"Drag the '{source}' and drop it into '{destination}'"
+        step = f"Drag the {_quote_for_dsl(source)} and drop it into {_quote_for_dsl(destination)}"
         return await self._engine._execute_step(self.page, step, step_idx=0)
 
     async def right_click(self, target: str) -> bool:
@@ -248,7 +280,7 @@ class ManulSession:
         Returns:
             ``True`` if the action succeeded.
         """
-        step = f"RIGHT CLICK '{target}'"
+        step = f"RIGHT CLICK {_quote_for_dsl(target)}"
         return await self._engine._handle_right_click(self.page, step)
 
     async def press(self, key: str, target: str | None = None) -> bool:
@@ -262,7 +294,7 @@ class ManulSession:
             ``True`` if the action succeeded.
         """
         if target:
-            step = f"PRESS {key} on '{target}'"
+            step = f"PRESS {key} on {_quote_for_dsl(target)}"
         else:
             step = f"PRESS {key}"
         return await self._engine._handle_press(self.page, step)
@@ -277,7 +309,7 @@ class ManulSession:
         Returns:
             ``True`` if the action succeeded.
         """
-        step = f"UPLOAD '{file_path}' to '{target}'"
+        step = f"UPLOAD {_quote_for_dsl(file_path)} to {_quote_for_dsl(target)}"
         return await self._engine._handle_upload(self.page, step)
 
     async def scroll(self, target: str | None = None) -> None:
@@ -315,14 +347,14 @@ class ManulSession:
         """
         if checked is not None:
             neg = "NOT " if not checked else ""
-            step = f"VERIFY that '{target}' is {neg}checked"
+            step = f"VERIFY that {_quote_for_dsl(target)} is {neg}checked"
         elif enabled is not None:
             state = "ENABLED" if enabled else "DISABLED"
-            step = f"VERIFY that '{target}' is {state}"
+            step = f"VERIFY that {_quote_for_dsl(target)} is {state}"
         elif not present:
-            step = f"VERIFY that '{target}' is NOT present"
+            step = f"VERIFY that {_quote_for_dsl(target)} is NOT present"
         else:
-            step = f"VERIFY that '{target}' is present"
+            step = f"VERIFY that {_quote_for_dsl(target)} is present"
         return await self._engine._handle_verify(self.page, step)
 
     # ── Data extraction ───────────────────────────────────────────────────
@@ -339,7 +371,7 @@ class ManulSession:
             The extracted text, or ``None`` on failure.
         """
         var_name = variable or "_api_extract"
-        step = f"EXTRACT the '{target}' into {{{var_name}}}"
+        step = f"EXTRACT the {_quote_for_dsl(target)} into {{{var_name}}}"
         ok = await self._engine._handle_extract(self.page, step)
         if ok:
             return str(self._engine.memory.get(var_name, ""))
@@ -354,16 +386,27 @@ class ManulSession:
     # ── Convenience: run raw DSL steps ────────────────────────────────────
 
     async def run_steps(self, steps: str, context: str = "") -> MissionResult:
-        """Execute raw DSL steps (a multi-line string) against the current page.
+        """Execute raw Hunt DSL steps against the current page.
 
-        This is a thin wrapper around :meth:`ManulEngine.run_mission` and
-        reuses the already-open browser session rather than launching a new
-        one.  Useful when mixing the programmatic API with DSL snippets.
+        This helper runs a multi-line string of DSL steps through the same
+        resolution engine as :meth:`ManulEngine.run_mission`, but using an
+        inline runner that reuses the already-open browser session and page
+        instead of launching a new browser or parsing a full ``.hunt`` file.
+
+        Unlike ``run_mission()``, this method:
+
+        * Does **not** parse file-level headers (``@context``, ``@title``,
+          ``@tags``, ``@data``, ``@schedule``).
+        * Does **not** execute ``[SETUP]`` / ``[TEARDOWN]`` hook blocks.
+        * Does **not** apply CLI/config features like retries, automatic
+          screenshots, or HTML report generation.
+        * Comment lines (``#``) and metadata headers (``@``) in *steps*
+          are silently filtered out.
 
         .. warning::
             Because the browser is already open, any ``NAVIGATE`` step
-            inside *steps* will navigate the current page — not open a
-            new browser.
+            inside *steps* will navigate the current page in this session
+            — it will not open a new browser or context.
         """
         return await self._run_steps_on_page(steps, context)
 
@@ -375,7 +418,6 @@ class ManulSession:
         Mirrors the step-dispatch loop in ``ManulEngine.run_mission`` but
         skips browser launch/teardown — the session already owns the page.
         """
-        import datetime
         import time
         import traceback
         from .hooks import execute_hook_line
@@ -390,12 +432,25 @@ class ManulSession:
         from .helpers import RE_SYSTEM_STEP
         _has_action_keywords = bool(RE_SYSTEM_STEP.search(task))
 
+        # Filter out comments, metadata headers, and hook block markers
+        # (aligned with parse_hunt_file() behaviour).
+        _hook_markers = {"[SETUP]", "[END SETUP]", "[TEARDOWN]", "[END TEARDOWN]"}
+
+        def _is_executable(line: str) -> bool:
+            s = line.strip()
+            if not s or s.startswith("#") or s.startswith("@"):
+                return False
+            if s.upper() in _hook_markers:
+                return False
+            return True
+
         if _has_step_markers or (_has_action_keywords and not _is_numbered):
-            plan = [line.strip() for line in task.splitlines() if line.strip()]
+            plan = [line.strip() for line in task.splitlines() if _is_executable(line)]
         elif _is_numbered:
-            plan = [s.strip() for s in re.split(r'(?=\b\d+\.\s)', task) if s.strip()]
+            raw_chunks = [s for s in re.split(r'(?=\b\d+\.\s)', task) if s.strip()]
+            plan = [c.strip() for c in raw_chunks if _is_executable(c)]
         else:
-            plan = [line.strip() for line in task.splitlines() if line.strip()]
+            plan = [line.strip() for line in task.splitlines() if _is_executable(line)]
 
         if not plan:
             return MissionResult(file="", name="<api>", status="pass")
@@ -408,7 +463,6 @@ class ManulSession:
 
         for i, raw_step in enumerate(plan, 1):
             step = substitute_memory(raw_step, eng.memory)
-            started_at = datetime.datetime.now()
             started_perf = time.perf_counter()
             step_kind = classify_step(step)
 

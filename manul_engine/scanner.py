@@ -42,7 +42,7 @@ def _map_to_step(kind: str, identifier: str) -> str:
     if kind == "input":
         return f"Fill '{i}' with ''"
     if kind == "select":
-        return f"Select '' from '{i}' dropdown"
+        return f"Select 'Option' from the '{i}' dropdown"
     if kind == "checkbox":
         return f"Check the checkbox for '{i}'"
     if kind == "radio":
