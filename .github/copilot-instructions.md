@@ -10,6 +10,7 @@
 > 3. `.github/copilot-instructions.md` — AI training context and syntax rules
 >
 > A feature that appears in one file but not the others is a documentation bug.
+> This `.github/copilot-instructions.md` file is the single canonical source of Copilot/LLM instructions for this repository. Any mirrored copies used by tooling or templates must reference this file or be kept byte-for-byte in sync as generated artifacts.
 > If the same change also affects the companion VS Code extension's Marketplace listing or release notes, update those in the separate extension repository when that repo is part of the task.
 
 ## SOLO DEV ALPHA POSITIONING

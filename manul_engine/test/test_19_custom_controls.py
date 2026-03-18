@@ -283,20 +283,26 @@ def _test_extraction_and_lazy_loading() -> None:
 
     try:
         # Write two control files — one matching and one not.
-        with open(os.path.join(controls_dir, "booking.py"), "w") as f:
+        with open(os.path.join(controls_dir, "booking.py"), "w", encoding="utf-8") as f:
             f.write(
                 "from manul_engine.controls import custom_control\n"
                 "@custom_control(page='Booking Page', target='React Datepicker')\n"
                 "async def handle(page, action_type, value): pass\n"
             )
-        with open(os.path.join(controls_dir, "admin.py"), "w") as f:
+        with open(os.path.join(controls_dir, "admin.py"), "w", encoding="utf-8") as f:
             f.write(
                 "from manul_engine.controls import custom_control\n"
                 "@custom_control(page='Admin Page', target='User Table')\n"
                 "async def handle(page, action_type, value): pass\n"
             )
+        with open(os.path.join(controls_dir, "positional.py"), "w", encoding="utf-8") as f:
+            f.write(
+                "from manul_engine import custom_control\n"
+                "@custom_control('Some Page', 'Some Target')\n"
+                "async def handle(page, action_type, value): pass\n"
+            )
         # Also a file that should be skipped (underscore prefix).
-        with open(os.path.join(controls_dir, "_internal.py"), "w") as f:
+        with open(os.path.join(controls_dir, "_internal.py"), "w", encoding="utf-8") as f:
             f.write("# internal helper — should never be imported\n")
 
         # 3a. extract_required_controls finds only the matching file.
@@ -326,7 +332,16 @@ def _test_extraction_and_lazy_loading() -> None:
             f"got={needed_both}",
         )
 
-        # 3d. extract with no controls/ directory returns empty set.
+        # 3d. Positional decorator args are also discovered.
+        mission_positional = "Click 'Some Target'"
+        needed_positional = extract_required_controls(mission_positional, tmpdir)
+        _assert(
+            needed_positional == {"positional.py"},
+            "extract finds file using positional @custom_control args",
+            f"got={needed_positional}",
+        )
+
+        # 3e. extract with no controls/ directory returns empty set.
         empty_dir = tempfile.mkdtemp(prefix="manul_no_ctrl_")
         try:
             needed_no_dir = extract_required_controls(mission, empty_dir)
@@ -338,7 +353,7 @@ def _test_extraction_and_lazy_loading() -> None:
         finally:
             shutil.rmtree(empty_dir)
 
-        # 3e. Lazy load only the targeted file — registry gets only that handler.
+        # 3f. Lazy load only the targeted file — registry gets only that handler.
         saved = dict(_CUSTOM_CONTROLS)
         saved_files = set(_LOADED_FILES)
         _CUSTOM_CONTROLS.clear()
@@ -354,7 +369,7 @@ def _test_extraction_and_lazy_loading() -> None:
                 "admin.py was NOT loaded (lazy mode skipped it)",
             )
 
-            # 3f. Per-file idempotency: calling again does not re-import.
+            # 3g. Per-file idempotency: calling again does not re-import.
             # Replace the handler — if re-imported, it would be overwritten.
             sentinel = lambda p, a, v: None  # noqa: E731
             _CUSTOM_CONTROLS[("booking page", "react datepicker")] = sentinel
@@ -362,6 +377,23 @@ def _test_extraction_and_lazy_loading() -> None:
             _assert(
                 get_custom_control("Booking Page", "React Datepicker") is sentinel,
                 "per-file idempotency: second lazy call did not re-import",
+            )
+        finally:
+            _CUSTOM_CONTROLS.clear()
+            _CUSTOM_CONTROLS.update(saved)
+            _LOADED_FILES.clear()
+            _LOADED_FILES.update(saved_files)
+
+        # 3h. Positional-arg decorator usage is still lazy-loaded correctly.
+        saved = dict(_CUSTOM_CONTROLS)
+        saved_files = set(_LOADED_FILES)
+        _CUSTOM_CONTROLS.clear()
+        _LOADED_FILES.clear()
+        try:
+            load_custom_controls(tmpdir, required_modules=needed_positional)
+            _assert(
+                get_custom_control("Some Page", "Some Target") is not None,
+                "lazy-loaded positional.py registered its handler",
             )
         finally:
             _CUSTOM_CONTROLS.clear()

@@ -32,6 +32,7 @@ Both sync and async handlers are supported.
 
 from __future__ import annotations
 
+import ast
 import importlib.util
 import re
 from pathlib import Path
@@ -81,11 +82,53 @@ def get_custom_control(page_name: str, target_name: str) -> Callable | None:
     return _CUSTOM_CONTROLS.get(key)
 
 
-# ── Pre-compiled regex for source-level target extraction ─────────────────────
-# Matches @custom_control(page="...", target="...") with single or double quotes.
-_RE_DECORATOR_TARGET = re.compile(
-    r'@custom_control\s*\([^)]*target\s*=\s*["\']([^"\']+)["\']',
-)
+def _iter_custom_control_targets(source: str) -> list[str]:
+    """Return target names declared in @custom_control decorators.
+
+    Supports both keyword form::
+
+        @custom_control(page="Booking Page", target="React Datepicker")
+
+    and positional form::
+
+        @custom_control("Booking Page", "React Datepicker")
+    """
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return []
+
+    targets: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        for decorator in node.decorator_list:
+            if not isinstance(decorator, ast.Call):
+                continue
+            func = decorator.func
+            is_custom_control = (
+                isinstance(func, ast.Name) and func.id == "custom_control"
+            ) or (
+                isinstance(func, ast.Attribute) and func.attr == "custom_control"
+            )
+            if not is_custom_control:
+                continue
+
+            target_value: str | None = None
+            for keyword in decorator.keywords:
+                if keyword.arg == "target" and isinstance(keyword.value, ast.Constant):
+                    if isinstance(keyword.value.value, str):
+                        target_value = keyword.value.value
+                        break
+
+            if target_value is None and len(decorator.args) >= 2:
+                positional_target = decorator.args[1]
+                if isinstance(positional_target, ast.Constant) and isinstance(positional_target.value, str):
+                    target_value = positional_target.value
+
+            if target_value:
+                targets.append(target_value)
+    return targets
 
 
 def extract_required_controls(
@@ -96,8 +139,8 @@ def extract_required_controls(
 
     Parses the mission text for quoted target strings, then scans each
     ``.py`` file in ``<workspace_dir>/controls/`` at the **source level**
-    (no import) for ``@custom_control(... target="...")`` decorators whose
-    target matches any quoted token from the hunt steps.
+    (no import) for ``@custom_control(...)`` decorators whose target matches
+    any quoted token from the hunt steps.
 
     Returns a set of **filenames** (e.g. ``{"booking.py", "checkout.py"}``).
     Returns an empty set when no controls directory exists or no matches
@@ -125,8 +168,8 @@ def extract_required_controls(
             source = py_file.read_text(encoding="utf-8")
         except OSError:
             continue
-        for m in _RE_DECORATOR_TARGET.finditer(source):
-            declared_target = m.group(1).strip().lower()
+        for declared_target_raw in _iter_custom_control_targets(source):
+            declared_target = declared_target_raw.strip().lower()
             if declared_target in step_targets:
                 needed.add(py_file.name)
                 break  # one match is enough to mark this file
