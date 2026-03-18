@@ -4,11 +4,10 @@
 ## GLOBAL DOC SYNC RULE
 
 > **CRITICAL — Read this first.**
-> Whenever the user asks to update documentation, a README, or a feature’s description, you **MUST** automatically update **all 4 core files** to keep the project’s positioning and syntax rules perfectly synchronised:
+> Whenever the user asks to update documentation, a README, or a feature's description, you **MUST** automatically update **all 3 core files** to keep the project's positioning and syntax rules perfectly synchronised:
 > 1. `README.md` — public-facing feature docs and version footer
 > 2. `README_DEV.md` — internal architecture docs and version title/footer
-> 3. `vscode-extension/README.md` — VS Code Marketplace listing and release notes
-> 4. `.github/copilot-instructions.md` — AI training context and syntax rules
+> 3. `.github/copilot-instructions.md` — AI training context and syntax rules
 >
 > A feature that appears in one file but not the others is a documentation bug.
 
@@ -125,22 +124,6 @@ tests/
   demo_variables.hunt     integration: @var: + CALL PYTHON into {var} combined
 benchmarks/
   run_benchmarks.py        Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
-vscode-extension/
-  package.json              Extension manifest (v0.0.97)
-  src:
-    extension.ts            Activation, command registration, formatter registration
-    huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
-    huntTestController.ts   VS Code Test Explorer integration (step-level reporting)
-    configPanel.ts          Webview sidebar: config editor + Ollama model discovery
-    cacheTreeProvider.ts    Sidebar tree: controls cache browser
-    stepBuilderPanel.ts     Sidebar webview: step-insertion buttons + new hunt file (incl. Scan Page)
-    schedulerPanel.ts       Advanced Scheduler Dashboard — Visual RPA Manager (split Scheduled/Unscheduled views, search bar, per-file combobox schedule editor, file mutation via WorkspaceEdit, run history sparklines)
-    formatter.ts            DocumentFormattingEditProvider for .hunt files (4-space action indent)
-    debugControlPanel.ts    Singleton QuickPick overlay for interactive debug stepping
-    constants.ts            Shared constants (DEFAULT_CONFIG_FILENAME, PAUSE_MARKER, terminal names, getConfigFileName(), EXPLAIN_OUTPUT_CHANNEL)
-    explainLensProvider.ts  CodeLens provider for .hunt files (legacy — not registered in extension.ts)
-    explainHoverProvider.ts  Stores per-line explanation data from --explain debug runs; serves as HoverProvider for .hunt files
-  syntaxes/hunt.tmLanguage.json  Hunt file syntax grammar
 ```
 
 ## How the engine works
@@ -706,30 +689,6 @@ Each element dict returned by `SNAPSHOT_JS` contains:
 * `self.learned_elements` — semantic cache: `(mode, search_texts, target_field) → {name, tag}`.
 * `self.last_xpath` — used for Contextual Reuse (if next step says "in that field").
 
-## VS Code extension (`vscode-extension/`)
-
-A companion extension that provides hunt file language support, Test Explorer integration, a config sidebar, cache browser, and an interactive debug runner.
-
-**Key rules when editing extension code:**
-
-* `constants.ts` — centralised shared constants module. All string literals for config filenames (`DEFAULT_CONFIG_FILENAME`), debug protocol markers (`PAUSE_MARKER`), and terminal names (`TERMINAL_NAME`, `DEBUG_TERMINAL_NAME`, `DAEMON_TERMINAL_NAME`) live here. `getConfigFileName()` reads the `manulEngine.configFile` VS Code setting with a fallback to `DEFAULT_CONFIG_FILENAME`. **Every** TS file that references the config filename or terminal names must import from `constants.ts` — never hardcode these strings inline.
-* `huntRunner.ts` — `runHunt()` spawns `manul` with `cwd` set to the **VS Code workspace folder root** (resolved via `vscode.workspace.getWorkspaceFolder()`), not `path.dirname(huntFile)`. This ensures `manul_engine_configuration.json` and relative `controls_cache_dir` paths are always resolved from the project root, matching CLI behaviour.
-* `huntRunner.ts` — `findManulExecutable()` probes local venv folders in order: `.venv`, `venv`, `env`, `.env` (both `bin/manul` on Unix and `Scripts\manul.exe` on Windows) before falling back to user-level install paths and a login-shell lookup. When adding new candidate paths, keep this order and always guard Windows/macOS-only paths with `isWin` / `process.platform` checks.
-* `huntRunner.ts` — `runHuntFileDebugPanel(manulExe, huntFile, onData, token?, breakLines?, onPause?)` spawns with `--workers 1` and optionally `--break-lines N,M,...`. **Never pass `--debug`** — `--debug` pauses before every step including step 1 (NAVIGATE), which hangs before the browser has loaded anything. Only `--break-lines` + the stdin/stdout protocol is used for the panel runner.
-* **Debug protocol:** Python (`core.py`) detects it is not a TTY (piped stdout) and emits `\x00MANUL_DEBUG_PAUSE\x00{"step":"...","idx":N}\n` on stdout when pausing. The TS side line-buffers stdout, detects the marker, calls `onPause(step, idx)` and writes `"next\n"`, `"continue\n"`, or `"debug-stop\n"` to stdin. The `onPause` return type is `Promise<"next" | "continue" | "highlight" | "debug-stop" | "stop-test">`. Sending `"abort\n"` + killing the process after 500 ms implements **Stop Test**; `"debug-stop\n"` implements **Debug Stop** (run to end, no more pauses).
-* **Break-step semantics:** `ManulEngine.__init__` accepts `break_steps: set[int] | None`. `_user_break_steps` stores the original user-defined set; `break_steps` is the mutable active set. When the user picks **Next Step**: `break_steps.add(idx + 1)`. When the user picks **Continue All**: `break_steps = set(_user_break_steps)` (resets to original gutter breakpoints). This ensures "Next" advances exactly one step and "Continue" runs to the next gutter breakpoint or end.
-* `debugControlPanel.ts` — singleton `DebugControlPanel.getInstance(ctx)`. `showPause(step, idx)` uses `vscode.window.createQuickPick()` (low-level API, not `showQuickPick`) so the picker can be hidden programmatically. `ignoreFocusOut: true` keeps it visible while Playwright runs. `abort()` calls `_activeQp.hide()`, which triggers `onDidHide` → resolves the promise with `"next"` so Python's `stdin.readline()` always unblocks. `dispose()` also calls `hide()` and resets the singleton. `tryRaiseWindow(idx, stepText)` (Linux only): spawns `xdotool search --onlyvisible --class "Code" windowactivate` (X11 focus), falls back to `wmctrl -a "Visual Studio Code"`, then fires `notify-send -u normal -t 5000` (5-second system notification, disappears automatically — do NOT use `-u critical` which ignores `-t` on GNOME/KDE). The QuickPick has **5 items**: Next Step, Continue All, Highlight Element, **⏹ Debug Stop** (sends `"debug-stop"` — clears all breakpoints so the run completes without further pauses), **🛑 Stop Test** (sends `"abort"` + kills the process after 500 ms). `PauseChoice` type: `"next" | "continue" | "highlight" | "debug-stop" | "stop-test"`.
-* `huntTestController.ts` — has a **Debug run profile** in addition to the normal run profile. It calls `runHuntFileDebugPanel` with `onPause: (step, idx) => panel.showPause(step, idx)` and runs sequentially (no concurrency). **Stop button wiring:** `token.onCancellationRequested(() => panel.abort())` — this is essential; without it the QuickPick stays open after Stop is pressed and Python hangs. The disposable is stored and `.dispose()`d after the loop. Debug profile also calls `workbench.view.testing.focus` (in addition to `workbench.panel.testResults.view.focus`) to show the Test Explorer tree with per-step spinning/pass/fail indicators.
-* `configPanel.ts` — `doSave()` forces `ai_always: false` whenever `model` is empty/null (`modelVal !== '' && g('ai_always').checked`). Do not remove this guard — saving `ai_always: true` with no model would produce an invalid config that causes runtime errors. The `syncAiAlways()` function also disables and unchecks the `ai_always` checkbox in the UI when the model field is cleared.
-* `configPanel.ts` — Two separate cache controls: `controls_cache_enabled` is labelled **"Persistent Controls Cache"** (file-based, per-site storage, survives between runs); `semantic_cache_enabled` is labelled **"Semantic Cache"** (in-session `learned_elements`, +200,000 score boost within a single run, resets when process ends). The `controls_cache_dir` field is labelled "controls_cache_dir". Both default to `true`. Do not merge these two settings.
-* `configPanel.ts` — `auto_annotate` checkbox (default `false`): labelled **"Auto-Annotate Page Navigation"**. When enabled, the engine writes `# 📍 Auto-Nav: <name>` comments into `.hunt` files live whenever the URL changes. `doSave()` writes `auto_annotate: g('auto_annotate').checked`; `doLoad()` reads `g('auto_annotate').checked = !!config.auto_annotate`.
-* Config panel reads/writes `manul_engine_configuration.json` at the workspace root using `_configPath()`. The config file name is resolved via `getConfigFileName()` from `constants.ts`, which reads the `manulEngine.configFile` VS Code setting.
-* Ollama model discovery: the panel fetches `http://localhost:11434/api/tags` on open and populates a `<select>` dropdown with installed model names (replaced legacy `<datalist>` + `<input>` to fix rendering offset in Electron webview). First option is always `null (heuristics-only)`. The stored model is always preserved as an option even when Ollama is offline.
-* `schedulerPanel.ts` — Advanced Scheduler Dashboard / Visual RPA Manager. `findAllHunts()` scans workspace for **all** `.hunt` files (not just scheduled ones), returns `HuntFileEntry[]` with `relPath`, `absUri`, and `schedule` (empty string if unscheduled). The webview splits files into **Scheduled Tasks** and **Unscheduled Tasks** sections with a **search bar** for filename filtering. Each file row has a `<select>` combobox (preset schedule options: None, every 30 seconds, every 1/5/15 minutes, every hour, daily at 09:00, weekly, Custom…), a hidden/disabled custom text `<input>` that activates when "Custom…" is selected, and an **Apply** button. Apply sends `{ command: 'updateSchedule', filePath: absUri, schedule: '...' }` to the extension. `mutateScheduleHeader(fileUri, schedule)` uses `vscode.WorkspaceEdit` to inject (after last `@`-prefixed metadata line), replace, or remove the `@schedule:` header. The file is saved after mutation and the webview refreshes automatically. **Run History & Sparklines:** `readRunHistory(wsRoot, limit=5)` reads `reports/run_history.json` (JSON Lines), returns a map of filename → last N `RunHistoryRecord` entries. `_sendAllFiles()` posts both `files` and `history` to the webview. The frontend renders a sparkline (pass=🟢, fail=🔴, flaky/warning=🟡) and a relative-time label ("3m ago") per file row.
-* `explainLensProvider.ts` — Legacy `ExplainLensProvider` CodeLens provider source file. Currently **not registered** in `extension.ts` or `package.json` (commands `manul.explainHuntFile` / `manul.runExplain` and setting `manulEngine.explainCodeLens` are not contributed). The file remains in the source tree for potential future use but is dead code. The active explain UI is the `ExplainHoverProvider` (see below).
-* `explainHoverProvider.ts` — `ExplainHoverProvider` implements `HoverProvider` for `.hunt` files. During debug runs, `--explain` is auto-injected; `ExplainOutputParser` parses stdout explain blocks (`┌─ 🔍 EXPLAIN` … `└─ ✅ Decision`) keyed by file line number. When the user hovers over a resolved step line, a rich Markdown tooltip with the per-channel scoring breakdown is shown. A separate `manul.debug.explainStep` command (title: "Manul: Explain Current Step", `$(lightbulb-autofix)` icon) is contributed in `package.json` as an editor title bar button; it calls `DebugControlPanel.triggerExplain()` to send `"explain"` via stdin to the paused Python process. The explain output channel name constant lives in `constants.ts` (`EXPLAIN_OUTPUT_CHANNEL`).
-* Build: `cd vscode-extension && npm install && npm run compile`. Use `npx vsce package` to produce a `.vsix`. Press F5 in VS Code with the extension folder open to launch a dev Extension Host.
-
 ## Version Bump Checklist
 
 When the version changes, **ALL** of the following files must be updated:
@@ -738,7 +697,5 @@ When the version changes, **ALL** of the following files must be updated:
 |------|----------------|
 | `pyproject.toml` | `version = "X.Y.Z"` under `[project]` |
 | `README.md` | `**Version:** X.Y.Z` in the footer |
-| `README_DEV.md` | Title `# 😼 ManulEngine vX.Y.Z`, pyproject.toml ref, extension manifest ref, VS Code extension version ref, lifecycle/test suite lists, footer `**Version:** X.Y.Z` |
-| `vscode-extension/package.json` | `"version": "X.Y.Z"` (uses 3-digit semver, e.g. `"0.0.84"`) |
-| `vscode-extension/README.md` | Add `### X.Y.Z` release notes section above the previous entry |
+| `README_DEV.md` | Title `# 😼 ManulEngine vX.Y.Z`, pyproject.toml ref, lifecycle/test suite lists, footer `**Version:** X.Y.Z` |
 | `.github/copilot-instructions.md` | Version in the repo layout section (this file) |

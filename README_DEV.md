@@ -107,19 +107,6 @@ ManulEngine/
 │   ├── README.md                     Usage guide (Copilot, ChatGPT, Claude, Ollama)
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
-└── vscode-extension/                 VS Code extension (language support + UI)
-    └── package.json                  Extension manifest (v0.0.97)
-    ├── src/
-    │   ├── extension.ts              Activation, command registration, formatter registration
-    │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
-    │   ├── huntTestController.ts     VS Code Test Explorer integration
-    │   ├── configPanel.ts            Webview sidebar: config editor + Ollama discovery
-    │   ├── cacheTreeProvider.ts      Sidebar tree: controls cache browser
-    │   ├── stepBuilderPanel.ts       Step Builder sidebar (incl. Live Page Scanner UI + Scan Page button)
-    │   ├── schedulerPanel.ts         Scheduler Dashboard webview panel (daemon management UI)
-    │   ├── formatter.ts              DocumentFormattingEditProvider for .hunt files (4-space action indent)
-    │   └── debugControlPanel.ts      Singleton QuickPick overlay for interactive debug stepping
-    └── syntaxes/hunt.tmLanguage.json Hunt file syntax grammar
 ```
 
 ---
@@ -757,43 +744,6 @@ The `prompts/` directory contains ready-to-use LLM prompt templates that let you
 **Ollama (local):** `cat prompts/html_to_hunt.md mypage.html | ollama run qwen2.5:7b`
 
 ---
-
-## 🖱️ VS Code Extension
-
-The `vscode-extension/` directory contains a companion VS Code extension (v0.0.96 for the `0.0.9.6` runtime line) that provides:
-
-| Feature | Details |
-| --- | --- |
-| **Hunt language support** | Syntax highlighting, bracket matching, and comment toggling for `.hunt` files |
-| **Test Explorer integration** | Hunt files appear in VS Code's native Test Explorer; **real-time** step-level pass/fail reporting while the hunt is running |
-| **Config sidebar** | Webview panel to edit `manul_engine_configuration.json` visually; **Workers** combobox; **Add Default Prompts** button; live Ollama model discovery via `localhost:11434` |
-| **Cache browser** | Tree-view sidebar showing the controls cache hierarchy (`site → page → controls.json`) |
-| **Run commands** | `ManulEngine: Run Hunt File` (output panel) and `ManulEngine: Run Hunt File in Terminal` (raw CLI) |
-| **Debug run profile** | Test Explorer exposes a **Debug** run profile alongside the normal one; places gutter breakpoints (red dots) in `.hunt` files, pauses at each with a floating QuickPick overlay — **⏭ Next Step** / **▶ Continue All**. The Test Explorer **Stop** button aborts the run cleanly (no hanging QuickPick). On Linux, a system notification appears via `notify-send` when execution pauses. |
-| **Step Builder** | Sidebar buttons for every step type including **Open App**, **Set Variable**, **Verify Softly**, **Verify Visual**, **Mock Request**, **Wait Response**, **Debug / Pause** (inserts `DEBUG` step); **🐍 Call Python → Var** (inserts `CALL PYTHON module.function into {variable_name}` and captures the return value as a mission variable); **🔍 Live Page Scanner** — URL input + Run Scan button that invokes `manul scan <URL>` directly and opens the result in the editor |
-| **Explain Heuristics CodeLens** | **🔍 Explain Heuristics** CodeLens above every actionable step (Click, Fill, Select, Verify, etc.) in `.hunt` files. Clicking the lens runs the file with `--explain` and streams the scoring breakdown to a dedicated **ManulEngine: Explain Heuristics** output channel. Editor title bar `🔍` button for quick access. Toggle via `manulEngine.explainCodeLens` setting |
-| **Bounded concurrency** | Test Explorer respects `workers` config or `manulEngine.workers` VS Code setting (default: 1) |
-
-### Extension behaviour notes
-
-* **Working directory:** The extension spawns `manul` with `cwd` set to the **VS Code workspace folder root** (not the directory of the `.hunt` file). This ensures `manul_engine_configuration.json` and the cache directory are always resolved from the project root, matching what you get when running `manul` from the terminal.
-* **Debug protocol:** `runHuntFileDebugPanel` spawns `manul` with `--break-lines` (never `--debug`) and piped stdio. Python emits `\x00MANUL_DEBUG_PAUSE\x00{"step":"...","idx":N}\n` when pausing; TS responds on stdin with one of: `"next\n"` (pause at idx+1), `"continue\n"` (restore original gutter breakpoints), `"debug-stop\n"` (clear all breakpoints, run to end), or `"abort\n"` (then kill the process after 500 ms). The QuickPick overlay exposes five actions: **⏭ Next Step**, **▶ Continue All**, **👁 Highlight Element**, **⏹ Debug Stop**, **🛑 Stop Test**.
-* **Auto-annotate:** When `auto_annotate` is enabled (via the Config Panel or `MANUL_AUTO_ANNOTATE` env var), the engine inserts/overwrites `# 📍 Auto-Nav:` comments above any step that follows a URL change — not only explicit `NAVIGATE` steps. URL tracking happens in `run_mission()`: `url_before` is captured before each step's `try` block; after the step's `finally`, if `page.url != url_before` and there is a next step, `_auto_annotate_navigate(page, hunt_file, step_file_lines, i+1)` is called. NAVIGATE steps annotate above themselves as before.
-* **`pages.json` format:** Nested two-level dict — `{ "site_root_url": { "Domain": "display name", "regex_or_exact_url": "Page Name", ... } }`. `lookup_page_name()` in `prompts.py` re-reads the file on every call, finds the longest-prefix matching site block, then tries exact URL → regex patterns → `"Domain"` fallback. Auto-generated placeholders are stored under `{ "Domain": "Auto: domain/path" }` for the detected site root. Unknown unmapped pages write back `"Auto: ..."` as the display name in the comment. Auto-population uses a safe **deep-merge**: existing site blocks and their user-defined page mappings are never overwritten — only new top-level site keys or new page keys within a previously-unseen site block are added.
-* **`ai_always` guard:** The config panel automatically forces `ai_always` to `false` when no model is selected, preventing an invalid heuristics-only config from being saved with `ai_always: true`.
-* **Ollama discovery:** On panel open the extension fetches `http://localhost:11434/api/tags` and populates a `<select>` with installed model names. If Ollama is not running the field accepts free-text input instead.
-
-### Building the extension
-
-```bash
-cd vscode-extension
-npm install
-npm run compile      # tsc one-shot
-npm run watch        # incremental (dev)
-npx vsce package     # produce .vsix
-```
-
-Press **F5** in VS Code (with the extension folder open) to launch a dev Extension Host.
 
 ---
 
