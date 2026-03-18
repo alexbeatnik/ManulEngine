@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="images/manul.png" alt="ManulEngine mascot" width="180" />
+</p>
+
 # ManulEngine
 
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
@@ -219,6 +223,38 @@ When the generic resolver should not be forced to understand a bespoke widget, M
 - `@custom_control` handlers for complex UI elements.
 
 That balance is intentional: keep the common path readable, and keep the edge cases programmable.
+
+### Public Python API (`ManulSession`)
+
+For users who prefer writing automation in pure Python — or want to integrate ManulEngine into existing pytest suites, RPA scripts, or library code — the runtime exports `ManulSession`: an async context manager that owns the Playwright lifecycle and exposes clean methods for navigation, clicks, fills, verifications, and extraction. Every call routes through the same smart-resolution pipeline (cache → heuristics → optional LLM fallback) used by `.hunt` file execution.
+
+```python
+from manul_engine import ManulSession
+
+async with ManulSession(headless=True) as session:
+    await session.navigate("https://example.com/login")
+    await session.fill("Username field", "admin")
+    await session.fill("Password field", "secret")
+    await session.click("Log in button")
+    await session.verify("Welcome")
+    price = await session.extract("Product Price")
+```
+
+`ManulSession` can also execute raw DSL snippets against the already-open browser via `run_steps()`:
+
+```python
+async with ManulSession() as session:
+    await session.navigate("https://example.com")
+    result = await session.run_steps("""
+        STEP 1: Search
+            Fill 'Search' with 'ManulEngine'
+            PRESS Enter
+            VERIFY that 'Results' is present
+    """)
+    assert result.status == "pass"
+```
+
+Use `ManulSession` when you want programmatic control. Use `.hunt` files when you want shared QA artifacts readable by non-technical stakeholders.
 
 ### State, variables, and scope
 

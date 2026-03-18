@@ -254,6 +254,26 @@ The extension runs `.hunt` files via the same `manul` CLI. Custom Controls are l
 
 ---
 
+## 🐍 Public Python API (`ManulSession`)
+
+For users who prefer writing automation in pure Python — or want to integrate ManulEngine into existing pytest suites and RPA scripts — the runtime exports `ManulSession`: an async context manager that owns the Playwright lifecycle and exposes clean methods (`navigate`, `click`, `fill`, `verify`, `extract`, etc.). Every call routes through the same smart-resolution pipeline used by `.hunt` file execution.
+
+```python
+from manul_engine import ManulSession
+
+async with ManulSession(headless=True) as session:
+    await session.navigate("https://example.com/login")
+    await session.fill("Username field", "admin")
+    await session.click("Log in button")
+    await session.verify("Welcome")
+```
+
+Use `ManulSession` when you want programmatic control. Use `.hunt` files with the VS Code extension when you want shared QA artifacts, Test Explorer integration, and interactive debugging.
+
+See the [ManulEngine README](https://github.com/alexbeatnik/ManulEngine) for the full API reference.
+
+---
+
 ## Release Notes
 
 ### 0.0.97

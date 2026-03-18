@@ -1,10 +1,11 @@
 # manul_engine/__init__.py
 """
-ManulEngine — AI-powered browser automation engine.
+ManulEngine — deterministic, DSL-first Web & Desktop Automation Runtime.
 
 Package structure:
     manul_engine/
-        __init__.py    — public API (re-exports ManulEngine)
+        __init__.py    — public API (re-exports ManulEngine, ManulSession)
+        api.py         — ManulSession: high-level async context manager for Python scripts
         prompts.py     — configuration, thresholds, LLM prompts
         helpers.py     — pure utility functions and timing constants
         js_scripts.py  — JavaScript injected into the browser page
@@ -15,7 +16,16 @@ Package structure:
         test/
             test_*.py  — synthetic DOM unit tests
 
-Usage:
+Usage (Public Python API — no .hunt files needed):
+    from manul_engine import ManulSession
+
+    async with ManulSession(headless=True) as session:
+        await session.navigate("https://example.com")
+        await session.click("Log in button")
+        await session.fill("Username field", "admin")
+        await session.verify("Welcome")
+
+Usage (DSL runner — .hunt files):
     from manul_engine import ManulEngine
 
     manul = ManulEngine()
@@ -30,6 +40,7 @@ Custom controls:
 """
 
 from .core import ManulEngine
+from .api import ManulSession
 from .controls import custom_control
 from .lifecycle import (
     GlobalContext,
@@ -42,6 +53,7 @@ from .variables import ScopedVariables
 
 __all__ = [
     "ManulEngine",
+    "ManulSession",
     "custom_control",
     "GlobalContext",
     "before_all",
