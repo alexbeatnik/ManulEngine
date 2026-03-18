@@ -4,10 +4,11 @@
 ## GLOBAL DOC SYNC RULE
 
 > **CRITICAL — Read this first.**
-> Whenever the user asks to update documentation, a README, or a feature's description, you **MUST** automatically update **all 3 core files** to keep the project's positioning and syntax rules perfectly synchronised:
+> Whenever the user asks to update documentation, a README, or a feature's description, you **MUST** automatically update **all 4 core files** to keep the project's positioning and syntax rules perfectly synchronised:
 > 1. `README.md` — public-facing feature docs and version footer
 > 2. `README_DEV.md` — internal architecture docs and version title/footer
-> 3. `.github/copilot-instructions.md` — AI training context and syntax rules
+> 3. `vscode-extension/README.md` — VS Code Marketplace listing and release notes
+> 4. `.github/copilot-instructions.md` — AI training context and syntax rules
 >
 > A feature that appears in one file but not the others is a documentation bug.
 
@@ -30,6 +31,7 @@ ManulEngine is a **deterministic, DSL-first Web & Desktop Automation Runtime**. 
 5. **Never describe ManulEngine as "AI-powered" or "neuro-symbolic".** The correct framing is: "a deterministic, DSL-first Web & Desktop Automation Runtime backed by Playwright, with optional local AI for self-healing."
 6. **Understand the four automation pillars.** ManulEngine scripts (`.hunt` files) can serve as QA/E2E tests, RPA workflows, synthetic monitors, or AI-agent execution targets. The same DSL commands (`NAVIGATE`, `CLICK`, `FILL`, `EXTRACT`, `VERIFY`, `CALL PYTHON`, etc.) apply to all four use cases. When generating `.hunt` files, adapt the structure to the user's intent — a monitoring script may skip `VERIFY` in favour of `EXTRACT`; an RPA script may use `CALL PYTHON` extensively for data processing; an AI-agent script should use strict DSL commands (never raw Playwright calls) for safety.
 7. **When updating public docs, keep the runtime-reference layer intact.** README.md is not only a landing page. It should retain concrete sections for explainability layers, configuration surface, automation pillars, desktop automation, hooks/variables orchestration, and test/benchmark coverage.
+8. **When documenting the companion VS Code extension for end users, prefer the published Marketplace install path.** Do not default public docs to local extension build instructions unless the user explicitly asks about extension development.
 
 ## What is this project?
 
@@ -691,6 +693,31 @@ Each element dict returned by `SNAPSHOT_JS` contains:
 * `self.learned_elements` — semantic cache: `(mode, search_texts, target_field) → {name, tag}`.
 * `self.last_xpath` — used for Contextual Reuse (if next step says "in that field").
 
+## VS Code extension (`vscode-extension/`)
+
+A companion extension that provides hunt file language support, Test Explorer integration, a config sidebar, cache browser, and an interactive debug runner.
+
+**Key rules when editing extension code:**
+
+* `constants.ts` — centralised shared constants module. All string literals for config filenames (`DEFAULT_CONFIG_FILENAME`), debug protocol markers (`PAUSE_MARKER`), and terminal names (`TERMINAL_NAME`, `DEBUG_TERMINAL_NAME`, `DAEMON_TERMINAL_NAME`) live here. `getConfigFileName()` reads the `manulEngine.configFile` VS Code setting with a fallback to `DEFAULT_CONFIG_FILENAME`. **Every** TS file that references the config filename or terminal names must import from `constants.ts` — never hardcode these strings inline.
+* `huntRunner.ts` — `runHunt()` spawns `manul` with `cwd` set to the **VS Code workspace folder root** (resolved via `vscode.workspace.getWorkspaceFolder()`), not `path.dirname(huntFile)`. This ensures `manul_engine_configuration.json` and relative `controls_cache_dir` paths are always resolved from the project root, matching CLI behaviour.
+* `huntRunner.ts` — `findManulExecutable()` probes local venv folders in order: `.venv`, `venv`, `env`, `.env` (both `bin/manul` on Unix and `Scripts\manul.exe` on Windows) before falling back to user-level install paths and a login-shell lookup. When adding new candidate paths, keep this order and always guard Windows/macOS-only paths with `isWin` / `process.platform` checks.
+* `huntRunner.ts` — `runHuntFileDebugPanel(manulExe, huntFile, onData, token?, breakLines?, onPause?)` spawns with `--workers 1` and optionally `--break-lines N,M,...`. **Never pass `--debug`** — `--debug` pauses before every step including step 1 (`NAVIGATE`), which hangs before the browser has loaded anything. Only `--break-lines` + the stdin/stdout protocol is used for the panel runner.
+* **Debug protocol:** Python (`core.py`) detects it is not a TTY (piped stdout) and emits `\x00MANUL_DEBUG_PAUSE\x00{"step":"...","idx":N}\n` on stdout when pausing. The TS side line-buffers stdout, detects the marker, calls `onPause(step, idx)` and writes `"next\n"`, `"continue\n"`, or `"debug-stop\n"` to stdin. The `onPause` return type is `Promise<"next" | "continue" | "highlight" | "debug-stop" | "stop-test">`. Sending `"abort\n"` + killing the process after 500 ms implements **Stop Test**; `"debug-stop\n"` implements **Debug Stop** (run to end, no more pauses).
+* **Break-step semantics:** `ManulEngine.__init__` accepts `break_steps: set[int] | None`. `_user_break_steps` stores the original user-defined set; `break_steps` is the mutable active set. When the user picks **Next Step**: `break_steps.add(idx + 1)`. When the user picks **Continue All**: `break_steps = set(_user_break_steps)`.
+* `debugControlPanel.ts` — singleton `DebugControlPanel.getInstance(ctx)`. `showPause(step, idx)` uses `vscode.window.createQuickPick()` (low-level API, not `showQuickPick`) so the picker can be hidden programmatically. `ignoreFocusOut: true` keeps it visible while Playwright runs. `abort()` calls `_activeQp.hide()`, which triggers `onDidHide` → resolves the promise with `"next"` so Python's `stdin.readline()` always unblocks. `dispose()` also calls `hide()` and resets the singleton. `tryRaiseWindow(idx, stepText)` (Linux only): spawns `xdotool search --onlyvisible --class "Code" windowactivate`, falls back to `wmctrl -a "Visual Studio Code"`, then fires `notify-send -u normal -t 5000`. The QuickPick has **5 items**: Next Step, Continue All, Highlight Element, **⏹ Debug Stop**, **🛑 Stop Test**.
+* `huntTestController.ts` — has a **Debug run profile** in addition to the normal run profile. It calls `runHuntFileDebugPanel` with `onPause: (step, idx) => panel.showPause(step, idx)` and runs sequentially. **Stop button wiring:** `token.onCancellationRequested(() => panel.abort())` — this is essential.
+* `configPanel.ts` — `doSave()` forces `ai_always: false` whenever `model` is empty/null. Do not remove this guard.
+* `configPanel.ts` — two separate cache controls: `controls_cache_enabled` is **Persistent Controls Cache**; `semantic_cache_enabled` is **Semantic Cache**. Do not merge these settings.
+* `configPanel.ts` — `auto_annotate` checkbox (default `false`) is labelled **Auto-Annotate Page Navigation**. When enabled, the engine writes `# 📍 Auto-Nav: <name>` comments into `.hunt` files live whenever the URL changes.
+* Config panel reads/writes `manul_engine_configuration.json` at the workspace root using `_configPath()`. The config file name is resolved via `getConfigFileName()` from `constants.ts`, which reads the `manulEngine.configFile` setting.
+* Ollama model discovery: the panel fetches `http://localhost:11434/api/tags` on open and populates a `<select>` dropdown with installed model names. First option is always `null (heuristics-only)`.
+* `schedulerPanel.ts` — scans workspace for all `.hunt` files, splits them into scheduled and unscheduled sections, supports schedule mutation via `WorkspaceEdit`, and renders run-history sparklines from `reports/run_history.json`.
+* `explainLensProvider.ts` — legacy CodeLens provider source file. Currently **not registered** in `extension.ts` or `package.json`. The active explain UI is `ExplainHoverProvider`.
+* `explainHoverProvider.ts` — implements `HoverProvider` for `.hunt` files. During debug runs, `--explain` is auto-injected; `ExplainOutputParser` parses stdout explain blocks keyed by file line number. A separate `manul.debug.explainStep` command is contributed as an editor title bar button and calls `DebugControlPanel.triggerExplain()` to send `"explain"` via stdin to the paused Python process.
+* **Docs/install rule:** when writing **public-facing docs for end users**, prefer the published Marketplace install path for the extension. Only document local `npm` / `vsce` / `F5` build workflows when the user is explicitly asking about extension development.
+* **Dev build rule:** when you are actually editing extension source code, local build remains the correct validation path: `cd vscode-extension && npm install && npm run compile`. Use `npx vsce package` only when packaging is explicitly relevant. Press `F5` in VS Code with the extension folder open only for extension-development workflows.
+
 ## Version Bump Checklist
 
 When the version changes, **ALL** of the following files must be updated:
@@ -699,5 +726,7 @@ When the version changes, **ALL** of the following files must be updated:
 |------|----------------|
 | `pyproject.toml` | `version = "X.Y.Z"` under `[project]` |
 | `README.md` | `**Version:** X.Y.Z` in the footer |
-| `README_DEV.md` | Title `# 😼 ManulEngine vX.Y.Z`, pyproject.toml ref, lifecycle/test suite lists, footer `**Version:** X.Y.Z` |
+| `README_DEV.md` | Title `# 😼 ManulEngine vX.Y.Z`, pyproject.toml ref, extension manifest ref, VS Code extension version ref, lifecycle/test suite lists, footer `**Version:** X.Y.Z` |
+| `vscode-extension/package.json` | `"version": "X.Y.Z"` (uses 3-digit semver, e.g. `"0.0.84"`) |
+| `vscode-extension/README.md` | Add `### X.Y.Z` release notes section above the previous entry |
 | `.github/copilot-instructions.md` | Version in the repo layout section (this file) |
