@@ -6,21 +6,15 @@
 
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
-[![Status: Alpha](https://img.shields.io/badge/status-alpha-d97706)](#status-alpha)
+[![Status: Alpha](https://img.shields.io/badge/status-alpha-d97706)](#status)
 
-> **Status: Alpha**
->
-> **Developed by a single person.**
->
-> This is an experimental automation runtime with a companion VS Code extension in this repository. There are no promises or guarantees of stability. Bugs are expected, APIs will change, and it is currently meant for exploration and technical feedback, not production CI/CD pipelines.
+Deterministic, DSL-first web and desktop automation on top of Playwright, with explainable heuristics, a standalone Python API, and optional local AI fallback.
 
-Deterministic, DSL-first web and desktop automation on top of Playwright, with explainable heuristics and optional local AI fallback.
+## Status
 
-## Status: Alpha
+**Status: Alpha. Developed by a single person.**
 
-**This project is currently in Alpha. While the core architecture is solid, it is actively being battle-tested. Bugs are expected, APIs may evolve, and there are no promises about stability.**
-
-ManulEngine is deliberately positioned as an engineering tool, not a marketing story. The core claim is transparency: when a step works, you should understand why; when it fails, you should have enough signal to diagnose it.
+This project is actively being battle-tested. Bugs are expected, APIs may evolve, and there are no promises about stability or production readiness. The core claim is transparency: when a step works, you should understand why; when it fails, you should have enough signal to diagnose it.
 
 ## Core Philosophy
 
@@ -35,7 +29,7 @@ The primary resolver is not an LLM. It is a deterministic scoring system backed 
 - Scores are normalized on a `0.0` to `1.0` confidence scale.
 - Weighted channels include `cache`, `semantics`, `text`, `attributes`, and `proximity`.
 
-That means the engine can explain more than "element not found". It can show whether a target lost because the text affinity was weak, semantic alignment was poor, the candidate was hidden, or another channel outweighed it.
+That means the engine can explain more than "element not found". It can show whether a target lost because text affinity was weak, semantic alignment was poor, the candidate was hidden, or another channel outweighed it.
 
 ### Transparency instead of AI magic
 
@@ -66,7 +60,7 @@ The intended boundary is straightforward:
 
 ## Why ManulEngine
 
-Most tools sold as AI automation are cloud wrappers around selectors and retries. ManulEngine is aiming at the opposite design.
+Most browser automation tools sold as AI automation are cloud wrappers around selectors and retries. ManulEngine is aiming at the opposite design.
 
 ### Deterministic first, not AI-first
 
@@ -84,9 +78,14 @@ QA, ops, and analysts can keep the flow readable in `.hunt`. SDETs can attach Py
 
 `"model": null` remains the recommended default. When a local Ollama model is enabled, it is a fallback for ambiguous cases, not the primary execution engine.
 
-## Four Pillars
+## Four Automation Pillars
 
 ManulEngine is not only a test runner. The same runtime and the same DSL can cover four adjacent use cases:
+
+1. QA and E2E testing
+2. RPA workflows
+3. Synthetic monitoring
+4. AI agent execution targets
 
 ### QA and E2E testing
 
@@ -108,7 +107,7 @@ If an external agent needs to drive the browser, `.hunt` is a safer constrained 
 
 ### Explainability layers
 
-The runtime and the companion VS Code extension now expose multiple explainability layers instead of forcing you to inspect a terminal dump.
+The runtime and companion VS Code extension expose multiple explainability layers instead of forcing you to inspect a terminal dump.
 
 **CLI: `--explain`**
 
@@ -117,7 +116,7 @@ manul --explain tests/saucedemo.hunt
 manul --explain --headless tests/ --html-report
 ```
 
-That mode prints the candidate rankings and per-channel scoring breakdown for each resolved step.
+That mode prints candidate rankings and per-channel scoring breakdowns for each resolved step.
 
 Representative CLI explain output:
 
@@ -138,23 +137,11 @@ Representative CLI explain output:
 
 **VS Code: title bar action**
 
-During a debug pause, the extension exposes `🔍 Explain Current Step` in the editor title bar so you can request explanation data for the paused step without leaving the editor.
+During a debug pause, the extension exposes `Explain Current Step` in the editor title bar so you can request explanation data for the paused step without leaving the editor.
 
 **VS Code: hover tooltips in debug mode**
 
-Run a hunt in Debug mode through Test Explorer, then hover over any resolved step line in the `.hunt` file. The extension shows the stored per-channel breakdown directly on that line. That is usually the fastest way to understand why one candidate outranked another.
-
-### VS Code hover debugger and explain mode
-
-The VS Code extension is the primary editor integration in this repository for `.hunt` files.
-
-Important debugging workflows:
-
-- Run a hunt in Debug mode through Test Explorer.
-- Use the `🔍 Explain Current Step` title bar action during a debug pause.
-- Hover over a step line to see the stored scoring breakdown for the resolved target.
-
-The hover flow is the killer DX feature because it keeps the reasoning attached to the exact step line instead of sending you to a separate console search.
+Run a hunt in Debug mode through Test Explorer, then hover over any resolved step line in the `.hunt` file. The extension shows the stored per-channel breakdown directly on that line.
 
 ### Desktop and Electron automation via `executable_path`
 
@@ -185,30 +172,6 @@ STEP 2: Exercise the main screen
 DONE.
 ```
 
-This is practical for Electron-based apps such as Slack, Discord, VS Code, or internal desktop shells.
-
-Platform-specific examples are straightforward:
-
-```json
-{
-  "model": null,
-  "browser": "chromium",
-  "executable_path": "/usr/share/discord/Discord",
-  "controls_cache_enabled": true
-}
-```
-
-```json
-{
-  "model": null,
-  "browser": "chromium",
-  "executable_path": "C:\\Users\\YourUser\\AppData\\Local\\Discord\\app-1.0.9051\\Discord.exe",
-  "controls_cache_enabled": true
-}
-```
-
-`OPEN APP` waits for the default window, attaches to it, and then the rest of the hunt runs the same way as a web scenario.
-
 ### Smart recorder for native controls
 
 The recorder is meant to capture intent, not just raw pointer activity. A concrete example is native `<select>` handling: the injected recorder observes semantic `change` events and emits DSL such as `Select 'Option' from 'Dropdown'` instead of recording a brittle chain of low-level clicks on `<option>` elements.
@@ -226,7 +189,7 @@ That balance is intentional: keep the common path readable, and keep the edge ca
 
 ### Public Python API (`ManulSession`)
 
-For users who prefer writing automation in pure Python — or want to integrate ManulEngine into existing pytest suites, RPA scripts, or library code — the runtime exports `ManulSession`: an async context manager that owns the Playwright lifecycle and exposes clean methods for navigation, clicks, fills, verifications, and extraction. Every call routes through the same smart-resolution pipeline (cache → heuristics → optional LLM fallback) used by `.hunt` file execution.
+For users who prefer writing automation in pure Python, the runtime exports `ManulSession`: an async context manager that owns the Playwright lifecycle and exposes clean methods for navigation, clicks, fills, verifications, and extraction.
 
 ```python
 from manul_engine import ManulSession
@@ -254,8 +217,6 @@ async with ManulSession() as session:
     assert result.status == "pass"
 ```
 
-Use `ManulSession` when you want programmatic control. Use `.hunt` files when you want shared QA artifacts readable by non-technical stakeholders.
-
 ### State, variables, and scope
 
 Variable handling is strict rather than ad hoc. The runtime supports `@var:`, `EXTRACT`, `SET`, and `CALL PYTHON ... into {var}` with deterministic placeholder substitution in downstream steps.
@@ -276,8 +237,6 @@ Scope precedence is explicit:
 | 3 | Mission vars | `@var:` declarations |
 | 4 | Global vars | lifecycle hooks and process-level state |
 
-That means row data overrides mission defaults, and step-local captures do not silently leak across data rows.
-
 ### Tags and data-driven runs
 
 The runtime also supports selective execution and data-driven loops without changing the DSL model.
@@ -291,16 +250,12 @@ The runtime also supports selective execution and data-driven loops without chan
 manul tests/ --tags smoke
 ```
 
-`@tags:` filters which hunt files run. `@data:` reruns the same hunt for every row in a JSON or CSV dataset while keeping scope isolation intact.
-
 ### Lifecycle orchestration and hooks
 
 There are two levels of Python orchestration:
 
 - Per-file `[SETUP]` / `[TEARDOWN]` and inline `CALL PYTHON` for file-local setup or backend calls.
 - Suite-level `manul_hooks.py` with `@before_all`, `@after_all`, `@before_group`, and `@after_group` for shared state across multiple hunts.
-
-That split matters because UI setup should not be abused for infrastructure setup when deterministic Python can do it more directly.
 
 ### Benchmarks and test coverage
 
@@ -315,21 +270,31 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.7
+pip install manul-engine==0.0.9.8
 playwright install
 ```
 
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.7"
+pip install "manul-engine[ai]==0.0.9.8"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
 
+### VS Code Extension
+
+ManulEngine has a companion VS Code extension. Normal installation should use the published Marketplace build:
+
+- https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine
+
+```bash
+code --install-extension manul-engine.manul-engine
+```
+
 ### Configuration
 
-Create `manul_engine_configuration.json` in the workspace root. All keys are optional, but the public README should still show the current runtime surface area because this file is the main runtime control plane:
+Create `manul_engine_configuration.json` in the workspace root. All keys are optional, but this file is the main runtime control plane:
 
 ```json
 {
@@ -337,28 +302,21 @@ Create `manul_engine_configuration.json` in the workspace root. All keys are opt
   "browser": "chromium",
   "browser_args": [],
   "headless": false,
-
   "ai_always": false,
   "ai_policy": "prior",
   "ai_threshold": null,
-
   "timeout": 5000,
   "nav_timeout": 30000,
-
   "controls_cache_enabled": true,
   "controls_cache_dir": "cache",
   "semantic_cache_enabled": true,
-
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
   "tests_home": "tests",
   "auto_annotate": false,
-
   "executable_path": null,
   "channel": null,
-
   "workers": 1,
-
   "retries": 0,
   "screenshot": "on-fail",
   "html_report": false
@@ -374,7 +332,7 @@ Notes:
 - `channel` targets an installed browser such as Chrome or Edge.
 - `executable_path` targets a custom executable such as an Electron app.
 
-Environment variables always win over JSON config. That is useful for CI, shell aliases, and one-off runs:
+Environment variables always win over JSON config:
 
 ```bash
 export MANUL_HEADLESS=true
@@ -402,7 +360,7 @@ Configuration reference:
 | `nav_timeout` | `30000` | Navigation timeout in ms. |
 | `log_name_maxlen` | `0` | Truncate element names in logs. `0` means no limit. |
 | `log_thought_maxlen` | `0` | Truncate LLM thought strings in logs. `0` means no limit. |
-| `workers` | `1` | Max hunt files to run in parallel. Debug mode forces sequential execution. |
+| `workers` | `1` | Max hunt files to run in parallel. |
 | `tests_home` | `"tests"` | Default output directory for new hunts and scan output. |
 | `auto_annotate` | `false` | Insert `# 📍 Auto-Nav:` comments after URL changes during a run. |
 | `channel` | `null` | Installed browser channel such as `chrome` or `msedge`. |
@@ -410,14 +368,6 @@ Configuration reference:
 | `retries` | `0` | Retry failed hunt files this many times. |
 | `screenshot` | `"on-fail"` | Screenshot mode: `none`, `on-fail`, or `always`. |
 | `html_report` | `false` | Generate `reports/manul_report.html` after the run. |
-
-Runtime notes:
-
-- `model: null` is still the recommended default.
-- `workers` can come from CLI, JSON config, or `MANUL_WORKERS`; CLI wins.
-- `--debug` and `--break-lines` force `workers = 1` because interactive pauses cannot be parallelised safely.
-- Relative `controls_cache_dir` paths resolve from the current working directory, not from the package install path.
-- `channel` and `executable_path` solve different problems: installed browser channel versus custom desktop executable.
 
 ### First hunt file
 
@@ -456,16 +406,16 @@ manul --html-report --screenshot on-fail tests/
 manul --explain tests/saucedemo.hunt
 ```
 
-### Runtime reference
+## Runtime Reference
 
-Useful capabilities that were getting lost when the README was trimmed too aggressively:
+Useful capabilities that get lost when the README is trimmed too aggressively:
 
-- `OPEN APP` plus `executable_path` lets the same DSL drive Electron apps such as Discord, Slack, or internal desktop shells.
-- `@schedule:` plus `manul daemon` turns a hunt into a built-in monitor or RPA task without external cron wiring.
+- `OPEN APP` plus `executable_path` lets the same DSL drive Electron apps.
+- `@schedule:` plus `manul daemon` turns a hunt into a built-in monitor or RPA task.
 - `@var:`, `EXTRACT`, `SET`, and `CALL PYTHON ... into {var}` give you deterministic variable flow without hardcoding runtime values.
 - `[SETUP]`, `[TEARDOWN]`, inline `CALL PYTHON`, and `manul_hooks.py` cover environment setup, backend calls, and suite-wide orchestration.
 - `@custom_control` is the explicit escape hatch when a widget should be handled with raw Playwright instead of generic heuristics.
-- `SCAN PAGE` and `manul record` are there to accelerate authoring, not to replace the readable DSL with low-level recordings.
+- `SCAN PAGE` and `manul record` accelerate authoring without replacing the readable DSL with low-level recordings.
 
 ### Static variables and hooks
 
@@ -496,8 +446,6 @@ STEP 2: OTP verification
 [END TEARDOWN]
 ```
 
-That pattern keeps test data, backend calls, and cleanup explicit instead of hiding them behind UI setup steps.
-
 ### Tags, scheduler, and execution controls
 
 ```text
@@ -510,8 +458,6 @@ manul tests/ --tags smoke
 manul daemon tests/ --headless
 ```
 
-Use tags to target subsets of hunts. Use schedules when the same file should run as a monitor or recurring automation job. Use CLI/config flags for retries, screenshots, HTML reports, and worker count.
-
 ### Global lifecycle hooks
 
 ```python
@@ -519,77 +465,43 @@ from manul_engine import before_all, after_all, GlobalContext
 
 @before_all
 def setup(ctx: GlobalContext) -> None:
-  ctx.variables["BASE_URL"] = "https://staging.example.com"
+    ctx.variables["BASE_URL"] = "https://staging.example.com"
 
 @after_all
 def teardown(ctx: GlobalContext) -> None:
-  pass
+    cleanup_test_data()
 ```
 
-Use `manul_hooks.py` when the concern is suite-wide, not file-local.
+## Testing and Benchmarks
 
-### Command quick reference
+The project is alpha, but it is not undocumented or untested.
 
-| Category | Command Syntax |
-|---|---|
-| Navigation | `NAVIGATE to [URL]`, `OPEN APP` |
-| Input | `Fill [Field] with [Text]`, `Type [Text] into [Field]` |
-| Click | `Click [Element]`, `DOUBLE CLICK [Element]`, `RIGHT CLICK [Element]` |
-| Selection | `Select [Option] from [Dropdown]`, `Check [Checkbox]`, `Uncheck [Checkbox]` |
-| Keyboard | `PRESS ENTER`, `PRESS [Key]`, `PRESS [Key] on [Element]` |
-| File Upload | `UPLOAD 'File' to 'Element'` |
-| Extraction | `EXTRACT [Target] into {variable}` |
-| Verification | `VERIFY ...`, `VERIFY VISUAL 'Element'`, `VERIFY SOFTLY ...` |
-| Network | `MOCK METHOD "url" with 'file'`, `WAIT FOR RESPONSE "url"` |
-| Flow control | `WAIT [seconds]`, `SCROLL DOWN`, `SET {variable} = value` |
-| Debug | `DEBUG`, `PAUSE`, `--explain`, VS Code hover explainability |
-| Finish | `DONE.` |
+- `python manul.py test` runs the synthetic and unit suite
+- `tests/*.hunt` holds integration-style hunts
+- `benchmarks/run_benchmarks.py` exercises adversarial fixtures such as dynamic IDs, overlays, nested tables, and custom dropdowns
 
-Append `if exists` or `optional` outside the quoted target text to make a step non-blocking.
+Representative coverage areas include:
 
-### Scheduler and reporting
+- logical STEP grouping and hierarchical execution
+- `ManulSession` API behavior
+- scheduler parsing
+- lifecycle hooks
+- scoped variables
+- HTML reporting
+- iframe routing
+- visibility filtering and TreeWalker behavior
+- custom controls and lazy control loading
 
-```text
-@schedule: every 5 minutes
-```
+## What's New in v0.0.9.8
 
-```bash
-manul daemon tests/ --headless
-manul tests/ --retries 2 --screenshot on-fail --html-report
-```
-
-The scheduler is built into the runtime. Reporting, screenshots, retries, and concurrency are execution controls, not DSL syntax.
-
-### Coverage and benchmarks
-
-The runtime is not documented as production-stable, but it is documented as heavily exercised. The repo ships with:
-
-- `python manul.py test` for the synthetic DOM and unit suite.
-- `benchmarks/run_benchmarks.py` for adversarial fixtures such as overlapping elements, dynamic IDs, nested tables, and custom dropdowns.
-- integration hunts under `tests/` for real-world flows.
-
-Representative coverage areas include Shadow DOM, iframe routing, DOMScorer weight ordering, lifecycle hooks, scoped variables, recorder output, scheduler parsing, HTML reporting, verify states, uploads, key presses, and desktop app attachment through `OPEN APP`.
-
-That matters because the point of the README is not just positioning. It is also the shortest complete runtime reference.
-
-## What's New in v0.0.9.7
-
-- **Public Python API (`ManulSession`)** — a high-level async context manager for programmatic browser automation in pure Python. Wraps the full ManulEngine pipeline (cache → heuristics → optional LLM fallback) with clean methods like `navigate`, `click`, `fill`, `extract`, `verify`, and `run_steps`. No `.hunt` files needed.
-- New VS Code extension icon.
-- Version bump across all project files.
-
-## What's New in v0.0.9.6
-
-- The public README was rewritten around the actual current posture of the project: alpha-stage, technically ambitious, but still being battle-tested.
-- The messaging now emphasizes determinism, transparency, and DX instead of broad marketing claims.
-- The documentation now frames `DOMScorer` explicitly as a normalized `0.0` to `1.0` heuristic system rather than vague AI behavior.
-- The README now highlights the VS Code extension debugging workflow, especially `[🔍 Explain]` and hover-based scoring inspection.
-- Desktop automation via `executable_path` and `OPEN APP` is now documented as a first-class workflow.
-- The smart recorder's handling of native `<select>` `change` events is documented explicitly.
-- Install examples are now version-pinned to `0.0.9.6`.
+- `ManulSession` is now a first-class public API surface for standalone Python automation
+- `.hunt` execution now uses a Hierarchical Block System where `STEP` lines become blocks and child actions execute beneath them with fail-fast semantics
+- stdout now emits structured block and action tags for external UI parsing
+- custom controls now use Just-In-Time loading so only the required handlers are imported for the current hunt
+- reporting now carries both per-action and per-block state
 
 ## License
 
-**Version:** 0.0.9.7
+**Version:** 0.0.9.8
 
 Apache-2.0.

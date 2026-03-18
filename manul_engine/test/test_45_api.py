@@ -407,6 +407,14 @@ STEP 2: Log in
     result = await s.run_steps(dsl)
     _assert(result.status == "pass", "run_steps() returns pass on success",
             f"got: {result.status}")
+    _assert(len(result.blocks) == 2, "run_steps() returns two block results",
+            f"got: {len(result.blocks)}")
+    _assert(result.blocks[0].name == "STEP 1: Open the site",
+            "run_steps() preserves first block name",
+            f"got: {result.blocks[0].name!r}")
+    _assert(result.steps[0].logical_step == "STEP 1: Open the site",
+            "run_steps() tags actions with parent block name",
+            f"got: {result.steps[0].logical_step!r}")
 
     nav_steps = [st for kind, st in captured_steps if kind == "navigate"]
     _assert(len(nav_steps) >= 1, "run_steps() dispatched NAVIGATE",

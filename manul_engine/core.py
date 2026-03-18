@@ -31,14 +31,14 @@ except Exception:  # pragma: no cover
     ollama = None
 
 from . import prompts
-from .helpers import substitute_memory, compact_log_field, extract_quoted, detect_mode, classify_step, parse_logical_step, RE_SYSTEM_STEP
+from .helpers import substitute_memory, compact_log_field, extract_quoted, detect_mode, classify_step, RE_SYSTEM_STEP, parse_hunt_blocks
 from .hooks import execute_hook_line
 from .js_scripts import SNAPSHOT_JS
 from .scoring import score_elements
 from .actions import _ActionsMixin
 from .cache import _ControlsCacheMixin
-from .controls import load_custom_controls, get_custom_control
-from .reporting import StepResult, MissionResult
+from .controls import load_custom_controls, get_custom_control, extract_required_controls
+from .reporting import StepResult, MissionResult, BlockResult
 from .variables import ScopedVariables
 
 
@@ -55,6 +55,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         disable_cache:  bool          = False,
         semantic_cache: "bool | None" = None,     # None → read from config/env
         explain_mode:   bool          = False,
+        required_controls: "set[str] | None" = None,  # lazy-load: filenames from extract_required_controls
         **_kwargs,
     ):
         # None model → heuristics-only mode (AI fully disabled)
@@ -116,7 +117,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             print("    ℹ️  No model configured — running in heuristics-only mode (AI disabled).")
         if self.debug_mode:
             print("    🐛 Debug mode ON — engine will pause before each step.")
-        load_custom_controls(str(Path.cwd()))  # idempotent — skips if already loaded for this path
+        load_custom_controls(str(Path.cwd()), required_modules=required_controls)
 
     def reset_session_state(self) -> None:
         """Clear in-memory caches and runtime (row/step) variables.
@@ -991,31 +992,30 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
             _has_step_markers = bool(re.search(r'^\s*STEP\s*\d*\s*:', task, re.MULTILINE | re.IGNORECASE))
             _is_numbered = bool(re.match(r'^\s*\d+\.', task))
-            # Plain unnumbered action lines: no STEP markers, no numeric prefixes,
-            # but contains recognisable system/action keywords (NAVIGATE, VERIFY, etc.).
             _has_action_keywords = bool(RE_SYSTEM_STEP.search(task))
             if _has_step_markers or (_has_action_keywords and not _is_numbered):
-                # STEP-grouped or plain unnumbered format: split line-by-line.
-                plan = [line.strip() for line in task.splitlines() if line.strip()]
+                parsed_task = task
             elif _is_numbered:
-                # Legacy numbered list: split at each "N. " boundary.
-                plan = [s.strip() for s in re.split(r'(?=\b\d+\.\s)', task) if s.strip()]
+                parsed_task = "\n".join(
+                    s.strip() for s in re.split(r'(?=\b\d+\.\s)', task) if s.strip()
+                )
             else:
-                # Free-text description: delegate to LLM planner.
-                plan = await self._llm_plan(task)
+                parsed_task = "\n".join(await self._llm_plan(task))
 
-            if not plan and not _is_numbered and not _has_step_markers and not _has_action_keywords:
+            if not parsed_task and not _is_numbered and not _has_step_markers and not _has_action_keywords:
                 print("    ❌ No plan produced. If you're running without Ollama, provide a numbered or unnumbered step list.")
 
-            if not plan:
+            blocks = parse_hunt_blocks(parsed_task, step_file_lines)
+            if not blocks:
                 return MissionResult(file=hunt_file or "", name=os.path.basename(hunt_file) if hunt_file else "", status="fail")
 
             ok = True
             done = False
             _step_results: list[StepResult] = []
+            _block_results: list[BlockResult] = []
             _soft_errors: list[str] = []
             _screenshot_mode = screenshot_mode
-            _current_logical_step: str | None = None  # active STEP label
+            _action_file_lines = [line for block in blocks for line in block.action_lines]
             # Clear per-mission scopes to avoid stale values leaking between
             # runs of the same ManulEngine instance.
             self.memory.clear_level(ScopedVariables.LEVEL_ROW)
@@ -1036,316 +1036,289 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             _cc_page_cache: dict[str, str] = {}
             _cc_pages_mtime: float = 0.0
             try:
-                for i, raw_step in enumerate(plan, 1):
-                    step = substitute_memory(raw_step, self.memory)
-                    started_at = datetime.datetime.now()
-                    started_perf = time.perf_counter()
-                    print(f"\n[🐾 STEP {i} @ {started_at.strftime('%H:%M:%S')}] {step}")
-                    step_kind = classify_step(step)
+                action_index = 0
+                for block in blocks:
+                    block_started_perf = time.perf_counter()
+                    block_steps: list[StepResult] = []
+                    block_status = "pass"
+                    block_error: str | None = None
 
-                    # Determine whether this step is a system step (NAVIGATE, SCROLL,
-                    # etc.) or an action step (click, fill, select, hover…).
-                    # For action steps, the debug pause fires INSIDE _execute_step
-                    # after element resolution so the tester sees the highlighted
-                    # element before deciding to proceed.
-                    # PRESS, RIGHT CLICK, and UPLOAD use dedicated handlers
-                    # outside _execute_step, so they are treated as system steps
-                    # and use the pre-step pause logic.
-                    _is_system_step = step_kind != "action"
+                    print(f"\n[📦 BLOCK START] {block.block_name}")
 
-                    if step_kind == "logical_step":
-                        _, desc = parse_logical_step(step)
-                        _current_logical_step = desc or step
-                        print(f"\n{'='*60}\n  STEP: {_current_logical_step}\n{'='*60}")
-                        continue  # no browser action, no StepResult
+                    for raw_step in block.actions:
+                        action_index += 1
+                        step = substitute_memory(raw_step, self.memory)
+                        started_perf = time.perf_counter()
+                        step_kind = classify_step(step)
+                        print(f"  [▶️ ACTION START] {step}")
 
-                    if self.debug_mode and _is_system_step:
-                        await self._debug_prompt(page, step, i)
-                    elif not self.debug_mode and self.break_steps and i in self.break_steps and _is_system_step:
-                        import sys as _sys
-                        if not _sys.stdin.isatty():
-                            print(f"    🔴 BREAKPOINT at step {i}")
-                            await self._debug_prompt(page, step, i)
-                        else:
-                            print(f"    🔴 BREAKPOINT at step {i} — opening Playwright Inspector…")
-                            await page.pause()
+                        _is_system_step = step_kind != "action"
 
-                    # Re-read AUTO_ANNOTATE at runtime so env vars injected after
-                    # import time (e.g. by the VS Code extension) are respected.
-                    import os as _os_nav
-                    _auto_annotate_live = (
-                        _os_nav.environ.get("MANUL_AUTO_ANNOTATE", "").strip().lower()
-                        in ("1", "true", "yes")
-                    ) or prompts.AUTO_ANNOTATE
-                    try:
-                        url_before = page.url
-                    except Exception:
-                        url_before = ""
-
-                    _step_ok = True
-                    _step_error: str | None = None
-                    try:
-                        if step_kind == "navigate":
-                            if not await self._handle_navigate(page, step):
-                                _step_error = "Navigation failed"
-                                _step_ok = False; ok = False; break
-                            if _auto_annotate_live and hunt_file and step_file_lines:
-                                await self._auto_annotate_navigate(page, hunt_file, step_file_lines, i)
-
-                        elif step_kind == "open_app":
-                            _app_ok, page = await self._handle_open_app(page, ctx)
-                            if not _app_ok:
-                                _step_error = "OPEN APP failed"
-                                _step_ok = False; ok = False; break
-
-                        elif step_kind == "mock":
-                            if not await self._handle_mock(page, step, hunt_dir=hunt_dir):
-                                _step_error = "MOCK command failed"
-                                _step_ok = False; ok = False; break
-
-                        elif step_kind == "wait_for_response":
-                            if not await self._handle_wait_for_response(page, step):
-                                _step_error = "WAIT FOR RESPONSE timed out"
-                                _step_ok = False; ok = False; break
-
-                        elif step_kind == "wait":
-                            n = re.search(r'(\d+)', step)
-                            await asyncio.sleep(int(n.group(1)) if n else 2)
-
-                        elif step_kind == "scroll":
-                            await self._handle_scroll(page, step)
-
-                        elif step_kind == "extract":
-                            if not await self._handle_extract(page, step):
-                                _step_error = "Extract failed"
-                                _step_ok = False; ok = False; break
-
-                        elif step_kind == "verify":
-                            if not await self._handle_verify(page, step, step_idx=i):
-                                _step_error = "Verification failed"
-                                _step_ok = False; ok = False; break
-
-                        elif step_kind == "verify_visual":
-                            if not await self._handle_verify_visual(page, step, strategic_context, step_idx=i, hunt_dir=hunt_dir):
-                                _step_error = "Visual regression check failed"
-                                _step_ok = False; ok = False; break
-
-                        elif step_kind == "verify_softly":
-                            _soft_ok = await self._handle_verify_softly(page, step, step_idx=i)
-                            if not _soft_ok:
-                                _soft_msg = f"Soft assertion failed at step {i}: {step}"
-                                _soft_errors.append(_soft_msg)
-                                _step_error = _soft_msg
-                                _step_ok = False  # mark step as warning, but do NOT break
-                                print(f"    ⚠️  SOFT ASSERTION FAILED — continuing execution")
-
-                        elif step_kind == "press_enter":
-                            await self._handle_press_enter(page)
-
-                        elif step_kind == "press":
-                            if not await self._handle_press(page, step, strategic_context, step_idx=i):
-                                _step_error = "PRESS command failed"
-                                _step_ok = False; ok = False; break
-
-                        elif step_kind == "right_click":
-                            if not await self._handle_right_click(page, step, strategic_context, step_idx=i):
-                                _step_error = "RIGHT CLICK command failed"
-                                _step_ok = False; ok = False; break
-
-                        elif step_kind == "upload":
-                            if not await self._handle_upload(page, step, strategic_context, step_idx=i, hunt_dir=hunt_dir):
-                                _step_error = "UPLOAD command failed"
-                                _step_ok = False; ok = False; break
-
-                        elif step_kind == "scan_page":
-                            if not await self._handle_scan_page(page, step):
-                                _step_error = "SCAN PAGE failed"
-                                _step_ok = False; ok = False; break
-
-                        elif step_kind == "call_python":
-                            # Strip any leading step number, then re-check from
-                            # the start to avoid false positives on button labels
-                            # that happen to contain the words "CALL PYTHON".
-                            instruction = re.sub(r'^\s*\d+\.\s*', '', step).strip()
-                            if re.match(r'CALL\s+PYTHON\b', instruction.upper()):
-                                # Always execute from the raw (unsubstituted) instruction
-                                # so that 'into {var}' is preserved for parsing even when
-                                # {var} already exists in memory and would have been
-                                # replaced by substitute_memory() before this point.
-                                raw_instr = re.sub(r'^\s*\d+\.\s*', '', raw_step).strip()
-                                result = execute_hook_line(raw_instr, hunt_dir=hunt_dir, variables=self.memory)
-                                print(f"     {result.message}")
-                                if not result.success:
-                                    _step_error = result.message
-                                    _step_ok = False; ok = False; break
-                                if result.var_name and result.return_value is not None:
-                                    self.memory[result.var_name] = result.return_value
+                        if self.debug_mode and _is_system_step:
+                            await self._debug_prompt(page, step, action_index)
+                        elif not self.debug_mode and self.break_steps and action_index in self.break_steps and _is_system_step:
+                            import sys as _sys
+                            if not _sys.stdin.isatty():
+                                print(f"    🔴 BREAKPOINT at action {action_index}")
+                                await self._debug_prompt(page, step, action_index)
                             else:
-                                # "CALL PYTHON" appears mid-sentence (e.g. a button
-                                # label) — route through the normal action executor.
-                                if not await self._execute_step(page, step, strategic_context, step_idx=i):
+                                print(f"    🔴 BREAKPOINT at action {action_index} — opening Playwright Inspector…")
+                                await page.pause()
+
+                        import os as _os_nav
+                        _auto_annotate_live = (
+                            _os_nav.environ.get("MANUL_AUTO_ANNOTATE", "").strip().lower()
+                            in ("1", "true", "yes")
+                        ) or prompts.AUTO_ANNOTATE
+                        try:
+                            url_before = page.url
+                        except Exception:
+                            url_before = ""
+
+                        _step_ok = True
+                        _step_error: str | None = None
+                        try:
+                            if step_kind == "navigate":
+                                if not await self._handle_navigate(page, step):
+                                    _step_error = "Navigation failed"
+                                    _step_ok = False
+                                elif _auto_annotate_live and hunt_file and _action_file_lines:
+                                    await self._auto_annotate_navigate(page, hunt_file, _action_file_lines, action_index)
+
+                            elif step_kind == "open_app":
+                                _app_ok, page = await self._handle_open_app(page, ctx)
+                                if not _app_ok:
+                                    _step_error = "OPEN APP failed"
+                                    _step_ok = False
+
+                            elif step_kind == "mock":
+                                if not await self._handle_mock(page, step, hunt_dir=hunt_dir):
+                                    _step_error = "MOCK command failed"
+                                    _step_ok = False
+
+                            elif step_kind == "wait_for_response":
+                                if not await self._handle_wait_for_response(page, step):
+                                    _step_error = "WAIT FOR RESPONSE timed out"
+                                    _step_ok = False
+
+                            elif step_kind == "wait":
+                                n = re.search(r'(\d+)', step)
+                                await asyncio.sleep(int(n.group(1)) if n else 2)
+
+                            elif step_kind == "scroll":
+                                await self._handle_scroll(page, step)
+
+                            elif step_kind == "extract":
+                                if not await self._handle_extract(page, step):
+                                    _step_error = "Extract failed"
+                                    _step_ok = False
+
+                            elif step_kind == "verify":
+                                if not await self._handle_verify(page, step, step_idx=action_index):
+                                    _step_error = "Verification failed"
+                                    _step_ok = False
+
+                            elif step_kind == "verify_visual":
+                                if not await self._handle_verify_visual(page, step, strategic_context, step_idx=action_index, hunt_dir=hunt_dir):
+                                    _step_error = "Visual regression check failed"
+                                    _step_ok = False
+
+                            elif step_kind == "verify_softly":
+                                _soft_ok = await self._handle_verify_softly(page, step, step_idx=action_index)
+                                if not _soft_ok:
+                                    _soft_msg = f"Soft assertion failed at action {action_index}: {step}"
+                                    _soft_errors.append(_soft_msg)
+                                    _step_error = _soft_msg
+                                    _step_ok = False
+                                    print("    ⚠️  SOFT ASSERTION FAILED — continuing execution")
+
+                            elif step_kind == "press_enter":
+                                await self._handle_press_enter(page)
+
+                            elif step_kind == "press":
+                                if not await self._handle_press(page, step, strategic_context, step_idx=action_index):
+                                    _step_error = "PRESS command failed"
+                                    _step_ok = False
+
+                            elif step_kind == "right_click":
+                                if not await self._handle_right_click(page, step, strategic_context, step_idx=action_index):
+                                    _step_error = "RIGHT CLICK command failed"
+                                    _step_ok = False
+
+                            elif step_kind == "upload":
+                                if not await self._handle_upload(page, step, strategic_context, step_idx=action_index, hunt_dir=hunt_dir):
+                                    _step_error = "UPLOAD command failed"
+                                    _step_ok = False
+
+                            elif step_kind == "scan_page":
+                                if not await self._handle_scan_page(page, step):
+                                    _step_error = "SCAN PAGE failed"
+                                    _step_ok = False
+
+                            elif step_kind == "call_python":
+                                instruction = re.sub(r'^\s*\d+\.\s*', '', step).strip()
+                                if re.match(r'CALL\s+PYTHON\b', instruction.upper()):
+                                    raw_instr = re.sub(r'^\s*\d+\.\s*', '', raw_step).strip()
+                                    result = execute_hook_line(raw_instr, hunt_dir=hunt_dir, variables=self.memory)
+                                    print(f"     {result.message}")
+                                    if not result.success:
+                                        _step_error = result.message
+                                        _step_ok = False
+                                    elif result.var_name and result.return_value is not None:
+                                        self.memory[result.var_name] = result.return_value
+                                elif not await self._execute_step(page, step, strategic_context, step_idx=action_index):
                                     _step_error = "Action failed"
-                                    print("    ❌ ACTION FAILED")
-                                    _step_ok = False; ok = False; break
+                                    _step_ok = False
 
-                        elif step_kind == "set_var":
-                            # SET {var} = value — assign a variable mid-flight.
-                            # Parse var name from raw_step so {var} on LHS isn't
-                            # replaced by substitute_memory() before we read it.
-                            _set_m = re.match(
-                                r"(?:\d+\.\s*)?SET\s+\{?(\w+)\}?\s*=\s*(.+)",
-                                raw_step, re.IGNORECASE,
-                            )
-                            if _set_m:
-                                _sv_name = _set_m.group(1)
-                                # RHS: use the substituted step so placeholders resolve.
-                                _rhs_m = re.match(
-                                    r"(?:\d+\.\s*)?SET\s+\S+\s*=\s*(.+)",
-                                    step, re.IGNORECASE,
+                            elif step_kind == "set_var":
+                                _set_m = re.match(
+                                    r"(?:\d+\.\s*)?SET\s+\{?(\w+)\}?\s*=\s*(.+)",
+                                    raw_step, re.IGNORECASE,
                                 )
-                                _sv_raw = (_rhs_m.group(1) if _rhs_m else _set_m.group(2)).strip()
-                                # Strip surrounding quotes if present.
-                                if len(_sv_raw) >= 2 and _sv_raw[0] in ("'", '"') and _sv_raw[-1] == _sv_raw[0]:
-                                    _sv_raw = _sv_raw[1:-1]
-                                self.memory[_sv_name] = _sv_raw
-                                print(f"    📝 SET {{{_sv_name}}} = {_sv_raw}")
-                            else:
-                                _step_error = f"Malformed SET command: {step}"
-                                print(f"    ❌ {_step_error}")
-                                _step_ok = False; ok = False; break
-
-                        elif step_kind == "debug_vars":
-                            # DEBUG VARS — dump all scoped variable levels to stdout.
-                            print(f"    📋 DEBUG VARS — current variable state:")
-                            print(self.memory.dump())
-
-                        elif step_kind == "debug":
-                            # In debug_mode the pre-step _debug_prompt() above already
-                            # paused execution; treat this step as a no-op to avoid a
-                            # double-pause for the same step.
-                            if not self.debug_mode:
-                                import sys as _sys
-                                if not _sys.stdin.isatty():
-                                    # Piped mode (VS Code extension): use the marker protocol
-                                    # so the panel can show the pause overlay.
-                                    print("    \U0001f50e DEBUG/PAUSE step")
-                                    await self._debug_prompt(page, step, i)
+                                if _set_m:
+                                    _sv_name = _set_m.group(1)
+                                    _rhs_m = re.match(
+                                        r"(?:\d+\.\s*)?SET\s+\S+\s*=\s*(.+)",
+                                        step, re.IGNORECASE,
+                                    )
+                                    _sv_raw = (_rhs_m.group(1) if _rhs_m else _set_m.group(2)).strip()
+                                    if len(_sv_raw) >= 2 and _sv_raw[0] in ("'", '"') and _sv_raw[-1] == _sv_raw[0]:
+                                        _sv_raw = _sv_raw[1:-1]
+                                    self.memory[_sv_name] = _sv_raw
+                                    print(f"    📝 SET {{{_sv_name}}} = {_sv_raw}")
                                 else:
-                                    # Terminal mode: open the Playwright Inspector.
-                                    print("    \U0001f50e DEBUG/PAUSE step \u2014 opening Playwright Inspector\u2026")
-                                    await page.pause()
+                                    _step_error = f"Malformed SET command: {step}"
+                                    _step_ok = False
 
-                        elif step_kind == "done":
-                            print("    🏁 MISSION ACCOMPLISHED")
-                            done = True
+                            elif step_kind == "debug_vars":
+                                print("    📋 DEBUG VARS — current variable state:")
+                                print(self.memory.dump())
+
+                            elif step_kind == "debug":
+                                if not self.debug_mode:
+                                    import sys as _sys
+                                    if not _sys.stdin.isatty():
+                                        print("    🔎 DEBUG/PAUSE step")
+                                        await self._debug_prompt(page, step, action_index)
+                                    else:
+                                        print("    🔎 DEBUG/PAUSE step — opening Playwright Inspector…")
+                                        await page.pause()
+
+                            elif step_kind == "done":
+                                print("    🏁 MISSION ACCOMPLISHED")
+                                done = True
+
+                            else:
+                                _cc_mode = detect_mode(step)
+                                _cc_quoted = extract_quoted(step, preserve_case=True)
+                                if _cc_mode == "input" and len(_cc_quoted) >= 2:
+                                    _cc_target, _cc_value = _cc_quoted[0], _cc_quoted[-1]
+                                elif _cc_mode == "select" and len(_cc_quoted) >= 2:
+                                    _cc_target, _cc_value = _cc_quoted[-1], _cc_quoted[0]
+                                elif _cc_mode == "drag" and len(_cc_quoted) >= 2:
+                                    _cc_target, _cc_value = _cc_quoted[0], _cc_quoted[-1]
+                                elif _cc_quoted:
+                                    _cc_target, _cc_value = _cc_quoted[0], None
+                                else:
+                                    _cc_target, _cc_value = "", None
+                                _cc_handler = None
+                                if _cc_target:
+                                    _mt = prompts.pages_registry_mtime()
+                                    if _mt != _cc_pages_mtime:
+                                        _cc_page_cache.clear()
+                                        _cc_pages_mtime = _mt
+                                    _cc_page = _cc_page_cache.get(page.url) or prompts.lookup_page_name(page.url)
+                                    _cc_page_cache[page.url] = _cc_page
+                                    _cc_handler = get_custom_control(_cc_page, _cc_target)
+                                if _cc_handler is not None:
+                                    print(f"    🎛️  [CUSTOM CONTROL] Routed '{_cc_target}' on '{_cc_page}' to custom handler.")
+                                    try:
+                                        _cc_result = _cc_handler(page, _cc_mode, _cc_value)
+                                        if inspect.isawaitable(_cc_result):
+                                            await _cc_result
+                                    except Exception:
+                                        _step_error = f"Custom control error on '{_cc_target}'"
+                                        print(traceback.format_exc())
+                                        _step_ok = False
+                                elif not await self._execute_step(page, step, strategic_context, step_idx=action_index):
+                                    _step_error = "Action failed"
+                                    _step_ok = False
+                        except Exception:
+                            _step_ok = False
+                            _step_error = traceback.format_exc()
+                        finally:
+                            duration_s = time.perf_counter() - started_perf
+                            duration_ms = duration_s * 1000
+                            _ss_b64: str | None = None
+                            if _screenshot_mode == "always" or (_screenshot_mode == "on-fail" and not _step_ok):
+                                try:
+                                    import base64 as _b64
+                                    _ss_bytes = await page.screenshot(type="png")
+                                    _ss_b64 = _b64.b64encode(_ss_bytes).decode("ascii")
+                                except Exception:
+                                    pass
+                            if _step_ok:
+                                _sr_status = "pass"
+                            elif step_kind == "verify_softly":
+                                _sr_status = "warning"
+                            else:
+                                _sr_status = "fail"
+                            _healed = self._last_step_healed
+                            _step_result = StepResult(
+                                index=action_index,
+                                text=re.sub(r'^\s*\d+\.\s*', '', step),
+                                status=_sr_status,
+                                duration_ms=duration_ms,
+                                error=_step_error,
+                                screenshot=_ss_b64,
+                                logical_step=block.block_name,
+                                healed=_healed,
+                            )
+                            _step_results.append(_step_result)
+                            block_steps.append(_step_result)
+                            self._last_step_healed = False
+
+                            if _sr_status == "pass":
+                                print(f"  [✅ ACTION PASS] duration: {duration_s:.2f}s")
+                            elif _sr_status == "warning":
+                                block_status = "warning" if block_status == "pass" else block_status
+                                print(f"  [⚠️ ACTION WARN] {_step_error}")
+                            else:
+                                ok = False
+                                block_status = "fail"
+                                block_error = _step_error
+                                _summary = (_step_error or "Action failed").strip().splitlines()[-1]
+                                print(f"  [❌ ACTION FAIL] {_summary}")
+
+                            if _auto_annotate_live and hunt_file and _action_file_lines and step_kind != "navigate":
+                                try:
+                                    url_after = page.url
+                                    if url_after != url_before and action_index < len(_action_file_lines):
+                                        await self._auto_annotate_navigate(
+                                            page, hunt_file, _action_file_lines, action_index + 1
+                                        )
+                                except Exception:
+                                    pass
+
+                        if block_status == "fail" or done:
                             break
 
-                        else:
-                            # ── Custom controls interception ───────────────────────────────
-                            _cc_step_l = step.lower()
-                            _cc_mode = detect_mode(step)
-                            _cc_quoted = extract_quoted(step, preserve_case=True)
-                            if _cc_mode == "input" and len(_cc_quoted) >= 2:
-                                # target = field/control name, value = text to type
-                                _cc_target, _cc_value = _cc_quoted[0], _cc_quoted[-1]
-                            elif _cc_mode == "select" and len(_cc_quoted) >= 2:
-                                # target = dropdown/control name (last quoted), value = option (first quoted)
-                                # e.g. Select 'Express' from the 'Shipping Method' dropdown
-                                _cc_target, _cc_value = _cc_quoted[-1], _cc_quoted[0]
-                            elif _cc_mode == "drag" and len(_cc_quoted) >= 2:
-                                # target = drag source, value = drop destination
-                                _cc_target, _cc_value = _cc_quoted[0], _cc_quoted[-1]
-                            elif _cc_quoted:
-                                # click/hover/locate: first quoted token is the target, no value
-                                _cc_target, _cc_value = _cc_quoted[0], None
-                            else:
-                                _cc_target, _cc_value = "", None
-                            _cc_handler = None
-                            if _cc_target:
-                                _mt = prompts.pages_registry_mtime()
-                                if _mt != _cc_pages_mtime:
-                                    _cc_page_cache.clear()
-                                    _cc_pages_mtime = _mt
-                                _cc_page = _cc_page_cache.get(page.url) or prompts.lookup_page_name(page.url)
-                                _cc_page_cache[page.url] = _cc_page
-                                _cc_handler = get_custom_control(_cc_page, _cc_target)
-                            if _cc_handler is not None:
-                                print(f"    🎛️  [CUSTOM CONTROL] Routed '{_cc_target}' on '{_cc_page}' to custom handler.")
-                                try:
-                                    _cc_result = _cc_handler(page, _cc_mode, _cc_value)
-                                    if inspect.isawaitable(_cc_result):
-                                        await _cc_result
-                                except Exception as _cc_exc:
-                                    print(
-                                        f"    ❌ Custom control error on "
-                                        f"'{_cc_target}' (page='{_cc_page}'): {_cc_exc}\n"
-                                        + traceback.format_exc()
-                                    )
-                                    _step_error = f"Custom control error on '{_cc_target}'"
-                                    _step_ok = False; ok = False; break
-                            # ── End custom controls interception ──────────────────────────
-                            elif not await self._execute_step(page, step, strategic_context, step_idx=i):
-                                _step_error = "Action failed"
-                                print("    ❌ ACTION FAILED")
-                                _step_ok = False; ok = False; break
-                    except Exception as _step_exc:
-                        _step_ok = False
-                        ok = False
-                        _step_error = traceback.format_exc()
-                        print(
-                            "    ❌ STEP ERROR — unexpected exception:\n"
-                            f"{_step_error}"
-                        )
+                    block_duration_ms = (time.perf_counter() - block_started_perf) * 1000
+                    _block_results.append(BlockResult(
+                        name=block.block_name,
+                        status=block_status,
+                        duration_ms=block_duration_ms,
+                        error=block_error,
+                        actions=list(block_steps),
+                    ))
+
+                    if block_status == "fail":
+                        print(f"[🟥 BLOCK FAIL] {block.block_name}")
                         break
-                    finally:
-                        ended_at = datetime.datetime.now()
-                        duration_s = time.perf_counter() - started_perf
-                        duration_ms = duration_s * 1000
-                        print(
-                            f"    ⏱️  STEP END @ {ended_at.strftime('%H:%M:%S')} — duration {duration_s:.2f}s"
-                        )
-                        # ── Screenshot capture ────────────────────────────────────
-                        _ss_b64: str | None = None
-                        if _screenshot_mode == "always" or (_screenshot_mode == "on-fail" and not _step_ok):
-                            try:
-                                import base64 as _b64
-                                _ss_bytes = await page.screenshot(type="png")
-                                _ss_b64 = _b64.b64encode(_ss_bytes).decode("ascii")
-                            except Exception:
-                                pass
-                        # ── Collect step result ───────────────────────────────────
-                        # Soft assertion failures are recorded as "warning" status
-                        # rather than "fail" so the run continues.
-                        if _step_ok:
-                            _sr_status = "pass"
-                        elif step_kind == "verify_softly":
-                            _sr_status = "warning"
-                        else:
-                            _sr_status = "fail"
-                        _healed = self._last_step_healed
-                        _step_results.append(StepResult(
-                            index=i,
-                            text=re.sub(r'^\s*\d+\.\s*', '', step),
-                            status=_sr_status,
-                            duration_ms=duration_ms,
-                            error=_step_error,
-                            screenshot=_ss_b64,
-                            logical_step=_current_logical_step,
-                            healed=_healed,
-                        ))
-                        self._last_step_healed = False
-                        # After non-NAVIGATE steps, check if the URL changed and
-                        # annotate the next step with the new landing URL.
-                        if _auto_annotate_live and hunt_file and step_file_lines \
-                                and step_kind != "navigate":
-                            try:
-                                url_after = page.url
-                                if url_after != url_before and i < len(step_file_lines):
-                                    await self._auto_annotate_navigate(
-                                        page, hunt_file, step_file_lines, i + 1
-                                    )
-                            except Exception:
-                                pass
+
+                    print(f"[🟩 BLOCK PASS] {block.block_name}")
+                    if done:
+                        break
 
             finally:
                 await browser.close()
@@ -1358,6 +1331,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             name=os.path.basename(hunt_file) if hunt_file else "",
             status=_status,
             steps=_step_results,
+            blocks=_block_results,
             error=_step_results[-1].error if _step_results and _status == "fail" else None,
             soft_errors=_soft_errors,
         )

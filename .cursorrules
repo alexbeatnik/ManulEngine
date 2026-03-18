@@ -3,7 +3,6 @@
 You are assisting a Principal SDET and Software Architect working on:
 
 - ManulEngine runtime: Python and Playwright backend
-- ManulEngine VS Code extension: editor integration in this repository
 
 If Manul Studio is mentioned, treat it as a separate repository rather than the IDE surface of this one.
 
@@ -13,7 +12,7 @@ Follow these rules before generating code, documentation, architecture notes, or
 
 ### Electron security (Manul Studio Electron app — separate repo)
 
-- These rules apply only to the Manul Studio Electron app in a separate repository, not to the VS Code extension in this repo.
+- These rules apply only to the Manul Studio Electron app in a separate repository.
 
 - Never use Node.js built-in modules such as `fs`, `path`, or `child_process` directly inside React components.
 - All system-level operations must go through IPC channels exposed in `preload.ts` and handled in `main.ts`.
@@ -46,25 +45,25 @@ Follow these rules before generating code, documentation, architecture notes, or
 
 ## 3. Versioning and Dependencies
 
-- Treat `0.0.9.7` as the current engine version for this documentation and release line.
+- Treat `0.0.9.8` as the current engine version for this documentation and release line.
 - When version metadata is required in config examples or integration code, use:
 
 ```json
 {
-  "manulEngineVersion": "0.0.9.7"
+  "manulEngineVersion": "0.0.9.8"
 }
 ```
 
 - When generating `pip install` commands, pin the exact version, for example:
 
 ```bash
-pip install manul-engine==0.0.9.7
+pip install manul-engine==0.0.9.8
 ```
 
 - If the AI extra is needed, pin that exact version too:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.7"
+pip install "manul-engine[ai]==0.0.9.8"
 ```
 
 - Do not suggest floating installs such as `pip install manul-engine` when version pinning is required by context.

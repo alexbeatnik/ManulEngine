@@ -4,13 +4,14 @@
 ## GLOBAL DOC SYNC RULE
 
 > **CRITICAL — Read this first.**
-> Whenever the user asks to update documentation, a README, or a feature’s description, you **MUST** automatically update **all 4 core files** to keep the project’s positioning and syntax rules perfectly synchronised:
+> Whenever the user asks to update documentation, a README, or a feature's description, you **MUST** automatically update the repo-local core files to keep the project's positioning and syntax rules perfectly synchronised:
 > 1. `README.md` — public-facing feature docs and version footer
 > 2. `README_DEV.md` — internal architecture docs and version title/footer
-> 3. `vscode-extension/README.md` — VS Code Marketplace listing and release notes
-> 4. `.github/copilot-instructions.md` — AI training context and syntax rules
+> 3. `.github/copilot-instructions.md` — AI training context and syntax rules
 >
 > A feature that appears in one file but not the others is a documentation bug.
+> This `.github/copilot-instructions.md` file is the single canonical source of Copilot/LLM instructions for this repository. Any mirrored copies used by tooling or templates must reference this file or be kept byte-for-byte in sync as generated artifacts.
+> If the same change also affects the companion VS Code extension's Marketplace listing or release notes, update those in the separate extension repository when that repo is part of the task.
 
 ## SOLO DEV ALPHA POSITIONING
 
@@ -31,6 +32,7 @@ ManulEngine is a **deterministic, DSL-first Web & Desktop Automation Runtime**. 
 5. **Never describe ManulEngine as "AI-powered" or "neuro-symbolic".** The correct framing is: "a deterministic, DSL-first Web & Desktop Automation Runtime backed by Playwright, with optional local AI for self-healing."
 6. **Understand the four automation pillars.** ManulEngine scripts (`.hunt` files) can serve as QA/E2E tests, RPA workflows, synthetic monitors, or AI-agent execution targets. The same DSL commands (`NAVIGATE`, `CLICK`, `FILL`, `EXTRACT`, `VERIFY`, `CALL PYTHON`, etc.) apply to all four use cases. When generating `.hunt` files, adapt the structure to the user's intent — a monitoring script may skip `VERIFY` in favour of `EXTRACT`; an RPA script may use `CALL PYTHON` extensively for data processing; an AI-agent script should use strict DSL commands (never raw Playwright calls) for safety.
 7. **When updating public docs, keep the runtime-reference layer intact.** README.md is not only a landing page. It should retain concrete sections for explainability layers, configuration surface, automation pillars, desktop automation, hooks/variables orchestration, and test/benchmark coverage.
+8. **When documenting the companion VS Code extension for end users, prefer the published Marketplace install path.** Do not default public docs to local extension build instructions unless the user explicitly asks about extension development.
 
 ## What is this project?
 
@@ -57,20 +59,20 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.7
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.8
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession
   api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
   cache.py                 _ControlsCacheMixin (persistent per-site controls cache)
   actions.py               _ActionsMixin (navigate, scroll, extract, verify, drag, press, right_click, upload, _execute_step, scan_page)
-  reporting.py             StepResult, MissionResult, RunSummary dataclasses; append_run_history() (JSON Lines persistence to reports/run_history.json)
+  reporting.py             StepResult, BlockResult, MissionResult, RunSummary dataclasses; append_run_history() (JSON Lines persistence to reports/run_history.json)
   reporter.py              Self-contained HTML report generator (dark theme, native <details>/<summary> accordions, Flexbox step layout, base64 screenshots, control panel with Show Only Failed toggle and tag filter chips)
   prompts.py               JSON config loader, thresholds, LLM prompt templates
   scoring.py               DOMScorer class — normalised 0.0–1.0 float scoring, WEIGHTS dict, SCALE=177,778, pre-compiled regex, score_elements() backward-compatible API
   js_scripts.py            All JS injected into the browser (TreeWalker-based SNAPSHOT_JS with PRUNE set, SCAN_JS)
   scanner.py               Smart Page Scanner — scan_page(), build_hunt(), scan_main()
-  helpers.py               substitute_memory(), extract_quoted(), env_bool(), detect_mode(), classify_step(), timing constants
+  helpers.py               HuntBlock, parse_hunt_blocks(), substitute_memory(), extract_quoted(), env_bool(), detect_mode(), classify_step(), timing constants
   cli.py                   Public installed CLI entry point (manul command + manul scan + manul record + manul daemon subcommands); ParsedHunt NamedTuple
   controls.py              Custom Controls registry (@custom_control, get_custom_control, load_custom_controls)
   hooks.py                 [SETUP] / [TEARDOWN] hook parser and executor
@@ -125,22 +127,6 @@ tests/
   demo_variables.hunt     integration: @var: + CALL PYTHON into {var} combined
 benchmarks/
   run_benchmarks.py        Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
-vscode-extension/
-  package.json              Extension manifest (v0.0.97)
-  src:
-    extension.ts            Activation, command registration, formatter registration
-    huntRunner.ts           Spawns manul CLI; cwd resolved to workspace root
-    huntTestController.ts   VS Code Test Explorer integration (step-level reporting)
-    configPanel.ts          Webview sidebar: config editor + Ollama model discovery
-    cacheTreeProvider.ts    Sidebar tree: controls cache browser
-    stepBuilderPanel.ts     Sidebar webview: step-insertion buttons + new hunt file (incl. Scan Page)
-    schedulerPanel.ts       Advanced Scheduler Dashboard — Visual RPA Manager (split Scheduled/Unscheduled views, search bar, per-file combobox schedule editor, file mutation via WorkspaceEdit, run history sparklines)
-    formatter.ts            DocumentFormattingEditProvider for .hunt files (4-space action indent)
-    debugControlPanel.ts    Singleton QuickPick overlay for interactive debug stepping
-    constants.ts            Shared constants (DEFAULT_CONFIG_FILENAME, PAUSE_MARKER, terminal names, getConfigFileName(), EXPLAIN_OUTPUT_CHANNEL)
-    explainLensProvider.ts  CodeLens provider for .hunt files (legacy — not registered in extension.ts)
-    explainHoverProvider.ts  Stores per-line explanation data from --explain debug runs; serves as HoverProvider for .hunt files
-  syntaxes/hunt.tmLanguage.json  Hunt file syntax grammar
 ```
 
 ## How the engine works
@@ -167,7 +153,7 @@ Detected from step keywords:
 
 ## Step format
 
-Steps are parsed by `run_mission()` and must be atomic browser instructions. **STEP-grouped (unnumbered) is the canonical format for all new files.** The legacy numbered format is supported for backward compatibility.
+Steps are parsed by `run_mission()` and must be atomic browser instructions. **STEP-grouped (unnumbered) is the canonical format for all new files.** The legacy numbered format is supported for backward compatibility, but the runtime now executes them as hierarchical blocks: `STEP` headers become parent containers and child actions beneath them execute with fail-fast semantics.
 
 **STEP-grouped format — canonical (use this for all new files):**
 
@@ -199,6 +185,8 @@ DONE.
 
 Rules for STEP-grouped files:
 * `run_mission()` switches to line-by-line parsing when it detects **either** a `STEP` marker OR recognizable action keywords (NAVIGATE, VERIFY, DONE, etc.) in an unnumbered file. STEP markers are not required — a file containing only plain unnumbered action lines is parsed directly without them.
+* Runtime grouping is performed by `parse_hunt_blocks()` in `helpers.py`, not by `parse_hunt_file()`. `parse_hunt_file()` still returns raw mission text plus metadata; `parse_hunt_blocks()` turns the mission into `HuntBlock` objects for execution.
+* Each block starts with `[📦 BLOCK START] <STEP ...>` on stdout. Child actions emit `[▶️ ACTION START]`, then `[✅ ACTION PASS]` or `[❌ ACTION FAIL]`. Hard failures abort the rest of the block and emit `[🟥 BLOCK FAIL]`; complete success emits `[🟩 BLOCK PASS]`.
 * `STEP [number]: [description]` — number is optional; description is used for console output and HTML report section headers.
 * Blank lines between groups are allowed and ignored.
 * All other keywords (NAVIGATE, VERIFY, DONE, etc.) work identically in both formats.
@@ -388,16 +376,16 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * `prompts.py` loads config from `manul_engine_configuration.json` (CWD first, then package root fallback). No dotenv dependency.
 * `js_scripts.py` owns **all** JavaScript constants injected into the browser — no inline JS in Python files. This includes `SCAN_JS` (Smart Page Scanner).
 * `scanner.py` owns the standalone scan logic: `SCAN_JS` is imported from `js_scripts.py`; `build_hunt()` maps raw element dicts to hunt steps; `scan_page()` is the async Playwright runner; `scan_main()` is the async CLI entry called by `cli.py`. `_default_output()` reads `tests_home` from the config to derive the default output path.
-* `helpers.py` provides `env_bool(name, default)` for parsing boolean env vars; `detect_mode(step)` returns the interaction mode string (`"input"`, `"clickable"`, `"select"`, `"hover"`, `"drag"`, `"locate"`); `classify_step(step)` returns a step kind string (`"navigate"`, `"open_app"`, `"wait"`, `"scroll"`, `"extract"`, `"verify"`, `"press_enter"`, `"press"`, `"right_click"`, `"upload"`, `"scan_page"`, `"call_python"`, `"set_var"`, `"debug"`, `"done"`, or `"action"`) — used by `run_mission()` and `_execute_step()` to avoid duplicated regex dispatches.
+* `helpers.py` provides `HuntBlock`, `parse_hunt_blocks(task, file_lines=None)`, `env_bool(name, default)`, `detect_mode(step)`, and `classify_step(step)`. `parse_hunt_blocks()` is the runtime-level hierarchical parser that groups STEP headers into parent blocks and action lines into child lists while preserving block and action file lines for breakpoint mapping.
 * **Null model = heuristics-only:** When `model` is `None`, `_llm_json()` returns `None` immediately. `get_threshold(None)` returns `0`. No Ollama calls are made.
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
 * **Debug mode:** `ManulEngine(debug_mode=True, break_steps={N,...})`. `debug_mode=True` (from `--debug`) highlights the resolved element and pauses before every step using `input()` in TTY or Playwright's `page.pause()`. `break_steps` (from `--break-lines`) pauses only at listed step indices using the stdout/stdin panel protocol when stdout is not a TTY. The two are mutually exclusive in practice — the extension only ever sets `break_steps` via `--break-lines`.
 * **Element highlight in debug mode:** When `debug_mode=True` (or a `break_steps` pause fires), the engine calls `highlight_element(page, locator)` which injects `<style id="manul-debug-style">` (once) and sets `data-manul-debug-highlight="true"` on the target element, producing a persistent 4px magenta outline + glow that stays until `clear_highlight(page)` is called just before the action executes. A separate `_highlight()` method draws a short 2-second flash (non-debug, `setTimeout` inside JS) for non-pausing visual feedback.
-* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). `parse_hunt_file()` in `cli.py` returns a `ParsedHunt` NamedTuple with 10 fields: `mission`, `context`, `title`, `step_file_lines`, `setup_lines`, `teardown_lines`, `parsed_vars`, `tags`, `data_file`, `schedule`. `parsed_vars` is a `dict[str, str]` populated from `@var: {key} = value` header lines. `tags` is a `list[str]` populated from `@tags: tag1, tag2` header lines; empty list when absent. `schedule` is a `str` from `@schedule: <expression>`; empty string when absent. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
-* **Auto-Nav annotation:** When `auto_annotate` is enabled, `run_mission()` captures `url_before = page.url` before every step. For `NAVIGATE` steps, the annotation is written above the step itself. For all other steps, `url_after` is checked in the `finally` block — if the URL changed, `_auto_annotate_navigate(page, hunt_file, step_file_lines, i+1)` is called to insert a comment above the *next* step line. The comment uses the mapped page name when found in `pages.json`, or the full URL when the lookup returns an `"Auto:"` placeholder.
+* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). `parse_hunt_file()` in `cli.py` returns a `ParsedHunt` NamedTuple with 10 fields: `mission`, `context`, `title`, `step_file_lines`, `setup_lines`, `teardown_lines`, `parsed_vars`, `tags`, `data_file`, `schedule`. `parse_hunt_file()` does not build hierarchical blocks; the runtime layer does that later with `parse_hunt_blocks()`. `parsed_vars` is a `dict[str, str]` populated from `@var: {key} = value` header lines. `tags` is a `list[str]` populated from `@tags: tag1, tag2` header lines; empty list when absent. `schedule` is a `str` from `@schedule: <expression>`; empty string when absent. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
+* **Auto-Nav annotation:** When `auto_annotate` is enabled, `run_mission()` captures `url_before = page.url` before every action. For `NAVIGATE` actions, the annotation is written above the action itself. For all other actions, `url_after` is checked in the `finally` block — if the URL changed, `_auto_annotate_navigate(page, hunt_file, action_file_lines, action_idx+1)` is called to insert a comment above the next action line. The comment uses the mapped page name when found in `pages.json`, or the full URL when the lookup returns an `"Auto:"` placeholder.
 * **`pages.json` — nested per-site format:** `{ "<site_root_url>": { "Domain": "<display_name>", "<regex_or_exact_url>": "<page_name>" } }`. `lookup_page_name(url)` in `prompts.py` re-reads this file from disk on **every call** (live edits take effect immediately with no restart). Resolution order: exact URL key → regex/substring patterns (skipping `"Domain"` key) → `"Domain"` fallback. When no site block matches, a new nested entry is auto-generated. The longest-prefix site block wins when multiple blocks could match.
 * **`_debug_prompt()` `debug-stop` token:** When Python receives `"debug-stop"` on stdin from the VS Code extension (user pressed ⏹ Debug Stop), it clears **both** `self._user_break_steps = set()` and `self.break_steps = set()`, then breaks the pause loop. The test run continues to completion without any further pauses.
-* **Reporting & HTML reports:** `reporting.py` owns `StepResult`, `MissionResult` (with `__bool__` — truthy if all steps passed; has `tags: list[str]` for `@tags` from `.hunt` files), `RunSummary` dataclasses, and `append_run_history(mission)` which appends a JSON Lines record to `reports/run_history.json` (keys: `file`, `name`, `timestamp`, `status`, `duration_ms`). History is appended by `cli.py` (sequential, parallel, and failure paths) and `scheduler.py` (`_run_scheduled_job()`). `reporter.py` owns `generate_report(summary, output_path)` — produces a self-contained dark-themed HTML file with dashboard stats, native `<details>/<summary>` accordions (collapsed by default, auto-expanded on failure), Flexbox step rows, inline base64 screenshots, a **control panel** with "Show Only Failed" checkbox toggle, and **tag filter chips** (dynamically collected from all missions' `tags`). Each `<div class="mission">` carries `data-status` and `data-tags` attributes for JS filtering. All artifacts (logs, HTML reports) are saved to `reports/` (auto-created by `cli.py`). The `reports/` directory is `.gitignored`.
+* **Reporting & HTML reports:** `reporting.py` owns `StepResult`, `BlockResult`, `MissionResult` (with `__bool__` — truthy if status != `"fail"`; has `tags: list[str]` for `@tags` from `.hunt` files and `blocks: list[BlockResult]` for hierarchical execution), `RunSummary` dataclasses, and `append_run_history(mission)` which appends a JSON Lines record to `reports/run_history.json` (keys: `file`, `name`, `timestamp`, `status`, `duration_ms`). History is appended by `cli.py` (sequential, parallel, and failure paths) and `scheduler.py` (`_run_scheduled_job()`). `reporter.py` owns `generate_report(summary, output_path)` — produces a self-contained dark-themed HTML file with dashboard stats, native `<details>/<summary>` accordions (collapsed by default, auto-expanded on failure), Flexbox step rows, inline base64 screenshots, a **control panel** with "Show Only Failed" checkbox toggle, and **tag filter chips** (dynamically collected from all missions' `tags`). Each `<div class="mission">` carries `data-status` and `data-tags` attributes for JS filtering. All artifacts (logs, HTML reports) are saved to `reports/` (auto-created by `cli.py`). The `reports/` directory is `.gitignored`.
 * **Screenshot capture:** `run_mission()` accepts `screenshot_mode` (`"none"`, `"on-fail"`, `"always"`). Screenshots are stored as base64 PNGs in `StepResult.screenshot`.
 
 ## Running tests
@@ -548,7 +536,7 @@ Suggested config for mixed mode (optional AI self-healing fallback):
 * `_CUSTOM_CONTROLS` — module-level `dict[tuple[str, str], Callable]` keyed by `(page_name_lower, target_name_lower)`.
 * `@custom_control(page, target)` — decorator; both sync and async handlers accepted.
 * `get_custom_control(page_name, target_name) -> Callable | None` — case-insensitive lookup.
-* `load_custom_controls(workspace_dir)` — auto-imports all `*.py` files (not starting with `_`) from `controls/` in the workspace root, executing each in an isolated `ModuleType` (same sandboxing as hooks). Called from `ManulEngine.__init__` via `load_custom_controls(str(Path.cwd()))`.
+* `load_custom_controls(workspace_dir, required_modules=None)` — supports just-in-time loading for custom controls. The CLI computes `required_controls = extract_required_controls(hunt.mission, workspace_dir)` before engine startup, then `ManulEngine.__init__` calls `load_custom_controls(str(Path.cwd()), required_modules=required_controls)` so only the Python files needed for the current hunt are imported. Modules still execute in isolated `ModuleType` sandboxes.
 
 **Interception point in `core.py`:** the `else` branch of the step loop (action steps) checks `get_custom_control(lookup_page_name(page.url), first_quoted_token)` before any DOM snapshot. If a handler is found, it is called with `(page, mode, value)` and `_execute_step` is skipped entirely via `elif not await self._execute_step(...)` on the else path.
 
@@ -706,16 +694,16 @@ Each element dict returned by `SNAPSHOT_JS` contains:
 * `self.learned_elements` — semantic cache: `(mode, search_texts, target_field) → {name, tag}`.
 * `self.last_xpath` — used for Contextual Reuse (if next step says "in that field").
 
-## VS Code extension (`vscode-extension/`)
+## Companion VS Code extension
 
-A companion extension that provides hunt file language support, Test Explorer integration, a config sidebar, cache browser, and an interactive debug runner.
+The companion extension is published separately from this runtime repository. When the extension source is checked out in its own repository or added to the workspace, it provides hunt file language support, Test Explorer integration, a config sidebar, cache browser, and an interactive debug runner.
 
 **Key rules when editing extension code:**
 
 * `constants.ts` — centralised shared constants module. All string literals for config filenames (`DEFAULT_CONFIG_FILENAME`), debug protocol markers (`PAUSE_MARKER`), and terminal names (`TERMINAL_NAME`, `DEBUG_TERMINAL_NAME`, `DAEMON_TERMINAL_NAME`) live here. `getConfigFileName()` reads the `manulEngine.configFile` VS Code setting with a fallback to `DEFAULT_CONFIG_FILENAME`. **Every** TS file that references the config filename or terminal names must import from `constants.ts` — never hardcode these strings inline.
 * `huntRunner.ts` — `runHunt()` spawns `manul` with `cwd` set to the **VS Code workspace folder root** (resolved via `vscode.workspace.getWorkspaceFolder()`), not `path.dirname(huntFile)`. This ensures `manul_engine_configuration.json` and relative `controls_cache_dir` paths are always resolved from the project root, matching CLI behaviour.
 * `huntRunner.ts` — `findManulExecutable()` probes local venv folders in order: `.venv`, `venv`, `env`, `.env` (both `bin/manul` on Unix and `Scripts\manul.exe` on Windows) before falling back to user-level install paths and a login-shell lookup. When adding new candidate paths, keep this order and always guard Windows/macOS-only paths with `isWin` / `process.platform` checks.
-* `huntRunner.ts` — `runHuntFileDebugPanel(manulExe, huntFile, onData, token?, breakLines?, onPause?)` spawns with `--workers 1` and optionally `--break-lines N,M,...`. **Never pass `--debug`** — `--debug` pauses before every step including step 1 (NAVIGATE), which hangs before the browser has loaded anything. Only `--break-lines` + the stdin/stdout protocol is used for the panel runner.
+* `huntRunner.ts` — `runHuntFileDebugPanel(manulExe, huntFile, onData, token?, breakLines?, onPause?)` spawns with `--workers 1` and optionally `--break-lines N,M,...`. **Never pass `--debug`** — `--debug` pauses before every step including step 1 (`NAVIGATE`), which hangs before the browser has loaded anything. Only `--break-lines` + the stdin/stdout protocol is used for the panel runner.
 * **Debug protocol:** Python (`core.py`) detects it is not a TTY (piped stdout) and emits `\x00MANUL_DEBUG_PAUSE\x00{"step":"...","idx":N}\n` on stdout when pausing. The TS side line-buffers stdout, detects the marker, calls `onPause(step, idx)` and writes `"next\n"`, `"continue\n"`, or `"debug-stop\n"` to stdin. The `onPause` return type is `Promise<"next" | "continue" | "highlight" | "debug-stop" | "stop-test">`. Sending `"abort\n"` + killing the process after 500 ms implements **Stop Test**; `"debug-stop\n"` implements **Debug Stop** (run to end, no more pauses).
 * **Break-step semantics:** `ManulEngine.__init__` accepts `break_steps: set[int] | None`. `_user_break_steps` stores the original user-defined set; `break_steps` is the mutable active set. When the user picks **Next Step**: `break_steps.add(idx + 1)`. When the user picks **Continue All**: `break_steps = set(_user_break_steps)` (resets to original gutter breakpoints). This ensures "Next" advances exactly one step and "Continue" runs to the next gutter breakpoint or end.
 * `debugControlPanel.ts` — singleton `DebugControlPanel.getInstance(ctx)`. `showPause(step, idx)` uses `vscode.window.createQuickPick()` (low-level API, not `showQuickPick`) so the picker can be hidden programmatically. `ignoreFocusOut: true` keeps it visible while Playwright runs. `abort()` calls `_activeQp.hide()`, which triggers `onDidHide` → resolves the promise with `"next"` so Python's `stdin.readline()` always unblocks. `dispose()` also calls `hide()` and resets the singleton. `tryRaiseWindow(idx, stepText)` (Linux only): spawns `xdotool search --onlyvisible --class "Code" windowactivate` (X11 focus), falls back to `wmctrl -a "Visual Studio Code"`, then fires `notify-send -u normal -t 5000` (5-second system notification, disappears automatically — do NOT use `-u critical` which ignores `-t` on GNOME/KDE). The QuickPick has **5 items**: Next Step, Continue All, Highlight Element, **⏹ Debug Stop** (sends `"debug-stop"` — clears all breakpoints so the run completes without further pauses), **🛑 Stop Test** (sends `"abort"` + kills the process after 500 ms). `PauseChoice` type: `"next" | "continue" | "highlight" | "debug-stop" | "stop-test"`.
@@ -723,12 +711,13 @@ A companion extension that provides hunt file language support, Test Explorer in
 * `configPanel.ts` — `doSave()` forces `ai_always: false` whenever `model` is empty/null (`modelVal !== '' && g('ai_always').checked`). Do not remove this guard — saving `ai_always: true` with no model would produce an invalid config that causes runtime errors. The `syncAiAlways()` function also disables and unchecks the `ai_always` checkbox in the UI when the model field is cleared.
 * `configPanel.ts` — Two separate cache controls: `controls_cache_enabled` is labelled **"Persistent Controls Cache"** (file-based, per-site storage, survives between runs); `semantic_cache_enabled` is labelled **"Semantic Cache"** (in-session `learned_elements`, +200,000 score boost within a single run, resets when process ends). The `controls_cache_dir` field is labelled "controls_cache_dir". Both default to `true`. Do not merge these two settings.
 * `configPanel.ts` — `auto_annotate` checkbox (default `false`): labelled **"Auto-Annotate Page Navigation"**. When enabled, the engine writes `# 📍 Auto-Nav: <name>` comments into `.hunt` files live whenever the URL changes. `doSave()` writes `auto_annotate: g('auto_annotate').checked`; `doLoad()` reads `g('auto_annotate').checked = !!config.auto_annotate`.
-* Config panel reads/writes `manul_engine_configuration.json` at the workspace root using `_configPath()`. The config file name is resolved via `getConfigFileName()` from `constants.ts`, which reads the `manulEngine.configFile` VS Code setting.
+* Config panel reads/writes `manul_engine_configuration.json` at the workspace root using `_configPath()`. The config file name is resolved via `getConfigFileName()` from `constants.ts`, which reads the `manulEngine.configFile` setting.
 * Ollama model discovery: the panel fetches `http://localhost:11434/api/tags` on open and populates a `<select>` dropdown with installed model names (replaced legacy `<datalist>` + `<input>` to fix rendering offset in Electron webview). First option is always `null (heuristics-only)`. The stored model is always preserved as an option even when Ollama is offline.
 * `schedulerPanel.ts` — Advanced Scheduler Dashboard / Visual RPA Manager. `findAllHunts()` scans workspace for **all** `.hunt` files (not just scheduled ones), returns `HuntFileEntry[]` with `relPath`, `absUri`, and `schedule` (empty string if unscheduled). The webview splits files into **Scheduled Tasks** and **Unscheduled Tasks** sections with a **search bar** for filename filtering. Each file row has a `<select>` combobox (preset schedule options: None, every 30 seconds, every 1/5/15 minutes, every hour, daily at 09:00, weekly, Custom…), a hidden/disabled custom text `<input>` that activates when "Custom…" is selected, and an **Apply** button. Apply sends `{ command: 'updateSchedule', filePath: absUri, schedule: '...' }` to the extension. `mutateScheduleHeader(fileUri, schedule)` uses `vscode.WorkspaceEdit` to inject (after last `@`-prefixed metadata line), replace, or remove the `@schedule:` header. The file is saved after mutation and the webview refreshes automatically. **Run History & Sparklines:** `readRunHistory(wsRoot, limit=5)` reads `reports/run_history.json` (JSON Lines), returns a map of filename → last N `RunHistoryRecord` entries. `_sendAllFiles()` posts both `files` and `history` to the webview. The frontend renders a sparkline (pass=🟢, fail=🔴, flaky/warning=🟡) and a relative-time label ("3m ago") per file row.
 * `explainLensProvider.ts` — Legacy `ExplainLensProvider` CodeLens provider source file. Currently **not registered** in `extension.ts` or `package.json` (commands `manul.explainHuntFile` / `manul.runExplain` and setting `manulEngine.explainCodeLens` are not contributed). The file remains in the source tree for potential future use but is dead code. The active explain UI is the `ExplainHoverProvider` (see below).
 * `explainHoverProvider.ts` — `ExplainHoverProvider` implements `HoverProvider` for `.hunt` files. During debug runs, `--explain` is auto-injected; `ExplainOutputParser` parses stdout explain blocks (`┌─ 🔍 EXPLAIN` … `└─ ✅ Decision`) keyed by file line number. When the user hovers over a resolved step line, a rich Markdown tooltip with the per-channel scoring breakdown is shown. A separate `manul.debug.explainStep` command (title: "Manul: Explain Current Step", `$(lightbulb-autofix)` icon) is contributed in `package.json` as an editor title bar button; it calls `DebugControlPanel.triggerExplain()` to send `"explain"` via stdin to the paused Python process. The explain output channel name constant lives in `constants.ts` (`EXPLAIN_OUTPUT_CHANNEL`).
-* Build: `cd vscode-extension && npm install && npm run compile`. Use `npx vsce package` to produce a `.vsix`. Press F5 in VS Code with the extension folder open to launch a dev Extension Host.
+* **Docs/install rule:** when writing **public-facing docs for end users**, prefer the published Marketplace install path for the extension. Only document local `npm` / `vsce` / `F5` build workflows when the user is explicitly asking about extension development.
+* **Dev build rule:** when you are actually editing extension source code in its separate repository, run `npm install` and `npm run compile` from that repository's root folder. Use `npx vsce package` only when packaging is explicitly relevant. Press `F5` in VS Code with the extension folder open only for extension-development workflows.
 
 ## Version Bump Checklist
 
@@ -738,7 +727,7 @@ When the version changes, **ALL** of the following files must be updated:
 |------|----------------|
 | `pyproject.toml` | `version = "X.Y.Z"` under `[project]` |
 | `README.md` | `**Version:** X.Y.Z` in the footer |
-| `README_DEV.md` | Title `# 😼 ManulEngine vX.Y.Z`, pyproject.toml ref, extension manifest ref, VS Code extension version ref, lifecycle/test suite lists, footer `**Version:** X.Y.Z` |
-| `vscode-extension/package.json` | `"version": "X.Y.Z"` (uses 3-digit semver, e.g. `"0.0.84"`) |
-| `vscode-extension/README.md` | Add `### X.Y.Z` release notes section above the previous entry |
+| `README_DEV.md` | Title `# 😼 ManulEngine vX.Y.Z`, pyproject.toml ref, lifecycle/test suite lists, footer `**Version:** X.Y.Z` |
 | `.github/copilot-instructions.md` | Version in the repo layout section (this file) |
+
+Companion VS Code extension versioning and Marketplace release notes are maintained in the separate extension repository.

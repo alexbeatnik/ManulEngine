@@ -286,6 +286,21 @@ def lookup_page_name(url: str) -> str:
     import re as _re_lkp
     from urllib.parse import urlparse as _urlparse
 
+    def _belongs_to_site(candidate_url: str, site_root: str) -> bool:
+        candidate_parts = _urlparse(candidate_url)
+        site_parts = _urlparse(site_root)
+        if (
+            candidate_parts.scheme != site_parts.scheme
+            or candidate_parts.netloc != site_parts.netloc
+        ):
+            return False
+
+        candidate_path = candidate_parts.path.rstrip("/")
+        site_path = site_parts.path.rstrip("/")
+        if not site_path:
+            return True
+        return candidate_path == site_path or candidate_path.startswith(site_path + "/")
+
     # ── 1. Reload registry from disk ─────────────────────────────────────────
     # Always prefer _PAGES_WRITE_PATH (CWD) when it exists — it accumulates all
     # auto-populated entries from previous lookups.  Fall back to the package-root
@@ -319,7 +334,7 @@ def lookup_page_name(url: str) -> str:
     # ── 2. Find the best (longest-prefix) site block ──────────────────────────
     best_site_key: str | None = None
     for site_root in _live_registry:
-        if url.startswith(site_root):
+        if _belongs_to_site(url, site_root):
             if best_site_key is None or len(site_root) > len(best_site_key):
                 best_site_key = site_root
 

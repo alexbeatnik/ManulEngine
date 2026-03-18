@@ -3,6 +3,7 @@
 Shared helper functions and timing constants used across the engine.
 """
 
+from dataclasses import dataclass, field
 import os
 import re
 
@@ -76,6 +77,17 @@ RE_SYSTEM_STEP = re.compile(
 _RE_LOGICAL_STEP = re.compile(r'\bSTEP\s*(\d*)\s*:\s*(.*)', re.IGNORECASE)
 
 
+@dataclass(slots=True)
+class HuntBlock:
+    """Hierarchical execution block parsed from Hunt DSL."""
+
+    block_name: str
+    actions: list[str] = field(default_factory=list)
+    block_line: int | None = None
+    action_lines: list[int] = field(default_factory=list)
+    synthetic: bool = False
+
+
 def parse_logical_step(step: str) -> "tuple[str | None, str | None]":
     """Extract (number_or_None, description) from a logical STEP marker.
 
@@ -93,6 +105,56 @@ def parse_logical_step(step: str) -> "tuple[str | None, str | None]":
     num = m.group(1).strip() or None
     desc = m.group(2).strip()
     return num, desc
+
+
+def normalize_logical_step(step: str) -> str:
+    """Return a canonical STEP label without any leading legacy numbering."""
+    num, desc = parse_logical_step(step)
+    if desc is None:
+        return re.sub(r'^\s*\d+\.\s*', '', step).strip()
+    if num is None:
+        return f"STEP: {desc}"
+    return f"STEP {num}: {desc}"
+
+
+def parse_hunt_blocks(task: str, file_lines: list[int] | None = None) -> list[HuntBlock]:
+    """Parse raw Hunt DSL text into hierarchical STEP blocks.
+
+    STEP markers become parent blocks. All executable lines that follow are
+    attached to the current block until the next STEP marker. When the mission
+    contains no STEP markers, the executable lines are grouped into a single
+    synthetic default block to preserve backward compatibility.
+    """
+    mission_lines = [line.rstrip("\n") for line in task.splitlines() if line.strip()]
+    if not mission_lines:
+        return []
+
+    resolved_lines = file_lines if file_lines and len(file_lines) == len(mission_lines) else [0] * len(mission_lines)
+    blocks: list[HuntBlock] = []
+    current_block: HuntBlock | None = None
+
+    for raw_line, line_no in zip(mission_lines, resolved_lines):
+        stripped = raw_line.strip()
+        if classify_step(stripped) == "logical_step":
+            current_block = HuntBlock(
+                block_name=normalize_logical_step(stripped),
+                block_line=line_no or None,
+            )
+            blocks.append(current_block)
+            continue
+
+        if current_block is None:
+            current_block = HuntBlock(
+                block_name="STEP: Default",
+                block_line=line_no or None,
+                synthetic=True,
+            )
+            blocks.append(current_block)
+
+        current_block.actions.append(stripped)
+        current_block.action_lines.append(line_no or 0)
+
+    return [block for block in blocks if block.actions or not block.synthetic]
 
 
 # Pattern to strip quoted text before classification.

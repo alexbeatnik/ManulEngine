@@ -9,7 +9,8 @@
     },
     "https://example.com/": {
         "Domain": "Auto: example.com",
-        "https://example.com/login": "Example.com Login"
+        "https://example.com/login": "Example.com Login",
+        "https://example.com": "Auto: example.com"
     },
     "https://demoqa.com/": {
         "Domain": "Auto: demoqa.com/text-box",

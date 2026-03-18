@@ -283,13 +283,21 @@ async def _run_hunt_file(
 
     hunt = parse_hunt_file(path)
 
-    # Map file line numbers (from editor gutter breakpoints) to step indices.
+    # Map file line numbers (from editor gutter breakpoints) to action indices.
+    # STEP headers now map to the first action inside their block.
     _break_lines = break_lines or set()
-    break_steps: set[int] = {
-        step_idx
-        for step_idx, file_line in enumerate(hunt.step_file_lines, 1)
-        if file_line in _break_lines
-    }
+    from .helpers import parse_hunt_blocks
+    break_steps: set[int] = set()
+    if _break_lines:
+        action_index = 0
+        for block in parse_hunt_blocks(hunt.mission, hunt.step_file_lines):
+            block_start_action = action_index + 1
+            if block.block_line in _break_lines and block.actions:
+                break_steps.add(block_start_action)
+            for file_line in block.action_lines:
+                action_index += 1
+                if file_line in _break_lines:
+                    break_steps.add(action_index)
 
     if not hunt.mission:
         print(f"⚠️  Skipping {filename}: empty or comments-only.")
@@ -312,7 +320,11 @@ async def _run_hunt_file(
         print(f"\n❌ SETUP failed — skipping mission and teardown for {filename}")
         return MissionResult(file=path, name=filename, status="fail", error="SETUP failed")
 
-    manul = ManulEngine(headless=headless, browser=browser, debug_mode=debug, break_steps=break_steps, explain_mode=explain)
+    # ── Pre-flight: lazy-load only the custom control modules needed ──────
+    from manul_engine.controls import extract_required_controls
+    _required_controls = extract_required_controls(hunt.mission, os.getcwd())
+
+    manul = ManulEngine(headless=headless, browser=browser, debug_mode=debug, break_steps=break_steps, explain_mode=explain, required_controls=_required_controls or None)
     mission_result = MissionResult(file=path, name=filename, status="fail")
     # Feed global lifecycle vars and per-file @var: declarations as separate scopes
     # so the engine can enforce strict precedence.

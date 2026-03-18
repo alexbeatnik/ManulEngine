@@ -24,7 +24,7 @@ import tempfile
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from manul_engine.helpers import classify_step, parse_logical_step
+from manul_engine.helpers import classify_step, parse_logical_step, parse_hunt_blocks
 from manul_engine.reporting import StepResult, MissionResult, RunSummary
 from manul_engine.reporter import generate_report, _group_steps, _render_lstep_group
 
@@ -105,7 +105,42 @@ def _test_quoted_isolation() -> None:
             "STEP inside a quoted click target stays 'action'")
 
 
-# ── Section 4: StepResult.logical_step field ─────────────────────────────────
+# ── Section 4: parse_hunt_blocks ─────────────────────────────────────────────
+
+def _test_parse_hunt_blocks() -> None:
+    print("\n  ── parse_hunt_blocks — hierarchy extraction ───────────────")
+
+    blocks = parse_hunt_blocks(
+        "STEP 1: Login\n"
+        "    NAVIGATE to https://example.com\n"
+        "    Fill 'Username' with 'admin'\n"
+        "STEP 2: Verify\n"
+        "    VERIFY that 'Dashboard' is present\n"
+        "    DONE.\n",
+        [10, 11, 12, 20, 21, 22],
+    )
+
+    _assert(len(blocks) == 2, "parse_hunt_blocks: two STEP blocks parsed")
+    _assert(blocks[0].block_name == "STEP 1: Login", "parse_hunt_blocks: first block name canonicalized")
+    _assert(blocks[0].actions == [
+        "NAVIGATE to https://example.com",
+        "Fill 'Username' with 'admin'",
+    ], "parse_hunt_blocks: first block actions preserved")
+    _assert(blocks[0].block_line == 10, "parse_hunt_blocks: first block line recorded")
+    _assert(blocks[0].action_lines == [11, 12], "parse_hunt_blocks: first block action lines recorded")
+    _assert(blocks[1].block_name == "STEP 2: Verify", "parse_hunt_blocks: second block name canonicalized")
+    _assert(blocks[1].action_lines == [21, 22], "parse_hunt_blocks: second block action lines recorded")
+
+    default_blocks = parse_hunt_blocks(
+        "NAVIGATE to https://example.com\nDONE.",
+        [1, 2],
+    )
+    _assert(len(default_blocks) == 1, "parse_hunt_blocks: legacy mission grouped into one synthetic block")
+    _assert(default_blocks[0].block_name == "STEP: Default", "parse_hunt_blocks: synthetic block gets default label")
+    _assert(default_blocks[0].synthetic is True, "parse_hunt_blocks: synthetic flag set")
+
+
+# ── Section 5: StepResult.logical_step field ─────────────────────────────────
 
 def _test_step_result_field() -> None:
     print("\n  ── StepResult carries logical_step field ─────────────────")
@@ -287,6 +322,7 @@ async def run_suite() -> bool:
     _test_classify_step()
     _test_parse_logical_step()
     _test_quoted_isolation()
+    _test_parse_hunt_blocks()
     _test_step_result_field()
     _test_group_steps()
     _test_render_lstep_group()

@@ -1,17 +1,14 @@
-
----
-
 <p align="center">
   <img src="images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.7 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.8 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
 
 No CSS selectors. No XPath fragility. No cloud API bills.
-ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtime that resolves DOM elements with a mathematically sound `DOMScorer` (normalised 0.0–1.0 float scoring across 20+ signals) and a native JavaScript `TreeWalker`. Deterministic, reproducible, and fast enough to run anywhere.
+ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtime that resolves DOM elements with a mathematically sound `DOMScorer` (normalised `0.0–1.0` float scoring across 20+ signals) and a native JavaScript `TreeWalker`. Deterministic, reproducible, and fast enough to run anywhere.
 
 > The Manul goes hunting and never returns without its prey.
 
@@ -28,7 +25,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.7
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.8
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession
@@ -85,7 +82,7 @@ ManulEngine/
 │       ├── test_39_open_app.py       Unit: OPEN APP command — classify_step, RE_SYSTEM_STEP, _handle_open_app (32 assertions, no browser)
 │       ├── test_40_self_healing_cache.py Unit: Self-Healing Controls Cache — stale detection, HEALED logging, cache auto-update (16 assertions)
 │       ├── test_41_recorder.py      Unit: Semantic Test Recorder — JS bridge, DSL generator, step aggregation (no browser)
-│       └── test_42_scheduler.py     Unit: Built-in Scheduler — parse_schedule, next_run_delay, ParsedHunt integration (51 assertions, no browser)
+│       ├── test_42_scheduler.py     Unit: Built-in Scheduler — parse_schedule, next_run_delay, ParsedHunt integration (51 assertions, no browser)
 │       ├── test_43_scoped_variables.py Unit: ScopedVariables 4-level hierarchy, scope isolation, dict compat (43 assertions, no browser)
 │       ├── test_44_explain_mode.py   Unit: DOMScorer explain output, channel breakdown, --explain CLI flag (27 assertions, no browser)
 │       └── test_45_api.py            Unit: ManulSession public Python API facade (47 assertions, no browser)
@@ -107,20 +104,9 @@ ManulEngine/
 │   ├── README.md                     Usage guide (Copilot, ChatGPT, Claude, Ollama)
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
-└── vscode-extension/                 VS Code extension (language support + UI)
-    └── package.json                  Extension manifest (v0.0.97)
-    ├── src/
-    │   ├── extension.ts              Activation, command registration, formatter registration
-    │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
-    │   ├── huntTestController.ts     VS Code Test Explorer integration
-    │   ├── configPanel.ts            Webview sidebar: config editor + Ollama discovery
-    │   ├── cacheTreeProvider.ts      Sidebar tree: controls cache browser
-    │   ├── stepBuilderPanel.ts       Step Builder sidebar (incl. Live Page Scanner UI + Scan Page button)
-    │   ├── schedulerPanel.ts         Scheduler Dashboard webview panel (daemon management UI)
-    │   ├── formatter.ts              DocumentFormattingEditProvider for .hunt files (4-space action indent)
-    │   └── debugControlPanel.ts      Singleton QuickPick overlay for interactive debug stepping
-    └── syntaxes/hunt.tmLanguage.json Hunt file syntax grammar
 ```
+
+Companion VS Code extension source is maintained separately and is not included in this workspace.
 
 ---
 
@@ -130,37 +116,37 @@ ManulEngine is not a test library bolted onto Playwright. It is a **runtime** �
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────────┐
-│  .hunt DSL             (human-authored or AI-generated)    │
-│  QA tests · RPA scripts · synthetic monitors · agent tasks  │
+│  .hunt DSL             (human-authored or AI-generated)                 │
+│  QA tests · RPA scripts · synthetic monitors · agent tasks              │
 └─────────────────────────────────┬────────────────────────────────────────┘
-                                 │
-                                 ▼
+                                  │
+                                  ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
-│  Parser (cli.py)                                             │
-│  parse_hunt_file() → ParsedHunt NamedTuple                   │
-│  Extracts: @context, @title, @tags, @data, @var,             │
-│  [SETUP]/[TEARDOWN], step lines                               │
+│  Parser (cli.py)                                                        │
+│  parse_hunt_file() → ParsedHunt NamedTuple                              │
+│  Extracts: @context, @title, @tags, @data, @var,                        │
+│  [SETUP]/[TEARDOWN], step lines                                         │
 └─────────────────────────────────┬────────────────────────────────────────┘
-                                 │
-                                 ▼
+                                  │
+                                  ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
-│  Execution Engine (core.py → run_mission)                     │
-│  DOMScorer (scoring.py) · TreeWalker (js_scripts.py)          │
-│  Element resolution → Action dispatch → Self-healing          │
+│  Execution Engine (core.py → run_mission)                               │
+│  DOMScorer (scoring.py) · TreeWalker (js_scripts.py)                    │
+│  Element resolution → Action dispatch → Self-healing                    │
 └───────────┬─────────────────────┬─────────────────────┬──────────────────┘
             │                     │                     │
             ▼                     ▼                     ▼
 ┌────────────────┐  ┌───────────────────┐  ┌───────────────────┐
 │ Custom Controls │  │ Python Hooks       │  │ Persistent Cache  │
 │ (controls.py)   │  │ [SETUP]/[TEARDOWN] │  │ (cache.py)        │
-│ @custom_control  │  │ CALL PYTHON        │  │ Per-site storage  │
+│ @custom_control │  │ CALL PYTHON        │  │ Per-site storage  │
 └────────────────┘  │ @before_all        │  └───────────────────┘
                     └───────────────────┘
-                                 │
-                                 ▼
+                                  │
+                                  ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
-│  Playwright (async)                                          │
-│  Chromium · Firefox · WebKit · Electron                       │
+│  Playwright (async)                                                     │
+│  Chromium · Firefox · WebKit · Electron                                 │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -272,7 +258,7 @@ Version 0.0.8.3 introduces a pre/post hook mechanism powered by `manul_engine/ho
 
 **Execution lifecycle:**
 
-```
+```text
 [SETUP] block         → runs before browser launches
   browser mission     → hunt steps (may include CALL PYTHON steps)
 [TEARDOWN] block      → runs in finally{}, always after setup succeeds
@@ -310,9 +296,9 @@ execute_hook_line(line, hunt_dir, variables)  → HookResult(success, message, r
 run_hooks(lines, label, hunt_dir, variables)  → bool
 ```
 
-**`HookResult` fields:** `success: bool`, `message: str`, `return_value: str | None`, `var_name: str | None`. The last two fields are populated when the step used the `into {var}` / `to {var}` capture syntax (see *Dynamic Variables* below); they are `None` for plain `CALL PYTHON` steps. When `into/to` is present, `return_value` is **always** set to `str(ret)` — even when the function returns `None` (yielding the string `"None"`). This guarantees that `{var}` is always bound after a capture step.
+**`HookResult` fields:** `success: bool`, `message: str`, `return_value: str | None`, `var_name: str | None`. The last two fields are populated when the step used the `into {var}` / `to {var}` capture syntax; they are `None` for plain `CALL PYTHON` steps. When `into/to` is present, `return_value` is **always** set to `str(ret)` — even when the function returns `None` (yielding the string `"None"`). This guarantees that `{var}` is always bound after a capture step.
 
-**Positional arguments (v0.0.9.1):** `CALL PYTHON` now accepts optional positional arguments between the dotted function name and the optional `into {var}` clause. Arguments are tokenised with `shlex.split()` — single-quoted, double-quoted, and unquoted tokens are all accepted. `{var}` placeholders inside arguments are resolved from the engine’s runtime memory (`self.memory` for inline steps, `parsed_vars`/`variables` dict for hook blocks). Unresolved placeholders are kept as-is.
+**Positional arguments (v0.0.9.1):** `CALL PYTHON` now accepts optional positional arguments between the dotted function name and the optional `into {var}` clause. Arguments are tokenised with `shlex.split()` — single-quoted, double-quoted, and unquoted tokens are all accepted. `{var}` placeholders inside arguments are resolved from the engine's runtime memory (`self.memory` for inline steps, `parsed_vars`/`variables` dict for hook blocks). Unresolved placeholders are kept as-is.
 
 Full syntax variants:
 
@@ -323,7 +309,7 @@ CALL PYTHON <module>.<function> "arg1" {var} into {result}
 CALL PYTHON <module>.<function> into {result}
 ```
 
-The regex uses a two-step parsing approach: `_RE_CALL_PYTHON` captures the dotted name and everything after it; `_RE_INTO_VAR` then strips the trailing `into/to {var}` clause from the remainder. What’s left becomes the raw arguments string, parsed by `_parse_call_args()`. This cleanly handles all four variants without backtracking issues.
+The regex uses a two-step parsing approach: `_RE_CALL_PYTHON` captures the dotted name and everything after it; `_RE_INTO_VAR` then strips the trailing `into/to {var}` clause from the remainder. What's left becomes the raw arguments string, parsed by `_parse_call_args()`. This cleanly handles all four variants without backtracking issues.
 
 **Dynamic Variables via `CALL PYTHON ... into {var}`:** Inline `CALL PYTHON` steps may optionally bind their return value to a mission variable:
 
@@ -352,7 +338,7 @@ Fill 'Email' with '{user_email}'
 Fill 'Password' with '{password}'
 ```
 
-**How it works:** `parse_hunt_file()` scans for `@var: {key} = value` header lines and returns them as `parsed_vars` (the 7th element of the 9-field NamedTuple). `_run_hunt_file()` passes `parsed_vars` to `run_mission(initial_vars=...)`, which pre-populates `self.memory` before the step loop starts. Both brace and bare-key forms are accepted (`@var: {key} = val` and `@var: key = val` are equivalent). Values are stripped of leading/trailing whitespace. Malformed `@var:` lines (no `=`) are silently skipped.
+**How it works:** `parse_hunt_file()` scans for `@var: {key} = value` header lines and returns them as `parsed_vars`. `_run_hunt_file()` passes `parsed_vars` to `run_mission(initial_vars=...)`, which pre-populates `self.memory` before the step loop starts. Both brace and bare-key forms are accepted (`@var: {key} = val` and `@var: key = val` are equivalent). Values are stripped of leading/trailing whitespace. Malformed `@var:` lines (no `=`) are silently skipped.
 
 **Design rule:** When generating or suggesting `.hunt` test files, **never** hardcode test data (emails, passwords, usernames, search queries, IDs, etc.) directly into `Fill` or `Type` steps. Always declare them at the top via `@var:` and reference them via `{placeholder}`. This keeps test logic separate from test data.
 
@@ -363,24 +349,25 @@ Unit tests: `manul_engine/test/test_20_variables.py` (17 assertions, no browser)
 Version 0.0.8.7 adds a tagging system that lets users run subsets of `.hunt` files without changing directory layout or file names.
 
 **Hunt file header:**
+
 ```text
 @context: Login flow
 @tags: smoke, auth, regression
-
 STEP 1: Navigate
 NAVIGATE to https://example.com/login
 DONE.
 ```
 
 **CLI usage:**
+
 ```bash
 manul tests/ --tags smoke               # run only files tagged 'smoke'
 manul tests/ --tags smoke,critical      # OR logic — run files with either tag
 ```
 
-**Intersection rule:** A file is included in the run if its `@tags:` list shares at least one tag with the `--tags` argument.  Files with no `@tags:` header are **always excluded** when `--tags` is active.
+**Intersection rule:** A file is included in the run if its `@tags:` list shares at least one tag with the `--tags` argument. Files with no `@tags:` header are **always excluded** when `--tags` is active.
 
-**How it works:** `parse_hunt_file()` now extracts `@tags:` into the **8th element** of the tuple (`tags: list[str]`).  The CLI also exposes `_read_tags(path)` — a fast header-only scanner that stops at the first action or STEP header line — used to pre-filter files in `main()` without running the full parse twice.  Tag filtering prints a one-line summary (`🏷️ --tags '...': N skipped, M matched.`) before the run starts.
+**How it works:** `parse_hunt_file()` now extracts `@tags:` into the `tags: list[str]` field. The CLI also exposes `_read_tags(path)` — a fast header-only scanner that stops at the first action or STEP header line — used to pre-filter files in `main()` without running the full parse twice. Tag filtering prints a one-line summary (`🏷️ --tags '...': N skipped, M matched.`) before the run starts.
 
 Unit tests: `manul_engine/test/test_22_tags.py` (20 assertions, no browser).
 
@@ -389,7 +376,7 @@ Unit tests: `manul_engine/test/test_22_tags.py` (20 assertions, no browser).
 Custom Controls provide a first-class escape hatch for UI elements that heuristics and AI cannot reliably target: React virtual tables, canvas widgets, multi-step date-pickers, drag-to-rank lists, etc.
 
 **How it ties into `pages.json`:**
-The page name key in the decorator must match the value returned by `lookup_page_name(page.url)` at runtime — i.e. whatever is mapped in `pages.json` for the current URL. This makes the routing completely declarative: update the page name in `pages.json` and all dependent custom controls follow.
+The page name key in the decorator must match the value returned by `lookup_page_name(page.url)` at runtime — whatever is mapped in `pages.json` for the current URL. This makes the routing declarative: update the page name in `pages.json` and all dependent custom controls follow.
 
 **Decorator syntax:**
 
@@ -434,7 +421,6 @@ manul_engine/
 
 ```text
 @context: Checkout smoke test
-
 STEP 1: Checkout
 NAVIGATE to https://example.com/checkout
 Fill 'React Datepicker' with '2026-12-25'
@@ -522,15 +508,15 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.7
+pip install manul-engine==0.0.9.8
 playwright install chromium
 ```
 
 Optional — local LLM via Ollama:
 
 ```bash
-pip install ollama          # Python client library
-ollama pull qwen2.5:0.5b   # download model (requires Ollama app: https://ollama.com)
+pip install ollama
+ollama pull qwen2.5:0.5b
 ollama serve
 ```
 
@@ -549,25 +535,19 @@ The public README is expected to keep the full current runtime surface area plus
   "browser_args": [],
   "timeout": 5000,
   "nav_timeout": 30000,
-
-  "ai_always": false,       // forced to false when model is null
+  "ai_always": false,
   "ai_policy": "prior",
   "ai_threshold": null,
-
   "controls_cache_enabled": true,
   "controls_cache_dir": "cache",
   "semantic_cache_enabled": true,
-
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
   "tests_home": "tests",
   "auto_annotate": false,
-
   "channel": null,
   "executable_path": null,
-
   "workers": 1,
-
   "retries": 0,
   "screenshot": "on-fail",
   "html_report": false
@@ -611,27 +591,27 @@ manul --debug tests/saucedemo.hunt
 manul --break-lines 5,10,15 tests/saucedemo.hunt
 
 # Smart Page Scanner
-manul scan https://example.com                  # scan → tests/draft.hunt (tests_home from config)
-manul scan https://example.com tests/my.hunt    # explicit output file
-manul scan https://example.com --headless       # headless scan
+manul scan https://example.com
+manul scan https://example.com tests/my.hunt
+manul scan https://example.com --headless
 manul scan https://example.com --browser firefox
 
 # Retry failed hunts up to 2 times
 manul tests/ --retries 2
 
-# Generate a standalone HTML report (saved to reports/manul_report.html)
+# Generate a standalone HTML report
 manul tests/ --html-report
 
-# Screenshots on failure + HTML report + retries (full CI combo)
+# Screenshots on failure + HTML report + retries
 manul tests/ --retries 2 --screenshot on-fail --html-report
 
-# Screenshots for every step (detailed forensic report)
+# Screenshots for every step
 manul tests/ --screenshot always --html-report
 
 # Dev launcher (from repo root, no install needed)
-python manul.py test               # run synthetic DOM laboratory tests
-python manul.py tests/             # run integration hunts
-python manul.py --headless tests/  # headless
+python manul.py test
+python manul.py tests/
+python manul.py --headless tests/
 ```
 
 ---
@@ -688,36 +668,36 @@ manul tests/mission.hunt
 The engine is battle-tested with **2414** synthetic DOM/unit tests across 46 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, and visibility edge cases.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
-* **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py` (disk cache hit/miss with temporary run folder cleanup).
-* **AI modes regression suite:** `manul_engine/test/test_12_ai_modes.py` (Always-AI, strict override, AI rejection).
-* **QA Classics regression suite:** `manul_engine/test/test_14_qa_classics.py` (legacy HTML patterns, tables, fieldsets).
-* **Custom Controls unit suite:** `manul_engine/test/test_19_custom_controls.py` (registry correctness + engine interception, 19 assertions, no browser).
-* **Static Variables unit suite:** `manul_engine/test/test_20_variables.py` (parser correctness, `initial_vars` interpolation, 17 assertions, no browser).
-* **Dynamic Variables unit suite:** `manul_engine/test/test_21_dynamic_vars.py` (`CALL PYTHON ... into {var}` capture and substitution).
-* **Tags unit suite:** `manul_engine/test/test_22_tags.py` (`@tags:` parsing + `--tags` CLI filter, 20 assertions, no browser).
-* **Advanced interactions unit suite:** `manul_engine/test/test_23_advanced_interactions.py` (PRESS, RIGHT CLICK, UPLOAD commands, 48 assertions, no browser).
-* **Reporting unit suite:** `manul_engine/test/test_24_reporting.py` (StepResult, MissionResult, RunSummary dataclasses, 45 assertions, no browser).
-* **HTML reporter unit suite:** `manul_engine/test/test_25_reporter.py` (HTML report generation, base64 screenshots, XSS safety, interactive control panel, tag filtering, 65 assertions, no browser).
-* **Wikipedia Search Input unit suite:** `manul_engine/test/test_26_wikipedia_search.py` (`name_attr` heuristic scoring for `<input name="search">` on Vector 2022 skin, 20 assertions, no browser).
-* **Lifecycle Hooks unit suite:** `manul_engine/test/test_27_lifecycle_hooks.py` (`@before_all`, `@after_all`, `@before_group`, `@after_group`, `GlobalContext`, `load_hooks_file`, serialize/deserialize, 57 assertions, no browser).
-* **Logical Steps unit suite:** `manul_engine/test/test_28_logical_steps.py` (Unnumbered DSL, STEP grouping, snippet injection logic, 48 assertions, no browser).
-* **iframe Routing synthetic suite:** `manul_engine/test/test_29_iframe_routing.py` (`_snapshot` frame iteration, `frame_index` tagging, `_frame_for` routing and stale fallback, 25 assertions).
-* **Heuristic Weights synthetic+unit suite:** `manul_engine/test/test_30_heuristic_weights.py` (DOMScorer float scoring, WEIGHTS/SCALE constants, `data-qa` dominance, disabled/hidden penalties, mode synergy, 32 assertions).
-* **Visibility & TreeWalker synthetic+unit suite:** `manul_engine/test/test_31_visibility_treewalker.py` (PRUNE set subtree skipping, `checkVisibility` filtering, special hidden inputs, snapshot element counts, 20 assertions).
-* **VERIFY ENABLED/DISABLED synthetic suite:** `manul_engine/test/test_32_verify_enabled.py` (STATE_CHECK_JS enabled/disabled logic, buttons, inputs, selects, textareas, ARIA roles, CSS-based states, 20 assertions).
-* **CALL PYTHON with arguments unit suite:** `manul_engine/test/test_33_call_python_args.py` (`_parse_call_args`, variable resolution, file-based helper execution, engine integration with memory, backward compatibility, 44 assertions, no browser).
-* **VERIFY checked/NOT checked synthetic suite:** `manul_engine/test/test_34_verify_checked.py` (checkbox state verification via JS checked property, ARIA checked, mixed states, 20 assertions).
-* **Smart Page Scanner synthetic+unit suite:** `manul_engine/test/test_35_scanner.py` (`build_hunt()` element-to-step mapping, keyword generation, metadata headers, edge cases, 44 assertions).
-* **Scoring Math unit suite:** `manul_engine/test/test_36_scoring_math.py` (exact numerical scoring validation, WEIGHTS/SCALE constants, channel arithmetic, penalty multipliers, 29 assertions, no browser).
-* **Enterprise DSL unit suite:** `manul_engine/test/test_37_enterprise_dsl.py` (`@data:` parsing, `_load_data_file` JSON/CSV loading, MOCK/WAIT FOR RESPONSE/VERIFY VISUAL/VERIFY SOFTLY classification, `ParsedHunt` 9-field compat, reporter warning HTML, `RunSummary.warning`, 68 assertions, no browser).
-* **SET & Indentation unit suite:** `manul_engine/test/test_38_set_and_indent.py` (SET command parsing, regex validation, `substitute_memory` integration, `@var:`+SET coexistence, indentation stripping robustness, tab handling, no browser).
-* **OPEN APP unit suite:** `manul_engine/test/test_39_open_app.py` (`classify_step` detection, `RE_SYSTEM_STEP` matching, `_handle_open_app` mock tests — existing pages, wait_for_event, failure path, parse_hunt_file integration, 32 assertions, no browser).
-* **Self-Healing Cache unit suite:** `manul_engine/test/test_40_self_healing_cache.py` (stale detection, HEALED logging, cache auto-update, HTML reporter badge, 16 assertions).
-* **Recorder unit suite:** `manul_engine/test/test_41_recorder.py` (JS injection bridge, DSL step generator, step aggregation, hunt file output, no browser).
-* **Scheduler unit suite:** `manul_engine/test/test_42_scheduler.py` (`parse_schedule` all 6 expression forms, case insensitivity, error cases, `next_run_delay`, `_seconds_until_time/weekday`, ParsedHunt integration, Schedule immutability, all 7 weekday names, 51 assertions, no browser).
-* **Scoped Variables unit suite:** `manul_engine/test/test_43_scoped_variables.py` (`ScopedVariables` 4-level hierarchy, scope isolation, row-scope auto-clear for `@data:`, `DEBUG VARS` output, dict compatibility, 43 assertions, no browser).
-* **Explain Mode unit suite:** `manul_engine/test/test_44_explain_mode.py` (`DOMScorer` explain output, per-candidate channel breakdown, top-3 ranking, `--explain` CLI flag, `MANUL_EXPLAIN` env var, 27 assertions, no browser).
-* **Public Python API unit suite:** `manul_engine/test/test_45_api.py` (`ManulSession` constructor pass-through, page guard, step string generation, navigate/wait/scroll/extract/memory lifecycle, `run_steps` DSL dispatch, 47 assertions, no browser).
+* **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py`.
+* **AI modes regression suite:** `manul_engine/test/test_12_ai_modes.py`.
+* **QA Classics regression suite:** `manul_engine/test/test_14_qa_classics.py`.
+* **Custom Controls unit suite:** `manul_engine/test/test_19_custom_controls.py`.
+* **Static Variables unit suite:** `manul_engine/test/test_20_variables.py`.
+* **Dynamic Variables unit suite:** `manul_engine/test/test_21_dynamic_vars.py`.
+* **Tags unit suite:** `manul_engine/test/test_22_tags.py`.
+* **Advanced interactions unit suite:** `manul_engine/test/test_23_advanced_interactions.py`.
+* **Reporting unit suite:** `manul_engine/test/test_24_reporting.py`.
+* **HTML reporter unit suite:** `manul_engine/test/test_25_reporter.py`.
+* **Wikipedia Search Input unit suite:** `manul_engine/test/test_26_wikipedia_search.py`.
+* **Lifecycle Hooks unit suite:** `manul_engine/test/test_27_lifecycle_hooks.py`.
+* **Logical Steps unit suite:** `manul_engine/test/test_28_logical_steps.py`.
+* **iframe Routing synthetic suite:** `manul_engine/test/test_29_iframe_routing.py`.
+* **Heuristic Weights synthetic+unit suite:** `manul_engine/test/test_30_heuristic_weights.py`.
+* **Visibility & TreeWalker synthetic+unit suite:** `manul_engine/test/test_31_visibility_treewalker.py`.
+* **VERIFY ENABLED/DISABLED synthetic suite:** `manul_engine/test/test_32_verify_enabled.py`.
+* **CALL PYTHON with arguments unit suite:** `manul_engine/test/test_33_call_python_args.py`.
+* **VERIFY checked/NOT checked synthetic suite:** `manul_engine/test/test_34_verify_checked.py`.
+* **Smart Page Scanner synthetic+unit suite:** `manul_engine/test/test_35_scanner.py`.
+* **Scoring Math unit suite:** `manul_engine/test/test_36_scoring_math.py`.
+* **Enterprise DSL unit suite:** `manul_engine/test/test_37_enterprise_dsl.py`.
+* **SET & Indentation unit suite:** `manul_engine/test/test_38_set_and_indent.py`.
+* **OPEN APP unit suite:** `manul_engine/test/test_39_open_app.py`.
+* **Self-Healing Cache unit suite:** `manul_engine/test/test_40_self_healing_cache.py`.
+* **Recorder unit suite:** `manul_engine/test/test_41_recorder.py`.
+* **Scheduler unit suite:** `manul_engine/test/test_42_scheduler.py`.
+* **Scoped Variables unit suite:** `manul_engine/test/test_43_scoped_variables.py`.
+* **Explain Mode unit suite:** `manul_engine/test/test_44_explain_mode.py`.
+* **Public Python API unit suite:** `manul_engine/test/test_45_api.py`.
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
 Run the synthetic suite:
@@ -760,7 +740,19 @@ The `prompts/` directory contains ready-to-use LLM prompt templates that let you
 
 ## 🖱️ VS Code Extension
 
-The `vscode-extension/` directory contains a companion VS Code extension (v0.0.96 for the `0.0.9.6` runtime line) that provides:
+The companion VS Code extension is published separately from this runtime repository. Normal installation should use the published Marketplace build.
+
+Marketplace page:
+
+- https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine
+
+Install from VS Code or via CLI:
+
+```bash
+code --install-extension manul-engine.manul-engine
+```
+
+The published extension provides:
 
 | Feature | Details |
 | --- | --- |
@@ -769,87 +761,24 @@ The `vscode-extension/` directory contains a companion VS Code extension (v0.0.9
 | **Config sidebar** | Webview panel to edit `manul_engine_configuration.json` visually; **Workers** combobox; **Add Default Prompts** button; live Ollama model discovery via `localhost:11434` |
 | **Cache browser** | Tree-view sidebar showing the controls cache hierarchy (`site → page → controls.json`) |
 | **Run commands** | `ManulEngine: Run Hunt File` (output panel) and `ManulEngine: Run Hunt File in Terminal` (raw CLI) |
-| **Debug run profile** | Test Explorer exposes a **Debug** run profile alongside the normal one; places gutter breakpoints (red dots) in `.hunt` files, pauses at each with a floating QuickPick overlay — **⏭ Next Step** / **▶ Continue All**. The Test Explorer **Stop** button aborts the run cleanly (no hanging QuickPick). On Linux, a system notification appears via `notify-send` when execution pauses. |
-| **Step Builder** | Sidebar buttons for every step type including **Open App**, **Set Variable**, **Verify Softly**, **Verify Visual**, **Mock Request**, **Wait Response**, **Debug / Pause** (inserts `DEBUG` step); **🐍 Call Python → Var** (inserts `CALL PYTHON module.function into {variable_name}` and captures the return value as a mission variable); **🔍 Live Page Scanner** — URL input + Run Scan button that invokes `manul scan <URL>` directly and opens the result in the editor |
-| **Explain Heuristics CodeLens** | **🔍 Explain Heuristics** CodeLens above every actionable step (Click, Fill, Select, Verify, etc.) in `.hunt` files. Clicking the lens runs the file with `--explain` and streams the scoring breakdown to a dedicated **ManulEngine: Explain Heuristics** output channel. Editor title bar `🔍` button for quick access. Toggle via `manulEngine.explainCodeLens` setting |
-| **Bounded concurrency** | Test Explorer respects `workers` config or `manulEngine.workers` VS Code setting (default: 1) |
+| **Debug run profile** | Test Explorer exposes a **Debug** run profile alongside the normal one; places gutter breakpoints (red dots) in `.hunt` files, pauses at each with a floating QuickPick overlay — **⏭ Next Step** / **▶ Continue All**. The Test Explorer **Stop** button aborts the run cleanly. |
+| **Step Builder** | Sidebar buttons for every step type including **Open App**, **Set Variable**, **Verify Softly**, **Verify Visual**, **Mock Request**, **Wait Response**, **Debug / Pause**, **CALL PYTHON into {var}**, and **Live Page Scanner** |
+| **Explain Heuristics CodeLens** | CodeLens above actionable steps that runs the file with `--explain` and streams the scoring breakdown to a dedicated output channel |
+| **Bounded concurrency** | Test Explorer respects `workers` config or `manulEngine.workers` VS Code setting |
 
 ### Extension behaviour notes
 
-* **Working directory:** The extension spawns `manul` with `cwd` set to the **VS Code workspace folder root** (not the directory of the `.hunt` file). This ensures `manul_engine_configuration.json` and the cache directory are always resolved from the project root, matching what you get when running `manul` from the terminal.
-* **Debug protocol:** `runHuntFileDebugPanel` spawns `manul` with `--break-lines` (never `--debug`) and piped stdio. Python emits `\x00MANUL_DEBUG_PAUSE\x00{"step":"...","idx":N}\n` when pausing; TS responds on stdin with one of: `"next\n"` (pause at idx+1), `"continue\n"` (restore original gutter breakpoints), `"debug-stop\n"` (clear all breakpoints, run to end), or `"abort\n"` (then kill the process after 500 ms). The QuickPick overlay exposes five actions: **⏭ Next Step**, **▶ Continue All**, **👁 Highlight Element**, **⏹ Debug Stop**, **🛑 Stop Test**.
-* **Auto-annotate:** When `auto_annotate` is enabled (via the Config Panel or `MANUL_AUTO_ANNOTATE` env var), the engine inserts/overwrites `# 📍 Auto-Nav:` comments above any step that follows a URL change — not only explicit `NAVIGATE` steps. URL tracking happens in `run_mission()`: `url_before` is captured before each step's `try` block; after the step's `finally`, if `page.url != url_before` and there is a next step, `_auto_annotate_navigate(page, hunt_file, step_file_lines, i+1)` is called. NAVIGATE steps annotate above themselves as before.
-* **`pages.json` format:** Nested two-level dict — `{ "site_root_url": { "Domain": "display name", "regex_or_exact_url": "Page Name", ... } }`. `lookup_page_name()` in `prompts.py` re-reads the file on every call, finds the longest-prefix matching site block, then tries exact URL → regex patterns → `"Domain"` fallback. Auto-generated placeholders are stored under `{ "Domain": "Auto: domain/path" }` for the detected site root. Unknown unmapped pages write back `"Auto: ..."` as the display name in the comment. Auto-population uses a safe **deep-merge**: existing site blocks and their user-defined page mappings are never overwritten — only new top-level site keys or new page keys within a previously-unseen site block are added.
-* **`ai_always` guard:** The config panel automatically forces `ai_always` to `false` when no model is selected, preventing an invalid heuristics-only config from being saved with `ai_always: true`.
-* **Ollama discovery:** On panel open the extension fetches `http://localhost:11434/api/tags` and populates a `<select>` with installed model names. If Ollama is not running the field accepts free-text input instead.
-
-### Building the extension
-
-```bash
-cd vscode-extension
-npm install
-npm run compile      # tsc one-shot
-npm run watch        # incremental (dev)
-npx vsce package     # produce .vsix
-```
-
-Press **F5** in VS Code (with the extension folder open) to launch a dev Extension Host.
+* **Working directory:** The extension spawns `manul` with `cwd` set to the **VS Code workspace folder root**.
+* **Debug protocol:** `runHuntFileDebugPanel` spawns `manul` with `--break-lines` and piped stdio. Python emits the debug pause marker; TypeScript replies with step-control commands.
+* **Auto-annotate:** When `auto_annotate` is enabled, the engine inserts or overwrites `# 📍 Auto-Nav:` comments above steps that follow a URL change.
+* **`pages.json` format:** Nested two-level dict — `{ "site_root_url": { "Domain": "display name", "regex_or_exact_url": "Page Name", ... } }`.
+* **`ai_always` guard:** The config panel forces `ai_always` to `false` when no model is selected.
+* **Ollama discovery:** On panel open the extension fetches `http://localhost:11434/api/tags` and populates a `<select>` with installed model names when available.
 
 ---
 
-**Version:** 0.0.9.7
+**Version:** 0.0.9.8
 
 **Codename:** New Look — ManulSession
 
 **Status:** Hunting...
-
----
-
-## 🚀 What's New in v0.0.9.6 — Alpha Docs, Explainability, and Version Sync
-
-* **Alpha positioning clarified:** Public and internal docs now describe the project as an alpha-stage runtime with strong architecture and evolving APIs. The language was rewritten to avoid absolute claims and focus on deterministic behavior, explainability, and DX.
-* **README rewrite:** The public README now centers on explainable heuristics, VS Code extension hover-based scoring inspection, desktop automation through `executable_path` + `OPEN APP`, dual-persona authoring, and the smart recorder's semantic handling of native `<select>` change events.
-
-### Previous highlights (v0.0.9.5)
-
-## 🚀 What's New in v0.0.9.5 — Explain Mode
-
-* **Run with Explain Mode (VS Code Button):** New `manul.runExplain` command with `$(output)` icon in the editor title bar for `.hunt` files. One click runs the hunt file with `--explain --workers 1` and streams the full heuristic scoring breakdown to the **ManulEngine: Explain Heuristics** output channel. Available alongside the existing CodeLens-based `manul.explainHuntFile`.
-
-### Previous highlights (v0.0.9.4)
-
-## 🚀 What's New in v0.0.9.4 — Hardening & Transparency
-
-* **Explainable Heuristics (`--explain`):** `DOMScorer` can now emit a per-candidate channel breakdown (text, attributes, semantics, proximity, cache) alongside the final score. Enabled via `manul --explain tests/` or `MANUL_EXPLAIN=1`. The top-3 candidates for each resolution step are printed to the console with full score-channel details, making it trivial to audit why a particular element was chosen — or wasn't.
-* **Strict Variable Scoping (`ScopedVariables`):** The runtime memory system (`self.memory`) is replaced by a `ScopedVariables` 4-level hierarchy (Row → Step → Mission → Global). `@data:` row values are injected at `row` scope and auto-cleared between iterations; `EXTRACT` and `CALL PYTHON ... into {var}` capture at `step` scope; `@var:` declarations live at `mission` scope; lifecycle hooks (`@before_all`) populate `global` scope. Zero state leakage between data-driven iterations.
-* **Benchmark Suite (`benchmarks/`):** 12 adversarial tasks across 4 HTML fixtures (`dynamic_ids`, `overlapping`, `nested_tables`, `custom_dropdown`) comparing ManulEngine heuristic resolution against raw Playwright locators. Run with `python benchmarks/run_benchmarks.py`.
-
-### Previous highlights (v0.0.9.3)
-
-## 🚀 What's New in v0.0.9.3 — The Scheduler Update
-
-* **Built-in Scheduler (`@schedule:` + `manul daemon`):** `parse_hunt_file()` extracts the new `@schedule:` header into the 10th field of `ParsedHunt`. `manul_engine/scheduler.py` implements `parse_schedule()` (6 regex patterns: interval N units, unit shorthands, daily at HH:MM, every weekday, every weekday at HH:MM) returning a frozen `Schedule` dataclass, plus `next_run_delay()` and `_seconds_until_time/weekday()` helpers. `daemon_main(args)` is the CLI entry point: discovers `*.hunt` files with `@schedule:`, launches one `asyncio.Task` per file in an infinite sleep→run→log loop, and runs forever. No external dependencies (no APScheduler, no cron). The `manul daemon <directory>` subcommand is routed in `cli.py` alongside `scan` and `record`.
-* **Advanced Scheduler Dashboard (VS Code Extension):** `schedulerPanel.ts` — a `WebviewPanel`-based Visual RPA Manager. `findAllHunts()` scans workspace for **all** `.hunt` files (reads first 20 lines per file, early-exits on step lines), returning both scheduled and unscheduled entries. HTML renders a **search bar** (filters by filename), **Scheduled Tasks** / **Unscheduled Tasks** split sections, per-file schedule editor (preset `<select>` combobox + custom text input + Apply button), status dot (green when running, grey when stopped), and Start/Stop/Refresh controls. `mutateScheduleHeader()` uses `vscode.WorkspaceEdit` to inject, replace, or remove `@schedule:` lines in `.hunt` files. The `updateSchedule` message handler bridges the webview UI to the file mutation logic. Start spawns `manul daemon <tests_home> --headless` in a `"Manul Daemon"` terminal; Stop disposes it. Command `manul-engine.openScheduler` registered in `extension.ts` with a `$(calendar)` icon in all sidebar view titles.
-* **Persistent Run History & Sparklines:** `reporting.py` exposes `append_run_history(mission)` — appends a JSON Lines record (`file`, `name`, `timestamp`, `status`, `duration_ms`) to `reports/run_history.json`. Hooked in `cli.py` (sequential loop, parallel subprocess results, `@before_all`/`@before_group` failure paths) and `scheduler.py` (`_run_scheduled_job()`). `schedulerPanel.ts` imports `fs`, adds `RunHistoryRecord` interface and `readRunHistory(wsRoot, limit=5)` function that parses the JSON Lines file and returns the last N records per filename. `_sendAllFiles()` posts `{ files, history }` to the webview. Frontend JS renders a sparkline (colour-coded dots: green=pass, red=fail, yellow=flaky/warning) and relative-time label ("3m ago") per file row.
-* **Self-Healing Controls Cache:** The persistent controls cache now detects stale entries. When a cached locator no longer matches any live DOM candidate, the engine re-resolves via heuristics, updates the cache, and logs `🩹 HEALED`. Stale-but-unhealed entries surface as `⚠️ STALE` warnings in the HTML report.
-* **Semantic Test Recorder (`manul record`):** `recorder.py` injects a recording overlay into the browser; user actions (click, type, navigate) are captured and translated into `.hunt` DSL in real time. `manul record <URL>` launches the recorder and saves a hunt file to `tests_home/`.
-
-### Previous highlights (v0.0.9.2)
-
-## 🚀 What's New in v0.0.9.2 — The Mastermind
-
-* **YAML-Like Indentation:** The step parser (`run_mission()`) now strips all leading whitespace from every step line before classification. Hunt files can use clean hierarchical formatting — action lines indented under `STEP` headers — without affecting execution. Tabs and mixed indentation are handled identically. The VS Code extension ships a built-in **Auto-Formatter** (registered as a `DocumentFormattingEditProvider` in `formatter.ts`) that enforces 4-space indentation for action lines under `STEP` blocks.
-* **`SET` Command — Mid-Flight Variable Assignment:** `SET {variable} = value` is classified by `classify_step()` as `"set_var"` and handled directly in the step loop. Regex: `^SET\s+\{?(\w+)\}?\s*=\s*(.+)$`. Both `{braced}` and bare-key forms accepted. Quoted values are auto-unquoted via `strip('"').strip("'")`. The variable is written to `self.memory[key]` immediately. Works alongside `@var:` (pre-populated via `initial_vars` before step 1) and `EXTRACT` (populated mid-flight from DOM text).
-* **Enterprise Browser & Electron Support:** New `channel` and `executable_path` config keys in `prompts.py` (`_KEY_MAP` entries + module constants). `core.py` `__init__` reads `prompts.CHANNEL` / `prompts.EXECUTABLE_PATH`; `run_mission()` builds a `_launch_opts` dict and conditionally adds `channel` / `executable_path` kwargs to `browser.launch()`. Enables targeting installed browser channels (`"chrome"`, `"msedge"`) or custom executables (Electron). Env var overrides: `MANUL_CHANNEL`, `MANUL_EXECUTABLE_PATH`.
-* **`OPEN APP` — Desktop/Electron Attachment:** New step kind `"open_app"` in `classify_step()` (regex: `\bOPEN\s+APP\b`). Handler `_handle_open_app(page, ctx)` in `actions.py` returns `tuple[bool, page]` — checks `ctx.pages` for an existing Electron window, falls back to `ctx.wait_for_event("page")`, then calls `wait_for_load_state("domcontentloaded")`. The `page` variable in `run_mission()` is reassigned from the returned tuple because the handler returns the Electron app's actual window (different from the initially-created empty page).
-* **VS Code Auto-Formatter (`formatter.ts`):** New `DocumentFormattingEditProvider` for `.hunt` files. Classifies each line as metadata (`@context:`, `@var:`, `@tags:`, `@data:`, `@blueprint:`), hook block (`[SETUP]`, `[TEARDOWN]`, `[END SETUP]`, `[END TEARDOWN]`), comment (`#`), STEP header, `DONE.`, or action — and indents actions with 4 spaces. All other line types remain flush-left. Registered via `vscode.languages.registerDocumentFormattingEditProvider('hunt', ...)`.
-
-### Previous highlights (v0.0.9.1)
-
-## 🚀 What's New in v0.0.9.1 — Enterprise DSL
-
-* **Data-Driven Testing (`@data:`):** Declare `@data: users.csv` or `@data: data.json` in any `.hunt` file header. The engine loads each row (JSON array-of-objects or CSV via `DictReader`) and reruns the entire mission with row values injected as `{placeholders}`. Implemented in `cli.py` — `parse_hunt_file()` extracts the path into `ParsedHunt.data_file`; `_load_data_file()` resolves the path relative to hunt dir → CWD; `_run_hunt_file()` iterates rows, calls `manul.reset_session_state()` between iterations, and aggregates step results and soft errors.
-* **Network Interception (`MOCK` / `WAIT FOR RESPONSE`):** `MOCK GET "/api/users" with 'mocks/users.json'` intercepts matching requests via Playwright `page.route()` with glob pattern `**{path}` and fulfills them from a local JSON file. `WAIT FOR RESPONSE "/api/data"` blocks until a matching network response arrives (uses `page.wait_for_response()` with substring match). Handlers in `actions.py`: `_handle_mock()`, `_handle_wait_for_response()`.
-* **Visual Regression (`VERIFY VISUAL`):** `VERIFY VISUAL 'Logo'` resolves the element via heuristics, takes `loc.screenshot()`, saves a baseline PNG in `visual_baselines/` next to the hunt file on first run, and pixel-compares on subsequent runs. Uses PIL/Pillow `ImageChops.difference` when available (configurable threshold, default 1%), falls back to raw byte comparison. Handler: `_handle_verify_visual()`, static helper: `_compare_images()`.
-* **Soft Assertions (`VERIFY SOFTLY`):** `VERIFY SOFTLY that 'Warning' is present` delegates to `_handle_verify()` (strips `SOFTLY` keyword) but does **not** break the step loop on failure. Failures are recorded in `_soft_errors: list[str]` and surfaced as `"warning"` status in `MissionResult`. The run continues to completion. Handler: `_handle_verify_softly()`.
-* **HTML Reporter — Warning Status:** New amber `⚠️ Warning` stat card, `badge-warning` / `step-warning` / `status-warning` CSS classes, `soft-errors` block with `<ul>` list inside mission details, and a "Show Warnings" filter checkbox in the control panel (mutual exclusion with "Show Only Failed"). `RunSummary.warning` counter; pass-rate includes warnings.

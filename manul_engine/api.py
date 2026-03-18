@@ -468,130 +468,155 @@ class ManulSession:
         ok = True
         done = False
         _step_results: list[StepResult] = []
+        _block_results = []
         _soft_errors: list[str] = []
-        _current_logical_step: str | None = None
+        from .helpers import parse_hunt_blocks
+        from .reporting import BlockResult
 
-        for i, raw_step in enumerate(plan, 1):
-            step = substitute_memory(raw_step, eng.memory)
-            started_perf = time.perf_counter()
-            step_kind = classify_step(step)
+        blocks = parse_hunt_blocks("\n".join(plan))
+        if not blocks:
+            return MissionResult(file="", name="<api>", status="pass")
 
-            if step_kind == "logical_step":
-                from .helpers import parse_logical_step
-                _, desc = parse_logical_step(step)
-                _current_logical_step = desc or step
-                continue
+        action_index = 0
+        for block in blocks:
+            block_started_perf = time.perf_counter()
+            block_steps: list[StepResult] = []
+            block_status = "pass"
+            block_error: str | None = None
 
-            _step_ok = True
-            _step_error: str | None = None
-            try:
-                if step_kind == "navigate":
-                    if not await eng._handle_navigate(page, step):
-                        _step_error = "Navigation failed"
-                        _step_ok = False; ok = False; break
+            for raw_step in block.actions:
+                action_index += 1
+                step = substitute_memory(raw_step, eng.memory)
+                started_perf = time.perf_counter()
+                step_kind = classify_step(step)
 
-                elif step_kind == "wait":
-                    n = re.search(r'(\d+)', step)
-                    await asyncio.sleep(int(n.group(1)) if n else 2)
+                _step_ok = True
+                _step_error: str | None = None
+                try:
+                    if step_kind == "navigate":
+                        if not await eng._handle_navigate(page, step):
+                            _step_error = "Navigation failed"
+                            _step_ok = False
 
-                elif step_kind == "scroll":
-                    await eng._handle_scroll(page, step)
+                    elif step_kind == "wait":
+                        n = re.search(r'(\d+)', step)
+                        await asyncio.sleep(int(n.group(1)) if n else 2)
 
-                elif step_kind == "extract":
-                    if not await eng._handle_extract(page, step):
-                        _step_error = "Extract failed"
-                        _step_ok = False; ok = False; break
+                    elif step_kind == "scroll":
+                        await eng._handle_scroll(page, step)
 
-                elif step_kind == "verify":
-                    if not await eng._handle_verify(page, step):
-                        _step_error = "Verification failed"
-                        _step_ok = False; ok = False; break
+                    elif step_kind == "extract":
+                        if not await eng._handle_extract(page, step):
+                            _step_error = "Extract failed"
+                            _step_ok = False
 
-                elif step_kind == "verify_softly":
-                    _soft_ok = await eng._handle_verify_softly(page, step)
-                    if not _soft_ok:
-                        _soft_msg = f"Soft assertion failed at step {i}: {step}"
-                        _soft_errors.append(_soft_msg)
-                        _step_error = _soft_msg
-                        _step_ok = False
+                    elif step_kind == "verify":
+                        if not await eng._handle_verify(page, step):
+                            _step_error = "Verification failed"
+                            _step_ok = False
 
-                elif step_kind == "press_enter":
-                    await eng._handle_press_enter(page)
+                    elif step_kind == "verify_softly":
+                        _soft_ok = await eng._handle_verify_softly(page, step)
+                        if not _soft_ok:
+                            _soft_msg = f"Soft assertion failed at action {action_index}: {step}"
+                            _soft_errors.append(_soft_msg)
+                            _step_error = _soft_msg
+                            _step_ok = False
 
-                elif step_kind == "press":
-                    if not await eng._handle_press(page, step):
-                        _step_error = "PRESS command failed"
-                        _step_ok = False; ok = False; break
+                    elif step_kind == "press_enter":
+                        await eng._handle_press_enter(page)
 
-                elif step_kind == "right_click":
-                    if not await eng._handle_right_click(page, step):
-                        _step_error = "RIGHT CLICK command failed"
-                        _step_ok = False; ok = False; break
+                    elif step_kind == "press":
+                        if not await eng._handle_press(page, step):
+                            _step_error = "PRESS command failed"
+                            _step_ok = False
 
-                elif step_kind == "upload":
-                    if not await eng._handle_upload(page, step):
-                        _step_error = "UPLOAD command failed"
-                        _step_ok = False; ok = False; break
+                    elif step_kind == "right_click":
+                        if not await eng._handle_right_click(page, step):
+                            _step_error = "RIGHT CLICK command failed"
+                            _step_ok = False
 
-                elif step_kind == "call_python":
-                    instruction = re.sub(r'^\s*\d+\.\s*', '', step).strip()
-                    if re.match(r'CALL\s+PYTHON\b', instruction.upper()):
-                        raw_instr = re.sub(r'^\s*\d+\.\s*', '', raw_step).strip()
-                        result = execute_hook_line(raw_instr, variables=eng.memory)
-                        if not result.success:
-                            _step_error = result.message
-                            _step_ok = False; ok = False; break
-                        if result.var_name and result.return_value is not None:
-                            eng.memory[result.var_name] = result.return_value
+                    elif step_kind == "upload":
+                        if not await eng._handle_upload(page, step):
+                            _step_error = "UPLOAD command failed"
+                            _step_ok = False
+
+                    elif step_kind == "call_python":
+                        instruction = re.sub(r'^\s*\d+\.\s*', '', step).strip()
+                        if re.match(r'CALL\s+PYTHON\b', instruction.upper()):
+                            raw_instr = re.sub(r'^\s*\d+\.\s*', '', raw_step).strip()
+                            result = execute_hook_line(raw_instr, variables=eng.memory)
+                            if not result.success:
+                                _step_error = result.message
+                                _step_ok = False
+                            elif result.var_name and result.return_value is not None:
+                                eng.memory[result.var_name] = result.return_value
+                        elif not await eng._execute_step(page, step):
+                            _step_error = "Action failed"
+                            _step_ok = False
+
+                    elif step_kind == "set_var":
+                        _set_m = re.match(
+                            r"(?:\d+\.\s*)?SET\s+\{?(\w+)\}?\s*=\s*(.+)",
+                            raw_step, re.IGNORECASE,
+                        )
+                        if _set_m:
+                            _sv_name = _set_m.group(1)
+                            _rhs_m = re.match(
+                                r"(?:\d+\.\s*)?SET\s+\S+\s*=\s*(.+)",
+                                step, re.IGNORECASE,
+                            )
+                            _sv_raw = (_rhs_m.group(1) if _rhs_m else _set_m.group(2)).strip()
+                            if len(_sv_raw) >= 2 and _sv_raw[0] in ("'", '"') and _sv_raw[-1] == _sv_raw[0]:
+                                _sv_raw = _sv_raw[1:-1]
+                            eng.memory[_sv_name] = _sv_raw
+
+                    elif step_kind == "done":
+                        done = True
+
                     else:
                         if not await eng._execute_step(page, step):
                             _step_error = "Action failed"
-                            _step_ok = False; ok = False; break
+                            _step_ok = False
 
-                elif step_kind == "set_var":
-                    _set_m = re.match(
-                        r"(?:\d+\.\s*)?SET\s+\{?(\w+)\}?\s*=\s*(.+)",
-                        raw_step, re.IGNORECASE,
+                except Exception:
+                    _step_ok = False
+                    _step_error = __import__("traceback").format_exc()
+
+                finally:
+                    duration_ms = (time.perf_counter() - started_perf) * 1000
+                    _sr_status = "pass" if _step_ok else (
+                        "warning" if step_kind == "verify_softly" else "fail"
                     )
-                    if _set_m:
-                        _sv_name = _set_m.group(1)
-                        _rhs_m = re.match(
-                            r"(?:\d+\.\s*)?SET\s+\S+\s*=\s*(.+)",
-                            step, re.IGNORECASE,
-                        )
-                        _sv_raw = (_rhs_m.group(1) if _rhs_m else _set_m.group(2)).strip()
-                        if len(_sv_raw) >= 2 and _sv_raw[0] in ("'", '"') and _sv_raw[-1] == _sv_raw[0]:
-                            _sv_raw = _sv_raw[1:-1]
-                        eng.memory[_sv_name] = _sv_raw
+                    _step_result = StepResult(
+                        index=action_index,
+                        text=re.sub(r'^\s*\d+\.\s*', '', step),
+                        status=_sr_status,
+                        duration_ms=duration_ms,
+                        error=_step_error,
+                        logical_step=block.block_name,
+                    )
+                    _step_results.append(_step_result)
+                    block_steps.append(_step_result)
+                    if _sr_status == "fail":
+                        ok = False
+                        block_status = "fail"
+                        block_error = _step_error
+                    elif _sr_status == "warning" and block_status == "pass":
+                        block_status = "warning"
 
-                elif step_kind == "done":
-                    done = True
+                if block_status == "fail" or done:
                     break
 
-                else:
-                    if not await eng._execute_step(page, step):
-                        _step_error = "Action failed"
-                        _step_ok = False; ok = False; break
-
-            except Exception:
-                _step_ok = False
-                ok = False
-                _step_error = __import__("traceback").format_exc()
+            _block_results.append(BlockResult(
+                name=block.block_name,
+                status=block_status,
+                duration_ms=(time.perf_counter() - block_started_perf) * 1000,
+                error=block_error,
+                actions=list(block_steps),
+            ))
+            if block_status == "fail" or done:
                 break
-
-            finally:
-                duration_ms = (time.perf_counter() - started_perf) * 1000
-                _sr_status = "pass" if _step_ok else (
-                    "warning" if step_kind == "verify_softly" else "fail"
-                )
-                _step_results.append(StepResult(
-                    index=i,
-                    text=re.sub(r'^\s*\d+\.\s*', '', step),
-                    status=_sr_status,
-                    duration_ms=duration_ms,
-                    error=_step_error,
-                    logical_step=_current_logical_step,
-                ))
 
         _status = "pass" if (done or ok) else "fail"
         if _status == "pass" and _soft_errors:
@@ -601,6 +626,7 @@ class ManulSession:
             name="<api>",
             status=_status,
             steps=_step_results,
+            blocks=_block_results,
             error=_step_results[-1].error if _step_results and _status == "fail" else None,
             soft_errors=_soft_errors,
         )
