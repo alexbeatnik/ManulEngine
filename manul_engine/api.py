@@ -31,7 +31,7 @@ from playwright.async_api import async_playwright, Playwright, Browser, BrowserC
 
 from . import prompts
 from .core import ManulEngine
-from .helpers import detect_mode, extract_quoted, classify_step, substitute_memory
+from .helpers import classify_step, substitute_memory
 from .variables import ScopedVariables
 from .reporting import StepResult, MissionResult
 
@@ -432,25 +432,35 @@ class ManulSession:
         from .helpers import RE_SYSTEM_STEP
         _has_action_keywords = bool(RE_SYSTEM_STEP.search(task))
 
-        # Filter out comments, metadata headers, and hook block markers
+        # Strip comments, metadata headers, and full [SETUP]/[TEARDOWN] blocks
         # (aligned with parse_hunt_file() behaviour).
-        _hook_markers = {"[SETUP]", "[END SETUP]", "[TEARDOWN]", "[END TEARDOWN]"}
-
-        def _is_executable(line: str) -> bool:
-            s = line.strip()
-            if not s or s.startswith("#") or s.startswith("@"):
-                return False
-            if s.upper() in _hook_markers:
-                return False
-            return True
+        def _extract_executable(text: str) -> list[str]:
+            result: list[str] = []
+            in_hook = False
+            for line in text.splitlines():
+                s = line.strip()
+                if not s:
+                    continue
+                upper = s.upper()
+                if upper in ("[SETUP]", "[TEARDOWN]"):
+                    in_hook = True
+                    continue
+                if upper in ("[END SETUP]", "[END TEARDOWN]"):
+                    in_hook = False
+                    continue
+                if in_hook:
+                    continue
+                if s.startswith("#") or s.startswith("@"):
+                    continue
+                result.append(s)
+            return result
 
         if _has_step_markers or (_has_action_keywords and not _is_numbered):
-            plan = [line.strip() for line in task.splitlines() if _is_executable(line)]
+            plan = _extract_executable(task)
         elif _is_numbered:
-            raw_chunks = [s for s in re.split(r'(?=\b\d+\.\s)', task) if s.strip()]
-            plan = [c.strip() for c in raw_chunks if _is_executable(c)]
+            plan = _extract_executable(task)
         else:
-            plan = [line.strip() for line in task.splitlines() if _is_executable(line)]
+            plan = _extract_executable(task)
 
         if not plan:
             return MissionResult(file="", name="<api>", status="pass")
