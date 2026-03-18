@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="images/manul.png" alt="ManulEngine mascot" width="180" />
+    <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
 # ManulEngine
@@ -270,14 +270,14 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.9
+pip install manul-engine==0.0.9.10
 playwright install
 ```
 
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.9"
+pip install "manul-engine[ai]==0.0.9.10"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -506,16 +506,14 @@ Representative coverage areas include:
 - visibility filtering and TreeWalker behavior
 - custom controls and lazy control loading
 
-## What's New in v0.0.9.9
+## What's New in v0.0.9.10
 
-- Added explicit wait DSL steps: `Wait for "..." to be visible`, `Wait for "..." to be hidden`, and `Wait for '...' to disappear`
-- Routed explicit waits through the parser as first-class system steps instead of generic heuristic actions
-- Executed explicit waits with Playwright `locator.wait_for()` so hunts can wait deterministically for UI state changes
-- Mapped `disappear` to the Playwright `hidden` state for a more natural DSL without adding a separate engine branch
-- Extended advanced interaction and enterprise DSL test coverage for visible, hidden, and timeout wait flows
+- Switched the README mascot image to an absolute GitHub raw URL so the project page renders correctly on PyPI
+- Kept the centered mascot block intact while removing the relative asset path that PyPI fails to resolve reliably
+- Prepared this as a packaging-only patch release so the PyPI long description can be refreshed without changing runtime behavior
 
 ## License
 
-**Version:** 0.0.9.9
+**Version:** 0.0.9.10
 
 Apache-2.0.

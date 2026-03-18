@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "manul-engine"
-version = "0.0.9.9"
+version = "0.0.9.10"
 description = "Deterministic DSL-first browser automation platform powered by Playwright heuristics with optional local AI self-healing (Ollama)"
 readme = "README.md"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
 requires-python = ">=3.11"
 authors = [{ name = "ManulEngine Contributors" }]
 keywords = [

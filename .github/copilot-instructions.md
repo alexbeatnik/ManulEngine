@@ -33,6 +33,7 @@ ManulEngine is a **deterministic, DSL-first Web & Desktop Automation Runtime**. 
 6. **Understand the four automation pillars.** ManulEngine scripts (`.hunt` files) can serve as QA/E2E tests, RPA workflows, synthetic monitors, or AI-agent execution targets. The same DSL commands (`NAVIGATE`, `CLICK`, `FILL`, `EXTRACT`, `VERIFY`, `CALL PYTHON`, etc.) apply to all four use cases. When generating `.hunt` files, adapt the structure to the user's intent — a monitoring script may skip `VERIFY` in favour of `EXTRACT`; an RPA script may use `CALL PYTHON` extensively for data processing; an AI-agent script should use strict DSL commands (never raw Playwright calls) for safety.
 7. **When updating public docs, keep the runtime-reference layer intact.** README.md is not only a landing page. It should retain concrete sections for explainability layers, configuration surface, automation pillars, desktop automation, hooks/variables orchestration, and test/benchmark coverage.
 8. **When documenting the companion VS Code extension for end users, prefer the published Marketplace install path.** Do not default public docs to local extension build instructions unless the user explicitly asks about extension development.
+9. **For public README assets, use absolute URLs.** If an image or badge must render on PyPI or other package indexes, use an absolute GitHub raw URL rather than a relative repository path like `images/foo.png`.
 
 ## What is this project?
 
@@ -59,7 +60,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.9
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.10
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession
   api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)
