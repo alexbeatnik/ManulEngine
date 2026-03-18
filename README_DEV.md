@@ -104,20 +104,9 @@ ManulEngine/
 │   ├── README.md                     Usage guide (Copilot, ChatGPT, Claude, Ollama)
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
-└── vscode-extension/                 VS Code extension source (published companion extension)
-    └── package.json                  Extension manifest
-    ├── src/
-    │   ├── extension.ts              Activation, command registration, formatter registration
-    │   ├── huntRunner.ts             Spawns manul CLI; cwd = workspace root
-    │   ├── huntTestController.ts     VS Code Test Explorer integration
-    │   ├── configPanel.ts            Webview sidebar: config editor + Ollama discovery
-    │   ├── cacheTreeProvider.ts      Sidebar tree: controls cache browser
-    │   ├── stepBuilderPanel.ts       Step Builder sidebar (incl. Live Page Scanner UI + Scan Page button)
-    │   ├── schedulerPanel.ts         Scheduler Dashboard webview panel (daemon management UI)
-    │   ├── formatter.ts              DocumentFormattingEditProvider for .hunt files (4-space action indent)
-    │   └── debugControlPanel.ts      Singleton QuickPick overlay for interactive debug stepping
-    └── syntaxes/hunt.tmLanguage.json Hunt file syntax grammar
 ```
+
+Companion VS Code extension source is maintained separately and is not included in this workspace.
 
 ---
 
@@ -751,7 +740,7 @@ The `prompts/` directory contains ready-to-use LLM prompt templates that let you
 
 ## 🖱️ VS Code Extension
 
-The repository contains source for the companion VS Code extension, but normal installation should use the published Marketplace build rather than a local source build.
+The companion VS Code extension is published separately from this runtime repository. Normal installation should use the published Marketplace build.
 
 Marketplace page:
 

@@ -4,13 +4,13 @@
 ## GLOBAL DOC SYNC RULE
 
 > **CRITICAL — Read this first.**
-> Whenever the user asks to update documentation, a README, or a feature's description, you **MUST** automatically update **all 4 core files** to keep the project's positioning and syntax rules perfectly synchronised:
+> Whenever the user asks to update documentation, a README, or a feature's description, you **MUST** automatically update the repo-local core files to keep the project's positioning and syntax rules perfectly synchronised:
 > 1. `README.md` — public-facing feature docs and version footer
 > 2. `README_DEV.md` — internal architecture docs and version title/footer
-> 3. `vscode-extension/README.md` — VS Code Marketplace listing and release notes
-> 4. `.github/copilot-instructions.md` — AI training context and syntax rules
+> 3. `.github/copilot-instructions.md` — AI training context and syntax rules
 >
 > A feature that appears in one file but not the others is a documentation bug.
+> If the same change also affects the companion VS Code extension's Marketplace listing or release notes, update those in the separate extension repository when that repo is part of the task.
 
 ## SOLO DEV ALPHA POSITIONING
 
@@ -693,9 +693,9 @@ Each element dict returned by `SNAPSHOT_JS` contains:
 * `self.learned_elements` — semantic cache: `(mode, search_texts, target_field) → {name, tag}`.
 * `self.last_xpath` — used for Contextual Reuse (if next step says "in that field").
 
-## VS Code extension (`vscode-extension/`)
+## Companion VS Code extension
 
-A companion extension that provides hunt file language support, Test Explorer integration, a config sidebar, cache browser, and an interactive debug runner.
+The companion extension is published separately from this runtime repository. When the extension source is checked out in its own repository or added to the workspace, it provides hunt file language support, Test Explorer integration, a config sidebar, cache browser, and an interactive debug runner.
 
 **Key rules when editing extension code:**
 
@@ -716,7 +716,7 @@ A companion extension that provides hunt file language support, Test Explorer in
 * `explainLensProvider.ts` — Legacy `ExplainLensProvider` CodeLens provider source file. Currently **not registered** in `extension.ts` or `package.json` (commands `manul.explainHuntFile` / `manul.runExplain` and setting `manulEngine.explainCodeLens` are not contributed). The file remains in the source tree for potential future use but is dead code. The active explain UI is the `ExplainHoverProvider` (see below).
 * `explainHoverProvider.ts` — `ExplainHoverProvider` implements `HoverProvider` for `.hunt` files. During debug runs, `--explain` is auto-injected; `ExplainOutputParser` parses stdout explain blocks (`┌─ 🔍 EXPLAIN` … `└─ ✅ Decision`) keyed by file line number. When the user hovers over a resolved step line, a rich Markdown tooltip with the per-channel scoring breakdown is shown. A separate `manul.debug.explainStep` command (title: "Manul: Explain Current Step", `$(lightbulb-autofix)` icon) is contributed in `package.json` as an editor title bar button; it calls `DebugControlPanel.triggerExplain()` to send `"explain"` via stdin to the paused Python process. The explain output channel name constant lives in `constants.ts` (`EXPLAIN_OUTPUT_CHANNEL`).
 * **Docs/install rule:** when writing **public-facing docs for end users**, prefer the published Marketplace install path for the extension. Only document local `npm` / `vsce` / `F5` build workflows when the user is explicitly asking about extension development.
-* **Dev build rule:** when you are actually editing extension source code, local build remains the correct validation path: `cd vscode-extension && npm install && npm run compile`. Use `npx vsce package` only when packaging is explicitly relevant. Press `F5` in VS Code with the extension folder open only for extension-development workflows.
+* **Dev build rule:** when you are actually editing extension source code in its separate repository, run `npm install` and `npm run compile` from that repository's root folder. Use `npx vsce package` only when packaging is explicitly relevant. Press `F5` in VS Code with the extension folder open only for extension-development workflows.
 
 ## Version Bump Checklist
 
@@ -726,7 +726,7 @@ When the version changes, **ALL** of the following files must be updated:
 |------|----------------|
 | `pyproject.toml` | `version = "X.Y.Z"` under `[project]` |
 | `README.md` | `**Version:** X.Y.Z` in the footer |
-| `README_DEV.md` | Title `# 😼 ManulEngine vX.Y.Z`, pyproject.toml ref, extension manifest ref, VS Code extension version ref, lifecycle/test suite lists, footer `**Version:** X.Y.Z` |
-| `vscode-extension/package.json` | `"version": "X.Y.Z"` (uses 3-digit semver, e.g. `"0.0.84"`) |
-| `vscode-extension/README.md` | Add `### X.Y.Z` release notes section above the previous entry |
+| `README_DEV.md` | Title `# 😼 ManulEngine vX.Y.Z`, pyproject.toml ref, lifecycle/test suite lists, footer `**Version:** X.Y.Z` |
 | `.github/copilot-instructions.md` | Version in the repo layout section (this file) |
+
+Companion VS Code extension versioning and Marketplace release notes are maintained in the separate extension repository.

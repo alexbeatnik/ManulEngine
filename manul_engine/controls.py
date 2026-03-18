@@ -87,12 +87,6 @@ _RE_DECORATOR_TARGET = re.compile(
     r'@custom_control\s*\([^)]*target\s*=\s*["\']([^"\']+)["\']',
 )
 
-# Matches CALL PYTHON <module>.<function> — captures the module part.
-_RE_CALL_PYTHON_MODULE = re.compile(
-    r'\bCALL\s+PYTHON\s+([A-Za-z_][A-Za-z0-9_.]*)\.([A-Za-z_][A-Za-z0-9_]*)\b',
-    re.IGNORECASE,
-)
-
 
 def extract_required_controls(
     mission_text: str,

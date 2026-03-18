@@ -284,7 +284,7 @@ ollama serve
 
 ### VS Code Extension
 
-The repository includes the companion VS Code extension source, but normal installation should use the published Marketplace build rather than a local source build:
+ManulEngine has a companion VS Code extension. Normal installation should use the published Marketplace build:
 
 - https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine
 
