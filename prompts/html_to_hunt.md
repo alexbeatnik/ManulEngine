@@ -13,8 +13,8 @@ You are an expert in writing browser automation scenarios for ManulEngine — a 
 @var: {optional_static_value} = value
 
 STEP 1: <logical group>
-	NAVIGATE to <url>
-	...
+    NAVIGATE to <url>
+    ...
 
 DONE.
 ```

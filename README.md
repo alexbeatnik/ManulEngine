@@ -270,14 +270,14 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.8
+pip install manul-engine==0.0.9.9
 playwright install
 ```
 
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.8"
+pip install "manul-engine[ai]==0.0.9.9"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -506,7 +506,7 @@ Representative coverage areas include:
 - visibility filtering and TreeWalker behavior
 - custom controls and lazy control loading
 
-## What's New in v0.0.9.8
+## What's New in v0.0.9.9
 
 - `ManulSession` is now a first-class public API surface for standalone Python automation
 - `.hunt` execution now uses a Hierarchical Block System where `STEP` lines become blocks and child actions execute beneath them with fail-fast semantics
@@ -516,6 +516,6 @@ Representative coverage areas include:
 
 ## License
 
-**Version:** 0.0.9.8
+**Version:** 0.0.9.9
 
 Apache-2.0.

@@ -42,10 +42,6 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
     # STEP must precede other keywords so "STEP 1: NAVIGATE..." is classified correctly.
     # Anchored to line start so that STEP inside quoted labels is not matched.
     ("logical_step", re.compile(r'^\s*(?:\d+\.\s*)?STEP\s*\d*\s*:')),
-    ("wait_for_element", re.compile(
-        r'^\s*(?:\d+\.\s*)?WAIT\s+FOR\s+(?:"[^"]+"|\'[^\']+\')\s+TO\s+(?:BE\s+(?:VISIBLE|HIDDEN)|DISAPPEAR)\s*$',
-        re.IGNORECASE,
-    )),
     ("navigate",    re.compile(r'\bNAVIGATE\b')),
     ("open_app",    re.compile(r'\bOPEN\s+APP\b')),
     ("mock",        re.compile(r'\bMOCK\s+(?:GET|POST|PUT|PATCH|DELETE)\b')),
@@ -205,7 +201,7 @@ def classify_step(step: str) -> str:
 
     # Remove quoted substrings so keywords inside labels are invisible.
     s_up = _RE_QUOTED.sub("", step).upper()
-    for kind, pattern in _STEP_PATTERNS[2:]:
+    for kind, pattern in _STEP_PATTERNS[1:]:
         if pattern.search(s_up):
             return kind
     return "action"

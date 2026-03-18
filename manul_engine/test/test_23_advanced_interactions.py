@@ -416,8 +416,11 @@ async def _test_handle_wait_for_element_timeout() -> None:
 
         ok, message = await engine._handle_wait_for_element(page, 'Wait for "Submit" to be hidden')
         _assert(not ok, "Explicit wait timeout returns False")
-        _assert(message == "Timeout waiting 15s for element to be hidden",
-                        "Timeout message includes mapped state", message)
+        _assert(
+                message == "Timeout waiting 15s for element to be hidden",
+                "Timeout message includes mapped state",
+                message,
+        )
 
 
 # ── Suite runner ──────────────────────────────────────────────────────────────

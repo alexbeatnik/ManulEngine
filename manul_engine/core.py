@@ -1051,10 +1051,13 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                         started_perf = time.perf_counter()
                         step_kind = classify_step(step)
                         _wait_target, _wait_state = parse_explicit_wait(step) if step_kind == "wait_for_element" else (None, None)
-                        _action_start_text = (
-                            f"Wait for '{_wait_target}' to be {_wait_state}"
-                            if _wait_target and _wait_state else step
-                        )
+                        if _wait_target and _wait_state:
+                            if _wait_state == "disappear":
+                                _action_start_text = f"Wait for '{_wait_target}' to disappear"
+                            else:
+                                _action_start_text = f"Wait for '{_wait_target}' to be {_wait_state}"
+                        else:
+                            _action_start_text = step
                         print(f"  [▶️ ACTION START] {_action_start_text}")
 
                         _is_system_step = step_kind != "action"
