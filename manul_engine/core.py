@@ -31,7 +31,7 @@ except Exception:  # pragma: no cover
     ollama = None
 
 from . import prompts
-from .helpers import substitute_memory, compact_log_field, extract_quoted, detect_mode, classify_step, RE_SYSTEM_STEP, parse_hunt_blocks
+from .helpers import substitute_memory, compact_log_field, extract_quoted, detect_mode, classify_step, RE_SYSTEM_STEP, parse_hunt_blocks, parse_explicit_wait
 from .hooks import execute_hook_line
 from .js_scripts import SNAPSHOT_JS
 from .scoring import score_elements
@@ -1050,7 +1050,15 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                         step = substitute_memory(raw_step, self.memory)
                         started_perf = time.perf_counter()
                         step_kind = classify_step(step)
-                        print(f"  [▶️ ACTION START] {step}")
+                        _wait_target, _wait_state = parse_explicit_wait(step) if step_kind == "wait_for_element" else (None, None)
+                        if _wait_target and _wait_state:
+                            if _wait_state == "disappear":
+                                _action_start_text = f"Wait for '{_wait_target}' to disappear"
+                            else:
+                                _action_start_text = f"Wait for '{_wait_target}' to be {_wait_state}"
+                        else:
+                            _action_start_text = step
+                        print(f"  [▶️ ACTION START] {_action_start_text}")
 
                         _is_system_step = step_kind != "action"
 
@@ -1077,6 +1085,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
                         _step_ok = True
                         _step_error: str | None = None
+                        _step_success_message: str | None = None
                         try:
                             if step_kind == "navigate":
                                 if not await self._handle_navigate(page, step):
@@ -1100,6 +1109,14 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                 if not await self._handle_wait_for_response(page, step):
                                     _step_error = "WAIT FOR RESPONSE timed out"
                                     _step_ok = False
+
+                            elif step_kind == "wait_for_element":
+                                _wait_ok, _wait_msg = await self._handle_wait_for_element(page, step)
+                                if not _wait_ok:
+                                    _step_error = _wait_msg
+                                    _step_ok = False
+                                else:
+                                    _step_success_message = _wait_msg
 
                             elif step_kind == "wait":
                                 n = re.search(r'(\d+)', step)
@@ -1279,7 +1296,10 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             self._last_step_healed = False
 
                             if _sr_status == "pass":
-                                print(f"  [✅ ACTION PASS] duration: {duration_s:.2f}s")
+                                if _step_success_message is not None:
+                                    print(f"  [✅ ACTION PASS] {_step_success_message} (duration: {duration_s:.2f}s)")
+                                else:
+                                    print(f"  [✅ ACTION PASS] duration: {duration_s:.2f}s")
                             elif _sr_status == "warning":
                                 block_status = "warning" if block_status == "pass" else block_status
                                 print(f"  [⚠️ ACTION WARN] {_step_error}")

@@ -270,14 +270,14 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.8
+pip install manul-engine==0.0.9.9
 playwright install
 ```
 
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.8"
+pip install "manul-engine[ai]==0.0.9.9"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -384,6 +384,7 @@ STEP 1: Open the app
 STEP 2: Authenticate
     Fill 'Email' field with '{email}'
     Fill 'Password' field with '{password}'
+    Wait for 'Sign In' to be visible
     Click the 'Sign In' button
     VERIFY that 'Dashboard' is present
 
@@ -416,6 +417,19 @@ Useful capabilities that get lost when the README is trimmed too aggressively:
 - `[SETUP]`, `[TEARDOWN]`, inline `CALL PYTHON`, and `manul_hooks.py` cover environment setup, backend calls, and suite-wide orchestration.
 - `@custom_control` is the explicit escape hatch when a widget should be handled with raw Playwright instead of generic heuristics.
 - `SCAN PAGE` and `manul record` accelerate authoring without replacing the readable DSL with low-level recordings.
+- `Wait for "Text" to be visible`, `Wait for 'Spinner' to disappear`, and `Wait for "Submit" to be hidden` give the DSL a deterministic explicit-wait path backed by Playwright `locator.wait_for()` instead of hardcoded sleeps.
+
+### Explicit waits
+
+Use explicit waits when the DOM is still settling after navigation or after an action triggers async UI updates.
+
+```text
+Wait for "Welcome, User" to be visible
+Wait for 'Loading...' to disappear
+Wait for "Submit" to be hidden
+```
+
+`disappear` maps to Playwright's `hidden` state, so the runtime treats `hidden` and `disappear` as the same wait target internally.
 
 ### Static variables and hooks
 
@@ -492,16 +506,16 @@ Representative coverage areas include:
 - visibility filtering and TreeWalker behavior
 - custom controls and lazy control loading
 
-## What's New in v0.0.9.8
+## What's New in v0.0.9.9
 
-- `ManulSession` is now a first-class public API surface for standalone Python automation
-- `.hunt` execution now uses a Hierarchical Block System where `STEP` lines become blocks and child actions execute beneath them with fail-fast semantics
-- stdout now emits structured block and action tags for external UI parsing
-- custom controls now use Just-In-Time loading so only the required handlers are imported for the current hunt
-- reporting now carries both per-action and per-block state
+- Added explicit wait DSL steps: `Wait for "..." to be visible`, `Wait for "..." to be hidden`, and `Wait for '...' to disappear`
+- Routed explicit waits through the parser as first-class system steps instead of generic heuristic actions
+- Executed explicit waits with Playwright `locator.wait_for()` so hunts can wait deterministically for UI state changes
+- Mapped `disappear` to the Playwright `hidden` state for a more natural DSL without adding a separate engine branch
+- Extended advanced interaction and enterprise DSL test coverage for visible, hidden, and timeout wait flows
 
 ## License
 
-**Version:** 0.0.9.8
+**Version:** 0.0.9.9
 
 Apache-2.0.

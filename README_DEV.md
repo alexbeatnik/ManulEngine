@@ -2,7 +2,7 @@
   <img src="images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.8 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.9 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -25,7 +25,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.8
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.9
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession
@@ -63,7 +63,7 @@ ManulEngine/
 │       ├── test_20_variables.py      Unit: @var: static variable declaration (17 assertions, no browser)
 │       ├── test_21_dynamic_vars.py   Unit: CALL PYTHON ... into {var} dynamic variable capture
 │       ├── test_22_tags.py           Unit: @tags: / --tags CLI filter (20 assertions, no browser)
-│       ├── test_23_advanced_interactions.py  Unit: PRESS/RIGHT CLICK/UPLOAD (48 assertions, no browser)
+│       ├── test_23_advanced_interactions.py  Unit: PRESS/RIGHT CLICK/UPLOAD/explicit waits (58 assertions, no browser)
 │       ├── test_24_reporting.py      Unit: StepResult/MissionResult/RunSummary dataclasses (45 assertions)
 │       ├── test_25_reporter.py       Unit: HTML report generator (65 assertions, no browser)
 │       ├── test_26_wikipedia_search.py Unit: name_attr heuristic scoring (20 assertions, no browser)
@@ -77,7 +77,7 @@ ManulEngine/
 │       ├── test_34_verify_checked.py Synthetic: VERIFY checked/NOT checked (20 assertions)
 │       ├── test_35_scanner.py       Synthetic+Unit: Smart Page Scanner build_hunt() (44 assertions)
 │       ├── test_36_scoring_math.py   Unit: exact numerical scoring validation (29 assertions, no browser)
-│       ├── test_37_enterprise_dsl.py Unit: Enterprise DSL — @data:, MOCK, VERIFY VISUAL/SOFTLY, reporter warnings (68 assertions, no browser)
+│       ├── test_37_enterprise_dsl.py Unit: Enterprise DSL — @data:, MOCK, VERIFY VISUAL/SOFTLY, explicit waits, reporter warnings (75 assertions, no browser)
 │       ├── test_38_set_and_indent.py Unit: SET command & indentation robustness (v0.0.9.2)
 │       ├── test_39_open_app.py       Unit: OPEN APP command — classify_step, RE_SYSTEM_STEP, _handle_open_app (32 assertions, no browser)
 │       ├── test_40_self_healing_cache.py Unit: Self-Healing Controls Cache — stale detection, HEALED logging, cache auto-update (16 assertions)
@@ -508,7 +508,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.8
+pip install manul-engine==0.0.9.9
 playwright install chromium
 ```
 
@@ -656,10 +656,12 @@ manul tests/mission.hunt
 | **Keyboard** | `PRESS ENTER`, `PRESS [Key]`, `PRESS [Key] on [Element]` |
 | **File Upload** | `UPLOAD 'File' to 'Element'` |
 | **Variables** | `SET {variable} = value`, `@var: {name} = value` (header declaration) |
-| **Flow Control** | `WAIT [seconds]`, `SCROLL DOWN` |
+| **Flow Control** | `WAIT [seconds]`, `Wait for "Text" to be visible`, `Wait for 'Spinner' to disappear`, `Wait for "Element" to be hidden`, `SCROLL DOWN` |
 | **Finish** | `DONE.` |
 
 *Note: You can append `if exists` or `optional` to the end of any step (outside quoted text) to make it non-blocking, e.g. `Click 'Close Ad' if exists`.*
+
+`disappear` is an alias for Playwright's `hidden` state. The runtime routes these explicit waits through `locator.wait_for()` instead of using hard sleeps.
 
 ---
 
@@ -762,7 +764,7 @@ The published extension provides:
 | **Cache browser** | Tree-view sidebar showing the controls cache hierarchy (`site → page → controls.json`) |
 | **Run commands** | `ManulEngine: Run Hunt File` (output panel) and `ManulEngine: Run Hunt File in Terminal` (raw CLI) |
 | **Debug run profile** | Test Explorer exposes a **Debug** run profile alongside the normal one; places gutter breakpoints (red dots) in `.hunt` files, pauses at each with a floating QuickPick overlay — **⏭ Next Step** / **▶ Continue All**. The Test Explorer **Stop** button aborts the run cleanly. |
-| **Step Builder** | Sidebar buttons for every step type including **Open App**, **Set Variable**, **Verify Softly**, **Verify Visual**, **Mock Request**, **Wait Response**, **Debug / Pause**, **CALL PYTHON into {var}**, and **Live Page Scanner** |
+| **Step Builder** | Sidebar buttons for every step type including **Open App**, **Set Variable**, **Verify Softly**, **Verify Visual**, **Mock Request**, **Wait Response**, **Wait Visible / Hidden**, **Debug / Pause**, **CALL PYTHON into {var}**, and **Live Page Scanner** |
 | **Explain Heuristics CodeLens** | CodeLens above actionable steps that runs the file with `--explain` and streams the scoring breakdown to a dedicated output channel |
 | **Bounded concurrency** | Test Explorer respects `workers` config or `manulEngine.workers` VS Code setting |
 
@@ -777,7 +779,7 @@ The published extension provides:
 
 ---
 
-**Version:** 0.0.9.8
+**Version:** 0.0.9.9
 
 **Codename:** New Look — ManulSession
 

@@ -3,11 +3,15 @@ import asyncio
 import hashlib
 import os
 import re
-from .helpers import extract_quoted, compact_log_field, SCROLL_WAIT, ACTION_WAIT, NAV_WAIT, detect_mode
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+
+from .helpers import extract_quoted, compact_log_field, SCROLL_WAIT, ACTION_WAIT, NAV_WAIT, detect_mode, parse_explicit_wait
 from .js_scripts import VISIBLE_TEXT_JS, EXTRACT_DATA_JS, DEEP_TEXT_JS, STATE_CHECK_JS, SCAN_JS
 from . import prompts
 
 class _ActionsMixin:
+    _EXPLICIT_WAIT_TIMEOUT_MS = 15_000
+
     def _fmt_el_name(self, name: object) -> str:
         return compact_log_field(name, "MANUL_LOG_NAME_MAXLEN")
 
@@ -82,6 +86,25 @@ class _ActionsMixin:
         else:
             await page.evaluate("window.scrollBy(0, window.innerHeight)")
         await asyncio.sleep(SCROLL_WAIT)
+
+    async def _handle_wait_for_element(self, page, step: str) -> tuple[bool, str]:
+        """Handle ``Wait for 'Target' to be visible/hidden/disappear``."""
+        target_element, desired_state = parse_explicit_wait(step)
+        if not target_element or not desired_state:
+            return False, "Malformed explicit wait command"
+
+        state_mapped = "hidden" if desired_state in ("hidden", "disappear") else "visible"
+        locator = page.get_by_text(target_element, exact=False).first
+
+        try:
+            await locator.wait_for(state=state_mapped, timeout=self._EXPLICIT_WAIT_TIMEOUT_MS)
+        except PlaywrightTimeoutError:
+            timeout_s = self._EXPLICIT_WAIT_TIMEOUT_MS // 1000
+            return False, f"Timeout waiting {timeout_s}s for element to be {state_mapped}"
+        except Exception as exc:
+            return False, f"Explicit wait failed: {exc}"
+
+        return True, f"Element is now {state_mapped}"
 
     async def _handle_press_enter(self, page) -> bool:
         """Press the Enter key on the currently focused element.

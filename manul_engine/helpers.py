@@ -67,7 +67,7 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
 # Legacy pre-compiled system-step pattern kept for backwards compatibility.
 # Prefer classify_step() for step classification.
 RE_SYSTEM_STEP = re.compile(
-    r'\b(?:STEP\s*\d*\s*:|NAVIGATE|OPEN\s+APP|MOCK\s+(?:GET|POST|PUT|PATCH|DELETE)|WAIT\s+FOR\s+RESPONSE|WAIT|SCROLL|EXTRACT|VERIFY\s+VISUAL|VERIFY\s+SOFTLY|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|SET|DEBUG\s+VARS|DEBUG|PAUSE|DONE)\b',
+    r'\b(?:STEP\s*\d*\s*:|WAIT\s+FOR\s+(?:"[^"]+"|\'[^\']+\')\s+TO\s+(?:BE\s+(?:VISIBLE|HIDDEN)|DISAPPEAR)|NAVIGATE|OPEN\s+APP|MOCK\s+(?:GET|POST|PUT|PATCH|DELETE)|WAIT\s+FOR\s+RESPONSE|WAIT|SCROLL|EXTRACT|VERIFY\s+VISUAL|VERIFY\s+SOFTLY|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|SET|DEBUG\s+VARS|DEBUG|PAUSE|DONE)\b',
     re.IGNORECASE,
 )
 
@@ -75,6 +75,11 @@ RE_SYSTEM_STEP = re.compile(
 # Matches: "STEP 1: Description" and "STEP: Description" (case-insensitive).
 # The stripped 1-based numbering prefix is handled by the caller.
 _RE_LOGICAL_STEP = re.compile(r'\bSTEP\s*(\d*)\s*:\s*(.*)', re.IGNORECASE)
+_RE_EXPLICIT_WAIT = re.compile(
+    r'^\s*(?:\d+\.\s*)?WAIT\s+FOR\s+(?P<quote>["\'])(?P<target>.+?)(?P=quote)\s+TO\s+'
+    r'(?:(?:BE\s+(?P<state_be>VISIBLE|HIDDEN))|(?P<state_disappear>DISAPPEAR))\s*$',
+    re.IGNORECASE,
+)
 
 
 @dataclass(slots=True)
@@ -115,6 +120,16 @@ def normalize_logical_step(step: str) -> str:
     if num is None:
         return f"STEP: {desc}"
     return f"STEP {num}: {desc}"
+
+
+def parse_explicit_wait(step: str) -> "tuple[str | None, str | None]":
+    """Extract ``(target_element, desired_state)`` from an explicit wait step."""
+    m = _RE_EXPLICIT_WAIT.match(step.strip())
+    if m is None:
+        return None, None
+    target = m.group("target").strip()
+    desired_state = (m.group("state_be") or m.group("state_disappear") or "").strip().lower()
+    return target or None, desired_state or None
 
 
 def parse_hunt_blocks(task: str, file_lines: list[int] | None = None) -> list[HuntBlock]:
@@ -167,8 +182,8 @@ def classify_step(step: str) -> str:
     Quoted strings are stripped before matching so that keywords inside
     element labels (e.g. ``Click 'Press Here'``) are not misclassified.
 
-    The returned string is one of: ``"logical_step"``, ``"navigate"``,
-    ``"open_app"``, ``"mock"``, ``"wait_for_response"``, ``"wait"``, ``"scroll"``,
+    The returned string is one of: ``"logical_step"``, ``"wait_for_element"``,
+    ``"navigate"``, ``"open_app"``, ``"mock"``, ``"wait_for_response"``, ``"wait"``, ``"scroll"``,
     ``"extract"``, ``"verify_visual"``, ``"verify_softly"``,
     ``"verify"``, ``"press_enter"``, ``"press"``, ``"right_click"``,
     ``"upload"``, ``"scan_page"``, ``"call_python"``, ``"set_var"``,
@@ -180,6 +195,9 @@ def classify_step(step: str) -> str:
     # start so "STEP 1:" inside a quoted label does not trigger a false match.
     if _STEP_PATTERNS[0][1].search(step.upper()):  # logical_step
         return "logical_step"
+
+    if parse_explicit_wait(step)[0] is not None:
+        return "wait_for_element"
 
     # Remove quoted substrings so keywords inside labels are invisible.
     s_up = _RE_QUOTED.sub("", step).upper()
