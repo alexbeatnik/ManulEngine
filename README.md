@@ -508,11 +508,11 @@ Representative coverage areas include:
 
 ## What's New in v0.0.9.9
 
-- `ManulSession` is now a first-class public API surface for standalone Python automation
-- `.hunt` execution now uses a Hierarchical Block System where `STEP` lines become blocks and child actions execute beneath them with fail-fast semantics
-- stdout now emits structured block and action tags for external UI parsing
-- custom controls now use Just-In-Time loading so only the required handlers are imported for the current hunt
-- reporting now carries both per-action and per-block state
+- Added explicit wait DSL steps: `Wait for "..." to be visible`, `Wait for "..." to be hidden`, and `Wait for '...' to disappear`
+- Routed explicit waits through the parser as first-class system steps instead of generic heuristic actions
+- Executed explicit waits with Playwright `locator.wait_for()` so hunts can wait deterministically for UI state changes
+- Mapped `disappear` to the Playwright `hidden` state for a more natural DSL without adding a separate engine branch
+- Extended advanced interaction and enterprise DSL test coverage for visible, hidden, and timeout wait flows
 
 ## License
 

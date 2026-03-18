@@ -386,41 +386,41 @@ async def _test_handle_press_empty_key() -> None:
 
 
 async def _test_handle_wait_for_element_visible() -> None:
-        print("\n  ── _handle_wait_for_element — visible ─────────────────")
-        engine = _make_engine()
-        page = _mock_page()
+    print("\n  ── _handle_wait_for_element — visible ─────────────────")
+    engine = _make_engine()
+    page = _mock_page()
 
-        ok, message = await engine._handle_wait_for_element(page, 'Wait for "Welcome, User" to be visible')
-        _assert(ok, "Explicit wait visible returns True")
-        _assert(message == "Element is now visible", "Visible wait success message", message)
-        page.get_by_text.assert_called_once_with("Welcome, User", exact=False)
-        page._mock_locator.wait_for.assert_awaited_once_with(state="visible", timeout=15_000)
+    ok, message = await engine._handle_wait_for_element(page, 'Wait for "Welcome, User" to be visible')
+    _assert(ok, "Explicit wait visible returns True")
+    _assert(message == "Element is now visible", "Visible wait success message", message)
+    page.get_by_text.assert_called_once_with("Welcome, User", exact=False)
+    page._mock_locator.wait_for.assert_awaited_once_with(state="visible", timeout=15_000)
 
 
 async def _test_handle_wait_for_element_disappear() -> None:
-        print("\n  ── _handle_wait_for_element — disappear ───────────────")
-        engine = _make_engine()
-        page = _mock_page()
+    print("\n  ── _handle_wait_for_element — disappear ───────────────")
+    engine = _make_engine()
+    page = _mock_page()
 
-        ok, message = await engine._handle_wait_for_element(page, "Wait for 'Loading...' to disappear")
-        _assert(ok, "Explicit wait disappear returns True")
-        _assert(message == "Element is now hidden", "Disappear maps to hidden", message)
-        page._mock_locator.wait_for.assert_awaited_once_with(state="hidden", timeout=15_000)
+    ok, message = await engine._handle_wait_for_element(page, "Wait for 'Loading...' to disappear")
+    _assert(ok, "Explicit wait disappear returns True")
+    _assert(message == "Element is now hidden", "Disappear maps to hidden", message)
+    page._mock_locator.wait_for.assert_awaited_once_with(state="hidden", timeout=15_000)
 
 
 async def _test_handle_wait_for_element_timeout() -> None:
-        print("\n  ── _handle_wait_for_element — timeout ─────────────────")
-        engine = _make_engine()
-        page = _mock_page()
-        page._mock_locator.wait_for = AsyncMock(side_effect=PlaywrightTimeoutError("boom"))
+    print("\n  ── _handle_wait_for_element — timeout ─────────────────")
+    engine = _make_engine()
+    page = _mock_page()
+    page._mock_locator.wait_for = AsyncMock(side_effect=PlaywrightTimeoutError("boom"))
 
-        ok, message = await engine._handle_wait_for_element(page, 'Wait for "Submit" to be hidden')
-        _assert(not ok, "Explicit wait timeout returns False")
-        _assert(
-                message == "Timeout waiting 15s for element to be hidden",
-                "Timeout message includes mapped state",
-                message,
-        )
+    ok, message = await engine._handle_wait_for_element(page, 'Wait for "Submit" to be hidden')
+    _assert(not ok, "Explicit wait timeout returns False")
+    _assert(
+        message == "Timeout waiting 15s for element to be hidden",
+        "Timeout message includes mapped state",
+        message,
+    )
 
 
 # ── Suite runner ──────────────────────────────────────────────────────────────
