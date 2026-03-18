@@ -1,6 +1,6 @@
 # Hunt Prompts
 
-Ready-to-use LLM prompts for generating ManulEngine `.hunt` test files.
+Ready-to-use LLM prompts for generating modern ManulEngine `.hunt` files in the canonical STEP-grouped DSL.
 
 ## Files
 
@@ -113,24 +113,43 @@ jq -Rs '{model: "qwen2.5:7b", prompt: ., stream: false}' prompts/html_to_hunt.md
    manul tests/<name>.hunt
    ```
 3. If a step fails, fix the quoted label to match the exact visible text on the page.
+4. If the model produced numbered steps, rewrite them into STEP-grouped unnumbered syntax before keeping the file.
 
 ## Hunt file quick-reference
 
 ```
 @context: Short description of what this test covers
 @title: tag_name
+@var: {email} = test@example.com
+@var: {password} = Password123
 
-1. NAVIGATE to https://example.com
-2. Fill 'Username' field with 'admin'
-3. Fill 'Password' field with 'secret'
-4. Click the 'Login' button
-5. VERIFY that 'Welcome' is present
-6. DONE.
+STEP 1: Open the page
+    NAVIGATE to https://example.com
+    Wait for 'Username' to be visible
+
+STEP 2: Login
+    Fill 'Username' field with '{email}'
+    Fill 'Password' field with '{password}'
+    Click the 'Login' button
+    VERIFY that 'Welcome' is present
+
+DONE.
 ```
+
+### Canonical formatting rules
+
+- Use `STEP N: Description` headers.
+- Put all action lines under a STEP with 4 spaces of indentation.
+- Do not use legacy numbered action lines like `1.` / `2.`.
+- Keep `DONE.` flush-left.
+- Prefer `@var:` for static test data instead of hardcoding values inside `Fill` steps.
 
 ### Keywords
 - `NAVIGATE to <url>`
 - `WAIT <seconds>`
+- `Wait for "Text" to be visible`
+- `Wait for 'Spinner' to disappear`
+- `Wait for "Element" to be hidden`
 - `PRESS ENTER`
 - `PRESS [Key]` (e.g. `PRESS Escape`, `PRESS Control+A`)
 - `PRESS [Key] on [Element]` (e.g. `PRESS ArrowDown on 'Search Input'`)
@@ -138,8 +157,13 @@ jq -Rs '{model: "qwen2.5:7b", prompt: ., stream: false}' prompts/html_to_hunt.md
 - `UPLOAD 'File' to 'Element'`
 - `SCROLL DOWN`
 - `EXTRACT the '<target>' into {var}`
+- `SET {var} = value`
+- `CALL PYTHON module.function into {var}`
 - `VERIFY that '<target>' is present / is NOT present / is DISABLED / is checked`
+- `VERIFY SOFTLY that '<target>' is present`
 - `DONE.`
+
+`disappear` maps to Playwright's `hidden` state. Use these explicit waits instead of recommending hardcoded sleep steps for async rendering.
 
 ### Interaction verbs
 `Fill … with` · `Click` · `DOUBLE CLICK` · `RIGHT CLICK` · `Select … from` · `Check/Uncheck the checkbox for` · `Click the radio button for` · `HOVER over` · `Drag … and drop it into` · `UPLOAD … to`
@@ -149,3 +173,12 @@ Element type goes **outside** quotes, label goes **inside** quotes:
 Click the 'Submit' button      ✓
 Click 'Submit button'          ✗
 ```
+
+### Generation rules for LLM output
+
+- Prefer deterministic DSL steps over vague natural language.
+- Add explicit waits when the page description suggests async loading, spinners, deferred content, or client-side rendering.
+- Use `@var:` for login credentials, emails, names, IDs, and other static inputs.
+- Use `CALL PYTHON ... into {var}` when the flow clearly needs OTPs, tokens, magic links, or backend-generated values.
+- Add `VERIFY` after major state changes.
+- Do not generate fake DSL steps for screenshots, retries, or reports.
