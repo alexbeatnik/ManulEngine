@@ -22,6 +22,7 @@ import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
+from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
@@ -84,6 +85,14 @@ def _test_classify_step() -> None:
     _assert(classify_step("3. Upload 'data.csv' to 'Import'") == "upload",
             "Upload (mixed case) → upload")
 
+    # Explicit waits
+    _assert(classify_step('Wait for "Welcome, User" to be visible') == "wait_for_element",
+            "Wait for text to be visible → wait_for_element")
+    _assert(classify_step("Wait for 'Loading...' to disappear") == "wait_for_element",
+            "Wait for text to disappear → wait_for_element")
+    _assert(classify_step('1. Wait for "Submit" to be hidden') == "wait_for_element",
+            "Numbered explicit wait → wait_for_element")
+
     # Ensure existing keywords still work correctly
     _assert(classify_step("1. NAVIGATE to https://x.com") == "navigate",
             "NAVIGATE still works")
@@ -116,6 +125,8 @@ def _test_re_system_step() -> None:
             "RE_SYSTEM_STEP matches RIGHT CLICK")
     _assert(RE_SYSTEM_STEP.search("UPLOAD 'file.pdf' to 'Target'") is not None,
             "RE_SYSTEM_STEP matches UPLOAD")
+    _assert(RE_SYSTEM_STEP.search('Wait for "Loading..." to disappear') is not None,
+            "RE_SYSTEM_STEP matches explicit wait")
     _assert(RE_SYSTEM_STEP.search("VERIFY that 'Welcome' is present") is not None,
             "RE_SYSTEM_STEP matches VERIFY")
     _assert(RE_SYSTEM_STEP.search("Click 'Submit'") is None,
@@ -131,22 +142,23 @@ def _make_engine():
 
 
 def _mock_page():
-    """Return a MagicMock page with standard async methods."""
-    page = MagicMock()
-    page.keyboard = MagicMock()
-    page.keyboard.press = AsyncMock()
-    page.evaluate = AsyncMock(return_value=[])
-    page.url = "https://example.com"
+        page = MagicMock()
+        page.keyboard = MagicMock()
+        page.keyboard.press = AsyncMock()
+        page.evaluate = AsyncMock(return_value=[])
+        page.url = "https://example.com"
 
-    mock_loc = MagicMock()
-    mock_loc.press = AsyncMock()
-    mock_loc.click = AsyncMock()
-    mock_loc.set_input_files = AsyncMock()
-    mock_loc.scroll_into_view_if_needed = AsyncMock()
-    mock_loc.first = mock_loc
-    page.locator = MagicMock(return_value=mock_loc)
-    page._mock_locator = mock_loc
-    return page
+        mock_loc = MagicMock()
+        mock_loc.press = AsyncMock()
+        mock_loc.click = AsyncMock()
+        mock_loc.set_input_files = AsyncMock()
+        mock_loc.scroll_into_view_if_needed = AsyncMock()
+        mock_loc.wait_for = AsyncMock()
+        mock_loc.first = mock_loc
+        page.locator = MagicMock(return_value=mock_loc)
+        page.get_by_text = MagicMock(return_value=mock_loc)
+        page._mock_locator = mock_loc
+        return page
 
 
 def _mock_element(el_id=1, name="Test Element", xpath="//button[@id='test']"):
@@ -373,36 +385,74 @@ async def _test_handle_press_empty_key() -> None:
     _assert(True, "page.keyboard.press not called")
 
 
+async def _test_handle_wait_for_element_visible() -> None:
+        print("\n  ── _handle_wait_for_element — visible ─────────────────")
+        engine = _make_engine()
+        page = _mock_page()
+
+        ok, message = await engine._handle_wait_for_element(page, 'Wait for "Welcome, User" to be visible')
+        _assert(ok, "Explicit wait visible returns True")
+        _assert(message == "Element is now visible", "Visible wait success message", message)
+        page.get_by_text.assert_called_once_with("Welcome, User", exact=False)
+        page._mock_locator.wait_for.assert_awaited_once_with(state="visible", timeout=15_000)
+
+
+async def _test_handle_wait_for_element_disappear() -> None:
+        print("\n  ── _handle_wait_for_element — disappear ───────────────")
+        engine = _make_engine()
+        page = _mock_page()
+
+        ok, message = await engine._handle_wait_for_element(page, "Wait for 'Loading...' to disappear")
+        _assert(ok, "Explicit wait disappear returns True")
+        _assert(message == "Element is now hidden", "Disappear maps to hidden", message)
+        page._mock_locator.wait_for.assert_awaited_once_with(state="hidden", timeout=15_000)
+
+
+async def _test_handle_wait_for_element_timeout() -> None:
+        print("\n  ── _handle_wait_for_element — timeout ─────────────────")
+        engine = _make_engine()
+        page = _mock_page()
+        page._mock_locator.wait_for = AsyncMock(side_effect=PlaywrightTimeoutError("boom"))
+
+        ok, message = await engine._handle_wait_for_element(page, 'Wait for "Submit" to be hidden')
+        _assert(not ok, "Explicit wait timeout returns False")
+        _assert(message == "Timeout waiting 15s for element to be hidden",
+                        "Timeout message includes mapped state", message)
+
+
 # ── Suite runner ──────────────────────────────────────────────────────────────
 
 async def run_suite() -> bool:
-    global _PASS, _FAIL
-    _PASS = 0
-    _FAIL = 0
+        global _PASS, _FAIL
+        _PASS = 0
+        _FAIL = 0
 
-    print("\n═══ test_23_advanced_interactions ═══════════════════════")
+        print("\n═══ test_23_advanced_interactions ═══════════════════════")
 
-    # Synchronous parser tests
-    _test_classify_step()
-    _test_re_system_step()
+        # Synchronous parser tests
+        _test_classify_step()
+        _test_re_system_step()
 
-    # Async handler tests
-    await _test_handle_press_global()
-    await _test_handle_press_combo()
-    await _test_handle_press_targeted()
-    await _test_handle_press_targeted_not_found()
-    await _test_handle_right_click()
-    await _test_handle_right_click_not_found()
-    await _test_handle_right_click_shadow()
-    await _test_handle_upload()
-    await _test_handle_upload_missing_args()
-    await _test_handle_upload_not_found()
-    await _test_handle_upload_hunt_dir_resolution()
-    await _test_handle_upload_file_not_found()
-    await _test_handle_upload_wrong_element_type()
-    await _test_handle_press_empty_key()
+        # Async handler tests
+        await _test_handle_press_global()
+        await _test_handle_press_combo()
+        await _test_handle_press_targeted()
+        await _test_handle_press_targeted_not_found()
+        await _test_handle_right_click()
+        await _test_handle_right_click_not_found()
+        await _test_handle_right_click_shadow()
+        await _test_handle_upload()
+        await _test_handle_upload_missing_args()
+        await _test_handle_upload_not_found()
+        await _test_handle_upload_hunt_dir_resolution()
+        await _test_handle_upload_file_not_found()
+        await _test_handle_upload_wrong_element_type()
+        await _test_handle_press_empty_key()
+        await _test_handle_wait_for_element_visible()
+        await _test_handle_wait_for_element_disappear()
+        await _test_handle_wait_for_element_timeout()
 
-    print(f"\n  ── RESULT: {_PASS} passed, {_FAIL} failed ──")
-    total = _PASS + _FAIL
-    print(f"\n📊 SCORE: {_PASS}/{total} passed")
-    return _FAIL == 0
+        print(f"\n  ── RESULT: {_PASS} passed, {_FAIL} failed ──")
+        total = _PASS + _FAIL
+        print(f"\n📊 SCORE: {_PASS}/{total} passed")
+        return _FAIL == 0

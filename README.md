@@ -384,6 +384,7 @@ STEP 1: Open the app
 STEP 2: Authenticate
     Fill 'Email' field with '{email}'
     Fill 'Password' field with '{password}'
+    Wait for 'Sign In' to be visible
     Click the 'Sign In' button
     VERIFY that 'Dashboard' is present
 
@@ -416,6 +417,19 @@ Useful capabilities that get lost when the README is trimmed too aggressively:
 - `[SETUP]`, `[TEARDOWN]`, inline `CALL PYTHON`, and `manul_hooks.py` cover environment setup, backend calls, and suite-wide orchestration.
 - `@custom_control` is the explicit escape hatch when a widget should be handled with raw Playwright instead of generic heuristics.
 - `SCAN PAGE` and `manul record` accelerate authoring without replacing the readable DSL with low-level recordings.
+- `Wait for "Text" to be visible`, `Wait for 'Spinner' to disappear`, and `Wait for "Submit" to be hidden` give the DSL a deterministic explicit-wait path backed by Playwright `locator.wait_for()` instead of hardcoded sleeps.
+
+### Explicit waits
+
+Use explicit waits when the DOM is still settling after navigation or after an action triggers async UI updates.
+
+```text
+Wait for "Welcome, User" to be visible
+Wait for 'Loading...' to disappear
+Wait for "Submit" to be hidden
+```
+
+`disappear` maps to Playwright's `hidden` state, so the runtime treats `hidden` and `disappear` as the same wait target internally.
 
 ### Static variables and hooks
 

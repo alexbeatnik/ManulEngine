@@ -498,6 +498,12 @@ class ManulSession:
                             _step_error = "Navigation failed"
                             _step_ok = False
 
+                    elif step_kind == "wait_for_element":
+                        _wait_ok, _wait_msg = await eng._handle_wait_for_element(page, step)
+                        if not _wait_ok:
+                            _step_error = _wait_msg
+                            _step_ok = False
+
                     elif step_kind == "wait":
                         n = re.search(r'(\d+)', step)
                         await asyncio.sleep(int(n.group(1)) if n else 2)

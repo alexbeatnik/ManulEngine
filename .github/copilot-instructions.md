@@ -65,7 +65,7 @@ manul_engine/
   api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
   cache.py                 _ControlsCacheMixin (persistent per-site controls cache)
-  actions.py               _ActionsMixin (navigate, scroll, extract, verify, drag, press, right_click, upload, _execute_step, scan_page)
+  actions.py               _ActionsMixin (navigate, scroll, explicit waits, extract, verify, drag, press, right_click, upload, _execute_step, scan_page)
   reporting.py             StepResult, BlockResult, MissionResult, RunSummary dataclasses; append_run_history() (JSON Lines persistence to reports/run_history.json)
   reporter.py              Self-contained HTML report generator (dark theme, native <details>/<summary> accordions, Flexbox step layout, base64 screenshots, control panel with Show Only Failed toggle and tag filter chips)
   prompts.py               JSON config loader, thresholds, LLM prompt templates
@@ -93,7 +93,7 @@ manul_engine/
     test_20_variables.py       @var: static variable declaration (17 assertions, no browser)
     test_21_dynamic_vars.py    CALL PYTHON ... into {var} dynamic variable capture
     test_22_tags.py            @tags: / --tags CLI filter (20 assertions, no browser)
-    test_23_advanced_interactions.py  PRESS/RIGHT CLICK/UPLOAD commands (48 assertions, no browser)
+    test_23_advanced_interactions.py  PRESS/RIGHT CLICK/UPLOAD/explicit wait commands (58 assertions, no browser)
     test_24_reporting.py       StepResult/MissionResult/RunSummary dataclasses (45 assertions)
     test_25_reporter.py        HTML report generator (65 assertions, no browser)
     test_26_wikipedia_search.py  name_attr heuristic scoring (20 assertions, no browser)
@@ -107,7 +107,7 @@ manul_engine/
     test_34_verify_checked.py    VERIFY checked/NOT checked state verification (20 assertions, no browser)
     test_35_scanner.py           Smart Page Scanner build_hunt() (44 assertions, no browser)
     test_36_scoring_math.py      Exact numerical scoring validation (29 assertions, no browser)
-    test_37_enterprise_dsl.py    Enterprise DSL: @data:, MOCK, VERIFY VISUAL/SOFTLY, reporter warnings (68 assertions, no browser)
+    test_37_enterprise_dsl.py    Enterprise DSL: @data:, MOCK, VERIFY VISUAL/SOFTLY, explicit waits, reporter warnings (75 assertions, no browser)
     test_38_set_and_indent.py    SET command & indentation robustness (v0.0.9.2)
     test_39_open_app.py          OPEN APP command — classify_step, _handle_open_app (32 assertions, no browser)
     test_40_self_healing_cache.py Self-Healing Controls Cache (16 assertions)
@@ -196,6 +196,7 @@ Rules for STEP-grouped files:
 
 * `NAVIGATE to [url]`
 * `WAIT [seconds]`
+* `Wait for "Text" to be visible` / `Wait for 'Spinner' to disappear` / `Wait for "Element" to be hidden` — Explicit wait step routed to Playwright `locator.wait_for()`. `disappear` maps to `hidden`.
 * `PRESS ENTER`
 * `PRESS [Key]` — Presses any key or combination globally (e.g. `PRESS Escape`, `PRESS Control+A`).
 * `PRESS [Key] on [Target]` — Presses a key on a specific resolved element (e.g. `PRESS ArrowDown on 'Search Input'`).
@@ -258,6 +259,7 @@ These keywords are detected via word-boundary regex, bypass heuristics, and are 
 * `NAVIGATE to [url]` — Loads a URL and waits for DOM settlement.
 * `OPEN APP` — Attaches to an Electron/Desktop app's default window instead of navigating to a URL. Use as the first step in `.hunt` files targeting `executable_path` apps. The handler checks `ctx.pages` for an existing window, falls back to `ctx.wait_for_event("page")`, waits for DOM settlement. Returns `(success, page)` — the `page` variable in `run_mission()` is reassigned.
 * `WAIT [seconds]` — Hard sleep (e.g., `WAIT 2`).
+* `Wait for "Text" to be visible` / `Wait for 'Spinner' to disappear` / `Wait for "Element" to be hidden` — Explicit wait syntax. The parser extracts the quoted target and desired state; `disappear` is treated as `hidden`, and execution goes through Playwright `locator.wait_for(state=...)` with the runtime timeout.
 * `PRESS ENTER` — Presses the Enter key on the currently focused element (useful to submit forms after filling a field).
 * `PRESS [Key]` — Presses any key or combination globally (e.g. `PRESS Escape`, `PRESS Control+A`). Mapped to `page.keyboard.press(key)`.
 * `PRESS [Key] on [Target]` — Presses a key on a specific element resolved via heuristics (e.g. `PRESS ArrowDown on 'Search Input'`). Mapped to `locator.press(key)`.
@@ -370,7 +372,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * **Safety first in `scoring.py`:** Always cast fetched attributes using `str(el.get("...", ""))`. JavaScript can pass objects (like `SVGAnimatedString` for SVG icons) instead of strings, which will crash Python's `.lower()`.
 * **iframe routing in `core.py`:** `_snapshot()` iterates `page.frames`, evaluates `SNAPSHOT_JS` per frame, tags elements with `frame_index`. `_frame_for(page, el)` resolves the correct Playwright `Frame` by index with stale fallback to main frame. All 12+ locator call-sites in `actions.py` route through the resolved frame. Cross-origin frames are silently skipped (3-retry, 1.5s backoff on `closed` errors).
 * **TreeWalker in `js_scripts.py`:** `SNAPSHOT_JS` uses `document.createTreeWalker()` with a `PRUNE` set (`SCRIPT, STYLE, SVG, NOSCRIPT, TEMPLATE, META, PATH, G, BR, HR`). Visibility checked via `checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })` with `offsetWidth/offsetHeight` fallback. Hidden checkbox/radio/file inputs are kept (special-input exception). No `getComputedStyle` in the hot loop.
-* `actions.py` is a **mixin** (`_ActionsMixin`) inherited by `ManulEngine` in `core.py`.
+* `actions.py` is a **mixin** (`_ActionsMixin`) inherited by `ManulEngine` in `core.py`. Explicit waits live here as `_handle_wait_for_element()` and are executed as parser-level system steps rather than generic heuristic actions.
 * `cache.py` is a **mixin** (`_ControlsCacheMixin`) inherited by `ManulEngine` in `core.py`. It owns all persistent per-site controls-cache logic.
 * `ManulEngine` MRO: `class ManulEngine(_ControlsCacheMixin, _ActionsMixin)` in `core.py`.
 * `prompts.py` loads config from `manul_engine_configuration.json` (CWD first, then package root fallback). No dotenv dependency.

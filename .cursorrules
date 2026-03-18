@@ -92,3 +92,13 @@ pip install "manul-engine[ai]==0.0.9.8"
 - Treat Python hooks, lifecycle hooks, and custom controls as the explicit SDET escape hatch for complex UI or backend-integrated cases.
 - Promise transparency when things fail, not unrealistic perfection.
 - Preserve the "single developer, alpha, no promises" context in user-facing docs whenever project status is discussed.
+
+## 6. DSL Step Rules
+
+- Document explicit waits as first-class DSL steps, not as ad hoc examples or sleep-based workarounds.
+- Supported syntax:
+  - `Wait for "Welcome, User" to be visible`
+  - `Wait for 'Loading...' to disappear`
+  - `Wait for "Submit" to be hidden`
+- When describing engine behavior, state that `disappear` maps to Playwright's `hidden` state.
+- Prefer explicit waits over recommending `WAIT [seconds]` when the goal is to wait for async rendering, spinners, or deferred UI state changes.

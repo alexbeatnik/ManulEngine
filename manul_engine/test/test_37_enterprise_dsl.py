@@ -70,6 +70,12 @@ def _test_classify_new_step_kinds() -> None:
             "WAIT FOR RESPONSE classified correctly")
     _assert(classify_step('1. WAIT FOR RESPONSE "/api/data"') == "wait_for_response",
             "Numbered WAIT FOR RESPONSE classified correctly")
+    _assert(classify_step('Wait for "Welcome, User" to be visible') == "wait_for_element",
+            "Explicit wait visible classified correctly")
+    _assert(classify_step("Wait for 'Loading...' to disappear") == "wait_for_element",
+            "Explicit wait disappear classified correctly")
+    _assert(classify_step('Wait for "Submit" to be hidden') == "wait_for_element",
+            "Explicit wait hidden classified correctly")
     # Plain WAIT should still work
     _assert(classify_step("WAIT 3") == "wait",
             "Plain WAIT still classified as 'wait'")
@@ -357,6 +363,8 @@ def _test_mock_edge_cases() -> None:
             "RE_SYSTEM_STEP matches MOCK GET")
     _assert(bool(RE_SYSTEM_STEP.search("WAIT FOR RESPONSE '/api/data'")),
             "RE_SYSTEM_STEP matches WAIT FOR RESPONSE")
+    _assert(bool(RE_SYSTEM_STEP.search('Wait for "Submit" to be hidden')),
+            "RE_SYSTEM_STEP matches explicit wait")
     _assert(bool(RE_SYSTEM_STEP.search("VERIFY VISUAL 'Logo'")),
             "RE_SYSTEM_STEP matches VERIFY VISUAL (via VERIFY)")
     _assert(bool(RE_SYSTEM_STEP.search("VERIFY SOFTLY that 'X'")),
