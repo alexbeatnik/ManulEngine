@@ -206,7 +206,7 @@ def load_custom_controls(
     Idempotent per file: each source file is imported at most once per
     process, regardless of how many ``ManulEngine`` instances are created.
 
-    Directories that do not exist are silently skipped with a debug note.
+    Directories that do not exist are silently skipped.
 
     Args:
         workspace_dir: Absolute path to the user's project root (typically CWD).
@@ -220,8 +220,13 @@ def load_custom_controls(
     ws = Path(resolved)
 
     for dir_name in dirs:
-        modules_dir = ws / dir_name
+        modules_dir = (ws / dir_name).resolve()
         if not modules_dir.is_dir():
+            continue
+        try:
+            modules_dir.relative_to(ws)
+        except ValueError:
+            # Directory is outside the workspace; skip for safety.
             continue
 
         if required_modules is not None:

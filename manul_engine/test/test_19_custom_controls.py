@@ -209,7 +209,6 @@ async def _test_interception() -> None:
             patch("manul_engine.core.prompts.lookup_page_name", return_value="Checkout Page"),
             patch.object(engine, "_execute_step", execute_step_mock),
             patch("manul_engine.core.load_custom_controls"),
-            patch("manul_engine.core._controls_loaded", True),
         ):
             await engine.run_mission(step_text)
 
@@ -252,7 +251,6 @@ async def _test_interception() -> None:
             patch("manul_engine.core.prompts.lookup_page_name", return_value="Checkout Page"),
             patch.object(engine, "_execute_step", execute_step_mock),
             patch("manul_engine.core.load_custom_controls"),
-            patch("manul_engine.core._controls_loaded", True),
         ):
             await engine.run_mission(step_text_normal)
 

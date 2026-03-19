@@ -318,7 +318,7 @@ async def _test_engine_integration() -> None:
         patch("manul_engine.core.async_playwright", return_value=mock_playwright),
         patch.object(engine, "_execute_step", side_effect=_fake_execute_step),
         patch("manul_engine.hooks._resolve_module", return_value=(calc_mod, False)),
-        patch("manul_engine.core._controls_loaded", True),
+        patch("manul_engine.core.load_custom_controls"),
     ):
         await engine.run_mission(mission)
 
@@ -350,7 +350,7 @@ async def _test_engine_integration() -> None:
         patch("manul_engine.core.async_playwright", return_value=mock_playwright),
         patch.object(engine2, "_execute_step", side_effect=_fake_execute_step),
         patch("manul_engine.hooks._resolve_module", return_value=(calc_mod, False)),
-        patch("manul_engine.core._controls_loaded", True),
+        patch("manul_engine.core.load_custom_controls"),
     ):
         await engine2.run_mission(mission2)
 
@@ -384,7 +384,7 @@ async def _test_engine_integration() -> None:
         patch("manul_engine.core.async_playwright", return_value=mock_playwright),
         patch.object(engine3, "_execute_step", side_effect=_fake_execute_step),
         patch("manul_engine.hooks._resolve_module", return_value=(token_mod, False)),
-        patch("manul_engine.core._controls_loaded", True),
+        patch("manul_engine.core.load_custom_controls"),
     ):
         await engine3.run_mission(mission3)
 

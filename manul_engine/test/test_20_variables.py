@@ -186,7 +186,7 @@ async def _test_interpolation() -> None:
     with (
         patch("manul_engine.core.async_playwright", return_value=mock_playwright),
         patch.object(engine, "_execute_step", side_effect=_fake_execute_step),
-        patch("manul_engine.core._controls_loaded", True),
+        patch("manul_engine.core.load_custom_controls"),
     ):
         await engine.run_mission(
             task,
@@ -243,7 +243,7 @@ async def _test_interpolation() -> None:
     with (
         patch("manul_engine.core.async_playwright", return_value=mock_playwright),
         patch.object(engine3, "_execute_step", side_effect=_fake_execute_step),
-        patch("manul_engine.core._controls_loaded", True),
+        patch("manul_engine.core.load_custom_controls"),
     ):
         await engine3.run_mission("1. DONE.", initial_vars=None)
     _assert(
