@@ -34,6 +34,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 
+# ── JIT module cache ──────────────────────────────────────────────────────────
+# Caches dynamically imported modules by (module_path, resolved_file) so that
+# repeated CALL PYTHON invocations within a run reuse the same module object
+# instead of re-executing the file every time.
+_module_cache: dict[str, ModuleType] = {}
+
 # ── Block-marker patterns (also imported by cli.parse_hunt_file) ──────────────
 RE_SETUP        = re.compile(r"^\[SETUP\]$",          re.IGNORECASE)
 RE_END_SETUP    = re.compile(r"^\[END\s+SETUP\]$",    re.IGNORECASE)
@@ -114,9 +120,12 @@ def extract_hook_blocks(raw_text: str) -> tuple[list[str], list[str], str]:
 
 # ── Module resolution ─────────────────────────────────────────────────────────
 
-def _resolve_module(module_path: str, hunt_dir: str | None) -> ModuleType:
-    """Locate and load *module_path* without permanently inserting it into
-    ``sys.modules``.
+def _resolve_module(module_path: str, hunt_dir: str | None) -> tuple[ModuleType, bool]:
+    """Locate and load *module_path*, returning ``(module, from_cache)``.
+
+    Uses a process-level cache (``_module_cache``) keyed by the resolved
+    absolute file path so that repeated ``CALL PYTHON`` invocations within
+    a run reuse the same module object.
 
     Search order:
 
@@ -127,6 +136,10 @@ def _resolve_module(module_path: str, hunt_dir: str | None) -> ModuleType:
     File-based modules (found in steps 1/2) are executed in a fresh
     ``ModuleType`` object that is **not** added to ``sys.modules``, preventing
     accidental global namespace pollution between test runs.
+
+    Returns:
+        A tuple ``(module, from_cache)`` where *from_cache* is ``True`` when
+        the module was served from ``_module_cache``.
     """
     # Convert dotted module path to a relative filesystem path.
     # "test_data_helpers"   → test_data_helpers.py
@@ -142,15 +155,32 @@ def _resolve_module(module_path: str, hunt_dir: str | None) -> ModuleType:
     for root in search_roots:
         candidate = root / rel_py
         if candidate.is_file():
+            cache_key = str(candidate.resolve())
+            cached = _module_cache.get(cache_key)
+            if cached is not None:
+                return cached, True
             spec = importlib.util.spec_from_file_location(module_path, candidate)
             if spec and spec.loader:
                 mod = importlib.util.module_from_spec(spec)
                 # Execute in isolation — does NOT touch sys.modules.
                 spec.loader.exec_module(mod)  # type: ignore[union-attr]
-                return mod
+                _module_cache[cache_key] = mod
+                return mod, False
 
     # Fallback: standard import (PYTHONPATH / installed packages).
-    return importlib.import_module(module_path)
+    # Check cache for stdlib/installed modules too.
+    cached = _module_cache.get(module_path)
+    if cached is not None:
+        return cached, True
+    mod = importlib.import_module(module_path)
+    _module_cache[module_path] = mod
+    return mod, False
+
+
+def clear_module_cache() -> None:
+    """Reset the JIT module cache.  Used between test runs or by the
+    synthetic test suite to ensure isolation."""
+    _module_cache.clear()
 
 
 # ── Single-line executor ──────────────────────────────────────────────────────
@@ -250,7 +280,11 @@ def execute_hook_line(
 
     # ── Load the module ───────────────────────────────────────────────────────
     try:
-        module = _resolve_module(module_path, hunt_dir=hunt_dir)
+        module, from_cache = _resolve_module(module_path, hunt_dir=hunt_dir)
+        if from_cache:
+            print(f"    [📦 CACHE HIT] Module '{module_path}' loaded from cache.")
+        else:
+            print(f"    [⚙️ JIT LOAD] Module '{module_path}' dynamically imported.")
     except ModuleNotFoundError as exc:
         # Only treat as "module not found" when the missing name is the
         # requested module itself. If exc.name differs, the error comes from

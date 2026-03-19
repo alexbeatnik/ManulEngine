@@ -284,17 +284,29 @@ def _test_execute_hook_line__state_isolation(tmp_dir: str) -> None:
         def increment() -> None:
             global _counter
             _counter += 1
+
+        def get_counter() -> int:
+            return _counter
     """)
 
-    # Call twice — each load is a fresh module object, so _counter resets.
-    execute_hook_line("CALL PYTHON stateful_helper.increment", hunt_dir=tmp_dir)
-    execute_hook_line("CALL PYTHON stateful_helper.increment", hunt_dir=tmp_dir)
+    # JIT cache: first call imports the module; second reuses from cache.
+    # Module state persists across calls (counter accumulates).
+    from manul_engine.hooks import clear_module_cache
+    clear_module_cache()  # ensure clean state for this test
+
+    r1 = execute_hook_line("CALL PYTHON stateful_helper.increment", hunt_dir=tmp_dir)
+    _assert(r1.success, "first increment() succeeds")
+
+    r2 = execute_hook_line("CALL PYTHON stateful_helper.increment", hunt_dir=tmp_dir)
+    _assert(r2.success, "second increment() succeeds (from cache)")
 
     # The module must NOT be cached in sys.modules under its plain name.
     _assert(
         "stateful_helper" not in sys.modules,
         "locally resolved module not inserted into sys.modules",
     )
+
+    clear_module_cache()  # cleanup
 
 
 def _test_run_hooks(tmp_dir: str) -> None:
