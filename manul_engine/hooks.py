@@ -18,9 +18,11 @@ Module resolution order for each ``CALL PYTHON`` instruction:
 3. ``sys.path``                     — installed packages / PYTHONPATH
 
 To keep global interpreter state clean, file-based modules (resolved via steps
-1 and 2) are **not** inserted into ``sys.modules``; each execution creates a
-fresh, isolated module object.  Installed packages (step 3) are loaded via the
-standard ``importlib.import_module`` and follow normal caching behaviour.
+1 and 2) are **not** inserted into ``sys.modules``.  They are loaded into an
+internal, process-level cache on first use and the same ``ModuleType`` instance
+is reused for subsequent ``CALL PYTHON`` invocations in that process.  Installed
+packages (step 3) are loaded via the standard ``importlib.import_module`` and
+follow normal ``sys.modules`` caching behaviour.
 """
 
 from __future__ import annotations
@@ -134,8 +136,12 @@ def _resolve_module(module_path: str, hunt_dir: str | None) -> tuple[ModuleType,
     3. Standard ``importlib.import_module`` — installed packages / PYTHONPATH.
 
     File-based modules (found in steps 1/2) are executed in a fresh
-    ``ModuleType`` object that is **not** added to ``sys.modules``, preventing
-    accidental global namespace pollution between test runs.
+    ``ModuleType`` object the first time they are resolved in a given Python
+    process and are **not** added to ``sys.modules``.  The resulting module
+    object is stored in the process-level ``_module_cache`` and reused for
+    subsequent resolutions of the same file path, so module-level state
+    persists across hook blocks and ``.hunt`` files for the lifetime of the
+    process.
 
     Returns:
         A tuple ``(module, from_cache)`` where *from_cache* is ``True`` when

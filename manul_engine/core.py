@@ -42,9 +42,6 @@ from . import prompts as _prompts_mod  # for CUSTOM_MODULES_DIRS access
 from .reporting import StepResult, MissionResult, BlockResult
 from .variables import ScopedVariables
 
-# Flag: tracks whether @custom_control files have been loaded in this process.
-_controls_loaded: bool = False
-
 
 class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
     def __init__(
@@ -953,15 +950,12 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         mode_label = f"[{self.model}]  — Transparent AI" if self.model else "— Heuristics-only (no AI)"
         print(f"\n🐾 ManulEngine {mode_label}  |  browser: {self.browser}")
 
-        # ── Deferred @custom_control loading (once per process) ───────────
-        global _controls_loaded
-        if not _controls_loaded:
-            load_custom_controls(
-                str(Path.cwd()),
-                required_modules=self._required_controls,
-                custom_modules_dirs=_prompts_mod.CUSTOM_MODULES_DIRS,
-            )
-            _controls_loaded = True
+        # ── Ensure @custom_control handlers required for this mission are loaded ──
+        load_custom_controls(
+            str(Path.cwd()),
+            required_modules=self._required_controls,
+            custom_modules_dirs=_prompts_mod.CUSTOM_MODULES_DIRS,
+        )
 
         async with async_playwright() as p:
             if self.browser == "electron":

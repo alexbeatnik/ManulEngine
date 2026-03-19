@@ -186,7 +186,12 @@ EXPLAIN_MODE: bool = env_bool("MANUL_EXPLAIN")
 # ── Custom modules directories ───────────────────────────────────────────────
 # List of directory names (relative to CWD) to scan for custom Python modules
 # (controls, API helpers, DB utilities, etc.).  Default: ["controls"].
-CUSTOM_MODULES_DIRS: "list[str]" = _json_cfg_custom_modules_dirs or ["controls"]
+# Environment variable MANUL_CUSTOM_MODULES_DIRS (comma-separated) overrides JSON.
+_raw_custom_modules_dirs = os.getenv("MANUL_CUSTOM_MODULES_DIRS", "").strip()
+_env_custom_modules_dirs: "list[str]" = [
+    part.strip() for part in _raw_custom_modules_dirs.split(",") if part.strip()
+] if _raw_custom_modules_dirs else []
+CUSTOM_MODULES_DIRS: "list[str]" = _env_custom_modules_dirs or _json_cfg_custom_modules_dirs or ["controls"]
 
 
 def _auto_populate_registry(url: str) -> str:

@@ -35,7 +35,7 @@ from __future__ import annotations
 import ast
 import importlib.util
 import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Callable
 
 # ── Global registry ───────────────────────────────────────────────────────────
@@ -227,11 +227,14 @@ def load_custom_controls(
         if required_modules is not None:
             # Targeted (lazy) loading — only import specifically requested files
             # that belong to this directory.
-            candidates = [
-                modules_dir / rel.split("/", 1)[1]
-                for rel in sorted(required_modules)
-                if rel.startswith(f"{dir_name}/")
-            ]
+            candidates: list[Path] = []
+            for rel in sorted(required_modules):
+                rel_path = PurePosixPath(rel)
+                try:
+                    sub_path = rel_path.relative_to(dir_name)
+                except ValueError:
+                    continue
+                candidates.append(modules_dir.joinpath(*sub_path.parts))
             # Backward compat: accept bare filenames for the "controls" directory.
             if dir_name == "controls":
                 candidates += [
@@ -256,7 +259,9 @@ def load_custom_controls(
             if file_key in _LOADED_FILES:
                 continue
             try:
-                mod_name = f"_manul_custom_{dir_name}_{py_file.stem}"
+                safe_dir = re.sub(r"[^0-9A-Za-z_]", "_", str(dir_name))
+                safe_stem = re.sub(r"[^0-9A-Za-z_]", "_", py_file.stem)
+                mod_name = f"_manul_custom_{safe_dir}_{safe_stem}"
                 spec = importlib.util.spec_from_file_location(mod_name, py_file)
                 if spec is None or spec.loader is None:
                     continue
