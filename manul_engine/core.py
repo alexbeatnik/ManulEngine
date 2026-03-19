@@ -38,6 +38,7 @@ from .scoring import score_elements
 from .actions import _ActionsMixin
 from .cache import _ControlsCacheMixin
 from .controls import load_custom_controls, get_custom_control, extract_required_controls
+from . import prompts as _prompts_mod  # for CUSTOM_MODULES_DIRS access
 from .reporting import StepResult, MissionResult, BlockResult
 from .variables import ScopedVariables
 
@@ -113,11 +114,12 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         # Self-healing flag: set by _resolve_element when a stale cache entry
         # is detected and the element is re-resolved via heuristics.
         self._last_step_healed: bool = False
+        # Deferred @custom_control loading: stored here, applied on first run_mission().
+        self._required_controls: set[str] | None = required_controls
         if self.model is None:
             print("    ℹ️  No model configured — running in heuristics-only mode (AI disabled).")
         if self.debug_mode:
             print("    🐛 Debug mode ON — engine will pause before each step.")
-        load_custom_controls(str(Path.cwd()), required_modules=required_controls)
 
     def reset_session_state(self) -> None:
         """Clear in-memory caches and runtime (row/step) variables.
@@ -947,6 +949,13 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         """
         mode_label = f"[{self.model}]  — Transparent AI" if self.model else "— Heuristics-only (no AI)"
         print(f"\n🐾 ManulEngine {mode_label}  |  browser: {self.browser}")
+
+        # ── Ensure @custom_control handlers required for this mission are loaded ──
+        load_custom_controls(
+            str(Path.cwd()),
+            required_modules=self._required_controls,
+            custom_modules_dirs=_prompts_mod.CUSTOM_MODULES_DIRS,
+        )
 
         async with async_playwright() as p:
             if self.browser == "electron":

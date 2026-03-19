@@ -138,7 +138,7 @@ def _test_parser_regex() -> None:
 
     mod = _make_module({"noop": _noop, "echo": _echo})
 
-    with patch("manul_engine.hooks._resolve_module", return_value=mod):
+    with patch("manul_engine.hooks._resolve_module", return_value=(mod, False)):
         # 2a. No args, no into — backward compat
         r = execute_hook_line("CALL PYTHON mock_mod.noop")
         _assert(r.success, "no args, no into → success")
@@ -150,7 +150,7 @@ def _test_parser_regex() -> None:
             return "hello"
 
         mod2 = _make_module({"get_val": _get_val})
-        with patch("manul_engine.hooks._resolve_module", return_value=mod2):
+        with patch("manul_engine.hooks._resolve_module", return_value=(mod2, False)):
             r = execute_hook_line("CALL PYTHON mock_mod.get_val into {greeting}")
         _assert(r.success, "no args, with into → success")
         _assert(r.var_name == "greeting", "no args, with into → var_name='greeting'", f"got={r.var_name!r}")
@@ -185,7 +185,7 @@ def _test_variable_resolution() -> None:
     mod = _make_module({"multiply": _multiply})
     variables = {"factor": "7"}
 
-    with patch("manul_engine.hooks._resolve_module", return_value=mod):
+    with patch("manul_engine.hooks._resolve_module", return_value=(mod, False)):
         # 3a. Static args only
         r = execute_hook_line(
             'CALL PYTHON mock_mod.multiply "3" "5" into {product}',
@@ -317,7 +317,8 @@ async def _test_engine_integration() -> None:
     with (
         patch("manul_engine.core.async_playwright", return_value=mock_playwright),
         patch.object(engine, "_execute_step", side_effect=_fake_execute_step),
-        patch("manul_engine.hooks._resolve_module", return_value=calc_mod),
+        patch("manul_engine.hooks._resolve_module", return_value=(calc_mod, False)),
+        patch("manul_engine.core.load_custom_controls"),
     ):
         await engine.run_mission(mission)
 
@@ -348,7 +349,8 @@ async def _test_engine_integration() -> None:
     with (
         patch("manul_engine.core.async_playwright", return_value=mock_playwright),
         patch.object(engine2, "_execute_step", side_effect=_fake_execute_step),
-        patch("manul_engine.hooks._resolve_module", return_value=calc_mod),
+        patch("manul_engine.hooks._resolve_module", return_value=(calc_mod, False)),
+        patch("manul_engine.core.load_custom_controls"),
     ):
         await engine2.run_mission(mission2)
 
@@ -381,7 +383,8 @@ async def _test_engine_integration() -> None:
     with (
         patch("manul_engine.core.async_playwright", return_value=mock_playwright),
         patch.object(engine3, "_execute_step", side_effect=_fake_execute_step),
-        patch("manul_engine.hooks._resolve_module", return_value=token_mod),
+        patch("manul_engine.hooks._resolve_module", return_value=(token_mod, False)),
+        patch("manul_engine.core.load_custom_controls"),
     ):
         await engine3.run_mission(mission3)
 

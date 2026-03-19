@@ -60,7 +60,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.10
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.11
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession
   api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)
@@ -87,10 +87,10 @@ manul_engine/
     test_01_ecommerce.py    synthetic DOM scenario pack
     ...
     test_15_facebook_final_boss.py
-    test_16_hooks.py        [SETUP]/[TEARDOWN] unit tests (41 assertions, no browser)
+    test_16_hooks.py        [SETUP]/[TEARDOWN] unit tests (43 assertions, no browser)
     test_17_frontend_hell.py   frontend anti-patterns (overlays, z-index traps, React portals)
     test_18_disambiguation.py  ambiguous element targeting
-    test_19_custom_controls.py Custom Controls registry + engine interception (19 assertions, no browser)
+    test_19_custom_controls.py Custom Controls registry + engine interception (28 assertions, no browser)
     test_20_variables.py       @var: static variable declaration (17 assertions, no browser)
     test_21_dynamic_vars.py    CALL PYTHON ... into {var} dynamic variable capture
     test_22_tags.py            @tags: / --tags CLI filter (20 assertions, no browser)
@@ -110,13 +110,13 @@ manul_engine/
     test_36_scoring_math.py      Exact numerical scoring validation (29 assertions, no browser)
     test_37_enterprise_dsl.py    Enterprise DSL: @data:, MOCK, VERIFY VISUAL/SOFTLY, explicit waits, reporter warnings (75 assertions, no browser)
     test_38_set_and_indent.py    SET command & indentation robustness (v0.0.9.2)
-    test_39_open_app.py          OPEN APP command — classify_step, _handle_open_app (32 assertions, no browser)
+    test_39_open_app.py          OPEN APP command — classify_step, _handle_open_app (35 assertions, no browser)
     test_40_self_healing_cache.py Self-Healing Controls Cache (16 assertions)
     test_41_recorder.py          Semantic Test Recorder JS bridge + DSL generator + step aggregation (no browser)
     test_42_scheduler.py         Built-in Scheduler — parse_schedule, next_run_delay, ParsedHunt integration (51 assertions, no browser)
     test_43_scoped_variables.py  ScopedVariables 4-level hierarchy, scope isolation, dict compat (43 assertions, no browser)
-    test_44_explain_mode.py      DOMScorer explain output, channel breakdown, --explain CLI flag (27 assertions, no browser)
-    test_45_api.py               ManulSession public Python API facade (47 assertions, no browser)
+    test_44_explain_mode.py      DOMScorer explain output, channel breakdown, --explain CLI flag (33 assertions, no browser)
+    test_45_api.py               ManulSession public Python API facade (50 assertions, no browser)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
@@ -384,7 +384,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
 * **Debug mode:** `ManulEngine(debug_mode=True, break_steps={N,...})`. `debug_mode=True` (from `--debug`) highlights the resolved element and pauses before every step using `input()` in TTY or Playwright's `page.pause()`. `break_steps` (from `--break-lines`) pauses only at listed step indices using the stdout/stdin panel protocol when stdout is not a TTY. The two are mutually exclusive in practice — the extension only ever sets `break_steps` via `--break-lines`.
 * **Element highlight in debug mode:** When `debug_mode=True` (or a `break_steps` pause fires), the engine calls `highlight_element(page, locator)` which injects `<style id="manul-debug-style">` (once) and sets `data-manul-debug-highlight="true"` on the target element, producing a persistent 4px magenta outline + glow that stays until `clear_highlight(page)` is called just before the action executes. A separate `_highlight()` method draws a short 2-second flash (non-debug, `setTimeout` inside JS) for non-pausing visual feedback.
-* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). `parse_hunt_file()` in `cli.py` returns a `ParsedHunt` NamedTuple with 10 fields: `mission`, `context`, `title`, `step_file_lines`, `setup_lines`, `teardown_lines`, `parsed_vars`, `tags`, `data_file`, `schedule`. `parse_hunt_file()` does not build hierarchical blocks; the runtime layer does that later with `parse_hunt_blocks()`. `parsed_vars` is a `dict[str, str]` populated from `@var: {key} = value` header lines. `tags` is a `list[str]` populated from `@tags: tag1, tag2` header lines; empty list when absent. `schedule` is a `str` from `@schedule: <expression>`; empty string when absent. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
+* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). `_module_cache` is a module-level `dict[str, ModuleType]` that caches resolved modules by absolute file path (JIT loading). `_resolve_module()` returns `tuple[ModuleType, bool]` (module, from_cache). `clear_module_cache()` resets the cache (used for test isolation). `parse_hunt_file()` in `cli.py` returns a `ParsedHunt` NamedTuple with 10 fields: `mission`, `context`, `title`, `step_file_lines`, `setup_lines`, `teardown_lines`, `parsed_vars`, `tags`, `data_file`, `schedule`. `parse_hunt_file()` does not build hierarchical blocks; the runtime layer does that later with `parse_hunt_blocks()`. `parsed_vars` is a `dict[str, str]` populated from `@var: {key} = value` header lines. `tags` is a `list[str]` populated from `@tags: tag1, tag2` header lines; empty list when absent. `schedule` is a `str` from `@schedule: <expression>`; empty string when absent. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
 * **Auto-Nav annotation:** When `auto_annotate` is enabled, `run_mission()` captures `url_before = page.url` before every action. For `NAVIGATE` actions, the annotation is written above the action itself. For all other actions, `url_after` is checked in the `finally` block — if the URL changed, `_auto_annotate_navigate(page, hunt_file, action_file_lines, action_idx+1)` is called to insert a comment above the next action line. The comment uses the mapped page name when found in `pages.json`, or the full URL when the lookup returns an `"Auto:"` placeholder.
 * **`pages.json` — nested per-site format:** `{ "<site_root_url>": { "Domain": "<display_name>", "<regex_or_exact_url>": "<page_name>" } }`. `lookup_page_name(url)` in `prompts.py` re-reads this file from disk on **every call** (live edits take effect immediately with no restart). Resolution order: exact URL key → regex/substring patterns (skipping `"Domain"` key) → `"Domain"` fallback. When no site block matches, a new nested entry is auto-generated. The longest-prefix site block wins when multiple blocks could match.
 * **`_debug_prompt()` `debug-stop` token:** When Python receives `"debug-stop"` on stdin from the VS Code extension (user pressed ⏹ Debug Stop), it clears **both** `self._user_break_steps = set()` and `self.break_steps = set()`, then breaks the pause loop. The test run continues to completion without any further pauses.
@@ -456,6 +456,7 @@ Environment variables (`MANUL_*`) always override JSON values.
 | `controls_cache_enabled` | `true` | Enables persistent per-site controls cache (file-based, survives between runs) |
 | `controls_cache_dir` | `"cache"` | Directory for cache files (relative to CWD or absolute) |
 | `semantic_cache_enabled` | `true` | Enables in-session semantic cache (`learned_elements`). Remembers resolved elements within a single run (+200,000 score boost). Resets on each new `ManulEngine` instance |
+| `custom_modules_dirs` | `["controls"]` | List of directories scanned for `@custom_control` Python modules. Resolved relative to CWD. Overridable via `MANUL_CUSTOM_MODULES_DIRS` (comma-separated) |
 | `log_name_maxlen` | `0` | If > 0, truncates element names in logs |
 | `log_thought_maxlen` | `0` | If > 0, truncates LLM “thought” strings in logs |
 | `timeout` | `5000` | Default action timeout (ms) |
@@ -539,7 +540,7 @@ Suggested config for mixed mode (optional AI self-healing fallback):
 * `_CUSTOM_CONTROLS` — module-level `dict[tuple[str, str], Callable]` keyed by `(page_name_lower, target_name_lower)`.
 * `@custom_control(page, target)` — decorator; both sync and async handlers accepted.
 * `get_custom_control(page_name, target_name) -> Callable | None` — case-insensitive lookup.
-* `load_custom_controls(workspace_dir, required_modules=None)` — supports just-in-time loading for custom controls. The CLI computes `required_controls = extract_required_controls(hunt.mission, workspace_dir)` before engine startup, then `ManulEngine.__init__` calls `load_custom_controls(str(Path.cwd()), required_modules=required_controls)` so only the Python files needed for the current hunt are imported. Modules still execute in isolated `ModuleType` sandboxes.
+* `load_custom_controls(workspace_dir, required_modules=None, custom_modules_dirs=None)` — supports just-in-time loading for custom controls. Scans directories listed in `custom_modules_dirs` (default: `["controls"]` from config). The CLI computes `required_controls = extract_required_controls(hunt.mission, workspace_dir, custom_modules_dirs)` before engine startup, then `run_mission()` calls `load_custom_controls()` unconditionally so only the Python files needed for each hunt are imported. Per-file idempotency (`_LOADED_FILES`) prevents duplicate imports across sequential runs. Modules still execute in isolated `ModuleType` sandboxes.
 
 **Interception point in `core.py`:** the `else` branch of the step loop (action steps) checks `get_custom_control(lookup_page_name(page.url), first_quoted_token)` before any DOM snapshot. If a handler is found, it is called with `(page, mode, value)` and `_execute_step` is skipped entirely via `elif not await self._execute_step(...)` on the else path.
 

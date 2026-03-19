@@ -66,7 +66,7 @@ def _test_hook_parser() -> None:
 
     mod = _make_module("get_magic_code", _get_code)
 
-    with patch("manul_engine.hooks._resolve_module", return_value=mod):
+    with patch("manul_engine.hooks._resolve_module", return_value=(mod, False)):
         # 1a. 'into {var}' syntax — return value bound, var_name set.
         result = execute_hook_line("CALL PYTHON mock_module.get_magic_code into {magic_code}")
         _assert(result.success, "into {var}: step succeeds", result.message)
@@ -114,7 +114,7 @@ def _test_hook_parser() -> None:
             return 42
 
         int_mod = _make_module("get_int", _get_int)
-        with patch("manul_engine.hooks._resolve_module", return_value=int_mod):
+        with patch("manul_engine.hooks._resolve_module", return_value=(int_mod, False)):
             result_int = execute_hook_line("CALL PYTHON mock_module.get_int into {answer}")
         _assert(result_int.success, "integer return value: step succeeds", result_int.message)
         _assert(
@@ -128,7 +128,7 @@ def _test_hook_parser() -> None:
             raise RuntimeError("db is on fire")
 
         err_mod = _make_module("boom", _boom)
-        with patch("manul_engine.hooks._resolve_module", return_value=err_mod):
+        with patch("manul_engine.hooks._resolve_module", return_value=(err_mod, False)):
             result_err = execute_hook_line("CALL PYTHON mock_module.boom into {should_fail}")
         _assert(not result_err.success, "raised exception: step fails", result_err.message)
         _assert(
@@ -199,7 +199,8 @@ async def _test_engine_integration() -> None:
     with (
         patch("manul_engine.core.async_playwright", return_value=mock_playwright),
         patch.object(engine, "_execute_step", side_effect=_fake_execute_step),
-        patch("manul_engine.hooks._resolve_module", return_value=otp_mod),
+        patch("manul_engine.hooks._resolve_module", return_value=(otp_mod, False)),
+        patch("manul_engine.core.load_custom_controls"),
     ):
         await engine.run_mission(mission)
 
@@ -241,7 +242,8 @@ async def _test_engine_integration() -> None:
     with (
         patch("manul_engine.core.async_playwright", return_value=mock_playwright),
         patch.object(engine2, "_execute_step", side_effect=_fake_execute_step),
-        patch("manul_engine.hooks._resolve_module", return_value=otp_mod),
+        patch("manul_engine.hooks._resolve_module", return_value=(otp_mod, False)),
+        patch("manul_engine.core.load_custom_controls"),
     ):
         await engine2.run_mission(mission2)
 

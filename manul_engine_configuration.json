@@ -19,5 +19,6 @@
   "auto_annotate": false,
   "retries": 0,
   "screenshot": "on-fail",
-  "html_report": false
+  "html_report": false,
+  "custom_modules_dirs": ["controls"]
 }

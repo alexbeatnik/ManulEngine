@@ -169,11 +169,10 @@ async def _test_interception() -> None:
 
     try:
         # Build the minimal ManulEngine instance without touching Playwright.
-        # We patch load_custom_controls so the constructor does not scan the
-        # filesystem (which would overwrite our synthetic registry entry).
-        with patch("manul_engine.core.load_custom_controls"):
-            from manul_engine.core import ManulEngine
-            engine = ManulEngine(model=None, disable_cache=True)
+        # We patch load_custom_controls so it does not scan the filesystem
+        # (which would overwrite our synthetic registry entry).
+        from manul_engine.core import ManulEngine
+        engine = ManulEngine(model=None, disable_cache=True)
 
         # Patch out the parts of run_mission we do not want to exercise:
         # - async_playwright launch / close
@@ -209,6 +208,7 @@ async def _test_interception() -> None:
             patch("manul_engine.core.async_playwright", return_value=mock_playwright),
             patch("manul_engine.core.prompts.lookup_page_name", return_value="Checkout Page"),
             patch.object(engine, "_execute_step", execute_step_mock),
+            patch("manul_engine.core.load_custom_controls"),
         ):
             await engine.run_mission(step_text)
 
@@ -250,6 +250,7 @@ async def _test_interception() -> None:
             patch("manul_engine.core.async_playwright", return_value=mock_playwright),
             patch("manul_engine.core.prompts.lookup_page_name", return_value="Checkout Page"),
             patch.object(engine, "_execute_step", execute_step_mock),
+            patch("manul_engine.core.load_custom_controls"),
         ):
             await engine.run_mission(step_text_normal)
 
@@ -309,7 +310,7 @@ def _test_extraction_and_lazy_loading() -> None:
         mission = "Fill 'React Datepicker' with '2026-12-25'"
         needed = extract_required_controls(mission, tmpdir)
         _assert(
-            needed == {"booking.py"},
+            needed == {"controls/booking.py"},
             "extract finds only the file with matching target",
             f"got={needed}",
         )
@@ -327,7 +328,7 @@ def _test_extraction_and_lazy_loading() -> None:
         mission_both = "Fill 'React Datepicker' with 'today'\nClick 'User Table'"
         needed_both = extract_required_controls(mission_both, tmpdir)
         _assert(
-            needed_both == {"booking.py", "admin.py"},
+            needed_both == {"controls/booking.py", "controls/admin.py"},
             "extract finds multiple matching files",
             f"got={needed_both}",
         )
@@ -336,7 +337,7 @@ def _test_extraction_and_lazy_loading() -> None:
         mission_positional = "Click 'Some Target'"
         needed_positional = extract_required_controls(mission_positional, tmpdir)
         _assert(
-            needed_positional == {"positional.py"},
+            needed_positional == {"controls/positional.py"},
             "extract finds file using positional @custom_control args",
             f"got={needed_positional}",
         )
@@ -359,7 +360,7 @@ def _test_extraction_and_lazy_loading() -> None:
         _CUSTOM_CONTROLS.clear()
         _LOADED_FILES.clear()
         try:
-            load_custom_controls(tmpdir, required_modules={"booking.py"})
+            load_custom_controls(tmpdir, required_modules={"controls/booking.py"})
             _assert(
                 get_custom_control("Booking Page", "React Datepicker") is not None,
                 "lazy-loaded booking.py registered its handler",
@@ -373,7 +374,7 @@ def _test_extraction_and_lazy_loading() -> None:
             # Replace the handler — if re-imported, it would be overwritten.
             sentinel = lambda p, a, v: None  # noqa: E731
             _CUSTOM_CONTROLS[("booking page", "react datepicker")] = sentinel
-            load_custom_controls(tmpdir, required_modules={"booking.py"})
+            load_custom_controls(tmpdir, required_modules={"controls/booking.py"})
             _assert(
                 get_custom_control("Booking Page", "React Datepicker") is sentinel,
                 "per-file idempotency: second lazy call did not re-import",

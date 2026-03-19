@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.10 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.11 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -25,7 +25,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.10
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.11
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession
@@ -56,10 +56,10 @@ ManulEngine/
 │       ├── test_13_controls_cache.py Unit: persistent controls cache
 │       ├── test_14_qa_classics.py    Unit: legacy HTML patterns, tables, fieldsets
 │       ├── test_15_facebook_final_boss.py
-│       ├── test_16_hooks.py          Unit: [SETUP]/[TEARDOWN] hooks (41 assertions, no browser)
+│       ├── test_16_hooks.py          Unit: [SETUP]/[TEARDOWN] hooks (43 assertions, no browser)
 │       ├── test_17_frontend_hell.py  Unit: frontend anti-patterns (overlays, z-index traps, React portals)
 │       ├── test_18_disambiguation.py Unit: ambiguous element targeting
-│       ├── test_19_custom_controls.py Unit: Custom Controls registry + engine interception (19 assertions, no browser)
+│       ├── test_19_custom_controls.py Unit: Custom Controls registry + engine interception (28 assertions, no browser)
 │       ├── test_20_variables.py      Unit: @var: static variable declaration (17 assertions, no browser)
 │       ├── test_21_dynamic_vars.py   Unit: CALL PYTHON ... into {var} dynamic variable capture
 │       ├── test_22_tags.py           Unit: @tags: / --tags CLI filter (20 assertions, no browser)
@@ -79,14 +79,14 @@ ManulEngine/
 │       ├── test_36_scoring_math.py   Unit: exact numerical scoring validation (29 assertions, no browser)
 │       ├── test_37_enterprise_dsl.py Unit: Enterprise DSL — @data:, MOCK, VERIFY VISUAL/SOFTLY, explicit waits, reporter warnings (75 assertions, no browser)
 │       ├── test_38_set_and_indent.py Unit: SET command & indentation robustness (v0.0.9.2)
-│       ├── test_39_open_app.py       Unit: OPEN APP command — classify_step, RE_SYSTEM_STEP, _handle_open_app (32 assertions, no browser)
+│       ├── test_39_open_app.py       Unit: OPEN APP command — classify_step, RE_SYSTEM_STEP, _handle_open_app (35 assertions, no browser)
 │       ├── test_40_self_healing_cache.py Unit: Self-Healing Controls Cache — stale detection, HEALED logging, cache auto-update (16 assertions)
 │       ├── test_41_recorder.py      Unit: Semantic Test Recorder — JS bridge, DSL generator, step aggregation (no browser)
 │       ├── test_42_scheduler.py     Unit: Built-in Scheduler — parse_schedule, next_run_delay, ParsedHunt integration (51 assertions, no browser)
 │       ├── test_43_scoped_variables.py Unit: ScopedVariables 4-level hierarchy, scope isolation, dict compat (43 assertions, no browser)
-│       ├── test_44_explain_mode.py   Unit: DOMScorer explain output, channel breakdown, --explain CLI flag (27 assertions, no browser)
-│       └── test_45_api.py            Unit: ManulSession public Python API facade (47 assertions, no browser)
-├── controls/                         User-owned custom Python handlers (auto-loaded at engine startup)
+│       ├── test_44_explain_mode.py   Unit: DOMScorer explain output, channel breakdown, --explain CLI flag (33 assertions, no browser)
+│       └── test_45_api.py            Unit: ManulSession public Python API facade (50 assertions, no browser)
+├── controls/                         User-owned custom Python handlers (loaded from directories listed in `custom_modules_dirs` config)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
 │   ├── demo_controls.hunt            Demo: Custom Controls workflow (companion to controls/demo_custom.py)
@@ -163,6 +163,7 @@ This architecture is what makes ManulEngine a **true runtime** rather than just 
 * **Logical STEP Grouping:** `STEP [optional number]: [Description]` metadata blocks map manual QA cases directly into `.hunt` files.
 * **Interactive Enterprise HTML Reporter:** Dual-mode, zero-dependency reporter with native HTML5 accordions, auto-expanding failures, Flexbox layout, **"Show Only Failed" toggle**, and **tag filter chips** — inline Vanilla JS, zero dependencies.
 * **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, `@after_group` orchestrate DB seeding and auth. `ctx.variables` serialise across parallel `--workers`.
+* **JIT Module Loading & Configurable Module Directories (v0.0.9.11):** `CALL PYTHON` modules are imported on first use and cached for subsequent calls within the same process (`_module_cache` in `hooks.py`). `@custom_control` modules are loaded once on the first `run_mission()` call instead of during `ManulEngine.__init__`. Module scan directories are configurable via `custom_modules_dirs` in `manul_engine_configuration.json` (default: `["controls"]`).
 
 ## ✨ Key Features
 
@@ -508,7 +509,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.10
+pip install manul-engine==0.0.9.11
 playwright install chromium
 ```
 
@@ -541,6 +542,7 @@ The public README is expected to keep the full current runtime surface area plus
   "controls_cache_enabled": true,
   "controls_cache_dir": "cache",
   "semantic_cache_enabled": true,
+  "custom_modules_dirs": ["controls"],
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
   "tests_home": "tests",
@@ -779,8 +781,8 @@ The published extension provides:
 
 ---
 
-**Version:** 0.0.9.10
+**Version:** 0.0.9.11
 
-**Codename:** New Look — ManulSession
+**Codename:** JIT Module Loading
 
 **Status:** Hunting...

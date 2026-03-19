@@ -59,6 +59,9 @@ _KEY_MAP: dict[str, str] = {
 # browser_args is a list and cannot be round-tripped through a plain env string
 # via _KEY_MAP, so it is handled separately below after the main loop.
 _json_cfg_browser_args: "list[str]" = []
+# custom_modules_dirs: list of directory names to scan for custom Python modules.
+# Default: ["controls"] for backward compatibility.
+_json_cfg_custom_modules_dirs: "list[str] | None" = None
 
 if _CONFIG_PATH.exists():
     try:
@@ -74,6 +77,9 @@ if _CONFIG_PATH.exists():
         # browser_args: list — handled outside _KEY_MAP to preserve type.
         if isinstance(_json_cfg.get("browser_args"), list):
             _json_cfg_browser_args = [str(a) for a in _json_cfg["browser_args"] if str(a).strip()]
+        # custom_modules_dirs: list — handled outside _KEY_MAP to preserve type.
+        if isinstance(_json_cfg.get("custom_modules_dirs"), list):
+            _json_cfg_custom_modules_dirs = [str(d).strip() for d in _json_cfg["custom_modules_dirs"] if str(d).strip()]
     except (json.JSONDecodeError, OSError) as _cfg_err:
         import warnings
         warnings.warn(f"ManulEngine: could not load config file '{_CONFIG_PATH}': {_cfg_err}")
@@ -176,6 +182,16 @@ _raw_screenshot = (os.getenv("MANUL_SCREENSHOT") or "on-fail").strip().lower()
 SCREENSHOT: str = _raw_screenshot if _raw_screenshot in _VALID_SCREENSHOT else "on-fail"
 HTML_REPORT: bool = env_bool("MANUL_HTML_REPORT")
 EXPLAIN_MODE: bool = env_bool("MANUL_EXPLAIN")
+
+# ── Custom modules directories ───────────────────────────────────────────────
+# List of directory names (relative to CWD) to scan for custom Python modules
+# (controls, API helpers, DB utilities, etc.).  Default: ["controls"].
+# Environment variable MANUL_CUSTOM_MODULES_DIRS (comma-separated) overrides JSON.
+_raw_custom_modules_dirs = os.getenv("MANUL_CUSTOM_MODULES_DIRS", "").strip()
+_env_custom_modules_dirs: "list[str]" = [
+    part.strip() for part in _raw_custom_modules_dirs.split(",") if part.strip()
+] if _raw_custom_modules_dirs else []
+CUSTOM_MODULES_DIRS: "list[str]" = _env_custom_modules_dirs or _json_cfg_custom_modules_dirs or ["controls"]
 
 
 def _auto_populate_registry(url: str) -> str:

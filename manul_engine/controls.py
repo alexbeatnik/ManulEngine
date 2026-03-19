@@ -35,7 +35,7 @@ from __future__ import annotations
 import ast
 import importlib.util
 import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Callable
 
 # ── Global registry ───────────────────────────────────────────────────────────
@@ -134,21 +134,26 @@ def _iter_custom_control_targets(source: str) -> list[str]:
 def extract_required_controls(
     mission_text: str,
     workspace_dir: str,
+    custom_modules_dirs: "list[str] | None" = None,
 ) -> set[str]:
-    """Pre-flight scan: identify which ``controls/*.py`` files are needed.
+    """Pre-flight scan: identify which custom module ``.py`` files are needed.
 
     Parses the mission text for quoted target strings, then scans each
-    ``.py`` file in ``<workspace_dir>/controls/`` at the **source level**
-    (no import) for ``@custom_control(...)`` decorators whose target matches
-    any quoted token from the hunt steps.
+    ``.py`` file in every directory listed in *custom_modules_dirs* at the
+    **source level** (no import) for ``@custom_control(...)`` decorators
+    whose target matches any quoted token from the hunt steps.
 
-    Returns a set of **filenames** (e.g. ``{"booking.py", "checkout.py"}``).
-    Returns an empty set when no controls directory exists or no matches
-    are found.
+    Returns a set of **relative paths** (e.g. ``{"controls/booking.py",
+    "rest/api_client.py"}``) so the loader knows both directory and filename.
+    Returns an empty set when no directories exist or no matches are found.
+
+    Args:
+        mission_text: Raw mission body from the ``.hunt`` file.
+        workspace_dir: Absolute path to the user's project root (typically CWD).
+        custom_modules_dirs: Directory names to scan.  Defaults to ``["controls"]``.
     """
-    controls_dir = Path(workspace_dir).resolve() / "controls"
-    if not controls_dir.is_dir():
-        return set()
+    dirs = custom_modules_dirs or ["controls"]
+    ws = Path(workspace_dir).resolve()
 
     # Collect all quoted target strings from the mission steps (lowered).
     step_targets: set[str] = set()
@@ -161,80 +166,114 @@ def extract_required_controls(
         return set()
 
     needed: set[str] = set()
-    for py_file in sorted(controls_dir.glob("*.py")):
-        if py_file.name.startswith("_"):
+    for dir_name in dirs:
+        controls_dir = ws / dir_name
+        if not controls_dir.is_dir():
             continue
-        try:
-            source = py_file.read_text(encoding="utf-8")
-        except OSError:
-            continue
-        for declared_target_raw in _iter_custom_control_targets(source):
-            declared_target = declared_target_raw.strip().lower()
-            if declared_target in step_targets:
-                needed.add(py_file.name)
-                break  # one match is enough to mark this file
+        for py_file in sorted(controls_dir.glob("*.py")):
+            if py_file.name.startswith("_"):
+                continue
+            try:
+                source = py_file.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            for declared_target_raw in _iter_custom_control_targets(source):
+                declared_target = declared_target_raw.strip().lower()
+                if declared_target in step_targets:
+                    needed.add(f"{dir_name}/{py_file.name}")
+                    break  # one match is enough to mark this file
     return needed
 
 
 def load_custom_controls(
     workspace_dir: str,
     required_modules: "set[str] | None" = None,
+    custom_modules_dirs: "list[str] | None" = None,
 ) -> None:
-    """Import custom control modules from ``<workspace_dir>/controls/``.
+    """Import custom control modules from workspace directories.
 
-    **Lazy mode (recommended):** pass *required_modules* — a set of filenames
-    (e.g. ``{"checkout.py"}``) obtained from :func:`extract_required_controls`.
-    Only those files are imported, skipping the rest of the directory.
+    Scans all directories listed in *custom_modules_dirs* (default:
+    ``["controls"]``) for ``.py`` files and imports them so that
+    ``@custom_control`` decorators register into the global registry.
+
+    **Lazy mode (recommended):** pass *required_modules* — a set of
+    relative paths (e.g. ``{"controls/checkout.py"}``) obtained from
+    :func:`extract_required_controls`.  Only those files are imported.
 
     **Eager mode (backward compat):** omit *required_modules*. All ``.py``
-    files (excluding ``_``-prefixed) are imported — the legacy behaviour.
+    files (excluding ``_``-prefixed) in every directory are imported.
 
     Idempotent per file: each source file is imported at most once per
     process, regardless of how many ``ManulEngine`` instances are created.
 
-    Each file is executed in an isolated module so that ``@custom_control``
-    decorators register into the global ``_CUSTOM_CONTROLS`` dict.
-    Errors in individual files are printed but do not abort engine startup.
+    Directories that do not exist are silently skipped.
 
     Args:
         workspace_dir: Absolute path to the user's project root (typically CWD).
-        required_modules: Optional set of filenames to load.  When ``None``,
-            every non-underscore ``.py`` file in ``controls/`` is loaded
+        required_modules: Optional set of relative paths to load.  When ``None``,
+            every non-underscore ``.py`` file in each directory is loaded
             (eager mode).
+        custom_modules_dirs: Directory names to scan.  Defaults to ``["controls"]``.
     """
+    dirs = custom_modules_dirs or ["controls"]
     resolved = str(Path(workspace_dir).resolve())
-    controls_dir = Path(resolved) / "controls"
-    if not controls_dir.is_dir():
-        return
+    ws = Path(resolved)
 
-    if required_modules is not None:
-        # Targeted (lazy) loading — only import specifically requested files.
-        candidates = [controls_dir / name for name in sorted(required_modules)]
-    else:
-        # Eager loading (legacy) — skip entirely if this dir was already loaded.
-        if resolved in _LOADED_DIRS:
-            return
-        candidates = sorted(controls_dir.glob("*.py"))
-        # Mark directory as fully loaded so repeated eager calls are no-ops.
-        _LOADED_DIRS.add(resolved)
-
-    for py_file in candidates:
-        if not py_file.is_file() or py_file.name.startswith("_"):
-            continue
-        # Per-file idempotency: skip files already imported in this process.
-        file_key = str(py_file.resolve())
-        if file_key in _LOADED_FILES:
+    for dir_name in dirs:
+        modules_dir = (ws / dir_name).resolve()
+        if not modules_dir.is_dir():
             continue
         try:
-            mod_name = f"_manul_custom_{py_file.stem}"
-            spec = importlib.util.spec_from_file_location(mod_name, py_file)
-            if spec is None or spec.loader is None:
+            modules_dir.relative_to(ws)
+        except ValueError:
+            # Directory is outside the workspace; skip for safety.
+            continue
+
+        if required_modules is not None:
+            # Targeted (lazy) loading — only import specifically requested files
+            # that belong to this directory.
+            candidates: list[Path] = []
+            for rel in sorted(required_modules):
+                rel_path = PurePosixPath(rel)
+                try:
+                    sub_path = rel_path.relative_to(dir_name)
+                except ValueError:
+                    continue
+                candidates.append(modules_dir.joinpath(*sub_path.parts))
+            # Backward compat: accept bare filenames for the "controls" directory.
+            if dir_name == "controls":
+                candidates += [
+                    modules_dir / rel
+                    for rel in sorted(required_modules)
+                    if "/" not in rel
+                ]
+        else:
+            # Eager loading (legacy) — skip entirely if this dir was already loaded.
+            dir_key = f"{resolved}/{dir_name}"
+            if dir_key in _LOADED_DIRS:
                 continue
-            fresh_module = importlib.util.module_from_spec(spec)
-            fresh_module.__file__ = str(py_file)
-            spec.loader.exec_module(fresh_module)  # type: ignore[union-attr]
-            _LOADED_FILES.add(file_key)
-            _label = "Lazy" if required_modules is not None else "Eager"
-            print(f"    🎛️  Custom controls loaded: {py_file.name} ({_label} loaded)")
-        except Exception as exc:
-            print(f"    ⚠️  Custom controls: failed to load '{py_file.name}': {exc}")
+            candidates = sorted(modules_dir.glob("*.py"))
+            # Mark directory as fully loaded so repeated eager calls are no-ops.
+            _LOADED_DIRS.add(dir_key)
+
+        for py_file in candidates:
+            if not py_file.is_file() or py_file.name.startswith("_"):
+                continue
+            # Per-file idempotency: skip files already imported in this process.
+            file_key = str(py_file.resolve())
+            if file_key in _LOADED_FILES:
+                continue
+            try:
+                safe_dir = re.sub(r"[^0-9A-Za-z_]", "_", str(dir_name))
+                safe_stem = re.sub(r"[^0-9A-Za-z_]", "_", py_file.stem)
+                mod_name = f"_manul_custom_{safe_dir}_{safe_stem}"
+                spec = importlib.util.spec_from_file_location(mod_name, py_file)
+                if spec is None or spec.loader is None:
+                    continue
+                fresh_module = importlib.util.module_from_spec(spec)
+                fresh_module.__file__ = str(py_file)
+                spec.loader.exec_module(fresh_module)  # type: ignore[union-attr]
+                _LOADED_FILES.add(file_key)
+                print(f"    [⚙️ JIT LOAD] @custom_control: {dir_name}/{py_file.name}")
+            except Exception as exc:
+                print(f"    ⚠️  Failed to load '{dir_name}/{py_file.name}': {exc}")
