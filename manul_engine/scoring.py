@@ -319,6 +319,23 @@ class DOMScorer:
                 elif len(name_attr) >= 3 and (tl in name_attr or name_attr in tl):
                     score += 0.0125     # 1k / 80k
 
+            # ── Attribute semantic keyword match ──────────────────
+            # Strong signal when search-term words appear as discrete
+            # tokens in developer-facing attributes (html_id, class_name,
+            # data_qa).  Catches functional icons/links whose visible
+            # text is unrelated (e.g. cart icon showing badge count "2"
+            # with class="shopping_cart_link").
+            if term.words:
+                _dev_pool = f"{html_id} {el['_class_name']} {data_qa}"
+                _dev_tokens = frozenset(_RE_DELIMITERS.sub(" ", _dev_pool).split())
+                _matched = term.words & _dev_tokens
+                if _matched:
+                    coverage = len(_matched) / len(term.words)
+                    if coverage >= 1.0:
+                        score += 0.375 if len(term.words) >= 2 else 0.1875
+                    elif coverage >= 0.5:
+                        score += 0.1875 * coverage
+
         return score, is_perfect
 
     def _score_attributes(self, el: dict) -> float:

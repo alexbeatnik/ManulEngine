@@ -270,14 +270,14 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.11
+pip install manul-engine==0.0.9.12
 playwright install
 ```
 
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.11"
+pip install "manul-engine[ai]==0.0.9.12"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -509,15 +509,15 @@ Representative coverage areas include:
 - visibility filtering and TreeWalker behavior
 - custom controls and lazy control loading
 
-## What's New in v0.0.9.11
+## What's New in v0.0.9.12
 
-- **Configurable module directories (`custom_modules_dirs`):** the runtime now reads a list of target directories from `manul_engine_configuration.json` instead of hardcoding `controls/`. Default: `["controls"]`. Supports multiple directories for monorepo or multi-team setups.
-- **JIT module loading for `CALL PYTHON`:** Python modules invoked via `CALL PYTHON` are no longer eagerly imported at engine startup. They are loaded on first use and cached for subsequent calls within the same process. Console output shows `[⚙️ JIT LOAD]` on first import and `[📦 CACHE HIT]` for cached reuse.
-- **Deferred `@custom_control` loading:** custom control modules are loaded once on the first `run_mission()` call instead of during `ManulEngine.__init__`, reducing engine startup time.
-- Total test assertions: 2460 across 46 suites.
+- **Attribute-semantic icon matching:** `DOMScorer` now gives a strong text-channel boost when search-term words appear as discrete tokens in `html_id`, `class_name`, or `data_qa`. This fixes cart-style UI targets where visible text is only a numeric badge (`"2"`) but the surrounding link or icon carries semantics like `shopping_cart_link` or `shopping_cart_container`.
+- **Better functional-icon coverage:** shopping cart, basket, notification bell, menu, wishlist, checkout, close-modal, and similar icon-only controls now resolve more reliably without requiring visible label text, while still resisting token-boundary false positives like `cartography_section`.
+- **New regression suite:** added `test_46_attribute_semantic.py` with 33 assertions focused on attribute-semantic matching, partial coverage, false-positive resistance, and SauceDemo-style cart badges.
+- Total test assertions: 2493 across 47 suites.
 
 ## License
 
-**Version:** 0.0.9.11
+**Version:** 0.0.9.12
 
 Apache-2.0.

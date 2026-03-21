@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.11 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.12 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -25,7 +25,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.11
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.12
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession
@@ -85,7 +85,8 @@ ManulEngine/
 │       ├── test_42_scheduler.py     Unit: Built-in Scheduler — parse_schedule, next_run_delay, ParsedHunt integration (51 assertions, no browser)
 │       ├── test_43_scoped_variables.py Unit: ScopedVariables 4-level hierarchy, scope isolation, dict compat (43 assertions, no browser)
 │       ├── test_44_explain_mode.py   Unit: DOMScorer explain output, channel breakdown, --explain CLI flag (33 assertions, no browser)
-│       └── test_45_api.py            Unit: ManulSession public Python API facade (50 assertions, no browser)
+│       ├── test_45_api.py            Unit: ManulSession public Python API facade (50 assertions, no browser)
+│       └── test_46_attribute_semantic.py Unit: attribute-semantic icon matching, cart badges, false-positive resistance (33 assertions, no browser)
 ├── controls/                         User-owned custom Python handlers (loaded from directories listed in `custom_modules_dirs` config)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
@@ -163,6 +164,7 @@ This architecture is what makes ManulEngine a **true runtime** rather than just 
 * **Logical STEP Grouping:** `STEP [optional number]: [Description]` metadata blocks map manual QA cases directly into `.hunt` files.
 * **Interactive Enterprise HTML Reporter:** Dual-mode, zero-dependency reporter with native HTML5 accordions, auto-expanding failures, Flexbox layout, **"Show Only Failed" toggle**, and **tag filter chips** — inline Vanilla JS, zero dependencies.
 * **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, `@after_group` orchestrate DB seeding and auth. `ctx.variables` serialise across parallel `--workers`.
+* **Attribute-Semantic Matching for Functional Icons (v0.0.9.12):** `DOMScorer` now treats discrete keyword tokens in `html_id`, `class_name`, and `data_qa` as a strong signal even when visible text is unhelpful. This closes a real gap for cart-style links and other icon controls that only render badge counts (`"1"`, `"2"`, `"3"`) while the semantic meaning lives in attributes like `shopping_cart_link` or `shopping_cart_container`.
 * **JIT Module Loading & Configurable Module Directories (v0.0.9.11):** `CALL PYTHON` modules are imported on first use and cached for subsequent calls within the same process (`_module_cache` in `hooks.py`). `@custom_control` modules are loaded once on the first `run_mission()` call instead of during `ManulEngine.__init__`. Module scan directories are configurable via `custom_modules_dirs` in `manul_engine_configuration.json` (default: `["controls"]`).
 
 ## ✨ Key Features
@@ -509,7 +511,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.11
+pip install manul-engine==0.0.9.12
 playwright install chromium
 ```
 
@@ -667,9 +669,9 @@ manul tests/mission.hunt
 
 ---
 
-## 🐾 Chaos Chamber Verified (2414 Tests)
+## 🐾 Chaos Chamber Verified (2493 Tests)
 
-The engine is battle-tested with **2414** synthetic DOM/unit tests across 46 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, and visibility edge cases.
+The engine is battle-tested with **2493** synthetic DOM/unit tests across 47 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, visibility edge cases, and attribute-semantic icon matching.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py`.
@@ -702,6 +704,7 @@ The engine is battle-tested with **2414** synthetic DOM/unit tests across 46 tes
 * **Scoped Variables unit suite:** `manul_engine/test/test_43_scoped_variables.py`.
 * **Explain Mode unit suite:** `manul_engine/test/test_44_explain_mode.py`.
 * **Public Python API unit suite:** `manul_engine/test/test_45_api.py`.
+* **Attribute-semantic heuristic suite:** `manul_engine/test/test_46_attribute_semantic.py`.
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
 Run the synthetic suite:
@@ -781,7 +784,7 @@ The published extension provides:
 
 ---
 
-**Version:** 0.0.9.11
+**Version:** 0.0.9.12
 
 **Codename:** JIT Module Loading
 
