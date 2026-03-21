@@ -2,6 +2,13 @@
 
 Ready-to-use LLM prompts for generating modern ManulEngine `.hunt` files in the canonical STEP-grouped DSL.
 
+The default prompt templates also teach contextual disambiguation syntax for repeated UI controls:
+
+- `NEAR 'Anchor'`
+- `ON HEADER`
+- `ON FOOTER`
+- `INSIDE 'Container' row with 'Text'`
+
 ## Files
 
 | File | When to use |
@@ -162,6 +169,14 @@ DONE.
 - `VERIFY that '<target>' is present / is NOT present / is DISABLED / is checked`
 - `VERIFY SOFTLY that '<target>' is present`
 - `DONE.`
+
+### Contextual qualifiers
+- `Click the 'Delete' button NEAR 'John Doe'`
+- `Click the 'Login' button ON HEADER`
+- `Click the 'Privacy Policy' link ON FOOTER`
+- `Click the 'Delete' button INSIDE 'Actions' row with 'John Doe'`
+
+Use these when a page contains repeated controls and a plain quoted label would be ambiguous.
 
 `disappear` maps to Playwright's `hidden` state. Use these explicit waits instead of recommending hardcoded sleep steps for async rendering.
 

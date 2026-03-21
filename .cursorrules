@@ -45,25 +45,25 @@ Follow these rules before generating code, documentation, architecture notes, or
 
 ## 3. Versioning and Dependencies
 
-- Treat `0.0.9.12` as the current engine version for this documentation and release line.
+- Treat `0.0.9.13` as the current engine version for this documentation and release line.
 - When version metadata is required in config examples or integration code, use:
 
 ```json
 {
-  "manulEngineVersion": "0.0.9.12"
+  "manulEngineVersion": "0.0.9.13"
 }
 ```
 
 - When generating `pip install` commands, pin the exact version, for example:
 
 ```bash
-pip install manul-engine==0.0.9.12
+pip install manul-engine==0.0.9.13
 ```
 
 - If the AI extra is needed, pin that exact version too:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.12"
+pip install "manul-engine[ai]==0.0.9.13"
 ```
 
 - Do not suggest floating installs such as `pip install manul-engine` when version pinning is required by context.
@@ -100,5 +100,10 @@ pip install "manul-engine[ai]==0.0.9.12"
   - `Wait for "Welcome, User" to be visible`
   - `Wait for 'Loading...' to disappear`
   - `Wait for "Submit" to be hidden`
+- When documenting repeated controls, prefer contextual qualifiers:
+  - `Click the 'Delete' button NEAR 'John Doe'`
+  - `Click the 'Login' button ON HEADER`
+  - `Click the 'Privacy Policy' link ON FOOTER`
+  - `Click the 'Delete' button INSIDE 'Actions' row with 'John Doe'`
 - When describing engine behavior, state that `disappear` maps to Playwright's `hidden` state.
 - Prefer explicit waits over recommending `WAIT [seconds]` when the goal is to wait for async rendering, spinners, or deferred UI state changes.

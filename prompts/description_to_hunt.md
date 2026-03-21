@@ -43,6 +43,18 @@ DONE.
 - `CALL PYTHON module.function into {variable_name}`
 - `DONE.` — end of mission
 
+### Contextual qualifiers for repeated UI
+- `NEAR '<anchor>'` — use when the same button, link, or field appears multiple times and the desired control sits beside a known label or neighboring element
+- `ON HEADER` — use when the target belongs to the top navigation, masthead, or hero header actions
+- `ON FOOTER` — use when the target belongs to the footer region or legal-link cluster
+- `INSIDE '<container>' row with '<text>'` — use for row actions in tables, lists, cards, or repeated data grids
+
+Examples:
+- `Click the 'Delete' button NEAR 'John Doe'`
+- `Click the 'Login' button ON HEADER`
+- `Click the 'Privacy Policy' link ON FOOTER`
+- `Click the 'Delete' button INSIDE 'Actions' row with 'John Doe'`
+
 ### Interaction steps (element name always in single quotes)
 - **Click:** `Click the '<label>' button` / `Click the '<label>' link` / `Click on the '<label>' button`
 - **Double-click:** `DOUBLE CLICK the '<label>' button`
@@ -73,6 +85,7 @@ Use `@var:` for static values such as emails, usernames, passwords, and names.
 - Steps must be atomic — one action per step.
 - Use `SCROLL DOWN` before interacting with elements that might be below the fold.
 - Add `if exists` for elements that might not always appear (cookie banners, ads, modals).
+- When the description implies repeated controls, tables, cards, navbars, or footer links, use a contextual qualifier instead of vague prose.
 - End every hunt with `DONE.`
 - Do not generate fake DSL commands for screenshots, reports, retries, or assertions outside the supported syntax.
 
@@ -90,6 +103,7 @@ Requirements:
 5. Structure the output with `STEP` groups.
 6. Use `@var:` when the same static value is reused or when credentials are present.
 7. Use explicit waits instead of `WAIT <seconds>` when the description implies async UI state changes.
+8. When the description indicates ambiguity between repeated controls, emit the appropriate contextual qualifier (`NEAR`, `ON HEADER`, `ON FOOTER`, `INSIDE ... row with ...`).
 
 **Description:**
 ```

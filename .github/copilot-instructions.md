@@ -61,7 +61,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.12
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.13
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession
   api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)
@@ -119,6 +119,7 @@ manul_engine/
     test_44_explain_mode.py      DOMScorer explain output, channel breakdown, --explain CLI flag (33 assertions, no browser)
     test_45_api.py               ManulSession public Python API facade (50 assertions, no browser)
     test_46_attribute_semantic.py Attribute-semantic icon matching, camelCase dev attrs, cart badges, false-positive resistance (34 assertions, no browser)
+    test_47_contextual_proximity.py Contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser coverage (62 assertions, no browser)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
@@ -137,6 +138,7 @@ benchmarks/
 1. **Snapshot** — `SNAPSHOT_JS` walks the DOM with `document.createTreeWalker()` and a `PRUNE` set (`SCRIPT, STYLE, SVG, NOSCRIPT, TEMPLATE, META, PATH, G, BR, HR`). Visibility is checked via `checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })` with `offsetWidth/offsetHeight` fallback. Hidden checkbox/radio/file inputs are kept (special-input exception). `_snapshot()` iterates `page.frames`, injects the script per frame, and tags each element with `frame_index`.
 2. **Exact-match pass** — quick filter by `name`, `aria-label`, `data-qa` substring.
 3. **Heuristic scoring** — `DOMScorer.score_all()` ranks candidates using normalised `0.0–1.0` floats across five weighted channels: `cache` (2.0), `semantics` (0.60), `text` (0.45), `attributes` (0.25), `proximity` (0.10). Final score = weighted sum × penalty multiplier × `SCALE` (177,778). The biggest single boosts are semantic cache reuse (+1.0 cache / 200k+ scaled) and `data-qa` exact match (+1.0 text / ~80k scaled). Penalties: disabled ×0.0, hidden ×0.1.
+  When a contextual qualifier is active, the proximity channel weight is raised to `1.5` and switches from DOM-depth reuse to one of: Euclidean anchor distance (`NEAR`), viewport/ancestor routing (`ON HEADER` / `ON FOOTER`), or subtree membership (`INSIDE`).
 4. **LLM fallback** — if best score < threshold, ask the LLM to pick the element.
 5. **AI Rejection & Anti-phantom guard** — LLM can return `{"id": null}` if no plausible target is found. Engine handles `null` by blacklisting the current candidates and triggering self-healing.
 6. **Action** — type / click / select / hover / drag. Non-shadow interactions primarily use Playwright with `force=True` plus retries; Shadow DOM interactions use a **JS fallback** (`window.manulClick`, `window.manulType`) to bypass elements that Playwright cannot target.
@@ -194,6 +196,13 @@ Rules for STEP-grouped files:
 * Blank lines between groups are allowed and ignored.
 * All other keywords (NAVIGATE, VERIFY, DONE, etc.) work identically in both formats.
 * Mixed numbered+STEP (e.g. `1. STEP 1: ...`) is also valid: the numbered split runs and STEP markers are detected by `classify_step()` as `"logical_step"` kind, same as in STEP-grouped mode.
+
+**Contextual qualifiers for action steps:**
+* Action steps may append `NEAR 'Anchor Text'` to bias resolution by Euclidean distance to a resolved anchor element.
+* Action steps may append `ON HEADER` to prefer candidates in `header` / `nav` ancestry or the top 15% of the viewport.
+* Action steps may append `ON FOOTER` to prefer candidates in `footer` ancestry or the bottom 15% of the viewport.
+* Action steps may append `INSIDE 'Container' row with 'Text'` to resolve a matching row/container first and restrict candidate scoring to that subtree.
+* These qualifiers are deterministic DSL syntax, not planner hints. They feed directly into `parse_contextual_hint()` in `helpers.py`, geometry exported by `SNAPSHOT_JS`, and contextual proximity scoring in `DOMScorer`.
 
 **System Keywords** parsed directly by `run_mission()` (these skip heuristics):
 
@@ -304,6 +313,7 @@ Declare static test data at the top of the file using `@var: {key} = value`. The
 * Both brace and bare-key forms are accepted: `@var: {email} = ...` and `@var: email = ...` are equivalent. Keys are stored without braces.
 * Values may contain spaces and are stripped of leading/trailing whitespace.
 * **MANDATORY rule for AI-generated hunt files:** When generating or suggesting `.hunt` test files, **NEVER hardcode test data** (emails, passwords, usernames, search queries, IDs, etc.) directly inside `Fill`, `Type`, or `Select` steps. **ALWAYS** declare them at the top using `@var:` and reference them via `{placeholder}` in the steps.
+* **MANDATORY contextual rule for AI-generated hunt files:** When the user describes repeated controls, tables, cards, navbars, or footers, prefer contextual qualifiers (`NEAR`, `ON HEADER`, `ON FOOTER`, `INSIDE ... row with ...`) instead of inventing selectors or relying on vague prose.
 
 Correct:
 ```text
@@ -665,6 +675,7 @@ async with ManulSession() as session:
 * **Deep Text Verification:** Standard `document.body.innerText` does not see text inside Shadow DOMs or Input values. `_handle_verify` uses a JS collector (`VISIBLE_TEXT_JS`) plus fallback checks.
 * **Form Auto-clearing:** Before typing into an input using `loc.type()`, always `await loc.fill("")` to prevent appending text to pre-filled placeholders (especially critical on Wikipedia and search bars).
 * **Checkbox/Radio strictness:** Heuristics must ruthlessly penalize (-50_000) non-checkbox elements when the user specifically asks to "Check" or "Select the radio", to prevent clicking a nearby `<td>` that happens to share the target text.
+* **Contextual navigation:** Prefer DSL qualifiers such as `NEAR 'Search'`, `ON HEADER`, `ON FOOTER`, and `INSIDE 'Actions' row with 'John Doe'` before suggesting brittle selectors or custom controls for repeated standard widgets.
 * **SVG quirks:** `el.className` might not be a string. In `SNAPSHOT_JS`, safely extract it: `typeof el.className === 'string' ? el.className : el.getAttribute('class')`.
 * **Table Extraction & Legacy HTML:** When extracting rows based on text, use the shared `wordMatch()` helper from `EXTRACT_DATA_JS` instead of ad‑hoc `.includes()` calls. It uses word-boundary matching for short tokens and falls back to substring matching for longer tokens to reduce partial hits (e.g., "Javascript" vs "Java"). For legacy forms without explicit `<label>` tags, inputs inside `<fieldset>` should inherit context from `<legend>`.
 * **AI Rejection loop:** If LLM returns `{"id": null}`, add the current top candidates to a `failed_ids` set, scroll the page, and retry `_snapshot` to discover hidden elements.

@@ -6,8 +6,8 @@
 
 ```json
 {
-  "version": "0.0.9.12",
-  "generatedFrom": "manul_engine/helpers.py :: classify_step(), detect_mode(); manul_engine/core.py :: run_mission(); manul_engine/cli.py :: parse_hunt_file(); manul_engine/actions.py :: _ActionsMixin",
+  "version": "0.0.9.13",
+  "generatedFrom": "manul_engine/helpers.py :: classify_step(), detect_mode(), parse_contextual_hint(); manul_engine/core.py :: run_mission(); manul_engine/cli.py :: parse_hunt_file(); manul_engine/actions.py :: _ActionsMixin; manul_engine/scoring.py :: DOMScorer contextual proximity rules; manul_engine/js_scripts.py :: SNAPSHOT_JS geometry export",
   "commands": [
     {
       "id": "navigate",
@@ -296,6 +296,49 @@
       "regex": "^\\s*(?:\\d+\\.\\s*)?STEP\\s*\\d*\\s*:",
       "description": "Declares a hierarchical STEP block. All action lines following this header belong to this block until the next STEP header. The number is optional. Used for HTML report accordions and console grouping.",
       "category": "structure"
+    }
+  ],
+  "contextualQualifiers": [
+    {
+      "id": "near",
+      "syntax": "<action> NEAR '<anchor>'",
+      "regex": "\\bNEAR\\s+(?P<quote>['\"])(?P<anchor>.+?)(?P=quote)",
+      "description": "Biases candidate ranking by Euclidean distance to a resolved anchor element. Used for repeated buttons, links, and fields located close to a known label or neighboring control.",
+      "scoring": {
+        "kind": "euclidean_distance",
+        "proximityWeight": 1.5,
+        "distanceThresholdPx": 500
+      }
+    },
+    {
+      "id": "on_header",
+      "syntax": "<action> ON HEADER",
+      "regex": "\\bON\\s+HEADER\\b",
+      "description": "Prefers candidates inside header or nav ancestry, or within the top 15% of the viewport.",
+      "scoring": {
+        "kind": "viewport_region",
+        "region": "top_15_percent_or_header_nav"
+      }
+    },
+    {
+      "id": "on_footer",
+      "syntax": "<action> ON FOOTER",
+      "regex": "\\bON\\s+FOOTER\\b",
+      "description": "Prefers candidates inside footer ancestry, or within the bottom 15% of the viewport.",
+      "scoring": {
+        "kind": "viewport_region",
+        "region": "bottom_15_percent_or_footer"
+      }
+    },
+    {
+      "id": "inside_row",
+      "syntax": "<action> INSIDE '<container>' row with '<text>'",
+      "regex": "\\bINSIDE\\s+(?P<q1>['\"])(?P<container>.+?)(?P=q1)\\s+row\\s+with\\s+(?P<q2>['\"])(?P<row>.+?)(?P=q2)",
+      "description": "Resolves the row text first, climbs to a container boundary such as tr, li, or div[role=row], and restricts candidate scoring to that subtree before normal action scoring continues.",
+      "scoring": {
+        "kind": "subtree_membership",
+        "containerScope": "resolved_row_container"
+      }
     }
   ],
   "metadata": [

@@ -270,14 +270,14 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.12
+pip install manul-engine==0.0.9.13
 playwright install
 ```
 
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.12"
+pip install "manul-engine[ai]==0.0.9.13"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -422,6 +422,22 @@ Useful capabilities that get lost when the README is trimmed too aggressively:
 - `SCAN PAGE` and `manul record` accelerate authoring without replacing the readable DSL with low-level recordings.
 - `Wait for "Text" to be visible`, `Wait for 'Spinner' to disappear`, and `Wait for "Submit" to be hidden` give the DSL a deterministic explicit-wait path backed by Playwright `locator.wait_for()` instead of hardcoded sleeps.
 
+### Contextual UI navigation
+
+When identical controls exist multiple times on the page, the DSL can now add a contextual qualifier instead of dropping into brittle selectors.
+
+```text
+Click the 'Delete' button NEAR 'John Doe'
+Click the 'Login' button ON HEADER
+Click the 'Privacy Policy' link ON FOOTER
+Click the 'Delete' button INSIDE 'Actions' row with 'John Doe'
+```
+
+- `NEAR 'Anchor'` biases ranking by Euclidean pixel distance to the resolved anchor element.
+- `ON HEADER` prefers elements in the top 15% of the viewport or inside `header` / `nav` ancestry.
+- `ON FOOTER` prefers elements in the bottom 15% of the viewport or inside `footer` ancestry.
+- `INSIDE 'Container' row with 'Text'` narrows the search to the resolved row or container subtree before normal action scoring continues.
+
 ### Explicit waits
 
 Use explicit waits when the DOM is still settling after navigation or after an action triggers async UI updates.
@@ -509,15 +525,15 @@ Representative coverage areas include:
 - visibility filtering and TreeWalker behavior
 - custom controls and lazy control loading
 
-## What's New in v0.0.9.12
+## What's New in v0.0.9.13
 
-- **Attribute-semantic icon matching:** `DOMScorer` now gives a strong text-channel boost when search-term words appear as discrete tokens in `html_id`, `class_name`, or `data_qa`. This fixes cart-style UI targets where visible text is only a numeric badge (`"2"`) but the surrounding link or icon carries semantics like `shopping_cart_link` or `shopping_cart_container`.
-- **Better functional-icon coverage:** shopping cart, basket, notification bell, menu, wishlist, checkout, close-modal, and similar icon-only controls now resolve more reliably without requiring visible label text, while still resisting token-boundary false positives like `cartography_section`.
-- **New regression suite:** added `test_46_attribute_semantic.py` with 34 assertions focused on attribute-semantic matching, camelCase developer attributes, partial coverage, false-positive resistance, and SauceDemo-style cart badges.
-- Total test assertions: 2494 across 47 suites.
+- **Contextual UI Navigator:** action steps can now carry spatial qualifiers such as `NEAR 'Anchor'`, `ON HEADER`, `ON FOOTER`, and `INSIDE 'Actions' row with 'John Doe'` to disambiguate repeated UI controls without leaving the DSL.
+- **Spatial snapshot data:** the browser snapshot now exports element rectangles and ancestor tag chains, enabling deterministic header/footer region matching and Euclidean proximity scoring against resolved anchor elements.
+- **Context-aware explainability:** explain output now reports contextual proximity reasoning so ambiguous-step debugging shows whether the winner came from row scoping, header/footer routing, or NEAR anchor bias.
+- **Focused regression lab:** added `test_47_contextual_proximity.py` with 62 assertions covering parser extraction, spatial ranking, container scoping, explain payloads, and edge cases for the new contextual DSL qualifiers.
 
 ## License
 
-**Version:** 0.0.9.12
+**Version:** 0.0.9.13
 
 Apache-2.0.
