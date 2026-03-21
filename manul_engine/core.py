@@ -31,7 +31,7 @@ except Exception:  # pragma: no cover
     ollama = None
 
 from . import prompts
-from .helpers import substitute_memory, compact_log_field, extract_quoted, detect_mode, classify_step, RE_SYSTEM_STEP, parse_hunt_blocks, parse_explicit_wait, parse_contextual_hint, ContextualHint
+from .helpers import substitute_memory, compact_log_field, extract_quoted, detect_mode, classify_step, RE_SYSTEM_STEP, parse_hunt_blocks, parse_explicit_wait, ContextualHint
 from .hooks import execute_hook_line
 from .js_scripts import SNAPSHOT_JS
 from .scoring import score_elements

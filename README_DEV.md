@@ -689,9 +689,9 @@ manul tests/mission.hunt
 
 ---
 
-## 🐾 Chaos Chamber Verified (2494 Tests)
+## 🐾 Chaos Chamber Verified (2559 Tests)
 
-The engine is battle-tested with **2494** synthetic DOM/unit tests across 47 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, visibility edge cases, attribute-semantic icon matching, and camelCase developer attributes. A focused standalone contextual navigator lab adds 62 more assertions for `NEAR`, `ON HEADER`, `ON FOOTER`, and `INSIDE` scoring behavior.
+The engine is battle-tested with **2559** synthetic DOM/unit tests across 48 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, visibility edge cases, attribute-semantic icon matching, camelCase developer attributes, and contextual UI disambiguation across repeated controls.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py`.

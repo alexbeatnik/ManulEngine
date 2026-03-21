@@ -149,8 +149,12 @@ class DOMScorer:
 
         # Contextual proximity state
         self._hint = contextual_hint or ContextualHint(None, None, None)
-        self._anchor_rect = anchor_rect          # {"top", "left", "bottom", "right"}
+        self._anchor_rect = anchor_rect          # {"rect_top", "rect_left", "rect_bottom", "rect_right", "frame_index"}
         self._container_els = container_elements  # pre-filtered elements inside container
+        self._container_id_set = (
+            {(e.get("frame_index", 0), e["id"]) for e in container_elements}
+            if container_elements is not None else None
+        )
         self._viewport_h = viewport_height or 900
 
         # Pre-compute search terms once
@@ -603,6 +607,8 @@ class DOMScorer:
 
         # ── NEAR: Euclidean distance to anchor ────────────────────────
         if kind == "near" and self._anchor_rect:
+            if self._anchor_rect.get("frame_index", 0) != el.get("frame_index", 0):
+                return 0.0
             el_cx = (el.get("rect_left", 0) + el.get("rect_right", 0)) / 2.0
             el_cy = (el.get("rect_top", 0) + el.get("rect_bottom", 0)) / 2.0
             a = self._anchor_rect
@@ -615,6 +621,8 @@ class DOMScorer:
 
         # ── ON HEADER / ON FOOTER: region filtering ──────────────────
         if kind == "on_header":
+            if el.get("frame_index", 0) != 0:
+                return 0.0
             ancestors = el.get("ancestors", [])
             if "header" in ancestors or "nav" in ancestors:
                 return 1.0
@@ -624,6 +632,8 @@ class DOMScorer:
             return 0.0
 
         if kind == "on_footer":
+            if el.get("frame_index", 0) != 0:
+                return 0.0
             ancestors = el.get("ancestors", [])
             if "footer" in ancestors:
                 return 1.0
@@ -633,10 +643,9 @@ class DOMScorer:
             return 0.0
 
         # ── INSIDE: container subtree filtering ──────────────────────
-        if kind == "inside" and self._container_els is not None:
-            container_ids = {(e.get("frame_index", 0), e["id"]) for e in self._container_els}
+        if kind == "inside" and self._container_id_set is not None:
             el_key = (el.get("frame_index", 0), el["id"])
-            return 1.0 if el_key in container_ids else 0.0
+            return 1.0 if el_key in self._container_id_set else 0.0
 
         # ── Default: DOM xpath-depth proximity ───────────────────────
         if not self._last_xpath or not el.get("xpath"):

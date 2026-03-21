@@ -181,6 +181,28 @@ def _test_near_beyond_threshold():
     _assert(prox == 0.0, f"element beyond 500px threshold → prox=0.0, got {prox}")
 
 
+def _test_near_cross_frame_rejected():
+    print("\n── NEAR: cross-frame candidate gets 0 ──")
+    anchor_rect = {
+        "rect_top": 100, "rect_left": 100, "rect_bottom": 130, "rect_right": 200,
+        "frame_index": 0,
+    }
+    el_other_frame = _make_el(
+        id=1, name="Save", frame_index=1,
+        rect_top=110, rect_left=120, rect_bottom=140, rect_right=220,
+    )
+    hint = ContextualHint("near", "Anchor", None)
+    scorer = DOMScorer(
+        step="Click the 'Save' button", mode="clickable",
+        search_texts=["Save"], target_field=None,
+        is_blind=False, learned_elements={}, last_xpath=None,
+        contextual_hint=hint, anchor_rect=anchor_rect,
+    )
+    scorer._preprocess(el_other_frame)
+    prox = scorer._score_proximity(el_other_frame)
+    _assert(prox == 0.0, f"cross-frame NEAR → prox=0.0, got {prox}")
+
+
 def _test_near_no_anchor_rect():
     print("\n── NEAR: fallback when no anchor rect ──")
     hint = ContextualHint("near", "Anchor", None)
@@ -304,6 +326,36 @@ def _test_on_footer_top_element_rejected():
     scorer._preprocess(el)
     prox = scorer._score_proximity(el)
     _assert(prox == 0.0, f"element at top → prox=0.0, got {prox}")
+
+
+def _test_on_header_iframe_rejected():
+    print("\n── ON HEADER: iframe element gets 0 ──")
+    el = _make_el(id=1, name="Login", frame_index=1, ancestors=["header", "body"], rect_top=10)
+    hint = ContextualHint("on_header", None, None)
+    scorer = DOMScorer(
+        step="Click 'Login' ON HEADER", mode="clickable",
+        search_texts=["Login"], target_field=None,
+        is_blind=False, learned_elements={}, last_xpath=None,
+        contextual_hint=hint, viewport_height=1000,
+    )
+    scorer._preprocess(el)
+    prox = scorer._score_proximity(el)
+    _assert(prox == 0.0, f"iframe header qualifier → prox=0.0, got {prox}")
+
+
+def _test_on_footer_iframe_rejected():
+    print("\n── ON FOOTER: iframe element gets 0 ──")
+    el = _make_el(id=1, name="Privacy", frame_index=1, ancestors=["footer", "body"], rect_bottom=990)
+    hint = ContextualHint("on_footer", None, None)
+    scorer = DOMScorer(
+        step="Click 'Privacy' ON FOOTER", mode="clickable",
+        search_texts=["Privacy"], target_field=None,
+        is_blind=False, learned_elements={}, last_xpath=None,
+        contextual_hint=hint, viewport_height=1000,
+    )
+    scorer._preprocess(el)
+    prox = scorer._score_proximity(el)
+    _assert(prox == 0.0, f"iframe footer qualifier → prox=0.0, got {prox}")
 
 
 # =====================================
@@ -572,6 +624,7 @@ def run_all():
     _test_near_closest_wins()
     _test_near_distance_scoring()
     _test_near_beyond_threshold()
+    _test_near_cross_frame_rejected()
     _test_near_no_anchor_rect()
 
     # Section 3: ON HEADER / ON FOOTER
@@ -582,6 +635,8 @@ def run_all():
     _test_on_footer_ancestor()
     _test_on_footer_bottom_15_percent()
     _test_on_footer_top_element_rejected()
+    _test_on_header_iframe_rejected()
+    _test_on_footer_iframe_rejected()
 
     # Section 4: INSIDE container
     _test_inside_container_match()
@@ -607,10 +662,15 @@ def run_all():
     _test_parse_hint_preserves_quotes_in_main_step()
 
     print(f"\n{'='*60}")
+    print(f"📊 SCORE: {_PASS}/{_PASS + _FAIL} passed")
     print(f"  TOTAL: {_PASS + _FAIL} assertions — ✅ {_PASS} passed, ❌ {_FAIL} failed")
     print(f"{'='*60}")
 
     return _FAIL == 0
+
+
+async def run_suite() -> None:
+    run_all()
 
 
 if __name__ == "__main__":

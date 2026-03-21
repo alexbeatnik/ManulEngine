@@ -5,7 +5,7 @@ import os
 import re
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
-from .helpers import extract_quoted, compact_log_field, SCROLL_WAIT, ACTION_WAIT, NAV_WAIT, detect_mode, parse_explicit_wait, parse_contextual_hint, ContextualHint
+from .helpers import extract_quoted, compact_log_field, SCROLL_WAIT, ACTION_WAIT, NAV_WAIT, detect_mode, parse_explicit_wait, parse_contextual_hint
 from .js_scripts import VISIBLE_TEXT_JS, EXTRACT_DATA_JS, DEEP_TEXT_JS, STATE_CHECK_JS, SCAN_JS
 from . import prompts
 
@@ -518,6 +518,7 @@ class _ActionsMixin:
                     "rect_left": anchor_el.get("rect_left", 0),
                     "rect_bottom": anchor_el.get("rect_bottom", 0),
                     "rect_right": anchor_el.get("rect_right", 0),
+                    "frame_index": anchor_el.get("frame_index", 0),
                 }
                 print(f"    📐 NEAR anchor: '{self._fmt_el_name(ctx_hint.anchor)}' at ({anchor_rect['rect_left']}, {anchor_rect['rect_top']})")
 
@@ -563,7 +564,6 @@ class _ActionsMixin:
                 )
                 if container_xpath:
                     # Re-snapshot and filter to elements within the container xpath.
-                    from .js_scripts import SNAPSHOT_JS as _SNAP
                     all_els = await self._snapshot(page, mode, [t.lower() for t in search_texts])
                     container_elements = [
                         e for e in all_els
