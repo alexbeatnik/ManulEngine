@@ -1,9 +1,9 @@
 import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-from manul_engine.scoring import DOMScorer, WEIGHTS, SCALE
+from manul_engine.scoring import DOMScorer
 
 # ─────────────────────────────────────────────────────────────────────────────
-# ATTRIBUTE SEMANTIC KEYWORD MATCH LAB — 30 tests
+# ATTRIBUTE SEMANTIC KEYWORD MATCH LAB — 31 scenarios / 34 assertions
 #
 # Validates that elements whose visible text is unrelated (e.g. a badge
 # count "2") but whose html_id, class_name, or data_qa contain semantic
@@ -348,7 +348,22 @@ def _test_id_underscores():
     _assert(score >= 10_000, f"id underscore semantic ≥ 10k, got {score}")
 
 
-# ── 17: False positive resistance — unrelated class ──────────────────────────
+# ── 17: camelCase class_name matches multi-word search ───────────────────────
+
+def _test_camel_case_class():
+    print("\n── className='shoppingCartLink' semantic match ──")
+    el = _make_el(
+        name="2",
+        class_name="shoppingCartLink",
+        tag_name="a",
+    )
+    scorer = _make_scorer()
+    results = scorer.score_all([el])
+    score = results[0]["score"]
+    _assert(score >= 10_000, f"camelCase cart ≥ 10k, got {score}")
+
+
+# ── 18: False positive resistance — unrelated class ──────────────────────────
 
 def _test_false_positive_unrelated():
     print("\n── Unrelated class 'footer_links' should NOT score high ──")
@@ -363,7 +378,7 @@ def _test_false_positive_unrelated():
     _assert(score < 10_000, f"unrelated class < 10k, got {score}")
 
 
-# ── 18: False positive — "cart" as substring of unrelated word ────────────────
+# ── 19: False positive — "cart" as substring of unrelated word ────────────────
 
 def _test_false_positive_substring():
     print("\n── 'cartography_section' should not get full cart boost ──")
@@ -383,7 +398,7 @@ def _test_false_positive_substring():
     _assert(score < 10_000, f"cartography false positive < 10k, got {score}")
 
 
-# ── 19: Hidden cart element gets penalty ──────────────────────────────────────
+# ── 20: Hidden cart element gets penalty ──────────────────────────────────────
 
 def _test_hidden_cart():
     print("\n── Hidden cart gets ×0.1 penalty ──")
@@ -406,7 +421,7 @@ def _test_hidden_cart():
     _assert(score < visible_score, f"hidden ({score}) < visible ({visible_score})")
 
 
-# ── 20: SauceDemo-style cart — realistic scenario ─────────────────────────────
+# ── 21: SauceDemo-style cart — realistic scenario ─────────────────────────────
 
 def _test_saucedemo_cart():
     print("\n── SauceDemo: <a class='shopping_cart_link'><span class='shopping_cart_badge'>2</span></a> ──")
@@ -430,7 +445,7 @@ def _test_saucedemo_cart():
     _assert(results[0]["id"] == 1, f"<a> cart wins over <span> badge, top id={results[0]['id']}")
 
 
-# ── 21: Wishlist icon — "wish_list" class ─────────────────────────────────────
+# ── 22: Wishlist icon — "wish_list" class ─────────────────────────────────────
 
 def _test_wishlist():
     print("\n── Wishlist: class=wish_list_icon ──")
@@ -449,7 +464,7 @@ def _test_wishlist():
     _assert(score >= 10_000, f"wish_list ≥ 10k, got {score}")
 
 
-# ── 22: Close button — "close_modal_btn" ─────────────────────────────────────
+# ── 23: Close button — "close_modal_btn" ─────────────────────────────────────
 
 def _test_close_modal():
     print("\n── Close button: id=close_modal_btn, text 'X' ──")
@@ -468,7 +483,7 @@ def _test_close_modal():
     _assert(score >= 10_000, f"close_modal ≥ 10k, got {score}")
 
 
-# ── 23: Add-to-cart button with data-qa and competing text ───────────────────
+# ── 24: Add-to-cart button with data-qa and competing text ───────────────────
 
 def _test_add_to_cart_data_qa_wins():
     print("\n── data-qa='add-to-cart' beats text-only match ──")
@@ -494,7 +509,7 @@ def _test_add_to_cart_data_qa_wins():
     _assert(results[0]["id"] == 1, f"data-qa btn wins, top id={results[0]['id']}")
 
 
-# ── 24: Attribute match + mode synergy compound ──────────────────────────────
+# ── 25: Attribute match + mode synergy compound ──────────────────────────────
 
 def _test_attr_plus_mode_synergy():
     print("\n── Attribute match + link mode synergy compound ──")
@@ -516,7 +531,7 @@ def _test_attr_plus_mode_synergy():
     _assert(results[0]["id"] == 1, f"<a> link beats <div>, top id={results[0]['id']}")
 
 
-# ── 25: Three-word search term — "add to cart" ───────────────────────────────
+# ── 26: Three-word search term — "add to cart" ───────────────────────────────
 
 def _test_three_word_class():
     print("\n── 3-word: 'Add to cart' vs class 'add_to_cart_btn' ──")
@@ -536,7 +551,7 @@ def _test_three_word_class():
     _assert(score >= 10_000, f"add_to_cart_btn ≥ 10k, got {score}")
 
 
-# ── 26: Attribute match should NOT set is_perfect ─────────────────────────────
+# ── 27: Attribute match should NOT set is_perfect ─────────────────────────────
 
 def _test_not_perfect_text():
     print("\n── Attribute semantic match does not trigger is_perfect ──")
@@ -552,7 +567,7 @@ def _test_not_perfect_text():
     _assert(text_score > 0.3, f"text_score > 0.3, got {text_score:.4f}")
 
 
-# ── 27: Class with only one matching word gives partial coverage ──────────────
+# ── 28: Class with only one matching word gives partial coverage ──────────────
 
 def _test_single_word_partial():
     print("\n── Partial: class='shopping_deals' vs 'Shopping cart' ──")
@@ -573,7 +588,7 @@ def _test_single_word_partial():
     _assert(text_score < full_score, f"partial {text_score:.4f} < full {full_score:.4f}")
 
 
-# ── 28: Both ID and class match — stacking ───────────────────────────────────
+# ── 29: Both ID and class match — stacking ───────────────────────────────────
 
 def _test_id_and_class_stack():
     print("\n── ID + class both contain keywords — score stacks ──")
@@ -604,7 +619,7 @@ def _test_id_and_class_stack():
     _assert(results[0]["id"] == 1, f"both ID+class wins, top id={results[0]['id']}")
 
 
-# ── 29: Checkout keyword — single word in class ──────────────────────────────
+# ── 30: Checkout keyword — single word in class ──────────────────────────────
 
 def _test_checkout_class():
     print("\n── 'Checkout' in class='checkout_proceed_btn' ──")
@@ -623,7 +638,7 @@ def _test_checkout_class():
     _assert(score >= 10_000, f"checkout class ≥ 10k, got {score}")
 
 
-# ── 30: "Login" in input mode — class="login_form_email" ─────────────────────
+# ── 31: "Login" in input mode — class="login_form_email" ─────────────────────
 
 def _test_login_input_class():
     print("\n── Input mode: class='login_email_field' vs 'Login email' ──")
@@ -653,7 +668,7 @@ async def run_suite() -> None:
 def _run() -> tuple[int, int]:
     global _PASS, _FAIL
     _PASS = _FAIL = 0
-    print("\n🧪 ATTRIBUTE SEMANTIC KEYWORD MATCH LAB (30 tests)")
+    print("\n🧪 ATTRIBUTE SEMANTIC KEYWORD MATCH LAB (31 scenarios / 34 assertions)")
     _test_cart_class_badge_text()            # 1
     _test_cart_id()                          # 2
     _test_cart_data_qa()                     # 3
@@ -670,20 +685,21 @@ def _run() -> tuple[int, int]:
     _test_checkout_vs_cart()                   # 14
     _test_data_qa_dashes()                    # 15
     _test_id_underscores()                    # 16
-    _test_false_positive_unrelated()          # 17
-    _test_false_positive_substring()          # 18
-    _test_hidden_cart()                       # 19
-    _test_saucedemo_cart()                    # 20
-    _test_wishlist()                          # 21
-    _test_close_modal()                       # 22
-    _test_add_to_cart_data_qa_wins()          # 23
-    _test_attr_plus_mode_synergy()            # 24
-    _test_three_word_class()                  # 25
-    _test_not_perfect_text()                  # 26
-    _test_single_word_partial()               # 27
-    _test_id_and_class_stack()                # 28
-    _test_checkout_class()                    # 29
-    _test_login_input_class()                 # 30
+    _test_camel_case_class()                  # 17
+    _test_false_positive_unrelated()          # 18
+    _test_false_positive_substring()          # 19
+    _test_hidden_cart()                       # 20
+    _test_saucedemo_cart()                    # 21
+    _test_wishlist()                          # 22
+    _test_close_modal()                       # 23
+    _test_add_to_cart_data_qa_wins()          # 24
+    _test_attr_plus_mode_synergy()            # 25
+    _test_three_word_class()                  # 26
+    _test_not_perfect_text()                  # 27
+    _test_single_word_partial()               # 28
+    _test_id_and_class_stack()                # 29
+    _test_checkout_class()                    # 30
+    _test_login_input_class()                 # 31
     total = _PASS + _FAIL
     print(f"\n{'='*60}")
     print(f"📊 SCORE: {_PASS}/{total} passed")

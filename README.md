@@ -513,8 +513,8 @@ Representative coverage areas include:
 
 - **Attribute-semantic icon matching:** `DOMScorer` now gives a strong text-channel boost when search-term words appear as discrete tokens in `html_id`, `class_name`, or `data_qa`. This fixes cart-style UI targets where visible text is only a numeric badge (`"2"`) but the surrounding link or icon carries semantics like `shopping_cart_link` or `shopping_cart_container`.
 - **Better functional-icon coverage:** shopping cart, basket, notification bell, menu, wishlist, checkout, close-modal, and similar icon-only controls now resolve more reliably without requiring visible label text, while still resisting token-boundary false positives like `cartography_section`.
-- **New regression suite:** added `test_46_attribute_semantic.py` with 33 assertions focused on attribute-semantic matching, partial coverage, false-positive resistance, and SauceDemo-style cart badges.
-- Total test assertions: 2493 across 47 suites.
+- **New regression suite:** added `test_46_attribute_semantic.py` with 34 assertions focused on attribute-semantic matching, camelCase developer attributes, partial coverage, false-positive resistance, and SauceDemo-style cart badges.
+- Total test assertions: 2494 across 47 suites.
 
 ## License
 
