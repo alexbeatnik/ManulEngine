@@ -96,11 +96,11 @@ manul_engine/
     test_21_dynamic_vars.py    CALL PYTHON ... into {var} dynamic variable capture
     test_22_tags.py            @tags: / --tags CLI filter (20 assertions, no browser)
     test_23_advanced_interactions.py  PRESS/RIGHT CLICK/UPLOAD/explicit wait commands (58 assertions, no browser)
-    test_24_reporting.py       StepResult/MissionResult/RunSummary dataclasses (45 assertions)
+    test_24_reporting.py       StepResult/MissionResult/RunSummary dataclasses (53 assertions)
     test_25_reporter.py        HTML report generator (65 assertions, no browser)
     test_26_wikipedia_search.py  name_attr heuristic scoring (20 assertions, no browser)
     test_27_lifecycle_hooks.py   Global Lifecycle Hook system (57 assertions, no browser)
-    test_28_logical_steps.py     Logical STEP ordering and parser (48 assertions, no browser)
+    test_28_logical_steps.py     Logical STEP ordering and parser (58 assertions, no browser)
     test_29_iframe_routing.py    Cross-frame element resolution (25 assertions)
     test_30_heuristic_weights.py DOMScorer priority hierarchy (32 assertions)
     test_31_visibility_treewalker.py TreeWalker PRUNE/checkVisibility (20 assertions)
@@ -111,7 +111,7 @@ manul_engine/
     test_36_scoring_math.py      Exact numerical scoring validation (29 assertions, no browser)
     test_37_enterprise_dsl.py    Enterprise DSL: @data:, MOCK, VERIFY VISUAL/SOFTLY, explicit waits, reporter warnings (75 assertions, no browser)
     test_38_set_and_indent.py    SET command & indentation robustness (v0.0.9.2)
-    test_39_open_app.py          OPEN APP command — classify_step, _handle_open_app (35 assertions, no browser)
+    test_39_open_app.py          OPEN APP command — classify_step, _handle_open_app (41 assertions, no browser)
     test_40_self_healing_cache.py Self-Healing Controls Cache (16 assertions)
     test_41_recorder.py          Semantic Test Recorder JS bridge + DSL generator + step aggregation (no browser)
     test_42_scheduler.py         Built-in Scheduler — parse_schedule, next_run_delay, ParsedHunt integration (51 assertions, no browser)
@@ -119,7 +119,7 @@ manul_engine/
     test_44_explain_mode.py      DOMScorer explain output, channel breakdown, --explain CLI flag (33 assertions, no browser)
     test_45_api.py               ManulSession public Python API facade (50 assertions, no browser)
     test_46_attribute_semantic.py Attribute-semantic icon matching, camelCase dev attrs, cart badges, false-positive resistance (34 assertions, no browser)
-    test_47_contextual_proximity.py Contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser coverage (62 assertions, no browser)
+    test_47_contextual_proximity.py Contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser coverage (65 assertions, no browser)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns

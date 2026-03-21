@@ -563,12 +563,55 @@ class _ActionsMixin:
                     row_xpath,
                 )
                 if container_xpath:
-                    # Re-snapshot and filter to elements within the container xpath.
+                    # Re-snapshot and keep only real DOM descendants of the resolved
+                    # container. Prefix checks on snapshot xpaths are brittle because
+                    # SNAPSHOT_JS may emit id-based xpaths like //*[@id="..."] for
+                    # descendants, which do not share the container's absolute prefix.
                     all_els = await self._snapshot(page, mode, [t.lower() for t in search_texts])
-                    container_elements = [
+                    container_frame_index = row_el.get("frame_index", 0)
+                    frame_candidates = [
                         e for e in all_els
-                        if e.get("xpath", "").startswith(container_xpath)
+                        if e.get("frame_index", 0) == container_frame_index and e.get("xpath")
                     ]
+                    candidate_xpaths = list(dict.fromkeys(
+                        str(e.get("xpath", "")) for e in frame_candidates if e.get("xpath")
+                    ))
+                    try:
+                        contained_xpaths = await self._frame_for(page, row_el).evaluate(
+                            """({ containerXPath, candidateXPaths }) => {
+                                const resolve = xp => document.evaluate(
+                                    xp,
+                                    document,
+                                    null,
+                                    XPathResult.FIRST_ORDERED_NODE_TYPE,
+                                    null,
+                                ).singleNodeValue;
+                                const container = resolve(containerXPath);
+                                if (!container) return [];
+                                const matches = [];
+                                for (const xp of candidateXPaths) {
+                                    const node = resolve(xp);
+                                    if (node && (node === container || container.contains(node))) {
+                                        matches.push(xp);
+                                    }
+                                }
+                                return matches;
+                            }""",
+                            {
+                                "containerXPath": container_xpath,
+                                "candidateXPaths": candidate_xpaths,
+                            },
+                        )
+                        contained_xpath_set = set(contained_xpaths or [])
+                        container_elements = [
+                            e for e in frame_candidates
+                            if e.get("xpath", "") in contained_xpath_set
+                        ]
+                    except Exception:
+                        container_elements = [
+                            e for e in frame_candidates
+                            if e.get("xpath", "").startswith(container_xpath)
+                        ]
                     print(f"    📦 INSIDE container: {len(container_elements)} elements in row containing '{ctx_hint.row_text}'")
 
         if ctx_hint.kind in ("on_header", "on_footer"):
