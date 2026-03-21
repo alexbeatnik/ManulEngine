@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.13 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.14 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -812,7 +812,7 @@ The published extension provides:
 
 ---
 
-**Version:** 0.0.9.13
+**Version:** 0.0.9.14
 
 **Codename:** Contextual UI Navigator
 

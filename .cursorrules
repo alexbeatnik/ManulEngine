@@ -57,13 +57,13 @@ Follow these rules before generating code, documentation, architecture notes, or
 - When generating `pip install` commands, pin the exact version, for example:
 
 ```bash
-pip install manul-engine==0.0.9.13
+pip install manul-engine==0.0.9.14
 ```
 
 - If the AI extra is needed, pin that exact version too:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.13"
+pip install "manul-engine[ai]==0.0.9.14"
 ```
 
 - Do not suggest floating installs such as `pip install manul-engine` when version pinning is required by context.
