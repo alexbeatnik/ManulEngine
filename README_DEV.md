@@ -786,6 +786,6 @@ The published extension provides:
 
 **Version:** 0.0.9.12
 
-**Codename:** JIT Module Loading
+**Codename:** Attribute-Semantic Matching
 
 **Status:** Hunting...

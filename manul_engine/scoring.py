@@ -142,6 +142,7 @@ class DOMScorer:
 
         # Pre-compute search terms once
         self._terms: list[_SearchTerm] = [_SearchTerm(t) for t in search_texts]
+        self._has_term_words: bool = any(term.words for term in self._terms)
 
         # Pre-compute step-level features (once per invocation)
         self._target_words:   frozenset[str] = frozenset(_RE_WORD_BOUNDARY_3.findall(self._step_l))
@@ -195,10 +196,13 @@ class DOMScorer:
         el["_name_attr"]  = str(el.get("name_attr", "")).lower()
         el["_label_for"]  = str(el.get("label_for", "")).lower()
         el["_dev_names"]  = f"{el['_html_id']} {el['_class_name']} {el['_data_qa']}"
-        dev_pool = f"{raw_html_id} {raw_class_name} {raw_data_qa}"
-        dev_pool = _RE_DEV_BOUNDARIES.sub(" ", dev_pool)
-        dev_pool = _RE_DELIMITERS.sub(" ", dev_pool).lower()
-        el["_dev_tokens"] = frozenset(_RE_WORD_3.findall(dev_pool))
+        if self._has_term_words:
+            dev_pool = f"{raw_html_id} {raw_class_name} {raw_data_qa}"
+            dev_pool = _RE_DEV_BOUNDARIES.sub(" ", dev_pool)
+            dev_pool = _RE_DELIMITERS.sub(" ", dev_pool).lower()
+            el["_dev_tokens"] = frozenset(_RE_WORD_3.findall(dev_pool))
+        else:
+            el["_dev_tokens"] = frozenset()
 
         # Name decomposition
         name = el["_name"]

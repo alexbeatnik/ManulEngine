@@ -6,7 +6,7 @@
 
 ```json
 {
-  "version": "0.0.9.11",
+  "version": "0.0.9.12",
   "generatedFrom": "manul_engine/helpers.py :: classify_step(), detect_mode(); manul_engine/core.py :: run_mission(); manul_engine/cli.py :: parse_hunt_file(); manul_engine/actions.py :: _ActionsMixin",
   "commands": [
     {
