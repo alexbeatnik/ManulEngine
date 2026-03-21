@@ -8,6 +8,7 @@
 > 1. `README.md` — public-facing feature docs and version footer
 > 2. `README_DEV.md` — internal architecture docs and version title/footer
 > 3. `.github/copilot-instructions.md` — AI training context and syntax rules
+> 4. `.cursorrules` — repo-local assistant guidance, pinned version examples, and install commands
 >
 > A feature that appears in one file but not the others is a documentation bug.
 > This `.github/copilot-instructions.md` file is the single canonical source of Copilot/LLM instructions for this repository. Any mirrored copies used by tooling or templates must reference this file or be kept byte-for-byte in sync as generated artifacts.
@@ -60,7 +61,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.11
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.12
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession
   api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)
@@ -117,6 +118,7 @@ manul_engine/
     test_43_scoped_variables.py  ScopedVariables 4-level hierarchy, scope isolation, dict compat (43 assertions, no browser)
     test_44_explain_mode.py      DOMScorer explain output, channel breakdown, --explain CLI flag (33 assertions, no browser)
     test_45_api.py               ManulSession public Python API facade (50 assertions, no browser)
+    test_46_attribute_semantic.py Attribute-semantic icon matching, camelCase dev attrs, cart badges, false-positive resistance (34 assertions, no browser)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
@@ -733,5 +735,6 @@ When the version changes, **ALL** of the following files must be updated:
 | `README.md` | `**Version:** X.Y.Z` in the footer |
 | `README_DEV.md` | Title `# 😼 ManulEngine vX.Y.Z`, pyproject.toml ref, lifecycle/test suite lists, footer `**Version:** X.Y.Z` |
 | `.github/copilot-instructions.md` | Version in the repo layout section (this file) |
+| `.cursorrules` | Version examples and pinned `pip install` commands under `## 3. Versioning and Dependencies` |
 
 Companion VS Code extension versioning and Marketplace release notes are maintained in the separate extension repository.

@@ -48,6 +48,7 @@ _RE_RAD_DEV         = re.compile(r"\brad\b|-rad|rad-|radio")
 _RE_SEL_DEV         = re.compile(r"\bsel\b|-sel|sel-|select|\bdrop\b|-drop|drop-|\bcmb\b|-cmb|cmb-|combo")
 _RE_OPTIONS         = re.compile(r"\[(.*?)\]")
 _RE_DELIMITERS      = re.compile(r"[-_]")
+_RE_DEV_BOUNDARIES  = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])")
 _RE_BUTTON          = re.compile(r"\bbutton\b")
 _RE_LINK            = re.compile(r"\blink\b")
 _RE_IMAGE           = re.compile(r"\bimage\b|\bimg\b|\bpicture\b|\bphoto\b")
@@ -141,6 +142,7 @@ class DOMScorer:
 
         # Pre-compute search terms once
         self._terms: list[_SearchTerm] = [_SearchTerm(t) for t in search_texts]
+        self._has_term_words: bool = any(term.words for term in self._terms)
 
         # Pre-compute step-level features (once per invocation)
         self._target_words:   frozenset[str] = frozenset(_RE_WORD_BOUNDARY_3.findall(self._step_l))
@@ -177,13 +179,16 @@ class DOMScorer:
         with the original SNAPSHOT_JS payload.
         """
         sl = self._safe_lower
+        raw_data_qa = str(el.get("data_qa", ""))
+        raw_html_id = str(el.get("html_id", ""))
+        raw_class_name = str(el.get("class_name", ""))
 
         el["_name"]       = sl(el.get("name", ""))
         el["_tag"]        = el.get("tag_name", "")
         el["_itype"]      = el.get("input_type", "")
-        el["_data_qa"]    = sl(el.get("data_qa", ""))
-        el["_html_id"]    = sl(el.get("html_id", ""))
-        el["_class_name"] = sl(el.get("class_name", ""))
+        el["_data_qa"]    = sl(raw_data_qa)
+        el["_html_id"]    = sl(raw_html_id)
+        el["_class_name"] = sl(raw_class_name)
         el["_icons"]      = sl(el.get("icon_classes", ""))
         el["_aria"]       = sl(el.get("aria_label", ""))
         el["_role"]       = sl(el.get("role", ""))
@@ -191,6 +196,13 @@ class DOMScorer:
         el["_name_attr"]  = str(el.get("name_attr", "")).lower()
         el["_label_for"]  = str(el.get("label_for", "")).lower()
         el["_dev_names"]  = f"{el['_html_id']} {el['_class_name']} {el['_data_qa']}"
+        if self._has_term_words:
+            dev_pool = f"{raw_html_id} {raw_class_name} {raw_data_qa}"
+            dev_pool = _RE_DEV_BOUNDARIES.sub(" ", dev_pool)
+            dev_pool = _RE_DELIMITERS.sub(" ", dev_pool).lower()
+            el["_dev_tokens"] = frozenset(_RE_WORD_3.findall(dev_pool))
+        else:
+            el["_dev_tokens"] = frozenset()
 
         # Name decomposition
         name = el["_name"]
@@ -318,6 +330,21 @@ class DOMScorer:
                     score += 0.0375     # 3k / 80k
                 elif len(name_attr) >= 3 and (tl in name_attr or name_attr in tl):
                     score += 0.0125     # 1k / 80k
+
+            # ── Attribute semantic keyword match ──────────────────
+            # Strong signal when search-term words appear as discrete
+            # tokens in developer-facing attributes (html_id, class_name,
+            # data_qa), including camelCase identifiers. Catches functional icons/links whose visible
+            # text is unrelated (e.g. cart icon showing badge count "2"
+            # with class="shopping_cart_link").
+            if term.words:
+                _matched = term.words & el["_dev_tokens"]
+                if _matched:
+                    coverage = len(_matched) / len(term.words)
+                    if coverage >= 1.0:
+                        score += 0.375 if len(term.words) >= 2 else 0.1875
+                    elif coverage >= 0.5:
+                        score += 0.1875 * coverage
 
         return score, is_perfect
 
