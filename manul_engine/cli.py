@@ -22,6 +22,42 @@ from typing import NamedTuple
 
 from .reporting import StepResult, MissionResult, RunSummary, append_run_history
 
+
+# ── CLI flag extraction helpers ──────────────────────────────────────────────
+def _pop_flag(args: list[str], flag: str) -> tuple[str | None, list[str]]:
+    """Extract a ``--flag value`` pair from *args*.
+
+    Returns ``(value, remaining_args)`` when *flag* is present, or
+    ``(None, args)`` when absent.  Exits with an error if the flag is
+    present but no value follows.
+    """
+    if flag not in args:
+        return None, args
+    idx = args.index(flag)
+    if idx + 1 >= len(args):
+        print(f"Error: {flag} requires a value.", file=sys.stderr)
+        sys.exit(1)
+    value = args[idx + 1]
+    remaining = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+    return value, remaining
+
+
+def _pop_int_flag(args: list[str], flag: str, *, minimum: int = 0) -> tuple[int | None, list[str]]:
+    """Extract a ``--flag N`` pair and parse *N* as an integer.
+
+    Returns ``(int_value, remaining_args)`` or ``(None, args)`` if absent.
+    Exits with a descriptive error when the value is not a valid integer.
+    """
+    raw, remaining = _pop_flag(args, flag)
+    if raw is None:
+        return None, remaining
+    try:
+        return max(minimum, int(raw)), remaining
+    except ValueError:
+        print(f"Error: {flag} value must be an integer, got '{raw}'.", file=sys.stderr)
+        sys.exit(1)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 _USAGE = """
 Usage:
@@ -525,45 +561,35 @@ async def main() -> None:
 
     # Extract --break-lines <n,n,...> flag (gutter breakpoints from VS Code).
     break_lines: set[int] = set()
-    if "--break-lines" in args:
-        idx = args.index("--break-lines")
-        if idx + 1 >= len(args):
-            print("Error: --break-lines requires a value (comma-separated line numbers).", file=sys.stderr)
-            sys.exit(1)
+    _bl_raw, args = _pop_flag(args, "--break-lines")
+    if _bl_raw is not None:
         try:
-            break_lines = {int(x.strip()) for x in args[idx + 1].split(",") if x.strip()}
+            break_lines = {int(x.strip()) for x in _bl_raw.split(",") if x.strip()}
         except ValueError:
             print("Error: --break-lines values must be integers.", file=sys.stderr)
             sys.exit(1)
-        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+
     # Extract --browser <name> flag
     _VALID_BROWSERS = {"chromium", "firefox", "webkit", "electron"}
     browser: str | None = None
-    if "--browser" in args:
-        idx = args.index("--browser")
-        if idx + 1 >= len(args):
-            print("Error: --browser requires a browser name (chromium, firefox, webkit, electron).", file=sys.stderr)
-            sys.exit(1)
-        raw_candidate = args[idx + 1]
-        candidate = raw_candidate.strip().lower()
+    _browser_raw, args = _pop_flag(args, "--browser")
+    if _browser_raw is not None:
+        candidate = _browser_raw.strip().lower()
         if candidate not in _VALID_BROWSERS:
-            print(f"Error: unsupported browser '{raw_candidate}'. Allowed: chromium, firefox, webkit, electron.", file=sys.stderr)
+            print(f"Error: unsupported browser '{_browser_raw}'. Allowed: chromium, firefox, webkit, electron.", file=sys.stderr)
             sys.exit(1)
         browser = candidate
-        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+
     # Extract --executable-path <path> flag
     executable_path: str | None = None
-    if "--executable-path" in args:
-        idx = args.index("--executable-path")
-        if idx + 1 >= len(args):
-            print("Error: --executable-path requires a file path.", file=sys.stderr)
-            sys.exit(1)
-        executable_path = args[idx + 1].strip()
+    _ep_raw, args = _pop_flag(args, "--executable-path")
+    if _ep_raw is not None:
+        executable_path = _ep_raw.strip()
         if not executable_path:
             print("Error: --executable-path value cannot be empty.", file=sys.stderr)
             sys.exit(1)
         os.environ["MANUL_EXECUTABLE_PATH"] = executable_path
-        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+
     # Extract --workers <n> flag
     # prompts.py (which maps JSON → env vars) hasn't been imported yet at this
     # point, so read 'workers' from the JSON config file directly.
@@ -587,17 +613,9 @@ async def main() -> None:
                 workers = max(1, int(_env_workers_stripped))
             except ValueError:
                 pass  # fall back to JSON/default value
-    if "--workers" in args:
-        idx = args.index("--workers")
-        if idx + 1 >= len(args):
-            print("Error: --workers requires a number.", file=sys.stderr)
-            sys.exit(1)
-        try:
-            workers = max(1, int(args[idx + 1]))
-        except ValueError:
-            print(f"Error: --workers value must be an integer, got '{args[idx + 1]}'.", file=sys.stderr)
-            sys.exit(1)
-        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+    _cli_workers, args = _pop_int_flag(args, "--workers", minimum=1)
+    if _cli_workers is not None:
+        workers = _cli_workers
     # --debug and --break-lines require interactive stdio and must run sequentially.
     # Passing them to parallel subprocess workers would cause stdin hangs; enforce
     # workers=1 automatically and warn the user if they requested more.
@@ -611,43 +629,27 @@ async def main() -> None:
 
     # Extract --tags <tag1,tag2,...> filter
     filter_tags: set[str] = set()
-    if "--tags" in args:
-        idx = args.index("--tags")
-        if idx + 1 >= len(args):
-            print("Error: --tags requires a value (comma-separated tag names).", file=sys.stderr)
-            sys.exit(1)
-        filter_tags = {t.strip() for t in args[idx + 1].split(",") if t.strip()}
-        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+    _tags_raw, args = _pop_flag(args, "--tags")
+    if _tags_raw is not None:
+        filter_tags = {t.strip() for t in _tags_raw.split(",") if t.strip()}
 
     # Extract --retries <N> flag
     # Priority: CLI flag > MANUL_RETRIES env var > JSON config > 0
     from . import prompts as _prompts_cli
     retries: int = _prompts_cli.RETRIES
-    if "--retries" in args:
-        idx = args.index("--retries")
-        if idx + 1 >= len(args):
-            print("Error: --retries requires a number.", file=sys.stderr)
-            sys.exit(1)
-        try:
-            retries = max(0, int(args[idx + 1]))
-        except ValueError:
-            print(f"Error: --retries value must be an integer, got '{args[idx + 1]}'.", file=sys.stderr)
-            sys.exit(1)
-        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+    _cli_retries, args = _pop_int_flag(args, "--retries", minimum=0)
+    if _cli_retries is not None:
+        retries = _cli_retries
 
     # Extract --screenshot <mode> flag (on-fail | always | none)
     screenshot_mode: str = _prompts_cli.SCREENSHOT
-    if "--screenshot" in args:
-        idx = args.index("--screenshot")
-        if idx + 1 >= len(args):
-            print("Error: --screenshot requires a mode (on-fail, always, none).", file=sys.stderr)
-            sys.exit(1)
-        _ss_candidate = args[idx + 1].strip().lower()
+    _ss_raw, args = _pop_flag(args, "--screenshot")
+    if _ss_raw is not None:
+        _ss_candidate = _ss_raw.strip().lower()
         if _ss_candidate not in ("on-fail", "always", "none"):
-            print(f"Error: --screenshot mode must be on-fail, always, or none; got '{args[idx + 1]}'.", file=sys.stderr)
+            print(f"Error: --screenshot mode must be on-fail, always, or none; got '{_ss_raw}'.", file=sys.stderr)
             sys.exit(1)
         screenshot_mode = _ss_candidate
-        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
 
     # Merge --html-report with config/env
     if not html_report:

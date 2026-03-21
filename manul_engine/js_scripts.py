@@ -5,6 +5,65 @@ JavaScript constants injected into the browser page.
 All page-level JS lives here to keep Python modules focused on logic.
 """
 
+# ── Debug Modal ───────────────────────────────────────────────────────────────
+# A lightweight floating panel injected into the live page during debug pauses.
+# Shows the step text and an ✕ Abort button that sets window.__manul_debug_action.
+
+DEBUG_MODAL_JS: str = """(stepText) => {
+    const old = document.getElementById('manul-debug-modal');
+    if (old) old.remove();
+    window.__manul_debug_action = null;
+
+    const modal = document.createElement('div');
+    modal.id = 'manul-debug-modal';
+    modal.style.cssText = [
+        'position:fixed', 'top:12px', 'right:12px', 'z-index:2147483647',
+        'background:#1e1e2e', 'color:#cdd6f4',
+        'border:2px solid #89b4fa', 'border-radius:8px',
+        'padding:14px 40px 14px 16px',
+        'font-family:monospace', 'font-size:13px',
+        'max-width:420px', 'word-break:break-all',
+        'box-shadow:0 4px 24px rgba(0,0,0,.55)',
+        'pointer-events:all', 'user-select:none',
+    ].join(';');
+
+    const label = document.createElement('div');
+    label.style.cssText = 'font-weight:bold;color:#89b4fa;margin-bottom:6px;font-size:11px;letter-spacing:.06em;';
+    label.textContent = '\\uD83D\\uDC3E MANUL DEBUG PAUSE';
+
+    const text = document.createElement('div');
+    text.style.cssText = 'line-height:1.5;';
+    text.textContent = stepText;
+
+    const btn = document.createElement('button');
+    btn.id = 'manul-debug-abort';
+    btn.textContent = '\\u2715';
+    btn.title = 'Abort test run';
+    btn.style.cssText = [
+        'position:absolute', 'top:8px', 'right:8px',
+        'background:transparent', 'border:none',
+        'color:#a6adc8', 'font-size:16px', 'font-weight:bold',
+        'cursor:pointer', 'line-height:1', 'padding:2px 6px',
+        'border-radius:4px', 'transition:background .15s,color .15s',
+    ].join(';');
+    btn.onmouseover = () => { btn.style.background='#f38ba8'; btn.style.color='#1e1e2e'; };
+    btn.onmouseout  = () => { btn.style.background='transparent'; btn.style.color='#a6adc8'; };
+    btn.addEventListener('click', () => { window.__manul_debug_action = 'ABORT'; });
+
+    modal.appendChild(label);
+    modal.appendChild(text);
+    modal.appendChild(btn);
+    document.body.appendChild(modal);
+}"""
+
+DEBUG_REMOVE_MODAL_JS: str = """() => {
+    const m = document.getElementById('manul-debug-modal');
+    if (m) m.remove();
+    window.__manul_debug_action = null;
+}"""
+
+# ── DOM Helpers ───────────────────────────────────────────────────────────────
+
 FIND_CONTAINER_XPATH_JS = """(xpath) => {
     const res = document.evaluate(
         xpath,
