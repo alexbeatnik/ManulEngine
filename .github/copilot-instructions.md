@@ -8,6 +8,7 @@
 > 1. `README.md` — public-facing feature docs and version footer
 > 2. `README_DEV.md` — internal architecture docs and version title/footer
 > 3. `.github/copilot-instructions.md` — AI training context and syntax rules
+> 4. `.cursorrules` — repo-local assistant guidance, pinned version examples, and install commands
 >
 > A feature that appears in one file but not the others is a documentation bug.
 > This `.github/copilot-instructions.md` file is the single canonical source of Copilot/LLM instructions for this repository. Any mirrored copies used by tooling or templates must reference this file or be kept byte-for-byte in sync as generated artifacts.
