@@ -119,7 +119,7 @@ manul_engine/
     test_44_explain_mode.py      DOMScorer explain output, channel breakdown, --explain CLI flag (33 assertions, no browser)
     test_45_api.py               ManulSession public Python API facade (50 assertions, no browser)
     test_46_attribute_semantic.py Attribute-semantic icon matching, camelCase dev attrs, cart badges, false-positive resistance (34 assertions, no browser)
-    test_47_contextual_proximity.py Contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser coverage (65 assertions, no browser)
+    test_47_contextual_proximity.py Contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser coverage (67 assertions, no browser)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns

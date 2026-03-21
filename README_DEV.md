@@ -87,7 +87,7 @@ ManulEngine/
 │       ├── test_44_explain_mode.py   Unit: DOMScorer explain output, channel breakdown, --explain CLI flag (33 assertions, no browser)
 │       ├── test_45_api.py            Unit: ManulSession public Python API facade (50 assertions, no browser)
 │       ├── test_46_attribute_semantic.py Unit: attribute-semantic icon matching, camelCase dev attrs, cart badges, false-positive resistance (34 assertions, no browser)
-│       └── test_47_contextual_proximity.py Unit: contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser rules (65 assertions, no browser)
+│       └── test_47_contextual_proximity.py Unit: contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser rules (67 assertions, no browser)
 ├── controls/                         User-owned custom Python handlers (loaded from directories listed in `custom_modules_dirs` config)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
@@ -689,9 +689,9 @@ manul tests/mission.hunt
 
 ---
 
-## 🐾 Chaos Chamber Verified (2565 Tests)
+## 🐾 Chaos Chamber Verified (2567 Tests)
 
-The engine is battle-tested with **2565** synthetic DOM/unit tests across 48 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, visibility edge cases, attribute-semantic icon matching, camelCase developer attributes, and contextual UI disambiguation across repeated controls.
+The engine is battle-tested with **2567** synthetic DOM/unit tests across 48 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, visibility edge cases, attribute-semantic icon matching, camelCase developer attributes, and contextual UI disambiguation across repeated controls.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py`.

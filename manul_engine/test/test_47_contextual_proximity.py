@@ -434,6 +434,31 @@ def _test_proximity_weight_boosted():
             f"hint score ({score_with_hint}) > no-hint score ({score_no_hint})")
 
 
+def _test_ineffective_near_keeps_default_weight():
+    print("\n── NEAR without anchor keeps default proximity weight ──")
+    el = _make_el(id=1, name="Save", xpath="/html/body/div[1]/form[1]/button[1]")
+    hint = ContextualHint("near", "Missing Anchor", None)
+
+    scorer_hint = DOMScorer(
+        step="Click 'Save'", mode="clickable",
+        search_texts=["Save"], target_field=None,
+        is_blind=False, learned_elements={},
+        last_xpath="/html/body/div[1]/form[1]/button[2]",
+        contextual_hint=hint, anchor_rect=None,
+    )
+    scorer_no_hint = DOMScorer(
+        step="Click 'Save'", mode="clickable",
+        search_texts=["Save"], target_field=None,
+        is_blind=False, learned_elements={},
+        last_xpath="/html/body/div[1]/form[1]/button[2]",
+    )
+
+    score_hint = scorer_hint.score_all([dict(el)])[0]["score"]
+    score_no_hint = scorer_no_hint.score_all([dict(el)])[0]["score"]
+    _assert(score_hint == score_no_hint,
+            f"missing anchor keeps default weight: {score_hint} == {score_no_hint}")
+
+
 def _test_near_ranking_multiple_candidates():
     print("\n── NEAR: ranking 5 candidates by distance ──")
     anchor_rect = {"rect_top": 200, "rect_left": 300, "rect_bottom": 230, "rect_right": 400}
@@ -483,6 +508,23 @@ def _test_explain_includes_contextual_info():
     _assert(expl.get("ctx_kind") == "near", f"ctx_kind='near', got {expl.get('ctx_kind')!r}")
     _assert("ctx_prox_raw" in expl, f"explain has ctx_prox_raw, got keys={list(expl.keys())}")
     _assert(expl["ctx_prox_raw"] > 0, f"ctx_prox_raw > 0, got {expl['ctx_prox_raw']}")
+
+
+def _test_explain_contextual_channels_clamped():
+    print("\n── Explain mode clamps contextual channels to [0.0, 1.0] ──")
+    anchor_rect = {"rect_top": 100, "rect_left": 100, "rect_bottom": 130, "rect_right": 200}
+    el = _make_el(id=1, name="Save", rect_top=100, rect_left=100, rect_bottom=130, rect_right=200)
+    scorer = DOMScorer(
+        step="Click 'Save'", mode="clickable",
+        search_texts=["Save"], target_field=None,
+        is_blind=False, learned_elements={}, last_xpath=None,
+        explain=True,
+        contextual_hint=ContextualHint("near", "Anchor", None),
+        anchor_rect=anchor_rect,
+    )
+    expl = scorer.score_all([el])[0]["_explain"]
+    _assert(0.0 <= expl["proximity"] <= 1.0,
+            f"contextual proximity explain stays in [0,1], got {expl['proximity']}")
 
 
 def _test_explain_no_context():
@@ -644,10 +686,12 @@ def run_all():
 
     # Section 5: Weight boost & full scoring
     _test_proximity_weight_boosted()
+    _test_ineffective_near_keeps_default_weight()
     _test_near_ranking_multiple_candidates()
 
     # Section 6: Explain mode
     _test_explain_includes_contextual_info()
+    _test_explain_contextual_channels_clamped()
     _test_explain_no_context()
 
     # Section 7: Default fallback

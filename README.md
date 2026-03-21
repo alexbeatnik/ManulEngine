@@ -530,7 +530,7 @@ Representative coverage areas include:
 - **Contextual UI Navigator:** action steps can now carry spatial qualifiers such as `NEAR 'Anchor'`, `ON HEADER`, `ON FOOTER`, and `INSIDE 'Actions' row with 'John Doe'` to disambiguate repeated UI controls without leaving the DSL.
 - **Spatial snapshot data:** the browser snapshot now exports element rectangles and ancestor tag chains, enabling deterministic header/footer region matching and Euclidean proximity scoring against resolved anchor elements.
 - **Context-aware explainability:** explain output now reports contextual proximity reasoning so ambiguous-step debugging shows whether the winner came from row scoping, header/footer routing, or NEAR anchor bias.
-- **Focused regression lab:** added `test_47_contextual_proximity.py` with 62 assertions covering parser extraction, spatial ranking, container scoping, explain payloads, and edge cases for the new contextual DSL qualifiers.
+- **Focused regression lab:** added `test_47_contextual_proximity.py` with 67 assertions covering parser extraction, spatial ranking, container scoping, explain payloads, and edge cases for the new contextual DSL qualifiers.
 
 ## License
 

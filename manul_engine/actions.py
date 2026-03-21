@@ -6,7 +6,15 @@ import re
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
 from .helpers import extract_quoted, compact_log_field, SCROLL_WAIT, ACTION_WAIT, NAV_WAIT, detect_mode, parse_explicit_wait, parse_contextual_hint
-from .js_scripts import VISIBLE_TEXT_JS, EXTRACT_DATA_JS, DEEP_TEXT_JS, STATE_CHECK_JS, SCAN_JS
+from .js_scripts import (
+    VISIBLE_TEXT_JS,
+    EXTRACT_DATA_JS,
+    DEEP_TEXT_JS,
+    STATE_CHECK_JS,
+    SCAN_JS,
+    FIND_CONTAINER_XPATH_JS,
+    FILTER_CONTAINER_DESCENDANT_XPATHS_JS,
+)
 from . import prompts
 
 class _ActionsMixin:
@@ -533,33 +541,7 @@ class _ActionsMixin:
                 row_xpath = row_el.get("xpath", "")
                 # Walk up to find the container row (tr, li, div[role=row], or any table row ancestor).
                 container_xpath = await self._frame_for(page, row_el).evaluate(
-                    """(xpath) => {
-                        const res = document.evaluate(xpath, document, null,
-                            XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-                        let el = res.singleNodeValue;
-                        if (!el) return '';
-                        const ROW_TAGS = new Set(['TR', 'LI']);
-                        let curr = el.parentElement;
-                        while (curr && curr !== document.body) {
-                            if (ROW_TAGS.has(curr.tagName) ||
-                                curr.getAttribute('role') === 'row' ||
-                                (curr.tagName === 'DIV' && curr.dataset && curr.dataset.rowIndex !== undefined))
-                            {
-                                // Build xpath for this container
-                                const parts = [];
-                                let n = curr;
-                                while (n && n.nodeType === Node.ELEMENT_NODE) {
-                                    let idx = 1, sib = n.previousElementSibling;
-                                    while (sib) { if (sib.tagName === n.tagName) idx++; sib = sib.previousElementSibling; }
-                                    parts.unshift(n.tagName.toLowerCase() + '[' + idx + ']');
-                                    n = n.parentNode;
-                                }
-                                return '/' + parts.join('/');
-                            }
-                            curr = curr.parentElement;
-                        }
-                        return '';
-                    }""",
+                    FIND_CONTAINER_XPATH_JS,
                     row_xpath,
                 )
                 if container_xpath:
@@ -578,25 +560,7 @@ class _ActionsMixin:
                     ))
                     try:
                         contained_xpaths = await self._frame_for(page, row_el).evaluate(
-                            """({ containerXPath, candidateXPaths }) => {
-                                const resolve = xp => document.evaluate(
-                                    xp,
-                                    document,
-                                    null,
-                                    XPathResult.FIRST_ORDERED_NODE_TYPE,
-                                    null,
-                                ).singleNodeValue;
-                                const container = resolve(containerXPath);
-                                if (!container) return [];
-                                const matches = [];
-                                for (const xp of candidateXPaths) {
-                                    const node = resolve(xp);
-                                    if (node && (node === container || container.contains(node))) {
-                                        matches.push(xp);
-                                    }
-                                }
-                                return matches;
-                            }""",
+                            FILTER_CONTAINER_DESCENDANT_XPATHS_JS,
                             {
                                 "containerXPath": container_xpath,
                                 "candidateXPaths": candidate_xpaths,

@@ -660,6 +660,23 @@ class DOMScorer:
                 break
         return min(common_depth, 5) * 0.2
 
+    def _has_effective_context(self) -> bool:
+        """Return True when the contextual hint has usable resolved data.
+
+        Some hint kinds need additional runtime context to influence scoring
+        meaningfully. If that data is missing, score_all() should keep the
+        default proximity weight so a failed contextual lookup does not skew
+        ranking away from text/semantic signals.
+        """
+        kind = self._hint.kind
+        if not kind:
+            return False
+        if kind == "near":
+            return self._anchor_rect is not None
+        if kind == "inside":
+            return bool(self._container_id_set)
+        return True
+
     # ── Orchestrator ──────────────────────────────────────────────────
 
     def score_all(self, els: list[dict]) -> list[dict]:
@@ -669,16 +686,18 @@ class DOMScorer:
         dictionary, applies the penalty multiplier, and scales the result
         to the integer range expected by ``core.py``.
 
-        When a contextual proximity hint is active (NEAR, ON HEADER/FOOTER,
-        INSIDE), the proximity weight is boosted to 1.5 so spatial/region
-        signals strongly influence the final ranking.
+        When a contextual proximity hint is active and usable (NEAR with a
+        resolved anchor, ON HEADER/FOOTER, INSIDE with a resolved container),
+        the proximity weight is boosted to 1.5 so spatial/region signals
+        strongly influence the final ranking.
 
         When ``self._explain`` is True, each element dict receives an
         ``"_explain"`` key containing the per-channel score breakdown.
         """
         w = dict(WEIGHTS)  # shallow copy — may be mutated for contextual boost
-        if self._hint.kind:
-            w["proximity"] = 1.5  # boost from default 0.10 when contextual hint active
+        effective_context = self._has_effective_context()
+        if effective_context:
+            w["proximity"] = 1.5  # boost from default 0.10 when contextual hint is effective
 
         scale = SCALE
 
@@ -707,12 +726,15 @@ class DOMScorer:
 
             if self._explain:
                 _max = MAX_THEORETICAL_SCORE
+                def _norm(weighted_channel: float) -> float:
+                    return round(min(weighted_channel * scale / _max, 1.0), 3)
+
                 explain_dict: dict = {
-                    "text":       round(text_score * w["text"] * scale / _max, 3),
-                    "attributes": round(attr_score * w["attributes"] * scale / _max, 3),
-                    "semantics":  round(sem_score * w["semantics"] * scale / _max, 3),
-                    "proximity":  round(prox_score * w["proximity"] * scale / _max, 3),
-                    "cache":      round(cache_score * w["cache"] * scale / _max, 3),
+                    "text":       _norm(text_score * w["text"]),
+                    "attributes": _norm(attr_score * w["attributes"]),
+                    "semantics":  _norm(sem_score * w["semantics"]),
+                    "proximity":  _norm(prox_score * w["proximity"]),
+                    "cache":      _norm(cache_score * w["cache"]),
                     "penalty":    penalty_mult,
                     "total":      round(min(el["score"] / _max, 1.0), 3),
                 }

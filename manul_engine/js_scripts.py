@@ -5,6 +5,63 @@ JavaScript constants injected into the browser page.
 All page-level JS lives here to keep Python modules focused on logic.
 """
 
+FIND_CONTAINER_XPATH_JS = """(xpath) => {
+    const res = document.evaluate(
+        xpath,
+        document,
+        null,
+        XPathResult.FIRST_ORDERED_NODE_TYPE,
+        null,
+    );
+    let el = res.singleNodeValue;
+    if (!el) return '';
+    const ROW_TAGS = new Set(['TR', 'LI']);
+    let curr = el.parentElement;
+    while (curr && curr !== document.body) {
+        if (
+            ROW_TAGS.has(curr.tagName) ||
+            curr.getAttribute('role') === 'row' ||
+            (curr.tagName === 'DIV' && curr.dataset && curr.dataset.rowIndex !== undefined)
+        ) {
+            const parts = [];
+            let n = curr;
+            while (n && n.nodeType === Node.ELEMENT_NODE) {
+                let idx = 1;
+                let sib = n.previousElementSibling;
+                while (sib) {
+                    if (sib.tagName === n.tagName) idx++;
+                    sib = sib.previousElementSibling;
+                }
+                parts.unshift(n.tagName.toLowerCase() + '[' + idx + ']');
+                n = n.parentNode;
+            }
+            return '/' + parts.join('/');
+        }
+        curr = curr.parentElement;
+    }
+    return '';
+}"""
+
+FILTER_CONTAINER_DESCENDANT_XPATHS_JS = """({ containerXPath, candidateXPaths }) => {
+    const resolve = xp => document.evaluate(
+        xp,
+        document,
+        null,
+        XPathResult.FIRST_ORDERED_NODE_TYPE,
+        null,
+    ).singleNodeValue;
+    const container = resolve(containerXPath);
+    if (!container) return [];
+    const matches = [];
+    for (const xp of candidateXPaths) {
+        const node = resolve(xp);
+        if (node && (node === container || container.contains(node))) {
+            matches.push(xp);
+        }
+    }
+    return matches;
+}"""
+
 VISIBLE_TEXT_JS = """() => {
     let t = (document.body.innerText || "") + " ";
     document.querySelectorAll('*').forEach(el => {
