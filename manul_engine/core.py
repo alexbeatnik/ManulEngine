@@ -750,6 +750,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                 mode=mode,
                 search_texts=search_texts,
                 target_field=target_field,
+                contextual_hint=contextual_hint,
                 candidates=els,
             )
             if cached_control is not None:
@@ -759,7 +760,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                 if not (is_disabled or is_aria_disabled):
                     return cached_control
             elif self._controls_cache_enabled:
-                _cache_key = self._control_cache_key(mode, search_texts, target_field)
+                _cache_key = self._control_cache_key(mode, search_texts, target_field, contextual_hint)
                 if _cache_key in self._controls_cache_data:
                     _had_stale_cache = True
 

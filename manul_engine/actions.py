@@ -31,6 +31,7 @@ class _ActionsMixin:
         mode: str,
         search_texts: list[str],
         target_field: str | None,
+        contextual_hint=None,
         element: dict,
     ) -> None:
         if getattr(self, '_semantic_cache_enabled', True):
@@ -46,6 +47,7 @@ class _ActionsMixin:
                     mode=mode,
                     search_texts=search_texts,
                     target_field=target_field,
+                    contextual_hint=contextual_hint,
                     element=element,
                 )
             except (OSError, ValueError, TypeError) as exc:
@@ -485,7 +487,7 @@ class _ActionsMixin:
         return True
 
     async def _execute_step(self, page, step: str, strategic_context: str = "", step_idx: int = 0) -> bool:
-        # ── Parse contextual proximity hint (NEAR / ON HEADER / INSIDE) ──
+        # ── Parse contextual proximity hint (NEAR / ON HEADER / ON FOOTER / INSIDE) ──
         ctx_hint, cleaned_step = parse_contextual_hint(step)
 
         step_l = cleaned_step.lower()
@@ -517,7 +519,7 @@ class _ActionsMixin:
         if ctx_hint.kind == "near" and ctx_hint.anchor:
             # Resolve the anchor element via a lightweight scoring pass.
             anchor_el = await self._resolve_element(
-                page, f"Locate '{ctx_hint.anchor}'", "locate",
+                page, f"Locate {ctx_hint.anchor}", "locate",
                 [ctx_hint.anchor.lower()], None, strategic_context,
             )
             if anchor_el:
@@ -534,7 +536,7 @@ class _ActionsMixin:
             # Resolve the row-identifying text, find its container, then
             # snapshot all elements inside that container's xpath subtree.
             row_el = await self._resolve_element(
-                page, f"Locate '{ctx_hint.row_text}'", "locate",
+                page, f"Locate {ctx_hint.row_text}", "locate",
                 [ctx_hint.row_text.lower()], None, strategic_context,
             )
             if row_el:
@@ -586,7 +588,14 @@ class _ActionsMixin:
             print(f"    🏷️  {ctx_hint.kind.upper().replace('_', ' ')}: viewport height = {viewport_height}px")
 
         is_optional = bool(re.search(r'\bif\s+exists\b|\boptional\b', re.sub(r'''["'][^"']*["']''', '', step_l)))
-        cache_key = (mode, tuple(t.lower() for t in search_texts), target_field)
+        context_qualifier = None
+        if ctx_hint.kind:
+            context_qualifier = (
+                ctx_hint.kind,
+                str(ctx_hint.anchor or "").lower().strip() or None,
+                str(ctx_hint.row_text or "").lower().strip() or None,
+            )
+        cache_key = (mode, tuple(t.lower() for t in search_texts), target_field, context_qualifier)
         failed_ids = set()
 
         for attempt in range(3):
@@ -681,6 +690,7 @@ class _ActionsMixin:
                         mode=mode,
                         search_texts=search_texts,
                         target_field=target_field,
+                        contextual_hint=ctx_hint,
                         element=el,
                     )
                     self.last_xpath = None
@@ -717,6 +727,7 @@ class _ActionsMixin:
                         mode=mode,
                         search_texts=search_texts,
                         target_field=target_field,
+                        contextual_hint=ctx_hint,
                         element=el,
                     )
                     await asyncio.sleep(ACTION_WAIT)
@@ -732,6 +743,7 @@ class _ActionsMixin:
                         mode=mode,
                         search_texts=search_texts,
                         target_field=target_field,
+                        contextual_hint=ctx_hint,
                         element=el,
                     )
                     await asyncio.sleep(ACTION_WAIT)
@@ -760,6 +772,7 @@ class _ActionsMixin:
                         mode=mode,
                         search_texts=search_texts,
                         target_field=target_field,
+                        contextual_hint=ctx_hint,
                         element=el,
                     )
                     return True

@@ -255,11 +255,11 @@ class ContextualHint(NamedTuple):
     Attributes:
         kind: One of ``"near"``, ``"on_header"``, ``"on_footer"``,
               ``"inside"``, or ``None`` if no hint was detected.
-        anchor: The quoted anchor text (e.g. the text near which to search,
-                or the container row text for ``INSIDE``). ``None`` when
-                the hint has no anchor (``ON HEADER``/``ON FOOTER``).
+    anchor: The quoted anchor text for ``NEAR``, or the INSIDE container
+        label for ``INSIDE 'X' row with 'Y'``. ``None`` when the
+        hint has no anchor (``ON HEADER``/``ON FOOTER``).
         row_text: For ``INSIDE 'X' row with 'Y'`` — the row-identifying
-                  text 'Y'.  ``None`` otherwise.
+          text ``'Y'``. ``None`` otherwise.
     """
     kind: "str | None"
     anchor: "str | None"

@@ -317,6 +317,7 @@
       "description": "Prefers candidates inside header or nav ancestry, or within the top 15% of the viewport.",
       "scoring": {
         "kind": "viewport_region",
+        "proximityWeight": 1.5,
         "region": "top_15_percent_or_header_nav"
       }
     },
@@ -327,16 +328,18 @@
       "description": "Prefers candidates inside footer ancestry, or within the bottom 15% of the viewport.",
       "scoring": {
         "kind": "viewport_region",
+        "proximityWeight": 1.5,
         "region": "bottom_15_percent_or_footer"
       }
     },
     {
       "id": "inside_row",
       "syntax": "<action> INSIDE '<container>' row with '<text>'",
-      "regex": "\\bINSIDE\\s+(?P<q1>['\"])(?P<container>.+?)(?P=q1)\\s+row\\s+with\\s+(?P<q2>['\"])(?P<row>.+?)(?P=q2)",
+      "regex": "\\bINSIDE\\s+(?P<q1>['\"])(?P<target>.+?)(?P=q1)\\s+row\\s+with\\s+(?P<q2>['\"])(?P<row>.+?)(?P=q2)",
       "description": "Resolves the row text first, climbs to a container boundary such as tr, li, or div[role=row], and restricts candidate scoring to that subtree before normal action scoring continues.",
       "scoring": {
         "kind": "subtree_membership",
+        "proximityWeight": 1.5,
         "containerScope": "resolved_row_container"
       }
     }

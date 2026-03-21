@@ -150,7 +150,6 @@ class DOMScorer:
         # Contextual proximity state
         self._hint = contextual_hint or ContextualHint(None, None, None)
         self._anchor_rect = anchor_rect          # {"rect_top", "rect_left", "rect_bottom", "rect_right", "frame_index"}
-        self._container_els = container_elements  # pre-filtered elements inside container
         self._container_id_set = (
             {(e.get("frame_index", 0), e["id"]) for e in container_elements}
             if container_elements is not None else None
@@ -178,8 +177,18 @@ class DOMScorer:
         )
 
         # Semantic cache lookup
-        cache_key = (mode, tuple(t.lower() for t in search_texts), target_field)
+        context_qualifier = None
+        if self._hint.kind:
+            context_qualifier = (
+                self._hint.kind,
+                str(self._hint.anchor or "").lower().strip() or None,
+                str(self._hint.row_text or "").lower().strip() or None,
+            )
+        cache_key = (mode, tuple(t.lower() for t in search_texts), target_field, context_qualifier)
         self._learned_entry = learned_elements.get(cache_key)
+        if self._learned_entry is None:
+            legacy_cache_key = (mode, tuple(t.lower() for t in search_texts), target_field)
+            self._learned_entry = learned_elements.get(legacy_cache_key)
 
     # ── Pre-processing ────────────────────────────────────────────────────
 
