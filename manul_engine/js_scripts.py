@@ -5,6 +5,63 @@ JavaScript constants injected into the browser page.
 All page-level JS lives here to keep Python modules focused on logic.
 """
 
+FIND_CONTAINER_XPATH_JS = """(xpath) => {
+    const res = document.evaluate(
+        xpath,
+        document,
+        null,
+        XPathResult.FIRST_ORDERED_NODE_TYPE,
+        null,
+    );
+    let el = res.singleNodeValue;
+    if (!el) return '';
+    const ROW_TAGS = new Set(['TR', 'LI']);
+    let curr = el.parentElement;
+    while (curr && curr !== document.body) {
+        if (
+            ROW_TAGS.has(curr.tagName) ||
+            curr.getAttribute('role') === 'row' ||
+            (curr.tagName === 'DIV' && curr.dataset && curr.dataset.rowIndex !== undefined)
+        ) {
+            const parts = [];
+            let n = curr;
+            while (n && n.nodeType === Node.ELEMENT_NODE) {
+                let idx = 1;
+                let sib = n.previousElementSibling;
+                while (sib) {
+                    if (sib.tagName === n.tagName) idx++;
+                    sib = sib.previousElementSibling;
+                }
+                parts.unshift(n.tagName.toLowerCase() + '[' + idx + ']');
+                n = n.parentNode;
+            }
+            return '/' + parts.join('/');
+        }
+        curr = curr.parentElement;
+    }
+    return '';
+}"""
+
+FILTER_CONTAINER_DESCENDANT_XPATHS_JS = """({ containerXPath, candidateXPaths }) => {
+    const resolve = xp => document.evaluate(
+        xp,
+        document,
+        null,
+        XPathResult.FIRST_ORDERED_NODE_TYPE,
+        null,
+    ).singleNodeValue;
+    const container = resolve(containerXPath);
+    if (!container) return [];
+    const matches = [];
+    for (const xp of candidateXPaths) {
+        const node = resolve(xp);
+        if (node && (node === container || container.contains(node))) {
+            matches.push(xp);
+        }
+    }
+    return matches;
+}"""
+
 VISIBLE_TEXT_JS = """() => {
     let t = (document.body.innerText || "") + " ";
     document.querySelectorAll('*').forEach(el => {
@@ -316,6 +373,14 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
 
         const isEditable = el.isContentEditable || el.getAttribute('contenteditable') === 'true';
 
+        // ── Ancestor tag chain (for ON HEADER/FOOTER, INSIDE container) ──
+        const ancestors = [];
+        let _p = el.parentElement;
+        for (let depth = 0; _p && depth < 8; depth++) {
+            ancestors.push(_p.tagName.toLowerCase());
+            _p = _p.parentElement;
+        }
+
         return {
             id:            parseInt(el.dataset.manulId),
             name:          name.substring(0, 150).replace(/\n/g, ' '),
@@ -336,6 +401,11 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             aria_disabled: el.getAttribute('aria-disabled') || '',
             name_attr:     nameAttr,
             label_for:     elLabelFor,
+            rect_top:      Math.round(rect.top),
+            rect_left:     Math.round(rect.left),
+            rect_bottom:   Math.round(rect.bottom),
+            rect_right:    Math.round(rect.right),
+            ancestors:     ancestors,
         };
     });
 }"""

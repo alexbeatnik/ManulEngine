@@ -42,6 +42,18 @@ DONE.
 - `SET {variable_name} = value`
 - `DONE.` — end of mission
 
+### Contextual qualifiers for repeated UI
+- `NEAR '<anchor>'` — use when identical controls exist multiple times and the correct one is spatially close to a visible label or adjacent element
+- `ON HEADER` — use when the target is clearly in the top navigation or header area
+- `ON FOOTER` — use when the target is clearly in the footer area or legal-link cluster
+- `INSIDE '<container>' row with '<text>'` — use for table, list, or card row actions tied to specific row content
+
+Examples:
+- `Click the 'Delete' button NEAR 'John Doe'`
+- `Click the 'Login' button ON HEADER`
+- `Click the 'Privacy Policy' link ON FOOTER`
+- `Click the 'Delete' button INSIDE 'Actions' row with 'John Doe'`
+
 ### Interaction steps (element name always in single quotes)
 - **Click:** `Click the '<label>' button` / `Click the '<label>' link` / `Click on the '<label>' button`
 - **Double-click:** `DOUBLE CLICK the '<label>' button`
@@ -63,6 +75,7 @@ DONE.
 - Steps must be atomic — one action per step.
 - Use real visible text from the HTML, not IDs or class names (unless there is no visible text).
 - Prefer deterministic DSL commands over generic prose.
+- When the HTML shows repeated controls, row actions, navbars, or footers, emit a contextual qualifier instead of relying on an ambiguous bare label.
 - Do not invent screenshot, retry, or report-generation DSL commands.
 - If the flow clearly needs a backend-generated value, use `CALL PYTHON module.function into {var}` rather than hardcoding the runtime value.
 
@@ -78,6 +91,7 @@ Analyse the HTML below and generate a complete `.hunt` file that:
 5. Uses `STEP` grouping for logical phases such as navigation, form fill, submit, and verification.
 6. Uses `@var:` for static test data when values are needed.
 7. Adds explicit waits instead of `WAIT <seconds>` when async UI state is likely.
+8. Uses contextual qualifiers (`NEAR`, `ON HEADER`, `ON FOOTER`, `INSIDE ... row with ...`) whenever the HTML contains repeated controls or region-specific actions.
 
 Infer the base URL from `<form action>`, `<base href>`, or leave a placeholder `https://example.com` if unknown.
 

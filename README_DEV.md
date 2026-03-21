@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.12 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.13 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -25,7 +25,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.12
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.13
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession
@@ -64,11 +64,11 @@ ManulEngine/
 │       ├── test_21_dynamic_vars.py   Unit: CALL PYTHON ... into {var} dynamic variable capture
 │       ├── test_22_tags.py           Unit: @tags: / --tags CLI filter (20 assertions, no browser)
 │       ├── test_23_advanced_interactions.py  Unit: PRESS/RIGHT CLICK/UPLOAD/explicit waits (58 assertions, no browser)
-│       ├── test_24_reporting.py      Unit: StepResult/MissionResult/RunSummary dataclasses (45 assertions)
+│       ├── test_24_reporting.py      Unit: StepResult/MissionResult/RunSummary dataclasses (53 assertions)
 │       ├── test_25_reporter.py       Unit: HTML report generator (65 assertions, no browser)
 │       ├── test_26_wikipedia_search.py Unit: name_attr heuristic scoring (20 assertions, no browser)
 │       ├── test_27_lifecycle_hooks.py  Unit: Global Lifecycle Hook system (57 assertions, no browser)
-│       ├── test_28_logical_steps.py    Unit: Logical STEP ordering and parser (48 assertions, no browser)
+│       ├── test_28_logical_steps.py    Unit: Logical STEP ordering and parser (58 assertions, no browser)
 │       ├── test_29_iframe_routing.py   Synthetic: Cross-frame element resolution (25 assertions)
 │       ├── test_30_heuristic_weights.py Synthetic+Unit: DOMScorer priority hierarchy (32 assertions)
 │       ├── test_31_visibility_treewalker.py Synthetic+Unit: TreeWalker PRUNE/checkVisibility (20 assertions)
@@ -79,14 +79,15 @@ ManulEngine/
 │       ├── test_36_scoring_math.py   Unit: exact numerical scoring validation (29 assertions, no browser)
 │       ├── test_37_enterprise_dsl.py Unit: Enterprise DSL — @data:, MOCK, VERIFY VISUAL/SOFTLY, explicit waits, reporter warnings (75 assertions, no browser)
 │       ├── test_38_set_and_indent.py Unit: SET command & indentation robustness (v0.0.9.2)
-│       ├── test_39_open_app.py       Unit: OPEN APP command — classify_step, RE_SYSTEM_STEP, _handle_open_app (35 assertions, no browser)
+│       ├── test_39_open_app.py       Unit: OPEN APP command — classify_step, RE_SYSTEM_STEP, _handle_open_app (41 assertions, no browser)
 │       ├── test_40_self_healing_cache.py Unit: Self-Healing Controls Cache — stale detection, HEALED logging, cache auto-update (16 assertions)
 │       ├── test_41_recorder.py      Unit: Semantic Test Recorder — JS bridge, DSL generator, step aggregation (no browser)
 │       ├── test_42_scheduler.py     Unit: Built-in Scheduler — parse_schedule, next_run_delay, ParsedHunt integration (51 assertions, no browser)
 │       ├── test_43_scoped_variables.py Unit: ScopedVariables 4-level hierarchy, scope isolation, dict compat (43 assertions, no browser)
 │       ├── test_44_explain_mode.py   Unit: DOMScorer explain output, channel breakdown, --explain CLI flag (33 assertions, no browser)
 │       ├── test_45_api.py            Unit: ManulSession public Python API facade (50 assertions, no browser)
-│       └── test_46_attribute_semantic.py Unit: attribute-semantic icon matching, camelCase dev attrs, cart badges, false-positive resistance (34 assertions, no browser)
+│       ├── test_46_attribute_semantic.py Unit: attribute-semantic icon matching, camelCase dev attrs, cart badges, false-positive resistance (34 assertions, no browser)
+│       └── test_47_contextual_proximity.py Unit: contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser rules (67 assertions, no browser)
 ├── controls/                         User-owned custom Python handlers (loaded from directories listed in `custom_modules_dirs` config)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
@@ -164,6 +165,7 @@ This architecture is what makes ManulEngine a **true runtime** rather than just 
 * **Logical STEP Grouping:** `STEP [optional number]: [Description]` metadata blocks map manual QA cases directly into `.hunt` files.
 * **Interactive Enterprise HTML Reporter:** Dual-mode, zero-dependency reporter with native HTML5 accordions, auto-expanding failures, Flexbox layout, **"Show Only Failed" toggle**, and **tag filter chips** — inline Vanilla JS, zero dependencies.
 * **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, `@after_group` orchestrate DB seeding and auth. `ctx.variables` serialise across parallel `--workers`.
+* **Contextual UI Navigator (v0.0.9.13):** action steps can now add `NEAR 'Anchor'`, `ON HEADER`, `ON FOOTER`, and `INSIDE 'Container' row with 'Text'` qualifiers. `actions.py` parses the contextual hint before normal mode detection, resolves anchor or row context, and threads that data into the scorer. `DOMScorer` boosts the proximity channel from `0.10` to `1.5` when a contextual hint is present, then switches from DOM-depth proximity to Euclidean distance, viewport-region checks, or subtree membership depending on the qualifier.
 * **Attribute-Semantic Matching for Functional Icons (v0.0.9.12):** `DOMScorer` now treats discrete keyword tokens in `html_id`, `class_name`, and `data_qa` as a strong signal even when visible text is unhelpful. This closes a real gap for cart-style links and other icon controls that only render badge counts (`"1"`, `"2"`, `"3"`) while the semantic meaning lives in attributes like `shopping_cart_link` or `shopping_cart_container`.
 * **JIT Module Loading & Configurable Module Directories (v0.0.9.11):** `CALL PYTHON` modules are imported on first use and cached for subsequent calls within the same process (`_module_cache` in `hooks.py`). `@custom_control` modules are loaded once on the first `run_mission()` call instead of during `ManulEngine.__init__`. Module scan directories are configurable via `custom_modules_dirs` in `manul_engine_configuration.json` (default: `["controls"]`).
 
@@ -206,6 +208,24 @@ Element resolution is driven entirely by the `DOMScorer` — a normalised `0.0�
 Final score: `(text×W_text + attr×W_attr + sem×W_sem + prox×W_prox + cache×W_cache) × penalty_mult × SCALE`. `SCALE=177,778` maps the weighted float to the integer range expected by `core.py` thresholds (200k for semantic cache, 10k for confidence short-circuit).
 
 When the LLM picker is used, Manul passes the heuristic `score` as a **prior** (hint) by default (`MANUL_AI_POLICY=prior`) — the model can override the ranking only with a clear, disqualifying reason.
+
+### 📐 Contextual UI Navigator
+
+The resolver now understands contextual qualifiers directly in the DSL when identical labels appear multiple times:
+
+```text
+Click the 'Delete' button NEAR 'John Doe'
+Click the 'Login' button ON HEADER
+Click the 'Privacy Policy' link ON FOOTER
+Click the 'Delete' button INSIDE 'Actions' row with 'John Doe'
+```
+
+- `NEAR` resolves the anchor first, then scores candidates by Euclidean distance between element centers.
+- `ON HEADER` prefers candidates inside `header` / `nav` ancestry or inside the top 15% of the viewport.
+- `ON FOOTER` prefers candidates inside `footer` ancestry or inside the bottom 15% of the viewport.
+- `INSIDE ... row with ...` resolves the row text, climbs to a container boundary (`tr`, `li`, `div[role=row]`, etc.), and limits scoring to that subtree.
+
+This feature is deterministic: it does not add a planner layer or selector escape hatch. It feeds richer spatial context into the existing scoring pipeline.
 
 ### 🧠 Deep Accessibility Heuristics
 
@@ -511,7 +531,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.12
+pip install manul-engine==0.0.9.13
 playwright install chromium
 ```
 
@@ -669,9 +689,9 @@ manul tests/mission.hunt
 
 ---
 
-## 🐾 Chaos Chamber Verified (2494 Tests)
+## 🐾 Chaos Chamber Verified (2567 Tests)
 
-The engine is battle-tested with **2494** synthetic DOM/unit tests across 47 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, visibility edge cases, attribute-semantic icon matching, and camelCase developer attributes.
+The engine is battle-tested with **2567** synthetic DOM/unit tests across 48 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, visibility edge cases, attribute-semantic icon matching, camelCase developer attributes, and contextual UI disambiguation across repeated controls.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py`.
@@ -705,6 +725,7 @@ The engine is battle-tested with **2494** synthetic DOM/unit tests across 47 tes
 * **Explain Mode unit suite:** `manul_engine/test/test_44_explain_mode.py`.
 * **Public Python API unit suite:** `manul_engine/test/test_45_api.py`.
 * **Attribute-semantic heuristic suite:** `manul_engine/test/test_46_attribute_semantic.py`.
+* **Contextual navigator unit suite:** `manul_engine/test/test_47_contextual_proximity.py`.
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
 Run the synthetic suite:
@@ -729,6 +750,13 @@ The `prompts/` directory contains ready-to-use LLM prompt templates that let you
 | `prompts/html_to_hunt.md` | Paste HTML → get hunt steps |
 | `prompts/description_to_hunt.md` | Describe a flow in plain text → get hunt steps |
 | `prompts/README.md` | Full usage guide for all LLM clients |
+
+The default prompt templates now also teach contextual disambiguation syntax for repeated controls:
+
+- `NEAR 'Anchor'`
+- `ON HEADER`
+- `ON FOOTER`
+- `INSIDE 'Container' row with 'Text'`
 
 ### Usage options
 
@@ -784,8 +812,8 @@ The published extension provides:
 
 ---
 
-**Version:** 0.0.9.12
+**Version:** 0.0.9.13
 
-**Codename:** Attribute-Semantic Matching
+**Codename:** Contextual UI Navigator
 
 **Status:** Hunting...

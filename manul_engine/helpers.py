@@ -4,6 +4,7 @@ Shared helper functions and timing constants used across the engine.
 """
 
 from dataclasses import dataclass, field
+from typing import NamedTuple
 import os
 import re
 
@@ -244,3 +245,84 @@ def compact_log_field(raw_value: object, env_var: str, default_max_len: int = 0)
     if max_len and len(value) > max_len:
         value = value[: max(0, max_len - 1)] + "…"
     return value
+
+
+# ── Contextual proximity hints ────────────────────────────────────────────────
+
+class ContextualHint(NamedTuple):
+    """Parsed contextual proximity hint from a DSL step.
+
+    Attributes:
+        kind: One of ``"near"``, ``"on_header"``, ``"on_footer"``,
+              ``"inside"``, or ``None`` if no hint was detected.
+    anchor: The quoted anchor text for ``NEAR``, or the INSIDE container
+        label for ``INSIDE 'X' row with 'Y'``. ``None`` when the
+        hint has no anchor (``ON HEADER``/``ON FOOTER``).
+        row_text: For ``INSIDE 'X' row with 'Y'`` — the row-identifying
+          text ``'Y'``. ``None`` otherwise.
+    """
+    kind: "str | None"
+    anchor: "str | None"
+    row_text: "str | None"
+
+
+# Regex patterns for contextual hints.
+# Order matters — longer / more specific patterns first.
+_RE_INSIDE = re.compile(
+    r"""\bINSIDE\s+(?P<q1>['"])(?P<target>.+?)(?P=q1)\s+row\s+with\s+(?P<q2>['"])(?P<row>.+?)(?P=q2)""",
+    re.IGNORECASE,
+)
+_RE_NEAR = re.compile(
+    r"""\bNEAR\s+(?P<q>['"])(?P<anchor>.+?)(?P=q)""",
+    re.IGNORECASE,
+)
+_RE_ON_HEADER = re.compile(r"\bON\s+HEADER\b", re.IGNORECASE)
+_RE_ON_FOOTER = re.compile(r"\bON\s+FOOTER\b", re.IGNORECASE)
+
+
+def _mask_quoted(text: str) -> str:
+    """Replace quoted substrings with spaces while preserving indices."""
+    return _RE_QUOTED.sub(lambda m: " " * len(m.group(0)), text)
+
+
+def parse_contextual_hint(step: str) -> "tuple[ContextualHint, str]":
+    """Extract a contextual proximity hint from a DSL step.
+
+    Returns ``(hint, cleaned_step)`` where *cleaned_step* has the hint
+    clause removed so downstream parsing sees only the core action.
+
+    Supported clauses (case-insensitive):
+    - ``NEAR 'Anchor Text'``
+    - ``ON HEADER`` / ``ON FOOTER``
+    - ``INSIDE 'Container' row with 'Row Text'``
+
+    If no clause is detected, *hint.kind* is ``None`` and *cleaned_step*
+    is the original step unchanged.
+    """
+    # INSIDE (most specific — must be checked first)
+    m = _RE_INSIDE.search(step)
+    if m:
+        cleaned = step[:m.start()] + step[m.end():]
+        return ContextualHint("inside", m.group("target"), m.group("row")), cleaned.strip()
+
+    # NEAR
+    m = _RE_NEAR.search(step)
+    if m:
+        cleaned = step[:m.start()] + step[m.end():]
+        return ContextualHint("near", m.group("anchor"), None), cleaned.strip()
+
+    masked = _mask_quoted(step)
+
+    # ON HEADER
+    m = _RE_ON_HEADER.search(masked)
+    if m:
+        cleaned = step[:m.start()] + step[m.end():]
+        return ContextualHint("on_header", None, None), cleaned.strip()
+
+    # ON FOOTER
+    m = _RE_ON_FOOTER.search(masked)
+    if m:
+        cleaned = step[:m.start()] + step[m.end():]
+        return ContextualHint("on_footer", None, None), cleaned.strip()
+
+    return ContextualHint(None, None, None), step

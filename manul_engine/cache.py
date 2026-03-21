@@ -15,6 +15,8 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
+from .helpers import ContextualHint
+
 
 class _ControlsCacheMixin:
     """Mixin providing persistent per-site controls cache.
@@ -30,12 +32,31 @@ class _ControlsCacheMixin:
 
     # ── Key helpers ───────────────────────────────────────────────────
 
-    def _control_cache_key(self, mode: str, search_texts: list[str], target_field: str | None) -> str:
+    def _legacy_control_cache_key(self, mode: str, search_texts: list[str], target_field: str | None) -> str:
         payload = {
             "mode": str(mode or "").lower(),
             "search_texts": [str(t).lower().strip() for t in (search_texts or []) if str(t).strip()],
             "target_field": str(target_field or "").lower().strip() or None,
         }
+        return json.dumps(payload, ensure_ascii=False, sort_keys=True)
+
+    def _control_cache_key(
+        self,
+        mode: str,
+        search_texts: list[str],
+        target_field: str | None,
+        contextual_hint: ContextualHint | None = None,
+    ) -> str:
+        hint_kind = getattr(contextual_hint, "kind", None)
+        context_qualifier = None
+        if hint_kind:
+            context_qualifier = {
+                "kind": str(hint_kind).lower(),
+                "anchor": str(getattr(contextual_hint, "anchor", "") or "").lower().strip() or None,
+                "row_text": str(getattr(contextual_hint, "row_text", "") or "").lower().strip() or None,
+            }
+        payload = json.loads(self._legacy_control_cache_key(mode, search_texts, target_field))
+        payload["context"] = context_qualifier
         return json.dumps(payload, ensure_ascii=False, sort_keys=True)
 
     def _page_site_key(self, page) -> str | None:
@@ -145,6 +166,7 @@ class _ControlsCacheMixin:
         mode: str,
         search_texts: list[str],
         target_field: str | None,
+        contextual_hint: ContextualHint | None = None,
         element: dict,
     ) -> None:
         if not self._controls_cache_enabled:
@@ -153,7 +175,7 @@ class _ControlsCacheMixin:
         if not self._controls_cache_site:
             return
 
-        key = self._control_cache_key(mode, search_texts, target_field)
+        key = self._control_cache_key(mode, search_texts, target_field, contextual_hint)
         new_entry = {
             "name": str(element.get("name", "")),
             "tag_name": str(element.get("tag_name", "")),
@@ -207,6 +229,7 @@ class _ControlsCacheMixin:
         mode: str,
         search_texts: list[str],
         target_field: str | None,
+        contextual_hint: ContextualHint | None = None,
         candidates: list[dict],
     ) -> dict | None:
         if not self._controls_cache_enabled:
@@ -215,8 +238,11 @@ class _ControlsCacheMixin:
         if not self._controls_cache_site:
             return None
 
-        key = self._control_cache_key(mode, search_texts, target_field)
+        key = self._control_cache_key(mode, search_texts, target_field, contextual_hint)
         entry = self._controls_cache_data.get(key)
+        if not isinstance(entry, dict):
+            legacy_key = self._legacy_control_cache_key(mode, search_texts, target_field)
+            entry = self._controls_cache_data.get(legacy_key)
         if not isinstance(entry, dict):
             return None
 

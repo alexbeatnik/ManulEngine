@@ -5,8 +5,16 @@ import os
 import re
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
-from .helpers import extract_quoted, compact_log_field, SCROLL_WAIT, ACTION_WAIT, NAV_WAIT, detect_mode, parse_explicit_wait
-from .js_scripts import VISIBLE_TEXT_JS, EXTRACT_DATA_JS, DEEP_TEXT_JS, STATE_CHECK_JS, SCAN_JS
+from .helpers import extract_quoted, compact_log_field, SCROLL_WAIT, ACTION_WAIT, NAV_WAIT, detect_mode, parse_explicit_wait, parse_contextual_hint
+from .js_scripts import (
+    VISIBLE_TEXT_JS,
+    EXTRACT_DATA_JS,
+    DEEP_TEXT_JS,
+    STATE_CHECK_JS,
+    SCAN_JS,
+    FIND_CONTAINER_XPATH_JS,
+    FILTER_CONTAINER_DESCENDANT_XPATHS_JS,
+)
 from . import prompts
 
 class _ActionsMixin:
@@ -23,6 +31,7 @@ class _ActionsMixin:
         mode: str,
         search_texts: list[str],
         target_field: str | None,
+        contextual_hint=None,
         element: dict,
     ) -> None:
         if getattr(self, '_semantic_cache_enabled', True):
@@ -38,6 +47,7 @@ class _ActionsMixin:
                     mode=mode,
                     search_texts=search_texts,
                     target_field=target_field,
+                    contextual_hint=contextual_hint,
                     element=element,
                 )
             except (OSError, ValueError, TypeError) as exc:
@@ -477,11 +487,14 @@ class _ActionsMixin:
         return True
 
     async def _execute_step(self, page, step: str, strategic_context: str = "", step_idx: int = 0) -> bool:
-        step_l = step.lower()
-        mode   = detect_mode(step)
+        # ── Parse contextual proximity hint (NEAR / ON HEADER / ON FOOTER / INSIDE) ──
+        ctx_hint, cleaned_step = parse_contextual_hint(step)
+
+        step_l = cleaned_step.lower()
+        mode   = detect_mode(cleaned_step)
 
         preserve = mode in ("input", "select")
-        expected = extract_quoted(step, preserve_case=preserve)
+        expected = extract_quoted(cleaned_step, preserve_case=preserve)
 
         target_field = None
         txt_to_type  = ""
@@ -498,13 +511,103 @@ class _ActionsMixin:
         if search_texts or target_field:
             self.last_xpath = None
 
+        # ── Resolve contextual anchor / container ────────────────────────
+        anchor_rect: dict | None = None
+        container_elements: list[dict] | None = None
+        viewport_height: int = 0
+
+        if ctx_hint.kind == "near" and ctx_hint.anchor:
+            # Resolve the anchor element via a lightweight scoring pass.
+            anchor_el = await self._resolve_element(
+                page, f"Locate {ctx_hint.anchor}", "locate",
+                [ctx_hint.anchor.lower()], None, strategic_context,
+            )
+            if anchor_el:
+                anchor_rect = {
+                    "rect_top": anchor_el.get("rect_top", 0),
+                    "rect_left": anchor_el.get("rect_left", 0),
+                    "rect_bottom": anchor_el.get("rect_bottom", 0),
+                    "rect_right": anchor_el.get("rect_right", 0),
+                    "frame_index": anchor_el.get("frame_index", 0),
+                }
+                print(f"    📐 NEAR anchor: '{self._fmt_el_name(ctx_hint.anchor)}' at ({anchor_rect['rect_left']}, {anchor_rect['rect_top']})")
+
+        elif ctx_hint.kind == "inside" and ctx_hint.row_text:
+            # Resolve the row-identifying text, find its container, then
+            # snapshot all elements inside that container's xpath subtree.
+            row_el = await self._resolve_element(
+                page, f"Locate {ctx_hint.row_text}", "locate",
+                [ctx_hint.row_text.lower()], None, strategic_context,
+            )
+            if row_el:
+                row_xpath = row_el.get("xpath", "")
+                # Walk up to find the container row (tr, li, div[role=row], or any table row ancestor).
+                container_xpath = await self._frame_for(page, row_el).evaluate(
+                    FIND_CONTAINER_XPATH_JS,
+                    row_xpath,
+                )
+                if container_xpath:
+                    # Re-snapshot and keep only real DOM descendants of the resolved
+                    # container. Prefix checks on snapshot xpaths are brittle because
+                    # SNAPSHOT_JS may emit id-based xpaths like //*[@id="..."] for
+                    # descendants, which do not share the container's absolute prefix.
+                    all_els = await self._snapshot(page, mode, [t.lower() for t in search_texts])
+                    container_frame_index = row_el.get("frame_index", 0)
+                    frame_candidates = [
+                        e for e in all_els
+                        if e.get("frame_index", 0) == container_frame_index and e.get("xpath")
+                    ]
+                    candidate_xpaths = list(dict.fromkeys(
+                        str(e.get("xpath", "")) for e in frame_candidates if e.get("xpath")
+                    ))
+                    try:
+                        contained_xpaths = await self._frame_for(page, row_el).evaluate(
+                            FILTER_CONTAINER_DESCENDANT_XPATHS_JS,
+                            {
+                                "containerXPath": container_xpath,
+                                "candidateXPaths": candidate_xpaths,
+                            },
+                        )
+                        contained_xpath_set = set(contained_xpaths or [])
+                        container_elements = [
+                            e for e in frame_candidates
+                            if e.get("xpath", "") in contained_xpath_set
+                        ]
+                    except Exception:
+                        container_elements = [
+                            e for e in frame_candidates
+                            if e.get("xpath", "").startswith(container_xpath)
+                        ]
+                    print(f"    📦 INSIDE container: {len(container_elements)} elements in row containing '{ctx_hint.row_text}'")
+
+        if ctx_hint.kind in ("on_header", "on_footer"):
+            try:
+                viewport_height = await page.evaluate("() => window.innerHeight || document.documentElement.clientHeight || 900")
+            except Exception:
+                viewport_height = 900
+            print(f"    🏷️  {ctx_hint.kind.upper().replace('_', ' ')}: viewport height = {viewport_height}px")
+
         is_optional = bool(re.search(r'\bif\s+exists\b|\boptional\b', re.sub(r'''["'][^"']*["']''', '', step_l)))
-        cache_key = (mode, tuple(t.lower() for t in search_texts), target_field)
+        context_qualifier = None
+        if ctx_hint.kind:
+            context_qualifier = (
+                ctx_hint.kind,
+                str(ctx_hint.anchor or "").lower().strip() or None,
+                str(ctx_hint.row_text or "").lower().strip() or None,
+            )
+        cache_key = (mode, tuple(t.lower() for t in search_texts), target_field, context_qualifier)
         failed_ids = set()
 
         for attempt in range(3):
             try:
-                el = await self._resolve_element(page, step, mode, search_texts, target_field, strategic_context, failed_ids=failed_ids)
+                el = await self._resolve_element(
+                    page, cleaned_step, mode, search_texts, target_field, strategic_context,
+                    failed_ids=failed_ids,
+                    contextual_hint=ctx_hint,
+                    anchor_rect=anchor_rect,
+                    container_elements=container_elements,
+                    viewport_height=viewport_height,
+                )
             except Exception:
                 if is_optional: return True
                 raise
@@ -587,6 +690,7 @@ class _ActionsMixin:
                         mode=mode,
                         search_texts=search_texts,
                         target_field=target_field,
+                        contextual_hint=ctx_hint,
                         element=el,
                     )
                     self.last_xpath = None
@@ -623,6 +727,7 @@ class _ActionsMixin:
                         mode=mode,
                         search_texts=search_texts,
                         target_field=target_field,
+                        contextual_hint=ctx_hint,
                         element=el,
                     )
                     await asyncio.sleep(ACTION_WAIT)
@@ -638,6 +743,7 @@ class _ActionsMixin:
                         mode=mode,
                         search_texts=search_texts,
                         target_field=target_field,
+                        contextual_hint=ctx_hint,
                         element=el,
                     )
                     await asyncio.sleep(ACTION_WAIT)
@@ -666,6 +772,7 @@ class _ActionsMixin:
                         mode=mode,
                         search_texts=search_texts,
                         target_field=target_field,
+                        contextual_hint=ctx_hint,
                         element=el,
                     )
                     return True

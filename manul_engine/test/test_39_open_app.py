@@ -249,6 +249,122 @@ async def _test_handle_open_app_skips_blank() -> None:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Section F3: INSIDE container uses DOM descendant membership for id-xpaths
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def _test_inside_container_uses_dom_contains() -> None:
+    print("\n  ── INSIDE container uses DOM.contains() for id-xpaths ─────────")
+
+    from manul_engine.actions import _ActionsMixin
+
+    class FakeLocator:
+        @property
+        def first(self):
+            return self
+
+        async def scroll_into_view_if_needed(self, timeout=2000):
+            return None
+
+    class FakeFrame:
+        def __init__(self):
+            self.membership_payload = None
+
+        async def evaluate(self, script, arg):
+            if isinstance(arg, str):
+                return "/html/body/table[1]/tbody[1]/tr[1]"
+            self.membership_payload = arg
+            return ['//*[@id="delete-inside"]']
+
+        def locator(self, selector):
+            return FakeLocator()
+
+    class FakeEngine(_ActionsMixin):
+        def __init__(self, frame):
+            self.last_xpath = None
+            self._frame = frame
+            self.captured_container_elements = None
+
+        async def _resolve_element(self, page, step, mode, search_texts, target_field, strategic_context, **kwargs):
+            if mode == "locate" and search_texts == ["john doe"]:
+                return {
+                    "id": 1,
+                    "name": "John Doe",
+                    "xpath": "//*[@id=\"row-label\"]",
+                    "frame_index": 0,
+                    "tag_name": "td",
+                    "input_type": "",
+                    "is_shadow": False,
+                }
+            if kwargs.get("contextual_hint") is not None:
+                self.captured_container_elements = kwargs.get("container_elements")
+                return {
+                    "id": 2,
+                    "name": "Delete",
+                    "xpath": '//*[@id="delete-inside"]',
+                    "frame_index": 0,
+                    "tag_name": "button",
+                    "input_type": "",
+                    "is_shadow": False,
+                }
+            return None
+
+        async def _snapshot(self, page, mode, search_texts):
+            return [
+                {
+                    "id": 2,
+                    "name": "Delete",
+                    "xpath": '//*[@id="delete-inside"]',
+                    "frame_index": 0,
+                },
+                {
+                    "id": 3,
+                    "name": "Delete",
+                    "xpath": "/html/body/div[5]/button[1]",
+                    "frame_index": 0,
+                },
+                {
+                    "id": 4,
+                    "name": "Delete",
+                    "xpath": '//*[@id="delete-other-frame"]',
+                    "frame_index": 1,
+                },
+            ]
+
+        def _frame_for(self, page, el):
+            return self._frame
+
+        async def _highlight(self, page, locator_or_id, by_js_id=False, frame=None):
+            return None
+
+        def _fmt_el_name(self, name):
+            return name
+
+    frame = FakeFrame()
+    engine = FakeEngine(frame)
+    page = MagicMock()
+
+    ok = await engine._execute_step(
+        page,
+        "Locate 'Delete' INSIDE 'Actions' row with 'John Doe'",
+    )
+
+    _assert(ok is True,
+            "Locate step succeeds with DOM membership filtering")
+    _assert(engine.captured_container_elements is not None,
+            "Final resolve receives container_elements")
+    _assert(len(engine.captured_container_elements) == 1,
+            "Only contained descendant is kept")
+    _assert(engine.captured_container_elements[0]["xpath"] == '//*[@id="delete-inside"]',
+            "Id-based descendant xpath survives INSIDE scoping")
+    _assert(frame.membership_payload is not None,
+            "Frame membership eval payload captured")
+    _assert(frame.membership_payload["candidateXPaths"] == [
+        '//*[@id="delete-inside"]',
+        "/html/body/div[5]/button[1]",
+    ], "Membership check only evaluates same-frame candidate xpaths")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Section G: parse_hunt_file integration — OPEN APP in a hunt file
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -330,6 +446,7 @@ async def run_suite() -> tuple[int, int]:
     await _test_handle_open_app_wait_for_page()
     await _test_handle_open_app_failure()
     await _test_handle_open_app_skips_blank()
+    await _test_inside_container_uses_dom_contains()
 
     print(f"\n  RESULTS: {_PASS} passed, {_FAIL} failed")
     total = _PASS + _FAIL

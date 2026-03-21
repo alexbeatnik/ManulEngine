@@ -30,7 +30,10 @@ Scoring categories:
 
 from __future__ import annotations
 
+import math
 import re
+
+from .helpers import ContextualHint
 
 # ── Pre-compiled regex patterns (compiled once at module load) ────────────────
 
@@ -131,6 +134,10 @@ class DOMScorer:
         learned_elements: dict,
         last_xpath: str | None,
         explain: bool = False,
+        contextual_hint: ContextualHint | None = None,
+        anchor_rect: dict | None = None,
+        container_elements: list[dict] | None = None,
+        viewport_height: int = 0,
     ) -> None:
         self._step_l = step.lower()
         self._mode = mode
@@ -139,6 +146,15 @@ class DOMScorer:
         self._last_xpath = last_xpath
         self._has_search_texts = bool(search_texts)
         self._explain = explain
+
+        # Contextual proximity state
+        self._hint = contextual_hint or ContextualHint(None, None, None)
+        self._anchor_rect = anchor_rect          # {"rect_top", "rect_left", "rect_bottom", "rect_right", "frame_index"}
+        self._container_id_set = (
+            {(e.get("frame_index", 0), e["id"]) for e in container_elements}
+            if container_elements is not None else None
+        )
+        self._viewport_h = viewport_height or 900
 
         # Pre-compute search terms once
         self._terms: list[_SearchTerm] = [_SearchTerm(t) for t in search_texts]
@@ -161,8 +177,18 @@ class DOMScorer:
         )
 
         # Semantic cache lookup
-        cache_key = (mode, tuple(t.lower() for t in search_texts), target_field)
+        context_qualifier = None
+        if self._hint.kind:
+            context_qualifier = (
+                self._hint.kind,
+                str(self._hint.anchor or "").lower().strip() or None,
+                str(self._hint.row_text or "").lower().strip() or None,
+            )
+        cache_key = (mode, tuple(t.lower() for t in search_texts), target_field, context_qualifier)
         self._learned_entry = learned_elements.get(cache_key)
+        if self._learned_entry is None:
+            legacy_cache_key = (mode, tuple(t.lower() for t in search_texts), target_field)
+            self._learned_entry = learned_elements.get(legacy_cache_key)
 
     # ── Pre-processing ────────────────────────────────────────────────────
 
@@ -566,10 +592,71 @@ class DOMScorer:
         return 1.0
 
     def _score_proximity(self, el: dict) -> float:
-        """DOM proximity bonus based on shared xpath depth with last resolved element.
+        """Contextual proximity scoring combining DOM depth, spatial distance,
+        and region/container filtering.
 
         Returns a float in ``[0.0, 1.0]``.
+
+        Contextual modes (when a hint is present):
+        - **NEAR**: Euclidean pixel distance between element center and the
+          anchor element center.  Closest candidate gets up to +1.0; elements
+          further than ``_NEAR_THRESHOLD_PX`` get 0.
+        - **ON HEADER / ON FOOTER**: Elements in the top / bottom 15 % of the
+          viewport, or inside ``<header>`` / ``<footer>`` ancestor tags, get a
+          +1.0 boost.
+        - **INSIDE**: Elements whose ID is in the pre-filtered container
+          subtree set get +1.0; others get 0.
+
+        When no contextual hint is active, falls back to the original
+        DOM xpath-depth proximity with ``last_xpath``.
         """
+        _NEAR_THRESHOLD_PX = 500
+
+        kind = self._hint.kind
+
+        # ── NEAR: Euclidean distance to anchor ────────────────────────
+        if kind == "near" and self._anchor_rect:
+            if self._anchor_rect.get("frame_index", 0) != el.get("frame_index", 0):
+                return 0.0
+            el_cx = (el.get("rect_left", 0) + el.get("rect_right", 0)) / 2.0
+            el_cy = (el.get("rect_top", 0) + el.get("rect_bottom", 0)) / 2.0
+            a = self._anchor_rect
+            a_cx = (a.get("rect_left", 0) + a.get("rect_right", 0)) / 2.0
+            a_cy = (a.get("rect_top", 0) + a.get("rect_bottom", 0)) / 2.0
+            dist = math.sqrt((el_cx - a_cx) ** 2 + (el_cy - a_cy) ** 2)
+            if dist <= _NEAR_THRESHOLD_PX:
+                return max(0.0, 1.0 - dist / _NEAR_THRESHOLD_PX)
+            return 0.0
+
+        # ── ON HEADER / ON FOOTER: region filtering ──────────────────
+        if kind == "on_header":
+            if el.get("frame_index", 0) != 0:
+                return 0.0
+            ancestors = el.get("ancestors", [])
+            if "header" in ancestors or "nav" in ancestors:
+                return 1.0
+            top = el.get("rect_top", 0)
+            if 0 <= top <= self._viewport_h * 0.15:
+                return 1.0
+            return 0.0
+
+        if kind == "on_footer":
+            if el.get("frame_index", 0) != 0:
+                return 0.0
+            ancestors = el.get("ancestors", [])
+            if "footer" in ancestors:
+                return 1.0
+            bottom = el.get("rect_bottom", 0)
+            if bottom >= self._viewport_h * 0.85:
+                return 1.0
+            return 0.0
+
+        # ── INSIDE: container subtree filtering ──────────────────────
+        if kind == "inside" and self._container_id_set is not None:
+            el_key = (el.get("frame_index", 0), el["id"])
+            return 1.0 if el_key in self._container_id_set else 0.0
+
+        # ── Default: DOM xpath-depth proximity ───────────────────────
         if not self._last_xpath or not el.get("xpath"):
             return 0.0
         last_parts = self._last_xpath.split("/")
@@ -582,6 +669,23 @@ class DOMScorer:
                 break
         return min(common_depth, 5) * 0.2
 
+    def _has_effective_context(self) -> bool:
+        """Return True when the contextual hint has usable resolved data.
+
+        Some hint kinds need additional runtime context to influence scoring
+        meaningfully. If that data is missing, score_all() should keep the
+        default proximity weight so a failed contextual lookup does not skew
+        ranking away from text/semantic signals.
+        """
+        kind = self._hint.kind
+        if not kind:
+            return False
+        if kind == "near":
+            return self._anchor_rect is not None
+        if kind == "inside":
+            return bool(self._container_id_set)
+        return True
+
     # ── Orchestrator ──────────────────────────────────────────────────
 
     def score_all(self, els: list[dict]) -> list[dict]:
@@ -591,10 +695,19 @@ class DOMScorer:
         dictionary, applies the penalty multiplier, and scales the result
         to the integer range expected by ``core.py``.
 
+        When a contextual proximity hint is active and usable (NEAR with a
+        resolved anchor, ON HEADER/FOOTER, INSIDE with a resolved container),
+        the proximity weight is boosted to 1.5 so spatial/region signals
+        strongly influence the final ranking.
+
         When ``self._explain`` is True, each element dict receives an
         ``"_explain"`` key containing the per-channel score breakdown.
         """
-        w = WEIGHTS
+        w = dict(WEIGHTS)  # shallow copy — may be mutated for contextual boost
+        effective_context = self._has_effective_context()
+        if effective_context:
+            w["proximity"] = 1.5  # boost from default 0.10 when contextual hint is effective
+
         scale = SCALE
 
         # Phase 1: attach normalised strings (single pass)
@@ -622,15 +735,22 @@ class DOMScorer:
 
             if self._explain:
                 _max = MAX_THEORETICAL_SCORE
-                el["_explain"] = {
-                    "text":       round(text_score * w["text"] * scale / _max, 3),
-                    "attributes": round(attr_score * w["attributes"] * scale / _max, 3),
-                    "semantics":  round(sem_score * w["semantics"] * scale / _max, 3),
-                    "proximity":  round(prox_score * w["proximity"] * scale / _max, 3),
-                    "cache":      round(cache_score * w["cache"] * scale / _max, 3),
+                def _norm(weighted_channel: float) -> float:
+                    return round(min(weighted_channel * scale / _max, 1.0), 3)
+
+                explain_dict: dict = {
+                    "text":       _norm(text_score * w["text"]),
+                    "attributes": _norm(attr_score * w["attributes"]),
+                    "semantics":  _norm(sem_score * w["semantics"]),
+                    "proximity":  _norm(prox_score * w["proximity"]),
+                    "cache":      _norm(cache_score * w["cache"]),
                     "penalty":    penalty_mult,
                     "total":      round(min(el["score"] / _max, 1.0), 3),
                 }
+                if self._hint.kind:
+                    explain_dict["ctx_kind"] = self._hint.kind
+                    explain_dict["ctx_prox_raw"] = round(prox_score, 3)
+                el["_explain"] = explain_dict
 
         return sorted(els, key=lambda x: x.get("score", 0), reverse=True)
 
@@ -647,6 +767,10 @@ def score_elements(
     learned_elements: dict,
     last_xpath: "str | None",
     explain: bool = False,
+    contextual_hint: "ContextualHint | None" = None,
+    anchor_rect: "dict | None" = None,
+    container_elements: "list[dict] | None" = None,
+    viewport_height: int = 0,
 ) -> list[dict]:
     """Score and rank DOM elements against a given step.
 
@@ -656,5 +780,9 @@ def score_elements(
         step, mode, search_texts, target_field,
         is_blind, learned_elements, last_xpath,
         explain=explain,
+        contextual_hint=contextual_hint,
+        anchor_rect=anchor_rect,
+        container_elements=container_elements,
+        viewport_height=viewport_height,
     )
     return scorer.score_all(els)

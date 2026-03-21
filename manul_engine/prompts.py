@@ -447,6 +447,8 @@ RULES:
 - Copy every step VERBATIM. Do NOT paraphrase, merge, or skip any step.
 - Every step must be a single, atomic browser instruction.
 - Preserve all quoted values, variable placeholders ({like_this}), and URLs exactly.
+- Preserve deterministic DSL qualifiers exactly when they appear: `NEAR 'Anchor'`, `ON HEADER`, `ON FOOTER`, `INSIDE 'Container' row with 'Text'`.
+- When the task clearly describes repeated controls, header/footer actions, or row-specific actions, emit the appropriate contextual qualifier instead of inventing selectors or paraphrasing away the context.
 - Return ONLY valid JSON — no markdown, no comments, no prose.
 
 OUTPUT FORMAT:
@@ -474,6 +476,12 @@ Each element candidate has:
     is_select       – boolean (native <select>)
     contenteditable – boolean
     is_shadow       – boolean
+
+The STEP text may also contain deterministic contextual qualifiers:
+    NEAR 'Anchor'                      – prefer the candidate nearest to the resolved anchor element
+    ON HEADER                          – prefer candidates in header/nav ancestry or top-of-page region
+    ON FOOTER                          – prefer candidates in footer ancestry or bottom-of-page region
+    INSIDE 'Container' row with 'Text' – prefer candidates inside the resolved row/container subtree
 
 CRITICAL RULES (Apply strictly in this order):
 1. JSON ONLY: Return ONLY valid JSON. No markdown, no extra text. Format: {"id": 123, "thought": "reasoning"}
@@ -505,8 +513,10 @@ CRITICAL RULES (Apply strictly in this order):
 10. DISABLED: Avoid `disabled=true` or `aria_disabled="true"` unless the step is about verifying disabled state.
 11. SHADOW DOM: If you see `is_shadow=true` or the name contains `[SHADOW_DOM]` and it matches the target, prefer it.
 12. BEWARE TRAPS: DO NOT pick elements with "honeypot", "spam", or "hidden" in their names/IDs unless explicitly asked.
-13. TIE-BREAKER: If multiple elements look equally correct, pick the one with the lowest `id`.
-14. REJECTION (LAST RESORT): Return `null` ONLY if the target is completely missing and there is no plausible element of the correct type.
+13. CONTEXTUAL QUALIFIERS ARE STRONG SIGNALS: If the step includes `NEAR`, `ON HEADER`, `ON FOOTER`, or `INSIDE ... row with ...`, treat that qualifier as intentional deterministic context. Prefer candidates that satisfy it instead of drifting to a semantically similar control elsewhere.
+14. DO NOT INVENT SELECTORS OR EXTRA LOGIC: Choose only from the provided candidates and the explicit step text. Never imagine hidden structure that is not present in the candidate list.
+15. TIE-BREAKER: If multiple elements look equally correct, pick the one with the lowest `id`.
+16. REJECTION (LAST RESORT): Return `null` ONLY if the target is completely missing and there is no plausible element of the correct type.
     WARNING: If the step asks for a formatting tool (like 'Underline') or a player control (like 'Fullscreen') and you see an unlabeled/icon button, ASSUME IT IS THE TARGET AND PICK IT!
 """
 
@@ -544,6 +554,10 @@ EXAMPLES:
   Step: "Click 'Color Red'" → Pick element with aria-label="Color Red" or similar.
   Step: "Select 'Ukraine' from 'Country'" → Pick tag=select containing 'Country'.
   Step: "Fill 'Message Body'" → Pick element with contenteditable=true or tag=textarea.
+    Step: "Click the 'Search' button NEAR 'Products'" → Prefer the candidate nearest the resolved 'Products' anchor, not another 'Search' elsewhere.
+    Step: "Click the 'Login' button ON HEADER" → Prefer the header/nav login action, not a repeated CTA lower on the page.
+    Step: "Click the 'Privacy Policy' link ON FOOTER" → Prefer the footer/legal link cluster.
+    Step: "Click the 'Edit' button INSIDE 'Users' row with 'John Doe'" → Prefer the button inside John Doe's row, not another Edit button.
 
 OUTPUT (strictly valid JSON, no markdown):
 {"id": <integer or null>, "thought": "one sentence"}
