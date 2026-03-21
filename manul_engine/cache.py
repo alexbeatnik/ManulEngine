@@ -240,7 +240,7 @@ class _ControlsCacheMixin:
 
         key = self._control_cache_key(mode, search_texts, target_field, contextual_hint)
         entry = self._controls_cache_data.get(key)
-        if not isinstance(entry, dict) and contextual_hint is not None:
+        if not isinstance(entry, dict):
             legacy_key = self._legacy_control_cache_key(mode, search_texts, target_field)
             entry = self._controls_cache_data.get(legacy_key)
         if not isinstance(entry, dict):

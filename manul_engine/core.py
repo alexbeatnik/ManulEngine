@@ -745,6 +745,15 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             if mode == "drag":
                 break
 
+            if contextual_hint is not None and contextual_hint.kind == "inside" and container_elements is not None:
+                allowed_ids = {(e.get("frame_index", 0), e["id"]) for e in container_elements}
+                els = [e for e in els if (e.get("frame_index", 0), e["id"]) in allowed_ids]
+                if not els:
+                    if attempt < 4:
+                        await page.evaluate("window.scrollBy(0, 500)")
+                        await asyncio.sleep(1)
+                    continue
+
             cached_control = self._resolve_from_control_cache(
                 page=page,
                 mode=mode,

@@ -280,6 +280,11 @@ _RE_ON_HEADER = re.compile(r"\bON\s+HEADER\b", re.IGNORECASE)
 _RE_ON_FOOTER = re.compile(r"\bON\s+FOOTER\b", re.IGNORECASE)
 
 
+def _mask_quoted(text: str) -> str:
+    """Replace quoted substrings with spaces while preserving indices."""
+    return _RE_QUOTED.sub(lambda m: " " * len(m.group(0)), text)
+
+
 def parse_contextual_hint(step: str) -> "tuple[ContextualHint, str]":
     """Extract a contextual proximity hint from a DSL step.
 
@@ -306,14 +311,16 @@ def parse_contextual_hint(step: str) -> "tuple[ContextualHint, str]":
         cleaned = step[:m.start()] + step[m.end():]
         return ContextualHint("near", m.group("anchor"), None), cleaned.strip()
 
+    masked = _mask_quoted(step)
+
     # ON HEADER
-    m = _RE_ON_HEADER.search(step)
+    m = _RE_ON_HEADER.search(masked)
     if m:
         cleaned = step[:m.start()] + step[m.end():]
         return ContextualHint("on_header", None, None), cleaned.strip()
 
     # ON FOOTER
-    m = _RE_ON_FOOTER.search(step)
+    m = _RE_ON_FOOTER.search(masked)
     if m:
         cleaned = step[:m.start()] + step[m.end():]
         return ContextualHint("on_footer", None, None), cleaned.strip()
