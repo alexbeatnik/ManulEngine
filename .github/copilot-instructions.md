@@ -734,5 +734,6 @@ When the version changes, **ALL** of the following files must be updated:
 | `README.md` | `**Version:** X.Y.Z` in the footer |
 | `README_DEV.md` | Title `# 😼 ManulEngine vX.Y.Z`, pyproject.toml ref, lifecycle/test suite lists, footer `**Version:** X.Y.Z` |
 | `.github/copilot-instructions.md` | Version in the repo layout section (this file) |
+| `.cursorrules` | Version examples and pinned `pip install` commands under `## 3. Versioning and Dependencies` |
 
 Companion VS Code extension versioning and Marketplace release notes are maintained in the separate extension repository.
