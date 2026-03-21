@@ -5,7 +5,7 @@ import os
 import re
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
-from .helpers import extract_quoted, compact_log_field, SCROLL_WAIT, ACTION_WAIT, NAV_WAIT, detect_mode, parse_explicit_wait
+from .helpers import extract_quoted, compact_log_field, SCROLL_WAIT, ACTION_WAIT, NAV_WAIT, detect_mode, parse_explicit_wait, parse_contextual_hint, ContextualHint
 from .js_scripts import VISIBLE_TEXT_JS, EXTRACT_DATA_JS, DEEP_TEXT_JS, STATE_CHECK_JS, SCAN_JS
 from . import prompts
 
@@ -477,11 +477,14 @@ class _ActionsMixin:
         return True
 
     async def _execute_step(self, page, step: str, strategic_context: str = "", step_idx: int = 0) -> bool:
-        step_l = step.lower()
-        mode   = detect_mode(step)
+        # ── Parse contextual proximity hint (NEAR / ON HEADER / INSIDE) ──
+        ctx_hint, cleaned_step = parse_contextual_hint(step)
+
+        step_l = cleaned_step.lower()
+        mode   = detect_mode(cleaned_step)
 
         preserve = mode in ("input", "select")
-        expected = extract_quoted(step, preserve_case=preserve)
+        expected = extract_quoted(cleaned_step, preserve_case=preserve)
 
         target_field = None
         txt_to_type  = ""
@@ -498,13 +501,97 @@ class _ActionsMixin:
         if search_texts or target_field:
             self.last_xpath = None
 
+        # ── Resolve contextual anchor / container ────────────────────────
+        anchor_rect: dict | None = None
+        container_elements: list[dict] | None = None
+        viewport_height: int = 0
+
+        if ctx_hint.kind == "near" and ctx_hint.anchor:
+            # Resolve the anchor element via a lightweight scoring pass.
+            anchor_el = await self._resolve_element(
+                page, f"Locate '{ctx_hint.anchor}'", "locate",
+                [ctx_hint.anchor.lower()], None, strategic_context,
+            )
+            if anchor_el:
+                anchor_rect = {
+                    "rect_top": anchor_el.get("rect_top", 0),
+                    "rect_left": anchor_el.get("rect_left", 0),
+                    "rect_bottom": anchor_el.get("rect_bottom", 0),
+                    "rect_right": anchor_el.get("rect_right", 0),
+                }
+                print(f"    📐 NEAR anchor: '{self._fmt_el_name(ctx_hint.anchor)}' at ({anchor_rect['rect_left']}, {anchor_rect['rect_top']})")
+
+        elif ctx_hint.kind == "inside" and ctx_hint.row_text:
+            # Resolve the row-identifying text, find its container, then
+            # snapshot all elements inside that container's xpath subtree.
+            row_el = await self._resolve_element(
+                page, f"Locate '{ctx_hint.row_text}'", "locate",
+                [ctx_hint.row_text.lower()], None, strategic_context,
+            )
+            if row_el:
+                row_xpath = row_el.get("xpath", "")
+                # Walk up to find the container row (tr, li, div[role=row], or any table row ancestor).
+                container_xpath = await self._frame_for(page, row_el).evaluate(
+                    """(xpath) => {
+                        const res = document.evaluate(xpath, document, null,
+                            XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+                        let el = res.singleNodeValue;
+                        if (!el) return '';
+                        const ROW_TAGS = new Set(['TR', 'LI']);
+                        let curr = el.parentElement;
+                        while (curr && curr !== document.body) {
+                            if (ROW_TAGS.has(curr.tagName) ||
+                                curr.getAttribute('role') === 'row' ||
+                                (curr.tagName === 'DIV' && curr.dataset && curr.dataset.rowIndex !== undefined))
+                            {
+                                // Build xpath for this container
+                                const parts = [];
+                                let n = curr;
+                                while (n && n.nodeType === Node.ELEMENT_NODE) {
+                                    let idx = 1, sib = n.previousElementSibling;
+                                    while (sib) { if (sib.tagName === n.tagName) idx++; sib = sib.previousElementSibling; }
+                                    parts.unshift(n.tagName.toLowerCase() + '[' + idx + ']');
+                                    n = n.parentNode;
+                                }
+                                return '/' + parts.join('/');
+                            }
+                            curr = curr.parentElement;
+                        }
+                        return '';
+                    }""",
+                    row_xpath,
+                )
+                if container_xpath:
+                    # Re-snapshot and filter to elements within the container xpath.
+                    from .js_scripts import SNAPSHOT_JS as _SNAP
+                    all_els = await self._snapshot(page, mode, [t.lower() for t in search_texts])
+                    container_elements = [
+                        e for e in all_els
+                        if e.get("xpath", "").startswith(container_xpath)
+                    ]
+                    print(f"    📦 INSIDE container: {len(container_elements)} elements in row containing '{ctx_hint.row_text}'")
+
+        if ctx_hint.kind in ("on_header", "on_footer"):
+            try:
+                viewport_height = await page.evaluate("() => window.innerHeight || document.documentElement.clientHeight || 900")
+            except Exception:
+                viewport_height = 900
+            print(f"    🏷️  {ctx_hint.kind.upper().replace('_', ' ')}: viewport height = {viewport_height}px")
+
         is_optional = bool(re.search(r'\bif\s+exists\b|\boptional\b', re.sub(r'''["'][^"']*["']''', '', step_l)))
         cache_key = (mode, tuple(t.lower() for t in search_texts), target_field)
         failed_ids = set()
 
         for attempt in range(3):
             try:
-                el = await self._resolve_element(page, step, mode, search_texts, target_field, strategic_context, failed_ids=failed_ids)
+                el = await self._resolve_element(
+                    page, cleaned_step, mode, search_texts, target_field, strategic_context,
+                    failed_ids=failed_ids,
+                    contextual_hint=ctx_hint,
+                    anchor_rect=anchor_rect,
+                    container_elements=container_elements,
+                    viewport_height=viewport_height,
+                )
             except Exception:
                 if is_optional: return True
                 raise

@@ -31,7 +31,7 @@ except Exception:  # pragma: no cover
     ollama = None
 
 from . import prompts
-from .helpers import substitute_memory, compact_log_field, extract_quoted, detect_mode, classify_step, RE_SYSTEM_STEP, parse_hunt_blocks, parse_explicit_wait
+from .helpers import substitute_memory, compact_log_field, extract_quoted, detect_mode, classify_step, RE_SYSTEM_STEP, parse_hunt_blocks, parse_explicit_wait, parse_contextual_hint, ContextualHint
 from .hooks import execute_hook_line
 from .js_scripts import SNAPSHOT_JS
 from .scoring import score_elements
@@ -659,14 +659,23 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                 print(f"    │       Cache:      {expl['cache']:>+.3f}")
                 if expl["penalty"] < 1.0:
                     print(f"    │       Penalty:    ×{expl['penalty']:.1f}")
+                if "ctx_kind" in expl:
+                    ctx_label = expl["ctx_kind"].upper().replace("_", " ")
+                    print(f"    │       Context:    {ctx_label} (raw={expl.get('ctx_prox_raw', 0):.3f})")
             else:
                 print(f"    │  #{rank}  <{tag}> \"{name}\"  → Score: {score}")
         winner = top[0]
         winner_expl = winner.get("_explain")
         winner_name = compact_log_field(winner.get("name", ""), "MANUL_LOG_NAME_MAXLEN")
         winner_display = f"{winner_expl['total']:.3f}" if winner_expl else str(winner.get("score", 0))
+        # Contextual explain summary for the winner
+        ctx_summary = ""
+        if winner_expl and "ctx_kind" in winner_expl:
+            rect_top = winner.get("rect_top", 0)
+            rect_left = winner.get("rect_left", 0)
+            ctx_summary = f" [{winner_expl['ctx_kind'].upper().replace('_', ' ')} at ({rect_left},{rect_top})]"
         print(f"    │")
-        print(f"    └─ ✅ Decision: Selected \"{winner_name}\" with score {winner_display}")
+        print(f"    └─ ✅ Decision: Selected \"{winner_name}\" with score {winner_display}{ctx_summary}")
         print()
 
     # ── Scoring (delegates to scoring module) ─
@@ -679,6 +688,10 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         search_texts: list[str],
         target_field: str | None,
         is_blind: bool,
+        contextual_hint: "ContextualHint | None" = None,
+        anchor_rect: "dict | None" = None,
+        container_elements: "list[dict] | None" = None,
+        viewport_height: int = 0,
     ) -> list[dict]:
         """Score and rank elements using heuristics from scoring.py."""
         return score_elements(
@@ -686,6 +699,10 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             learned_elements=self.learned_elements if self._semantic_cache_enabled else {},
             last_xpath=self.last_xpath,
             explain=self.explain_mode,
+            contextual_hint=contextual_hint,
+            anchor_rect=anchor_rect,
+            container_elements=container_elements,
+            viewport_height=viewport_height,
         )
 
     # ── Element resolution ────────────────────
@@ -699,6 +716,10 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         target_field: str | None,
         strategic_context: str,
         failed_ids: "set | None" = None,
+        contextual_hint: "ContextualHint | None" = None,
+        anchor_rect: "dict | None" = None,
+        container_elements: "list[dict] | None" = None,
+        viewport_height: int = 0,
     ) -> dict | None:
         """
         Locate the target element with up to 5 scroll-and-retry attempts.
@@ -779,7 +800,13 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         if not els:
             return None
 
-        scored     = self._score_elements(els, step, mode, search_texts, target_field, is_blind)
+        scored     = self._score_elements(
+            els, step, mode, search_texts, target_field, is_blind,
+            contextual_hint=contextual_hint,
+            anchor_rect=anchor_rect,
+            container_elements=container_elements,
+            viewport_height=viewport_height,
+        )
         top        = scored[:8]
         best_score = top[0].get("score", 0)
 

@@ -316,6 +316,14 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
 
         const isEditable = el.isContentEditable || el.getAttribute('contenteditable') === 'true';
 
+        // ── Ancestor tag chain (for ON HEADER/FOOTER, INSIDE container) ──
+        const ancestors = [];
+        let _p = el.parentElement;
+        for (let depth = 0; _p && depth < 8; depth++) {
+            ancestors.push(_p.tagName.toLowerCase());
+            _p = _p.parentElement;
+        }
+
         return {
             id:            parseInt(el.dataset.manulId),
             name:          name.substring(0, 150).replace(/\n/g, ' '),
@@ -336,6 +344,11 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             aria_disabled: el.getAttribute('aria-disabled') || '',
             name_attr:     nameAttr,
             label_for:     elLabelFor,
+            rect_top:      Math.round(rect.top),
+            rect_left:     Math.round(rect.left),
+            rect_bottom:   Math.round(rect.bottom),
+            rect_right:    Math.round(rect.right),
+            ancestors:     ancestors,
         };
     });
 }"""
