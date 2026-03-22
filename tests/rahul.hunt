@@ -3,27 +3,62 @@
 
 # 🐾 RAHUL SHETTY HUNT: The Real Inspector Challenge
 # Validation of radio buttons, autocomplete, tables, and hovers.
+#
+# --------------------------------------------------------------------------
+# FEATURES DEMONSTRATED:
+#
+#   VERIFY ... is checked / is not checked
+#                       — Verifies the checked state of checkboxes and
+#                         radio buttons. "is not checked" confirms the
+#                         element was unchecked (e.g. after a toggle).
+#
+#   VERIFY ... is NOT present
+#                       — Negative assertion. Confirms that the target
+#                         text is NOT visible on the page. Useful for
+#                         hide/show tests and confirming deletions.
+#
+#   HOVER over 'Target' — Triggers a mouse hover on the resolved element.
+#                         Useful for testing tooltip menus, dropdowns that
+#                         appear on hover, and hover-state CSS changes.
+#
+#   EXTRACT ... into {var}
+#                       — Captures table cell text based on row context.
+#                         Multiple extractions build up a variable store
+#                         that can be referenced in subsequent steps.
+#
+#   Autocomplete        — Fill a partial value, then Click on the
+#                         suggestion that appears. The engine resolves
+#                         the suggestion list item via standard heuristics.
+#
+#   Toggle checkbox     — Click a checkbox, verify checked; click again,
+#                         verify not checked. Demonstrates the engine's
+#                         ability to track state changes.
+# --------------------------------------------------------------------------
 
 STEP 1: Navigate to practice page
     NAVIGATE to https://rahulshettyacademy.com/AutomationPractice/
 
 STEP 2: Radio buttons
+    # "radio button for" triggers strict radio-mode scoring.
     Click the radio button for 'Radio1'
     VERIFY that 'Radio1' is checked.
     Click the radio button for 'Radio3'
     VERIFY that 'Radio3' is checked.
 
 STEP 3: Autocomplete field
+    # Type partial text, then click the matching suggestion.
     Fill 'Suggession Class' field with 'Ukra'
     Click 'Ukraine' in the suggestion list
     VERIFY that 'Ukraine' is present.
 
 STEP 4: Dropdown
+    # Sequential dropdown selections on the same <select> element.
     Select 'Option1' from the 'Dropdown' list
     Select 'Option2' from the 'Dropdown' list
     Select 'Option3' from the 'Dropdown' list
 
 STEP 5: Checkboxes
+    # Toggle pattern: check → verify checked → uncheck → verify not checked.
     Click the checkbox for 'Option1'
     VERIFY that 'Option1' is checked.
     Click the checkbox for 'Option2'
@@ -36,11 +71,14 @@ STEP 5: Checkboxes
 STEP 6: Name field and alert
     Fill 'Enter Your Name' field with 'Cyber Manul'
     VERIFY that 'Cyber Manul' is present.
+    # The Confirm button triggers a browser alert that clears the field.
     Click the 'Confirm' button
+    # Negative assertion: the text should no longer be visible.
     VERIFY that 'Cyber Manul' is NOT present.
 
 STEP 7: Scroll and extract prices
     SCROLL DOWN
+    # EXTRACT captures table data into runtime variables.
     EXTRACT the Price of 'Selenium' into {selenium_price}
     EXTRACT the Price of 'Appium' into {appium_price}
     EXTRACT the Price of 'Learn SQL' into {sql_price}
@@ -50,6 +88,7 @@ STEP 8: Hide / Show element
     Fill 'Hide/Show Example' field with 'Ghost Mode'
     VERIFY that 'Ghost Mode' is present.
     Click the 'Hide' button
+    # After hiding, the text should NOT be present.
     VERIFY that 'Ghost Mode' is NOT present.
     Click the 'Show' button
     VERIFY that 'Ghost Mode' is present.
@@ -61,6 +100,8 @@ STEP 9: Dynamic table extraction
     VERIFY that 'Joe' is present.
 
 STEP 10: Mouse hover
+    # HOVER triggers Playwright's hover() on the resolved element.
+    # The hidden menu items become visible after the hover action.
     HOVER over the 'Mouse Hover' button
     VERIFY that 'Reload' is present.
     VERIFY that 'Top' is present.

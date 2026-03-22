@@ -200,8 +200,9 @@ async def daemon_main(args: list[str]) -> None:
     launches an async task per file, and runs forever.
     """
     from .cli import parse_hunt_file
+    from . import prompts as _prompts_scheduler
 
-    headless = "--headless" in args
+    headless = True if "--headless" in args else _prompts_scheduler.HEADLESS_MODE
     args_clean = [a for a in args if a != "--headless"]
 
     # Extract --browser <name>

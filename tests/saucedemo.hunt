@@ -1,21 +1,78 @@
 @context: E-commerce purchase flow on SauceDemo
 @title: swag-labs-checkout
+@var: {username} = standard_user
+@var: {password} = secret_sauce
+
+# --------------------------------------------------------------------------
+# FEATURES DEMONSTRATED:
+#
+#   @var:               — Static variables declared at the top of the file.
+#                         Use them for credentials and test data instead of
+#                         hardcoding values inside action steps.
+#
+#   Auto-Nav annotations (# 📍 Auto-Nav: ...)
+#                       — When "auto_annotate": true in
+#                         manul_engine_configuration.json, the engine
+#                         automatically inserts these comments into .hunt
+#                         files whenever the page URL changes. Page names
+#                         come from pages.json; unmapped pages show the URL.
+#                         These comments are informational — the engine
+#                         does not execute them.
+#
+#   NEAR 'Anchor'       — Contextual qualifier. Biases element resolution
+#                         by Euclidean distance to a resolved anchor.
+#                         Used here: Click 'Add to cart' near 'Sauce Labs
+#                         Fleece Jacket' — the engine first resolves the
+#                         jacket text, then picks the closest 'Add to cart'
+#                         button.
+#
+#   VERIFY ... is present
+#                       — Assertion after each significant navigation.
+#                         Best practice: always verify the expected page
+#                         state before continuing.
+#
+#   Full E2E flow       — Login → browse → add to cart → checkout → verify.
+#                         This is the classic pattern for E-commerce tests.
+#
+#   Commented hook docs — This file also shows how to document lifecycle
+#                         hooks without making the shared demo depend on
+#                         local helper modules.
+# --------------------------------------------------------------------------
+#
+# Example lifecycle block for a real project (kept commented so this demo
+# remains self-contained):
+# [SETUP]
+#     PRINT "Preparing SauceDemo user {username}"
+#     CALL PYTHON scripts.auth_helpers.ensure_user with args: "{username}" "{password}"
+# [END SETUP]
+#
+# STEP X: Backend-assisted step example
+#     CALL PYTHON scripts.auth_helpers.fetch_cart_seed with args: "{username}" into {cart_seed}
+#     VERIFY that '{cart_seed}' is present
+#
+# [TEARDOWN]
+#     PRINT "Cleaning SauceDemo user {username}"
+#     CALL PYTHON scripts.auth_helpers.cleanup_user with args: "{username}"
+# [END TEARDOWN]
 
 STEP 1: Login
     # 📍 Auto-Nav: https://www.saucedemo.com/
     NAVIGATE to https://www.saucedemo.com/
-    Fill 'Username' with 'standard_user'
-    Fill 'Password' with 'secret_sauce'
+    Fill 'Username' with '{username}'
+    Fill 'Password' with '{password}'
     Click 'Login' button
 
 STEP 2: Add item to cart
     # 📍 Auto-Nav: Products Catalog
     VERIFY that 'Products' is present
+    # NEAR qualifier: resolves the 'Sauce Labs Fleece Jacket' text first,
+    # then prefers the matching 'Add to cart' button in the same product card,
+    # using both visual distance and DOM container affinity.
     Click 'Add to cart' near 'Sauce Labs Fleece Jacket'
 
 STEP 3: Review cart
     # 📍 Auto-Nav: Shopping Cart
-    NAVIGATE to https://www.saucedemo.com/cart.html
+    Click the 'Shopping cart' link
     VERIFY that 'Sauce Labs Fleece Jacket' is present
     Click 'Checkout' button
 

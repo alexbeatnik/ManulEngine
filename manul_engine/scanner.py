@@ -202,7 +202,9 @@ def _default_output(filename: str = "draft.hunt") -> str:
 async def scan_main(args: list[str]) -> None:
     """Async entry point called by cli.main() when first real arg is 'scan'."""
 
-    headless = "--headless" in args
+    from . import prompts as _prompts_scan
+
+    headless = True if "--headless" in args else _prompts_scan.HEADLESS_MODE
     args = [a for a in args if a != "--headless"]
 
     _VALID_BROWSERS = {"chromium", "firefox", "webkit"}

@@ -432,7 +432,7 @@ class ManulSession:
         from .helpers import RE_SYSTEM_STEP
         _has_action_keywords = bool(RE_SYSTEM_STEP.search(task))
 
-        # Strip comments, metadata headers, and full [SETUP]/[TEARDOWN] blocks
+        # Strip comments, metadata headers, and hook blocks
         # (aligned with parse_hunt_file() behaviour).
         def _extract_executable(text: str) -> list[str]:
             result: list[str] = []

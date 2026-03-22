@@ -45,25 +45,25 @@ Follow these rules before generating code, documentation, architecture notes, or
 
 ## 3. Versioning and Dependencies
 
-- Treat `0.0.9.13` as the current engine version for this documentation and release line.
+- Treat `0.0.9.14` as the current engine version for this documentation and release line.
 - When version metadata is required in config examples or integration code, use:
 
 ```json
 {
-  "manulEngineVersion": "0.0.9.13"
+  "manulEngineVersion": "0.0.9.14"
 }
 ```
 
 - When generating `pip install` commands, pin the exact version, for example:
 
 ```bash
-pip install manul-engine==0.0.9.13
+pip install manul-engine==0.0.9.14
 ```
 
 - If the AI extra is needed, pin that exact version too:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.13"
+pip install "manul-engine[ai]==0.0.9.14"
 ```
 
 - Do not suggest floating installs such as `pip install manul-engine` when version pinning is required by context.
@@ -84,6 +84,7 @@ pip install "manul-engine[ai]==0.0.9.13"
 - When updating `README.md`, keep the `What's New` or changelog section at the very bottom of the document, immediately before `License`.
 - Do not clutter the introduction with version history.
 - Do not hide heuristic behavior behind vague `AI magic` framing when the implementation is deterministic and explainable.
+- When documenting HTML reporting, state that `reports/manul_report.html` aggregates recent CLI/Test Explorer invocations via `reports/manul_report_state.json`, and that the report header shows `Run Session` plus `Merged invocations`.
 
 ## 5. Preferred Framing
 
@@ -96,6 +97,9 @@ pip install "manul-engine[ai]==0.0.9.13"
 ## 6. DSL Step Rules
 
 - Document explicit waits as first-class DSL steps, not as ad hoc examples or sleep-based workarounds.
+- Document lifecycle hooks with bracket-only syntax: `[SETUP]` / `[END SETUP]` and `[TEARDOWN]` / `[END TEARDOWN]`. Do not introduce `SETUP:` / `TEARDOWN:` aliases.
+- When documenting hooks, mention that `PRINT "..."`, `CALL PYTHON ... into {var}`, optional `with args:`, and `/scripts` helper resolution are supported.
+- When documenting failure semantics, state that setup-hook failures mark the mission as `broken` and skip browser steps.
 - Supported syntax:
   - `Wait for "Welcome, User" to be visible`
   - `Wait for 'Loading...' to disappear`

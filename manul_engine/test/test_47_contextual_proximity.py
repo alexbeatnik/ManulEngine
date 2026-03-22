@@ -1,5 +1,6 @@
 import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from manul_engine.actions import _ActionsMixin
 from manul_engine.scoring import DOMScorer, WEIGHTS, SCALE
 from manul_engine.helpers import parse_contextual_hint, ContextualHint
 
@@ -20,6 +21,10 @@ from manul_engine.helpers import parse_contextual_hint, ContextualHint
 
 _PASS = 0
 _FAIL = 0
+
+
+class _DummyActions(_ActionsMixin):
+    pass
 
 
 def _assert(cond: bool, name: str, detail: str = "") -> None:
@@ -164,6 +169,42 @@ def _test_near_distance_scoring():
     _assert(prox == 1.0, f"element overlapping anchor → prox=1.0, got {prox}")
 
 
+def _test_near_same_container_beats_closer_neighbor_card():
+    print("\n── NEAR: same container beats slightly closer neighbor card ──")
+    anchor_rect = {
+        "rect_top": 100, "rect_left": 420, "rect_bottom": 130, "rect_right": 560,
+        "frame_index": 0,
+        "xpath": "/html/body/div/div[1]/div[4]/div[1]/a/div",
+    }
+    el_same_card = _make_el(
+        id=1,
+        name="Add to cart",
+        xpath="/html/body/div/div[1]/div[4]/div[2]/button",
+        rect_top=112, rect_left=565, rect_bottom=142, rect_right=670,
+    )
+    el_neighbor_card = _make_el(
+        id=2,
+        name="Add to cart",
+        xpath="/html/body/div/div[1]/div[3]/div[2]/button",
+        rect_top=106, rect_left=360, rect_bottom=136, rect_right=465,
+    )
+    hint = ContextualHint("near", "Sauce Labs Fleece Jacket", None)
+    scorer = DOMScorer(
+        step="Click 'Add to cart' button near 'Sauce Labs Fleece Jacket'",
+        mode="clickable",
+        search_texts=["Add to cart"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        anchor_rect=anchor_rect,
+    )
+    results = scorer.score_all([el_neighbor_card, el_same_card])
+    _assert(results[0]["id"] == 1, f"same-card button wins, got id={results[0]['id']}")
+    _assert(results[0]["score"] > results[1]["score"], "same-card score beats neighbor-card score")
+
+
 def _test_near_beyond_threshold():
     print("\n── NEAR: element beyond threshold gets 0 ──")
     anchor_rect = {"rect_top": 0, "rect_left": 0, "rect_bottom": 30, "rect_right": 100}
@@ -217,6 +258,69 @@ def _test_near_no_anchor_rect():
     prox = scorer._score_proximity(el)
     # Without anchor_rect, NEAR falls through to default xpath proximity
     _assert(prox >= 0.0, f"fallback proximity ≥ 0, got {prox}")
+
+
+def _test_near_anchor_picker_prefers_text_over_image():
+    print("\n── NEAR: anchor picker prefers text title over image alt ──")
+    picker = _DummyActions()
+    img_anchor = _make_el(
+        id=26,
+        name="Sauce Labs Fleece Jacket",
+        tag_name="img",
+        xpath="/html/body/div/div[4]/div[1]/a/img[1]",
+    )
+    img_anchor["score"] = 50711
+    text_anchor = _make_el(
+        id=27,
+        name="Sauce Labs Fleece Jacket",
+        tag_name="a",
+        html_id="item_5_title_link",
+        xpath='//*[@id="item_5_title_link"]',
+    )
+    text_anchor["score"] = 50711
+    picked = picker._pick_near_anchor_candidate([img_anchor, text_anchor], "Sauce Labs Fleece Jacket")
+    _assert(picked is not None, "anchor picker returned a candidate")
+    _assert(picked["id"] == 27, f"text anchor preferred over image, got id={picked['id']}")
+
+
+def _test_near_anchor_dev_attr_affinity_beats_same_column_neighbor():
+    print("\n── NEAR: anchor dev-attr affinity beats same-column neighbor ──")
+    anchor_rect = {
+        "rect_top": 427, "rect_left": 916, "rect_bottom": 447, "rect_right": 1215,
+        "frame_index": 0,
+        "xpath": '//*[@id="item_5_title_link"]',
+    }
+    bike = _make_el(
+        id=20,
+        name="Add to cart",
+        html_id="add-to-cart-sauce-labs-bike-light",
+        data_qa="add-to-cart-sauce-labs-bike-light",
+        xpath='//*[@id="add-to-cart-sauce-labs-bike-light"]',
+        rect_top=339, rect_left=1055, rect_bottom=373, rect_right=1215,
+    )
+    fleece = _make_el(
+        id=28,
+        name="Add to cart",
+        html_id="add-to-cart-sauce-labs-fleece-jacket",
+        data_qa="add-to-cart-sauce-labs-fleece-jacket",
+        xpath='//*[@id="add-to-cart-sauce-labs-fleece-jacket"]',
+        rect_top=591, rect_left=1055, rect_bottom=625, rect_right=1215,
+    )
+    hint = ContextualHint("near", "Sauce Labs Fleece Jacket", None)
+    scorer = DOMScorer(
+        step="Click 'Add to cart' near 'Sauce Labs Fleece Jacket'",
+        mode="clickable",
+        search_texts=["Add to cart"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        anchor_rect=anchor_rect,
+    )
+    results = scorer.score_all([bike, fleece])
+    _assert(results[0]["id"] == 28, f"fleece card button wins, got id={results[0]['id']}")
+    _assert(results[0]["score"] > results[1]["score"], "fleece score beats bike-light score")
 
 
 # =====================================
@@ -668,6 +772,8 @@ def run_all():
     _test_near_beyond_threshold()
     _test_near_cross_frame_rejected()
     _test_near_no_anchor_rect()
+    _test_near_anchor_picker_prefers_text_over_image()
+    _test_near_anchor_dev_attr_affinity_beats_same_column_neighbor()
 
     # Section 3: ON HEADER / ON FOOTER
     _test_on_header_ancestor()

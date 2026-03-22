@@ -2,6 +2,30 @@
 @title: full_ui_element_suite
 
 # 🐾 DEMOQA GAUNTLET: The Full Elements Challenge
+#
+# --------------------------------------------------------------------------
+# FEATURES DEMONSTRATED:
+#
+#   NAVIGATE to <url>   — Loads a URL and waits for DOM settlement.
+#                         Each NAVIGATE is a system keyword that bypasses
+#                         heuristic scoring entirely.
+#
+#   WAIT <seconds>      — Hard sleep (e.g. WAIT 2). Useful when the UI
+#                         needs time to render after an action. Prefer
+#                         "Wait for 'Text' to be visible" for deterministic
+#                         waits when possible.
+#
+#   EXTRACT ... into {var}
+#                       — Captures text from the page into a runtime
+#                         variable {alden_salary}. Reusable in later steps.
+#
+#   DOUBLE CLICK        — Triggers Playwright's dblclick() on the
+#                         resolved element.
+#
+#   Multi-page test     — Each STEP navigates to a different DemoQA page,
+#                         demonstrating that a single .hunt file can cover
+#                         multiple pages in sequence.
+# --------------------------------------------------------------------------
 
 STEP 1: Text box form submission
     NAVIGATE to https://demoqa.com/text-box
@@ -10,22 +34,27 @@ STEP 1: Text box form submission
     Fill 'Current Address' field with '42 Shadow Lane'
     Fill 'Permanent Address' field with '7 Phantom Street'
     Click the 'Submit' button
+    # Multi-token VERIFY: all quoted tokens must be present on the page.
     VERIFY that 'Ghost Manul' and 'ghost@manul.ai' are present.
 
 STEP 2: Checkbox tree
     NAVIGATE to https://demoqa.com/checkbox
     Click the expand arrow button
+    # "checkbox for 'Home'" — the engine applies strict checkbox mode:
+    # non-checkbox elements get a heavy scoring penalty.
     Click the checkbox for 'Home'
     WAIT 2
     VERIFY that 'You have selected' is present.
 
 STEP 3: Radio button
     NAVIGATE to https://demoqa.com/radio-button
+    # "radio button for 'Impressive'" — strict radio mode, same as checkbox.
     Click the radio button for 'Impressive'
     VERIFY that 'Impressive' is present.
 
 STEP 4: Web tables — data extraction
     NAVIGATE to https://demoqa.com/webtables
+    # EXTRACT finds the row containing 'Alden' and extracts the Salary column.
     EXTRACT the Salary of 'Alden' into {alden_salary}
     VERIFY that '2000' is present.
 
@@ -38,6 +67,8 @@ STEP 5: Button interactions
 
 STEP 6: Select menu
     NAVIGATE to https://demoqa.com/select-menu
+    # Select uses Playwright's select_option() for native <select> tags.
+    # Falls back to click() for custom div-based dropdowns.
     Select 'Purple' from the 'Select Value' dropdown
     VERIFY that 'Purple' is present.
 
@@ -50,5 +81,7 @@ STEP 8: Navigation links
     NAVIGATE to https://demoqa.com/slider
     VERIFY that 'Slider' is present.
     NAVIGATE to https://demoqa.com/links
+    # "Click on the 'Home' link" — including "link" outside the quotes
+    # acts as an element-type hint, boosting <a> tags in scoring.
     Click on the 'Home' link
 DONE.

@@ -22,6 +22,42 @@ from typing import NamedTuple
 
 from .reporting import StepResult, MissionResult, RunSummary, append_run_history
 
+
+# ── CLI flag extraction helpers ──────────────────────────────────────────────
+def _pop_flag(args: list[str], flag: str) -> tuple[str | None, list[str]]:
+    """Extract a ``--flag value`` pair from *args*.
+
+    Returns ``(value, remaining_args)`` when *flag* is present, or
+    ``(None, args)`` when absent.  Exits with an error if the flag is
+    present but no value follows.
+    """
+    if flag not in args:
+        return None, args
+    idx = args.index(flag)
+    if idx + 1 >= len(args):
+        print(f"Error: {flag} requires a value.", file=sys.stderr)
+        sys.exit(1)
+    value = args[idx + 1]
+    remaining = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+    return value, remaining
+
+
+def _pop_int_flag(args: list[str], flag: str, *, minimum: int = 0) -> tuple[int | None, list[str]]:
+    """Extract a ``--flag N`` pair and parse *N* as an integer.
+
+    Returns ``(int_value, remaining_args)`` or ``(None, args)`` if absent.
+    Exits with a descriptive error when the value is not a valid integer.
+    """
+    raw, remaining = _pop_flag(args, flag)
+    if raw is None:
+        return None, remaining
+    try:
+        return max(minimum, int(raw)), remaining
+    except ValueError:
+        print(f"Error: {flag} value must be an integer, got '{raw}'.", file=sys.stderr)
+        sys.exit(1)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 _USAGE = """
 Usage:
@@ -168,52 +204,63 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
     in_teardown = False
 
     with open(filepath, "r", encoding="utf-8") as fh:
-        for lineno, line in enumerate(fh, 1):
-            stripped = line.strip()
+        file_lines = list(enumerate(fh, 1))
 
-            # ── Hook block markers ─────────────────────────────────────────────
-            if RE_SETUP.match(stripped):
-                in_setup = True
-                continue
-            if RE_END_SETUP.match(stripped):
-                in_setup = False
-                continue
-            if RE_TEARDOWN.match(stripped):
-                in_teardown = True
-                continue
-            if RE_END_TEARDOWN.match(stripped):
-                in_teardown = False
-                continue
+    idx = 0
+    while idx < len(file_lines):
+        lineno, line = file_lines[idx]
+        stripped = line.strip()
 
-            if in_setup:
-                if stripped and not stripped.startswith("#"):
-                    setup_lines.append(stripped)
-                continue
-            if in_teardown:
-                if stripped and not stripped.startswith("#"):
-                    teardown_lines.append(stripped)
-                continue
+        # ── Hook block markers ─────────────────────────────────────────────
+        if RE_SETUP.match(stripped):
+            in_setup = True
+            idx += 1
+            continue
+        if RE_END_SETUP.match(stripped):
+            in_setup = False
+            idx += 1
+            continue
+        if RE_TEARDOWN.match(stripped):
+            in_teardown = True
+            idx += 1
+            continue
+        if RE_END_TEARDOWN.match(stripped):
+            in_teardown = False
+            idx += 1
+            continue
 
-            # ── Normal mission line ────────────────────────────────────────────
-            if stripped.startswith("@context:"):
-                context = stripped.split(":", 1)[1].strip()
-            elif stripped.startswith("@title:") or stripped.startswith("@blueprint:"):
-                title = stripped.split(":", 1)[1].strip()
-            elif stripped.startswith("@tags:"):
-                raw_tags = stripped.split(":", 1)[1]
-                tags = [t.strip() for t in raw_tags.split(",") if t.strip()]
-            elif stripped.startswith("@var:"):
-                var_part = stripped[5:].strip()
-                m = re.match(r"\{?([^}=\s]+)\}?\s*=\s*(.*)", var_part)
-                if m:
-                    parsed_vars[m.group(1).strip()] = m.group(2).strip()
-            elif stripped.startswith("@data:"):
-                data_file = stripped.split(":", 1)[1].strip()
-            elif stripped.startswith("@schedule:"):
-                schedule = stripped.split(":", 1)[1].strip()
-            elif not stripped.startswith("#") and stripped:
-                mission_lines.append(line)
-                step_file_lines.append(lineno)
+        if in_setup:
+            if stripped and not stripped.startswith("#"):
+                setup_lines.append(stripped)
+            idx += 1
+            continue
+        if in_teardown:
+            if stripped and not stripped.startswith("#"):
+                teardown_lines.append(stripped)
+            idx += 1
+            continue
+
+        # ── Normal mission line ────────────────────────────────────────────
+        if stripped.startswith("@context:"):
+            context = stripped.split(":", 1)[1].strip()
+        elif stripped.startswith("@title:") or stripped.startswith("@blueprint:"):
+            title = stripped.split(":", 1)[1].strip()
+        elif stripped.startswith("@tags:"):
+            raw_tags = stripped.split(":", 1)[1]
+            tags = [t.strip() for t in raw_tags.split(",") if t.strip()]
+        elif stripped.startswith("@var:"):
+            var_part = stripped[5:].strip()
+            m = re.match(r"\{?([^}=\s]+)\}?\s*=\s*(.*)", var_part)
+            if m:
+                parsed_vars[m.group(1).strip()] = m.group(2).strip()
+        elif stripped.startswith("@data:"):
+            data_file = stripped.split(":", 1)[1].strip()
+        elif stripped.startswith("@schedule:"):
+            schedule = stripped.split(":", 1)[1].strip()
+        elif not stripped.startswith("#") and stripped:
+            mission_lines.append(line)
+            step_file_lines.append(lineno)
+        idx += 1
 
     return ParsedHunt(
         mission="".join(mission_lines).strip(),
@@ -312,13 +359,15 @@ async def _run_hunt_file(
     from manul_engine.hooks import run_hooks
 
     hunt_dir = os.path.dirname(os.path.abspath(path))
+    setup_ok = True
 
-    # ── [SETUP] ───────────────────────────────────────────────────────────────
-    # If setup fails, we skip the mission and teardown entirely — there is
-    # nothing to clean up because setup never completed.
-    if not run_hooks(hunt.setup_lines, label="SETUP", hunt_dir=hunt_dir, variables=hunt.parsed_vars):
-        print(f"\n❌ SETUP failed — skipping mission and teardown for {filename}")
-        return MissionResult(file=path, name=filename, status="fail", error="SETUP failed")
+    # ── SETUP / TEARDOWN hooks ───────────────────────────────────────────────
+    # Hook-returned variables are written back into hunt.parsed_vars so they
+    # become mission-scope placeholders for the browser steps.
+    setup_ok = run_hooks(hunt.setup_lines, label="SETUP", hunt_dir=hunt_dir, variables=hunt.parsed_vars)
+    if not setup_ok:
+        print(f"\n💥 SETUP failed — marking {filename} as BROKEN")
+        return MissionResult(file=path, name=filename, status="broken", error="SETUP failed")
 
     # ── Pre-flight: lazy-load only the custom control modules needed ──────
     from manul_engine.controls import extract_required_controls
@@ -392,9 +441,9 @@ async def _run_hunt_file(
         mission_result.error = str(exc)
         return mission_result
     finally:
-        # ── [TEARDOWN] ────────────────────────────────────────────────────────
-        # Always runs after setup succeeds, regardless of mission outcome.
-        # Teardown failures are logged but do not override the mission result.
+        # ── TEARDOWN ─────────────────────────────────────────────────────────
+        # Runs after the mission body finishes whenever this block is reached.
+        # Failures are logged but do not override the primary mission outcome.
         run_hooks(hunt.teardown_lines, label="TEARDOWN", hunt_dir=hunt_dir, variables=hunt.parsed_vars)
 
 
@@ -517,7 +566,9 @@ async def main() -> None:
         await daemon_main(daemon_args)
         return
 
-    headless = "--headless" in args
+    from . import prompts as _prompts_cli
+
+    headless = True if "--headless" in args else _prompts_cli.HEADLESS_MODE
     debug = "--debug" in args
     html_report = "--html-report" in args
     explain = "--explain" in args
@@ -525,45 +576,35 @@ async def main() -> None:
 
     # Extract --break-lines <n,n,...> flag (gutter breakpoints from VS Code).
     break_lines: set[int] = set()
-    if "--break-lines" in args:
-        idx = args.index("--break-lines")
-        if idx + 1 >= len(args):
-            print("Error: --break-lines requires a value (comma-separated line numbers).", file=sys.stderr)
-            sys.exit(1)
+    _bl_raw, args = _pop_flag(args, "--break-lines")
+    if _bl_raw is not None:
         try:
-            break_lines = {int(x.strip()) for x in args[idx + 1].split(",") if x.strip()}
+            break_lines = {int(x.strip()) for x in _bl_raw.split(",") if x.strip()}
         except ValueError:
             print("Error: --break-lines values must be integers.", file=sys.stderr)
             sys.exit(1)
-        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+
     # Extract --browser <name> flag
     _VALID_BROWSERS = {"chromium", "firefox", "webkit", "electron"}
     browser: str | None = None
-    if "--browser" in args:
-        idx = args.index("--browser")
-        if idx + 1 >= len(args):
-            print("Error: --browser requires a browser name (chromium, firefox, webkit, electron).", file=sys.stderr)
-            sys.exit(1)
-        raw_candidate = args[idx + 1]
-        candidate = raw_candidate.strip().lower()
+    _browser_raw, args = _pop_flag(args, "--browser")
+    if _browser_raw is not None:
+        candidate = _browser_raw.strip().lower()
         if candidate not in _VALID_BROWSERS:
-            print(f"Error: unsupported browser '{raw_candidate}'. Allowed: chromium, firefox, webkit, electron.", file=sys.stderr)
+            print(f"Error: unsupported browser '{_browser_raw}'. Allowed: chromium, firefox, webkit, electron.", file=sys.stderr)
             sys.exit(1)
         browser = candidate
-        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+
     # Extract --executable-path <path> flag
     executable_path: str | None = None
-    if "--executable-path" in args:
-        idx = args.index("--executable-path")
-        if idx + 1 >= len(args):
-            print("Error: --executable-path requires a file path.", file=sys.stderr)
-            sys.exit(1)
-        executable_path = args[idx + 1].strip()
+    _ep_raw, args = _pop_flag(args, "--executable-path")
+    if _ep_raw is not None:
+        executable_path = _ep_raw.strip()
         if not executable_path:
             print("Error: --executable-path value cannot be empty.", file=sys.stderr)
             sys.exit(1)
         os.environ["MANUL_EXECUTABLE_PATH"] = executable_path
-        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+
     # Extract --workers <n> flag
     # prompts.py (which maps JSON → env vars) hasn't been imported yet at this
     # point, so read 'workers' from the JSON config file directly.
@@ -587,17 +628,9 @@ async def main() -> None:
                 workers = max(1, int(_env_workers_stripped))
             except ValueError:
                 pass  # fall back to JSON/default value
-    if "--workers" in args:
-        idx = args.index("--workers")
-        if idx + 1 >= len(args):
-            print("Error: --workers requires a number.", file=sys.stderr)
-            sys.exit(1)
-        try:
-            workers = max(1, int(args[idx + 1]))
-        except ValueError:
-            print(f"Error: --workers value must be an integer, got '{args[idx + 1]}'.", file=sys.stderr)
-            sys.exit(1)
-        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+    _cli_workers, args = _pop_int_flag(args, "--workers", minimum=1)
+    if _cli_workers is not None:
+        workers = _cli_workers
     # --debug and --break-lines require interactive stdio and must run sequentially.
     # Passing them to parallel subprocess workers would cause stdin hangs; enforce
     # workers=1 automatically and warn the user if they requested more.
@@ -611,43 +644,26 @@ async def main() -> None:
 
     # Extract --tags <tag1,tag2,...> filter
     filter_tags: set[str] = set()
-    if "--tags" in args:
-        idx = args.index("--tags")
-        if idx + 1 >= len(args):
-            print("Error: --tags requires a value (comma-separated tag names).", file=sys.stderr)
-            sys.exit(1)
-        filter_tags = {t.strip() for t in args[idx + 1].split(",") if t.strip()}
-        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+    _tags_raw, args = _pop_flag(args, "--tags")
+    if _tags_raw is not None:
+        filter_tags = {t.strip() for t in _tags_raw.split(",") if t.strip()}
 
     # Extract --retries <N> flag
     # Priority: CLI flag > MANUL_RETRIES env var > JSON config > 0
-    from . import prompts as _prompts_cli
     retries: int = _prompts_cli.RETRIES
-    if "--retries" in args:
-        idx = args.index("--retries")
-        if idx + 1 >= len(args):
-            print("Error: --retries requires a number.", file=sys.stderr)
-            sys.exit(1)
-        try:
-            retries = max(0, int(args[idx + 1]))
-        except ValueError:
-            print(f"Error: --retries value must be an integer, got '{args[idx + 1]}'.", file=sys.stderr)
-            sys.exit(1)
-        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
+    _cli_retries, args = _pop_int_flag(args, "--retries", minimum=0)
+    if _cli_retries is not None:
+        retries = _cli_retries
 
     # Extract --screenshot <mode> flag (on-fail | always | none)
     screenshot_mode: str = _prompts_cli.SCREENSHOT
-    if "--screenshot" in args:
-        idx = args.index("--screenshot")
-        if idx + 1 >= len(args):
-            print("Error: --screenshot requires a mode (on-fail, always, none).", file=sys.stderr)
-            sys.exit(1)
-        _ss_candidate = args[idx + 1].strip().lower()
+    _ss_raw, args = _pop_flag(args, "--screenshot")
+    if _ss_raw is not None:
+        _ss_candidate = _ss_raw.strip().lower()
         if _ss_candidate not in ("on-fail", "always", "none"):
-            print(f"Error: --screenshot mode must be on-fail, always, or none; got '{args[idx + 1]}'.", file=sys.stderr)
+            print(f"Error: --screenshot mode must be on-fail, always, or none; got '{_ss_raw}'.", file=sys.stderr)
             sys.exit(1)
         screenshot_mode = _ss_candidate
-        args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
 
     # Merge --html-report with config/env
     if not html_report:
@@ -857,6 +873,8 @@ async def main() -> None:
                     _child_status = "flaky"
                 elif status == "PASS" and "SOFT ASSERTION FAILED" in output.upper():
                     _child_status = "warning"
+                elif " BROKEN" in output.upper() or "SETUP FAILED" in output.upper():
+                    _child_status = "broken"
                 else:
                     _child_status = "pass" if status == "PASS" else "fail"
                 _mr = MissionResult(
@@ -876,6 +894,7 @@ async def main() -> None:
         run_summary.total = len(results)
         run_summary.passed = sum(1 for _, s, _ in results if s == "PASS")
         run_summary.failed = sum(1 for _, s, _ in results if s == "FAIL")
+        run_summary.broken = sum(1 for _, s, _ in results if s == "BROKEN")
         run_summary.flaky  = sum(1 for _, s, _ in results if s == "FLAKY")
         run_summary.warning = sum(1 for _, s, _ in results if s == "WARNING")
         passed = run_summary.passed + run_summary.flaky + run_summary.warning  # flaky/warning count as passed overall
@@ -884,6 +903,8 @@ async def main() -> None:
         for name, status, secs in results:
             if status == "PASS":
                 icon = "✅"
+            elif status == "BROKEN":
+                icon = "💥"
             elif status == "FLAKY":
                 icon = "⚠️ "
             elif status == "WARNING":
@@ -893,11 +914,12 @@ async def main() -> None:
             print(f"{icon} {name.ljust(34)} {status}  {secs:5.1f}s")
         print("=" * 60)
         _flaky_note = f"  ({run_summary.flaky} flaky)" if run_summary.flaky else ""
-        print(f"   {passed}/{len(results)} passed{_flaky_note}  •  total {total:.1f}s")
+        _broken_note = f"  ({run_summary.broken} broken)" if run_summary.broken else ""
+        print(f"   {passed}/{len(results)} passed{_flaky_note}{_broken_note}  •  total {total:.1f}s")
         print("=" * 60)
         print(f"\n📄 Full log saved to: {log_file}")
 
-        return run_summary.failed  # number of failures
+        return run_summary.failed + run_summary.broken  # number of non-passing failures
 
     finally:
         # ── @after_all (always runs, even after exceptions) ────────────────
@@ -916,13 +938,17 @@ async def main() -> None:
                 run_summary.total = len(results)
                 run_summary.passed = sum(1 for _, s, _ in results if s == "PASS")
                 run_summary.failed = sum(1 for _, s, _ in results if s == "FAIL")
+                run_summary.broken = sum(1 for _, s, _ in results if s == "BROKEN")
                 run_summary.flaky  = sum(1 for _, s, _ in results if s == "FLAKY")
                 run_summary.warning = sum(1 for _, s, _ in results if s == "WARNING")
             try:
                 from .reporter import generate_report
+                from .reporting import load_report_state, save_report_state, merge_report_summaries
                 report_path = os.path.join(_reports_dir, "manul_report.html")
                 abs_report = _pathlib.Path(report_path).resolve().as_uri()
-                generate_report(run_summary, report_path)
+                report_summary = merge_report_summaries(load_report_state(), run_summary)
+                save_report_state(report_summary)
+                generate_report(report_summary, report_path)
                 print(f"\n📊 HTML Report successfully generated!")
                 print(f"👉 {abs_report}")
             except Exception as _rpt_err:

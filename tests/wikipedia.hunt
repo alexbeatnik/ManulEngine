@@ -2,14 +2,56 @@
 @title: large_scale_navigation_and_extraction
 
 # 🐾 WIKIPEDIA HUNT: The 50-Step Marathon
+#
+# --------------------------------------------------------------------------
+# FEATURES DEMONSTRATED:
+#
+#   Fill '...' with '...' and press Enter
+#                       — Combines typing and pressing Enter in one step.
+#                         The engine fills the field and then simulates
+#                         an Enter keypress (equivalent to a separate
+#                         PRESS ENTER step). Useful for search forms.
+#
+#   EXTRACT ... into {var}
+#                       — Captures text into runtime variables. Multiple
+#                         EXTRACTs build a variable store that persists
+#                         for the entire mission. Variables can be reused
+#                         in later steps with {placeholder} syntax.
+#
+#   SCROLL DOWN         — Scrolls the main page by one viewport height.
+#                         The engine uses this before interacting with
+#                         elements that may be below the fold.
+#
+#   Cross-page navigation
+#                       — Clicking in-page links (e.g. 'Taxonomy',
+#                         'Microsoft') navigates to new pages. The engine
+#                         auto-waits for DOM settlement after each
+#                         navigation. VERIFY after navigation confirms
+#                         the expected page loaded.
+#
+#   Large-scale test    — 50+ actions across 7+ Wikipedia pages in a
+#                         single .hunt file. Demonstrates that the engine
+#                         handles long sessions without losing state or
+#                         variable context.
+#
+#   Inline CALL PYTHON  — Mid-test backend or helper calls belong in a
+#                         normal action line, not in brittle UI workarounds.
+#                         Example (commented so this public demo stays
+#                         dependency-free):
+#
+#                         CALL PYTHON scripts.research_helpers.pick_topic with args: "cats" into {next_topic}
+#                         CALL PYTHON scripts.research_helpers.fetch_reference with args: "{next_topic}" into {reference_note}
+# --------------------------------------------------------------------------
 
 STEP 1: Land on Wikipedia home
     NAVIGATE to https://en.wikipedia.org/wiki/Main_Page
     VERIFY that 'Welcome to Wikipedia' is present.
 
 STEP 2: Research — Pallas's cat
+    # "and press Enter" at the end triggers form submission after fill.
     Fill 'Search Wikipedia' field with "Pallas's cat" and press Enter
     VERIFY that 'Otocolobus manul' is present.
+    # Extract structured data from the infobox into runtime variables.
     EXTRACT the text of 'Order:' into {manul_order}
     EXTRACT the text of 'Family:' into {manul_family}
     Click on the 'Taxonomy' link

@@ -196,6 +196,62 @@ def _test_execute_hook_line__success(tmp_dir: str) -> None:
     _assert(r2.success, "second valid call → success")
 
 
+def _test_execute_hook_line__print_and_dict_context(tmp_dir: str) -> None:
+    print("\n  ── execute_hook_line — PRINT and dict context ───────────")
+
+    _make_helper(tmp_dir, "context_helper.py", """\
+        def get_context():
+            return {"random_id": "4242", "username": "manul_tester_4242"}
+    """)
+
+    ctx: dict[str, str] = {}
+    r1 = execute_hook_line(
+        "CALL PYTHON context_helper.get_context",
+        hunt_dir=tmp_dir,
+        variables=ctx,
+    )
+    from manul_engine.hooks import bind_hook_result
+    bind_hook_result(r1, ctx)
+    _assert(r1.success, "dict-returning helper succeeds")
+    _assert(ctx.get("random_id") == "4242", "dict key random_id exposed as shared variable")
+    _assert(ctx.get("username") == "manul_tester_4242", "dict key username exposed as shared variable")
+
+    r2 = execute_hook_line('PRINT "Cleanup complete for {random_id}"', variables=ctx)
+    _assert(r2.success, "PRINT instruction succeeds")
+    _assert(r2.message == "Cleanup complete for 4242", "PRINT substitutes shared variables")
+
+
+def _test_execute_hook_line__scripts_folder_and_with_args(tmp_dir: str) -> None:
+    print("\n  ── execute_hook_line — /scripts lookup + with args ───────")
+
+    scripts_dir = Path(tmp_dir, "scripts")
+    scripts_dir.mkdir(parents=True, exist_ok=True)
+    _make_helper(str(scripts_dir), "auth.py", """\
+        def get_admin_token():
+            return "adm_tok_123"
+    """)
+    _make_helper(str(scripts_dir), "db_cleanup.py", """\
+        def delete_user(username):
+            return f"deleted:{username}"
+    """)
+
+    r1 = execute_hook_line(
+        "CALL PYTHON auth.get_admin_token into {auth_token}",
+        hunt_dir=tmp_dir,
+        variables={},
+    )
+    _assert(r1.success, "helper loaded from /scripts folder in project root")
+    _assert(r1.return_value == "adm_tok_123", "scripts helper return captured into variable")
+
+    r2 = execute_hook_line(
+        "CALL PYTHON db_cleanup.delete_user with args: 'manul_tester_77' into {cleanup_status}",
+        hunt_dir=tmp_dir,
+        variables={},
+    )
+    _assert(r2.success, "with args: syntax succeeds")
+    _assert(r2.return_value == "deleted:manul_tester_77", "with args: forwards positional argument")
+
+
 def _test_execute_hook_line__function_not_found(tmp_dir: str) -> None:
     print("\n  ── execute_hook_line — function not found ───────────────")
 
@@ -347,6 +403,38 @@ def _test_run_hooks(tmp_dir: str) -> None:
     _assert(not ok3, "run_hooks returns False when a line fails")
 
 
+def _test_run_hooks__shared_variables(tmp_dir: str) -> None:
+    print("\n  ── run_hooks — shared variables across lifecycle lines ───")
+
+    scripts_dir = Path(tmp_dir, "scripts")
+    scripts_dir.mkdir(parents=True, exist_ok=True)
+    _make_helper(str(scripts_dir), "auth.py", """\
+        def get_admin_token():
+            return "token-xyz"
+    """)
+    _make_helper(str(scripts_dir), "seed.py", """\
+        def create_user():
+            return {"random_id": "9001", "username": "manul_tester_9001"}
+    """)
+
+    variables: dict[str, str] = {}
+    ok = run_hooks(
+        [
+            "CALL PYTHON auth.get_admin_token into {auth_token}",
+            'PRINT "Authenticated with token: {auth_token}"',
+            "CALL PYTHON seed.create_user",
+            'PRINT "Cleanup complete for {random_id}"',
+        ],
+        label="SETUP",
+        hunt_dir=tmp_dir,
+        variables=variables,
+    )
+    _assert(ok, "run_hooks succeeds with shared variables across lines")
+    _assert(variables.get("auth_token") == "token-xyz", "scalar into binding persisted in shared variables")
+    _assert(variables.get("random_id") == "9001", "dict return key persisted in shared variables")
+    _assert(variables.get("username") == "manul_tester_9001", "dict return username persisted in shared variables")
+
+
 # ── Suite entry point ─────────────────────────────────────────────────────────
 
 async def run_suite() -> bool:
@@ -361,12 +449,15 @@ async def run_suite() -> bool:
         _test_execute_hook_line__syntax()
         _test_execute_hook_line__module_not_found()
         _test_execute_hook_line__success(tmp_dir)
+        _test_execute_hook_line__print_and_dict_context(tmp_dir)
+        _test_execute_hook_line__scripts_folder_and_with_args(tmp_dir)
         _test_execute_hook_line__function_not_found(tmp_dir)
         _test_execute_hook_line__not_callable(tmp_dir)
         _test_execute_hook_line__runtime_error(tmp_dir)
         _test_execute_hook_line__async_rejected(tmp_dir)
         _test_execute_hook_line__state_isolation(tmp_dir)
         _test_run_hooks(tmp_dir)
+        _test_run_hooks__shared_variables(tmp_dir)
 
     total = _PASS + _FAIL
     print(f"\n📊 SCORE: {_PASS}/{total} passed")

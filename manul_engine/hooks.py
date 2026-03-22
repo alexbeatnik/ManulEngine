@@ -32,7 +32,7 @@ import importlib.util
 import os
 import re
 import shlex
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
 
@@ -52,8 +52,10 @@ _RE_CALL_PYTHON = re.compile(
     r"^CALL\s+PYTHON\s+([\w.]+)(.*?)$",
     re.IGNORECASE,
 )
+_RE_PRINT = re.compile(r'^PRINT\s+(.+)$', re.IGNORECASE)
 
 _RE_INTO_VAR = re.compile(r"(?:^|\s+)(?:into|to)\s+\{(\w+)\}\s*$", re.IGNORECASE)
+_RE_WITH_ARGS = re.compile(r"^with\s+args\s*:\s*(.*)$", re.IGNORECASE)
 
 _RE_VAR_PLACEHOLDER = re.compile(r"\{(\w+)\}")
 
@@ -72,6 +74,43 @@ class HookResult:
     return_value: str | None = None
     #: The variable name extracted from the ``into {var}`` / ``to {var}`` clause.
     var_name: str | None = None
+    #: Top-level dict keys returned by Python helpers are flattened into shared
+    #: variables so they can be referenced directly as ``{key}``.
+    return_mapping: dict[str, str] = field(default_factory=dict)
+
+
+def _lookup_variable(variables: dict[str, str] | None, name: str) -> str | None:
+    if variables is None:
+        return None
+    getter = getattr(variables, "get", None)
+    if callable(getter):
+        return getter(name)
+    try:
+        return variables[name]  # type: ignore[index]
+    except Exception:
+        return None
+
+
+def _substitute_hook_variables(text: str, variables: dict[str, str] | None) -> str:
+    return _RE_VAR_PLACEHOLDER.sub(
+        lambda m: _lookup_variable(variables, m.group(1)) or m.group(0),
+        text,
+    )
+
+
+def bind_hook_result(result: HookResult, variables: dict[str, str] | None) -> None:
+    """Apply any returned variables from a hook result into a shared context."""
+    if variables is None or not result.success:
+        return
+    if result.return_mapping:
+        updater = getattr(variables, "update", None)
+        if callable(updater):
+            updater(result.return_mapping)
+        else:
+            for key, value in result.return_mapping.items():
+                variables[key] = value  # type: ignore[index]
+    if result.var_name and result.return_value is not None:
+        variables[result.var_name] = result.return_value  # type: ignore[index]
 
 
 # ── Block extraction ──────────────────────────────────────────────────────────
@@ -159,8 +198,12 @@ def _resolve_module(module_path: str, hunt_dir: str | None) -> tuple[ModuleType,
     search_roots.append(Path.cwd())
 
     for root in search_roots:
-        candidate = root / rel_py
-        if candidate.is_file():
+        candidates = [root / rel_py]
+        if parts and parts[0] != "scripts":
+            candidates.append(root / "scripts" / rel_py)
+        for candidate in candidates:
+            if not candidate.is_file():
+                continue
             cache_key = str(candidate.resolve())
             cached = _module_cache.get(cache_key)
             if cached is not None:
@@ -250,6 +293,13 @@ def execute_hook_line(
         variables: Optional dict of ``{name} → value`` used to resolve
                    placeholder arguments.
     """
+    print_match = _RE_PRINT.match(line)
+    if print_match:
+        payload = print_match.group(1).strip()
+        if len(payload) >= 2 and payload[0] == payload[-1] and payload[0] in ('"', "'"):
+            payload = payload[1:-1]
+        return HookResult(success=True, message=_substitute_hook_variables(payload, variables))
+
     m = _RE_CALL_PYTHON.match(line)
     if not m:
         return HookResult(
@@ -257,6 +307,7 @@ def execute_hook_line(
             message=(
                 f"ManulEngine Error: Unrecognised hook instruction: '{line}'\n"
                 f"  Supported syntax:  CALL PYTHON <module>.<function>\n"
+                f"                      PRINT \"message with {{vars}}\"\n"
                 f"  With capture:      CALL PYTHON <module>.<function> into {{var_name}}"
             ),
         )
@@ -270,6 +321,9 @@ def execute_hook_line(
     if into_m:
         var_name = into_m.group(1)
         remainder = remainder[:into_m.start()].strip()  # args without 'into {var}'
+    with_args_m = _RE_WITH_ARGS.match(remainder)
+    if with_args_m:
+        remainder = with_args_m.group(1).strip()
     raw_args_str: str | None = remainder or None
 
     if "." not in dotted:
@@ -368,16 +422,26 @@ def execute_hook_line(
     try:
         ret = func(*call_args)
         ret_str: str | None = None
+        ret_mapping: dict[str, str] = {}
+        if isinstance(ret, dict):
+            ret_mapping = {
+                str(key): str(value)
+                for key, value in ret.items()
+                if str(key).strip()
+            }
         if var_name is not None:
             # Always stringify — even None → "None" — so that a variable binding
             # is guaranteed when 'into {var}' / 'to {var}' was explicitly requested.
             ret_str = str(ret)
         suffix = f" → {{{var_name}}} = {ret_str!r}" if var_name and ret_str is not None else ""
+        if ret_mapping:
+            suffix += f" → keys {sorted(ret_mapping)}"
         return HookResult(
             success=True,
             message=f"✔  {dotted}({args_repr}){suffix}",
             return_value=ret_str,
             var_name=var_name,
+            return_mapping=ret_mapping,
         )
     except Exception as exc:
         return HookResult(
@@ -424,6 +488,7 @@ def run_hooks(
     for line in lines:
         print(f"  ▶  {line}")
         result = execute_hook_line(line, hunt_dir=hunt_dir, variables=variables)
+        bind_hook_result(result, variables)
         print(f"     {result.message}")
         if not result.success:
             print(bar)

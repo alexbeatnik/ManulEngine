@@ -15,7 +15,6 @@ drag-and-drop, click/type/select/hover via _execute_step).
 """
 
 import asyncio
-import datetime
 import inspect
 import json
 import os
@@ -32,15 +31,27 @@ except Exception:  # pragma: no cover
 
 from . import prompts
 from .helpers import substitute_memory, compact_log_field, extract_quoted, detect_mode, classify_step, RE_SYSTEM_STEP, parse_hunt_blocks, parse_explicit_wait, ContextualHint
-from .hooks import execute_hook_line
-from .js_scripts import SNAPSHOT_JS
-from .scoring import score_elements
+from .hooks import execute_hook_line, bind_hook_result
+from .js_scripts import SNAPSHOT_JS, DEBUG_MODAL_JS, DEBUG_REMOVE_MODAL_JS
+from .scoring import score_elements, SCALE
 from .actions import _ActionsMixin
 from .cache import _ControlsCacheMixin
-from .controls import load_custom_controls, get_custom_control, extract_required_controls
+from .controls import load_custom_controls, get_custom_control
 from . import prompts as _prompts_mod  # for CUSTOM_MODULES_DIRS access
 from .reporting import StepResult, MissionResult, BlockResult
 from .variables import ScopedVariables
+
+# ── Score confidence thresholds (normalised 0.0–1.0 floats) ──────────────────
+# Compared against best_score / SCALE.  Values > 1.0 are possible because the
+# cache channel weight (2.0) allows the weighted sum to exceed 1.0.
+THRESHOLD_SEMANTIC_CACHE  = 1.125   # semantic cache reuse (~200k scaled)
+THRESHOLD_HIGH_CONFIDENCE = 0.112   # strong heuristic match (~20k scaled)
+THRESHOLD_CONTEXT_REUSE   = 0.056   # blind/context reuse from previous step
+
+
+def _confidence(score: int) -> float:
+    """Convert a scaled integer score to the normalized weighted-score ratio."""
+    return score / SCALE
 
 
 class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
@@ -364,73 +375,17 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
     _DEBUG_PAUSE_MARKER = "\x00MANUL_DEBUG_PAUSE\x00"
 
-    # ── In-browser debug modal ────────────────────────────────────────────────
-    # A lightweight floating panel injected into the live page during debug pauses.
-    # Shows the step text and an ✕ Abort button that sets window.__manul_debug_action.
-    _MODAL_JS: str = """(stepText) => {
-        const old = document.getElementById('manul-debug-modal');
-        if (old) old.remove();
-        window.__manul_debug_action = null;
-
-        const modal = document.createElement('div');
-        modal.id = 'manul-debug-modal';
-        modal.style.cssText = [
-            'position:fixed', 'top:12px', 'right:12px', 'z-index:2147483647',
-            'background:#1e1e2e', 'color:#cdd6f4',
-            'border:2px solid #89b4fa', 'border-radius:8px',
-            'padding:14px 40px 14px 16px',
-            'font-family:monospace', 'font-size:13px',
-            'max-width:420px', 'word-break:break-all',
-            'box-shadow:0 4px 24px rgba(0,0,0,.55)',
-            'pointer-events:all', 'user-select:none',
-        ].join(';');
-
-        const label = document.createElement('div');
-        label.style.cssText = 'font-weight:bold;color:#89b4fa;margin-bottom:6px;font-size:11px;letter-spacing:.06em;';
-        label.textContent = '\uD83D\uDC3E MANUL DEBUG PAUSE';
-
-        const text = document.createElement('div');
-        text.style.cssText = 'line-height:1.5;';
-        text.textContent = stepText;
-
-        const btn = document.createElement('button');
-        btn.id = 'manul-debug-abort';
-        btn.textContent = '\u2715';
-        btn.title = 'Abort test run';
-        btn.style.cssText = [
-            'position:absolute', 'top:8px', 'right:8px',
-            'background:transparent', 'border:none',
-            'color:#a6adc8', 'font-size:16px', 'font-weight:bold',
-            'cursor:pointer', 'line-height:1', 'padding:2px 6px',
-            'border-radius:4px', 'transition:background .15s,color .15s',
-        ].join(';');
-        btn.onmouseover = () => { btn.style.background='#f38ba8'; btn.style.color='#1e1e2e'; };
-        btn.onmouseout  = () => { btn.style.background='transparent'; btn.style.color='#a6adc8'; };
-        btn.addEventListener('click', () => { window.__manul_debug_action = 'ABORT'; });
-
-        modal.appendChild(label);
-        modal.appendChild(text);
-        modal.appendChild(btn);
-        document.body.appendChild(modal);
-    }"""
-
-    _REMOVE_MODAL_JS: str = """() => {
-        const m = document.getElementById('manul-debug-modal');
-        if (m) m.remove();
-        window.__manul_debug_action = null;
-    }"""
-
     async def _inject_debug_modal(self, page, step: str) -> None:
         """Inject the floating debug panel with an Abort button into the browser."""
         try:
-            await page.evaluate(self._MODAL_JS, step)
+            await page.evaluate(DEBUG_MODAL_JS, step)
         except Exception:
             pass
 
     async def _remove_debug_modal(self, page) -> None:
         """Remove the debug modal and reset the abort signal."""
         try:
-            await page.evaluate(self._REMOVE_MODAL_JS)
+            await page.evaluate(DEBUG_REMOVE_MODAL_JS)
         except Exception:
             pass
 
@@ -707,6 +662,12 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
     # ── Element resolution ────────────────────
 
+    @staticmethod
+    async def _scroll_and_wait(page) -> None:
+        """Scroll down by 500px and wait for new elements to appear."""
+        await page.evaluate("window.scrollBy(0, 500)")
+        await asyncio.sleep(1)
+
     async def _resolve_element(
         self,
         page,
@@ -738,8 +699,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
             if not els:
                 if attempt < 4:
-                    await page.evaluate("window.scrollBy(0, 500)")
-                    await asyncio.sleep(1)
+                    await self._scroll_and_wait(page)
                 continue
 
             if mode == "drag":
@@ -750,8 +710,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                 els = [e for e in els if (e.get("frame_index", 0), e["id"]) in allowed_ids]
                 if not els:
                     if attempt < 4:
-                        await page.evaluate("window.scrollBy(0, 500)")
-                        await asyncio.sleep(1)
+                        await self._scroll_and_wait(page)
                     continue
 
             cached_control = self._resolve_from_control_cache(
@@ -804,8 +763,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                 break
 
             if attempt < 4:
-                await page.evaluate("window.scrollBy(0, 500)")
-                await asyncio.sleep(1)
+                await self._scroll_and_wait(page)
 
         if not els:
             return None
@@ -829,8 +787,9 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
         # Self-healing: stale cache entry detected — flag for heuristic paths below.
         # The cache is updated by _remember_resolved_control after the action succeeds.
+        _conf = _confidence(best_score)
         if _had_stale_cache:
-            print(f"    🔄 STALE CACHE: Entry invalidated — re-resolving (score {best_score})")
+            print(f"    🔄 STALE CACHE: Entry invalidated — re-resolving (confidence {_conf:.3f})")
 
         # Pure-AI mode: usually asks the LLM, but fast-tracks if there is only 1 candidate.
         # Guard: ai_always has no effect without a model — fall through to heuristics.
@@ -862,22 +821,22 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
             return ai_choice
 
-        if best_score >= 200_000:
-            print(f"    🧠 SEMANTIC CACHE: Reusing learned element (score {best_score})")
+        if _conf >= THRESHOLD_SEMANTIC_CACHE:
+            print(f"    🧠 SEMANTIC CACHE: Reusing learned element (confidence {_conf:.3f})")
             if _had_stale_cache:
                 self._last_step_healed = True
             return top[0]
 
-        if best_score >= 10_000:
-            label = "High confidence" if best_score >= 20_000 else "Context reuse"
-            print(f"    ⚙️  DOM HEURISTICS: {label} match (score {best_score})")
+        if _conf >= THRESHOLD_CONTEXT_REUSE:
+            label = "High confidence" if _conf >= THRESHOLD_HIGH_CONFIDENCE else "Context reuse"
+            print(f"    ⚙️  DOM HEURISTICS: {label} match (confidence {_conf:.3f})")
             if _had_stale_cache:
                 self._last_step_healed = True
             return top[0]
 
         if best_score >= self._threshold:
             label = "High confidence" if best_score >= self._threshold * 2 else "Keyword"
-            print(f"    ⚙️  DOM HEURISTICS: {label} match (score {best_score})")
+            print(f"    ⚙️  DOM HEURISTICS: {label} match (confidence {_conf:.3f})")
             if _had_stale_cache:
                 self._last_step_healed = True
             return top[0]
@@ -885,7 +844,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         # Explicit AI disable switch: threshold <= 0 means "never call the LLM".
         # (Useful for deterministic runs and environments without Ollama.)
         if self._threshold <= 0:
-            print(f"    ⚙️  DOM HEURISTICS: AI disabled (threshold {self._threshold}); using best candidate (score {best_score})")
+            print(f"    ⚙️  DOM HEURISTICS: AI disabled; using best candidate (confidence {_conf:.3f})")
             if _had_stale_cache:
                 self._last_step_healed = True
             return top[0]
@@ -1227,8 +1186,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                     if not result.success:
                                         _step_error = result.message
                                         _step_ok = False
-                                    elif result.var_name and result.return_value is not None:
-                                        self.memory[result.var_name] = result.return_value
+                                    else:
+                                        bind_hook_result(result, self.memory)
                                 elif not await self._execute_step(page, step, strategic_context, step_idx=action_index):
                                     _step_error = "Action failed"
                                     _step_ok = False
