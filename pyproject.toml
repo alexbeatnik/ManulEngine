@@ -35,12 +35,12 @@ dependencies = [
 
 [project.optional-dependencies]
 ai = [
-    "ollama>=0.1.6",
+    "ollama>=0.6.1",
 ]
 dev = [
     "build",
     "twine",
-    "ollama>=0.1.6",
+    "ollama>=0.6.1",
 ]
 
 [project.scripts]
