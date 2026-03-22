@@ -61,7 +61,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.14
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.15
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession
   api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)
@@ -446,7 +446,7 @@ Ollama is optional — only needed as a last-resort self-healing fallback:
 - AI element-picker fallback when heuristics confidence is below `ai_threshold`
 - free-text tasks (AI planner) — rarely used in practice
 
-To use Ollama: install the [Ollama app](https://ollama.com), run `pip install ollama` (Python client), pull a model (`ollama pull qwen2.5:0.5b`), and start the server (`ollama serve`).
+To use Ollama: install the [Ollama app](https://ollama.com), run `pip install ollama==0.6.1` (Python client), pull a model (`ollama pull qwen2.5:0.5b`), and start the server (`ollama serve`).
 
 **Rule:** after any engine change, `python manul.py test` must exit with code **0**.
 Tip: `"model": null` (the default) forces heuristics-only mode. This is the recommended configuration for deterministic tests and CI pipelines.

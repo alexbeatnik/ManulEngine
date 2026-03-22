@@ -5,6 +5,7 @@
 # ManulEngine
 
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/manul-engine?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/manul-engine)
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-d97706)](#status)
 
@@ -270,14 +271,16 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.13
+pip install manul-engine==0.0.9.15
 playwright install
 ```
+
+If you install standalone Python dependencies manually instead of using the packaged extras, the current minimums in this release line are `playwright==1.58.0` and `ollama==0.6.1`.
 
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.13"
+pip install "manul-engine[ai]==0.0.9.15"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -542,15 +545,15 @@ Representative coverage areas include:
 - visibility filtering and TreeWalker behavior
 - custom controls and lazy control loading
 
-## What's New in v0.0.9.14
+## What's New in v0.0.9.15
 
-- **HTML report session aggregation:** `reports/manul_report.html` now preserves recent results across separate CLI and VS Code Test Explorer invocations instead of keeping only the last invocation.
-- **Visible report-session marker:** the HTML report header now shows `Run Session` and `Merged invocations`, making cross-invocation aggregation explicit instead of implicit.
-- **Persisted report state:** recent HTML-report state is stored in `reports/manul_report_state.json`, while historical sparkline data continues to live in `reports/run_history.json`.
-- **Contextual UI Navigator:** action steps can now carry spatial qualifiers such as `NEAR 'Anchor'`, `ON HEADER`, `ON FOOTER`, and `INSIDE 'Actions' row with 'John Doe'` to disambiguate repeated UI controls without leaving the DSL.
+- **Release-line sync:** version metadata and public install snippets are aligned on `0.0.9.15`, including the current minimum Python client versions for `playwright` and optional `ollama` usage.
+- **DSL contract refresh:** `MANUL_DSL_CONTRACT.md` now reflects the current runtime semantics for hook blocks, contextual qualifiers, `CALL PYTHON`, and debug-oriented system steps.
+- **Prompt sync:** the generation prompts under `prompts/` were updated to match the live DSL, including bracket-only `[SETUP]` / `[TEARDOWN]`, `PRINT`, `CALL PYTHON ... into {var}`, optional `with args:`, and current helper-module resolution rules.
+- **Instruction mirror integrity:** repo-local assistant guidance remains synchronized between `.github/copilot-instructions.md` and the mirrored `custom-instructions/repo/.github/copilot-instructions.md` to avoid customization drift.
 
 ## License
 
-**Version:** 0.0.9.14
+**Version:** 0.0.9.15
 
 Apache-2.0.

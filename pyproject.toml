@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "manul-engine"
-version = "0.0.9.14"
+version = "0.0.9.15"
 description = "Deterministic DSL-first browser automation platform powered by Playwright heuristics with optional local AI self-healing (Ollama)"
 readme = "README.md"
 license = "Apache-2.0"
@@ -30,17 +30,17 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "playwright>=1.40.0",
+    "playwright>=1.58.0",
 ]
 
 [project.optional-dependencies]
 ai = [
-    "ollama>=0.1.6",
+    "ollama>=0.6.1",
 ]
 dev = [
     "build",
     "twine",
-    "ollama>=0.1.6",
+    "ollama>=0.6.1",
 ]
 
 [project.scripts]
