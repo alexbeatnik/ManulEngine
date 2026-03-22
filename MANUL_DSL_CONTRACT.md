@@ -249,7 +249,7 @@
       "uiText": "CALL PYTHON module.function",
       "snippet": "CALL PYTHON ${1:module}.${2:function}${3: ${4:args}}${5: into {${6:variable}}}",
       "regex": "\\bCALL\\s+PYTHON\\b",
-      "description": "Executes a synchronous Python function inline. Supports positional arguments (shlex-tokenised) and optional 'into {var}' to capture the return value. Module resolved: hunt dir → CWD → sys.path.",
+      "description": "Executes a synchronous Python function inline. Supports positional arguments (including optional 'with args:' sugar) and optional 'into {var}' / 'to {var}' capture. Module resolution order: hunt dir → hunt_dir/scripts → CWD → CWD/scripts → sys.path.",
       "category": "python"
     },
     {
@@ -394,16 +394,16 @@
       "label": "[SETUP]",
       "openTag": "[SETUP]",
       "closeTag": "[END SETUP]",
-      "snippet": "[SETUP]\n    CALL PYTHON ${1:module}.${2:function}\n[END SETUP]",
-      "description": "Block of CALL PYTHON lines executed BEFORE the browser launches. If any line fails, the mission is skipped and teardown is not called. Target functions must be synchronous."
+      "snippet": "[SETUP]\n    PRINT \"${1:Preparing setup}\"\n    CALL PYTHON ${2:module}.${3:function}${4: with args: \"${5:arg}\"}${6: into {${7:variable}}}\n[END SETUP]",
+      "description": "Block of PRINT and CALL PYTHON lines executed BEFORE the browser launches. If any line fails, the mission is marked as broken and browser steps are skipped. Teardown is not called when setup fails. Target functions must be synchronous."
     },
     {
       "id": "teardown",
       "label": "[TEARDOWN]",
       "openTag": "[TEARDOWN]",
       "closeTag": "[END TEARDOWN]",
-      "snippet": "[TEARDOWN]\n    CALL PYTHON ${1:module}.${2:function}\n[END TEARDOWN]",
-      "description": "Cleanup block executed AFTER the mission (pass or fail) in a finally block. Only runs if [SETUP] succeeded. Failure is logged but does not override the mission result."
+      "snippet": "[TEARDOWN]\n    PRINT \"${1:Cleaning up}\"\n    CALL PYTHON ${2:module}.${3:function}${4: with args: \"${5:arg}\"}\n[END TEARDOWN]",
+      "description": "Cleanup block executed after the mission body in a finally block. It runs only when [SETUP] succeeded. Failure is logged but does not override the mission result."
     }
   ],
   "interactionModes": [

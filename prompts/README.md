@@ -153,6 +153,7 @@ DONE.
 
 ### Keywords
 - `NAVIGATE to <url>`
+- `OPEN APP`
 - `WAIT <seconds>`
 - `Wait for "Text" to be visible`
 - `Wait for 'Spinner' to disappear`
@@ -166,9 +167,20 @@ DONE.
 - `EXTRACT the '<target>' into {var}`
 - `SET {var} = value`
 - `CALL PYTHON module.function into {var}`
+- `DEBUG VARS`
 - `VERIFY that '<target>' is present / is NOT present / is DISABLED / is checked`
 - `VERIFY SOFTLY that '<target>' is present`
 - `DONE.`
+
+### Hook blocks
+- Use bracket-only syntax: `[SETUP]` / `[END SETUP]` and `[TEARDOWN]` / `[END TEARDOWN]`
+- Valid hook lines:
+    - `PRINT "message with {vars}"`
+    - `CALL PYTHON module.function`
+    - `CALL PYTHON module.function with args: "arg1" "arg2"`
+    - `CALL PYTHON module.function into {var}`
+- `CALL PYTHON` module resolution order: hunt dir → `hunt_dir/scripts` → CWD → `CWD/scripts` → `sys.path`
+- Failing setup marks the mission as `broken` and skips browser steps
 
 ### Contextual qualifiers
 - `Click the 'Delete' button NEAR 'John Doe'`
@@ -195,5 +207,6 @@ Click 'Submit button'          ✗
 - Add explicit waits when the page description suggests async loading, spinners, deferred content, or client-side rendering.
 - Use `@var:` for login credentials, emails, names, IDs, and other static inputs.
 - Use `CALL PYTHON ... into {var}` when the flow clearly needs OTPs, tokens, magic links, or backend-generated values.
+- Do not generate `SETUP:` / `TEARDOWN:` aliases; only bracketed hook blocks are valid.
 - Add `VERIFY` after major state changes.
 - Do not generate fake DSL steps for screenshots, retries, or reports.
