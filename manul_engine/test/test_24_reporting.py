@@ -23,10 +23,19 @@ import asyncio
 import inspect
 import os
 import sys
+import tempfile
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from manul_engine.reporting import StepResult, MissionResult, RunSummary, BlockResult
+from manul_engine.reporting import (
+    StepResult,
+    MissionResult,
+    RunSummary,
+    BlockResult,
+    load_report_state,
+    save_report_state,
+    merge_report_summaries,
+)
 
 # ── Test helpers ──────────────────────────────────────────────────────────────
 
@@ -141,6 +150,41 @@ def _test_run_summary() -> None:
     _assert(len(rs2.missions) == 0, "RunSummary mission lists are independent (no shared mutable default)")
 
 
+def _test_report_state_merge() -> None:
+    print("\n  ── Report state merge across invocations ─────────────────")
+    old_cwd = os.getcwd()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        os.chdir(tmpdir)
+        first = RunSummary(
+            started_at="2026-03-22T10:00:00+00:00",
+            ended_at="2026-03-22T10:00:05+00:00",
+            missions=[MissionResult(file="/tmp/a.hunt", name="a.hunt", status="pass", duration_ms=1000)],
+        )
+        second = RunSummary(
+            started_at="2026-03-22T10:00:06+00:00",
+            ended_at="2026-03-22T10:00:10+00:00",
+            missions=[MissionResult(file="/tmp/b.hunt", name="b.hunt", status="fail", duration_ms=2000)],
+        )
+        save_report_state(first)
+        loaded = load_report_state(max_age_seconds=999999)
+        merged = merge_report_summaries(loaded, second)
+        _assert(loaded is not None, "load_report_state returns persisted summary")
+        _assert(len(merged.missions) == 2, "merge_report_summaries accumulates distinct missions")
+        _assert(merged.failed == 1, "merged summary recomputes failed count")
+        _assert(merged.passed == 1, "merged summary recomputes passed count")
+
+        replacement = RunSummary(
+            started_at="2026-03-22T10:00:11+00:00",
+            ended_at="2026-03-22T10:00:14+00:00",
+            missions=[MissionResult(file="/tmp/a.hunt", name="a.hunt", status="warning", duration_ms=1500)],
+        )
+        replaced = merge_report_summaries(merged, replacement)
+        statuses = {m.file: m.status for m in replaced.missions}
+        _assert(len(replaced.missions) == 2, "merge replaces duplicate file instead of duplicating it")
+        _assert(statuses.get("/tmp/a.hunt") == "warning", "later mission replaces prior mission for same file")
+        os.chdir(old_cwd)
+
+
 # ── Section 4: Config defaults (prompts.py) ──────────────────────────────────
 
 def _test_config_defaults() -> None:
@@ -233,6 +277,7 @@ async def run_suite() -> bool:
     _test_mission_result()
     _test_block_result()
     _test_run_summary()
+    _test_report_state_merge()
     _test_config_defaults()
     _test_run_mission_signature()
     _test_run_hunt_file_signature()

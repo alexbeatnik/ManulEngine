@@ -923,9 +923,12 @@ async def main() -> None:
                 run_summary.warning = sum(1 for _, s, _ in results if s == "WARNING")
             try:
                 from .reporter import generate_report
+                from .reporting import load_report_state, save_report_state, merge_report_summaries
                 report_path = os.path.join(_reports_dir, "manul_report.html")
                 abs_report = _pathlib.Path(report_path).resolve().as_uri()
-                generate_report(run_summary, report_path)
+                report_summary = merge_report_summaries(load_report_state(), run_summary)
+                save_report_state(report_summary)
+                generate_report(report_summary, report_path)
                 print(f"\n📊 HTML Report successfully generated!")
                 print(f"👉 {abs_report}")
             except Exception as _rpt_err:
