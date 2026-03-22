@@ -149,7 +149,7 @@ class DOMScorer:
 
         # Contextual proximity state
         self._hint = contextual_hint or ContextualHint(None, None, None)
-        self._anchor_rect = anchor_rect          # {"rect_top", "rect_left", "rect_bottom", "rect_right", "frame_index"}
+        self._anchor_rect = anchor_rect          # {"rect_top", "rect_left", "rect_bottom", "rect_right", "frame_index", "xpath"}
         self._container_id_set = (
             {(e.get("frame_index", 0), e["id"]) for e in container_elements}
             if container_elements is not None else None
@@ -162,6 +162,9 @@ class DOMScorer:
 
         # Pre-compute step-level features (once per invocation)
         self._target_words:   frozenset[str] = frozenset(_RE_WORD_BOUNDARY_3.findall(self._step_l))
+        self._anchor_words:   frozenset[str] = (
+            frozenset(_RE_WORD_BOUNDARY_3.findall(str(self._hint.anchor or "").lower())) - _STOP_WORDS
+        ) if self._hint.kind == "near" else frozenset()
         self._wants_button:   bool = bool(_RE_BUTTON.search(self._step_l))
         self._wants_link:     bool = bool(_RE_LINK.search(self._step_l))
         self._wants_image:    bool = bool(_RE_IMAGE.search(self._step_l))
@@ -410,6 +413,23 @@ class DOMScorer:
             if ctx_hits:
                 score += min(ctx_hits * 0.08, 0.4)
 
+        # ── NEAR anchor entity affinity in developer attributes ───
+        # Product cards / repeated list items often encode the row/card label
+        # in button ids like add-to-cart-sauce-labs-fleece-jacket. When NEAR
+        # is active, reward candidates whose dev-facing attrs strongly overlap
+        # the anchor text so entity-specific controls outrank nearby controls
+        # from neighbouring cards.
+        if self._hint.kind == "near" and self._anchor_words:
+            anchor_hits = len(self._anchor_words & el["_dev_tokens"])
+            if anchor_hits:
+                coverage = anchor_hits / len(self._anchor_words)
+                if coverage >= 1.0:
+                    score += 0.6
+                elif coverage >= 0.75:
+                    score += 0.35
+                elif coverage >= 0.5:
+                    score += 0.12
+
         # ── Target-word signals ───────────────────────────────────
         score += sum(0.004 for w in self._target_words if w in name)
         score += sum(0.003 for w in self._target_words if len(w) > 3 and w in icons)
@@ -598,9 +618,12 @@ class DOMScorer:
         Returns a float in ``[0.0, 1.0]``.
 
         Contextual modes (when a hint is present):
-        - **NEAR**: Euclidean pixel distance between element center and the
-          anchor element center.  Closest candidate gets up to +1.0; elements
-          further than ``_NEAR_THRESHOLD_PX`` get 0.
+                - **NEAR**: Euclidean pixel distance between element center and the
+                    anchor element center, blended with DOM ancestry affinity when the
+                    anchor xpath is known. This helps repeated card/list layouts prefer
+                    controls inside the same logical container as the anchor instead of
+                    a slightly closer control in a neighbouring card. Elements further
+                    than ``_NEAR_THRESHOLD_PX`` get 0 spatial score.
         - **ON HEADER / ON FOOTER**: Elements in the top / bottom 15 % of the
           viewport, or inside ``<header>`` / ``<footer>`` ancestor tags, get a
           +1.0 boost.
@@ -625,7 +648,21 @@ class DOMScorer:
             a_cy = (a.get("rect_top", 0) + a.get("rect_bottom", 0)) / 2.0
             dist = math.sqrt((el_cx - a_cx) ** 2 + (el_cy - a_cy) ** 2)
             if dist <= _NEAR_THRESHOLD_PX:
-                return max(0.0, 1.0 - dist / _NEAR_THRESHOLD_PX)
+                spatial_score = max(0.0, 1.0 - dist / _NEAR_THRESHOLD_PX)
+                anchor_xpath = str(a.get("xpath", "") or "")
+                candidate_xpath = str(el.get("xpath", "") or "")
+                if anchor_xpath and candidate_xpath:
+                    anchor_parts = [p for p in anchor_xpath.split("/") if p]
+                    candidate_parts = [p for p in candidate_xpath.split("/") if p]
+                    common_depth = 0
+                    for p1, p2 in zip(anchor_parts, candidate_parts):
+                        if p1 == p2:
+                            common_depth += 1
+                        else:
+                            break
+                    dom_affinity = common_depth / max(len(anchor_parts), len(candidate_parts), 1)
+                    return min(1.0, spatial_score * 0.45 + dom_affinity * 0.55)
+                return spatial_score
             return 0.0
 
         # ── ON HEADER / ON FOOTER: region filtering ──────────────────

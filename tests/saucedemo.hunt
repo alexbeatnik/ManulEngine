@@ -40,12 +40,13 @@ STEP 2: Add item to cart
     # 📍 Auto-Nav: Products Catalog
     VERIFY that 'Products' is present
     # NEAR qualifier: resolves the 'Sauce Labs Fleece Jacket' text first,
-    # then picks the 'Add to cart' button closest to it by Euclidean distance.
+    # then prefers the matching 'Add to cart' button in the same product card,
+    # using both visual distance and DOM container affinity.
     Click 'Add to cart' near 'Sauce Labs Fleece Jacket'
 
 STEP 3: Review cart
     # 📍 Auto-Nav: Shopping Cart
-    NAVIGATE to https://www.saucedemo.com/cart.html
+    Click the 'Shopping cart' link
     VERIFY that 'Sauce Labs Fleece Jacket' is present
     Click 'Checkout' button
 

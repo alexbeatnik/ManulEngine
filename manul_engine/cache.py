@@ -222,6 +222,42 @@ class _ControlsCacheMixin:
 
         return None
 
+    def _cached_control_matches_context(
+        self,
+        matched: dict,
+        contextual_hint: ContextualHint | None,
+    ) -> bool:
+        """Validate whether a cached control still fits the contextual hint.
+
+        For generic actions like "Add to cart" under a NEAR anchor, a stale
+        cache entry can point at the same CTA from a neighbouring card. When
+        the anchor text is entity-like (for example a product title), require
+        strong overlap between anchor words and the candidate's developer-facing
+        attributes before reusing the cached control.
+        """
+        if not contextual_hint or getattr(contextual_hint, "kind", None) != "near":
+            return True
+
+        anchor = str(getattr(contextual_hint, "anchor", "") or "").strip().lower()
+        if not anchor:
+            return True
+
+        anchor_words = [
+            w for w in re.findall(r"[a-z0-9]{3,}", anchor)
+            if w not in {"the", "and", "for", "with", "from", "into", "onto", "near", "button", "field", "link"}
+        ]
+        if not anchor_words:
+            return True
+
+        haystack = " ".join(
+            str(matched.get(k, "") or "").strip().lower()
+            for k in ("name", "html_id", "data_qa", "aria_label", "placeholder", "xpath")
+        )
+        hits = sum(1 for w in anchor_words if w in haystack)
+        if len(anchor_words) == 1:
+            return hits == 1
+        return (hits / len(anchor_words)) >= 0.75
+
     def _resolve_from_control_cache(
         self,
         *,
@@ -248,6 +284,10 @@ class _ControlsCacheMixin:
 
         matched = self._match_cached_control(entry, candidates)
         if matched is None:
+            return None
+
+        if not self._cached_control_matches_context(matched, contextual_hint):
+            print(f"    ⚠️  CONTROL CACHE: ignoring stale contextual cache for site '{self._controls_cache_site}'")
             return None
 
         print(f"    💾 CONTROL CACHE: Reusing cached control for site '{self._controls_cache_site}'")

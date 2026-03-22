@@ -32,7 +32,7 @@ async def run_suite() -> bool:
     saved_dir = getattr(prompts, "CONTROLS_CACHE_DIR", "")
 
     passed = 0
-    total = 5
+    total = 6
     failures: list[str] = []
 
     project_root = Path(__file__).resolve().parents[2]
@@ -201,6 +201,56 @@ async def run_suite() -> bool:
                 passed += 1
             else:
                 msg = f"FAILED — expected cache miss to return None, got {resolved_miss.get('html_id')}"
+                print(f"   ❌ {msg}")
+                failures.append(msg)
+
+            near_search = ["Add to cart"]
+            near_hint = type("_Hint", (), {"kind": "near", "anchor": "Sauce Labs Fleece Jacket", "row_text": None})()
+            near_key = manul._control_cache_key("clickable", near_search, None, near_hint)
+            manul._controls_cache_data[near_key] = {
+                "name": "Add to cart",
+                "tag_name": "button",
+                "xpath": "//*[@id='add-to-cart-sauce-labs-bolt-t-shirt']",
+                "html_id": "add-to-cart-sauce-labs-bolt-t-shirt",
+                "data_qa": "",
+                "aria_label": "",
+                "placeholder": "",
+            }
+            near_candidates = [
+                {
+                    "id": 31,
+                    "name": "Add to cart",
+                    "tag_name": "button",
+                    "xpath": "//*[@id='add-to-cart-sauce-labs-bolt-t-shirt']",
+                    "html_id": "add-to-cart-sauce-labs-bolt-t-shirt",
+                    "data_qa": "",
+                    "aria_label": "",
+                    "placeholder": "",
+                },
+                {
+                    "id": 32,
+                    "name": "Add to cart",
+                    "tag_name": "button",
+                    "xpath": "//*[@id='add-to-cart-sauce-labs-fleece-jacket']",
+                    "html_id": "add-to-cart-sauce-labs-fleece-jacket",
+                    "data_qa": "",
+                    "aria_label": "",
+                    "placeholder": "",
+                },
+            ]
+            resolved_near = manul._resolve_from_control_cache(
+                page=page,
+                mode="clickable",
+                search_texts=near_search,
+                target_field=None,
+                contextual_hint=near_hint,
+                candidates=near_candidates,
+            )
+            if resolved_near is None:
+                print("   ✅ Stale NEAR cache entry is ignored when it mismatches the anchor context")
+                passed += 1
+            else:
+                msg = f"FAILED — expected stale NEAR cache to be ignored, got {resolved_near.get('html_id')}"
                 print(f"   ❌ {msg}")
                 failures.append(msg)
 

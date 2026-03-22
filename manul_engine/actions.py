@@ -23,6 +23,47 @@ class _ActionsMixin:
     def _fmt_el_name(self, name: object) -> str:
         return compact_log_field(name, "MANUL_LOG_NAME_MAXLEN")
 
+    def _pick_near_anchor_candidate(self, scored_candidates: list[dict], anchor_text: str) -> dict | None:
+        """Choose the most useful resolved anchor for a NEAR qualifier.
+
+        Plain text anchors often appear multiple times in modern UIs: as an
+        image alt text, as the visible title link, and sometimes as container
+        text. For NEAR, a textual/title anchor is usually a better geometric
+        reference than an image because neighbouring cards can place their CTA
+        buttons closer to the image than the button inside the correct card.
+
+        Strategy:
+        - keep the highest-scoring candidates only;
+        - among near-ties, prefer non-image candidates whose visible name still
+          contains the requested anchor text;
+        - otherwise fall back to the original top-ranked candidate.
+        """
+        if not scored_candidates:
+            return None
+
+        top = scored_candidates[0]
+        top_score = int(top.get("score", 0) or 0)
+        anchor_norm = str(anchor_text or "").strip().lower()
+        shortlist = [
+            el for el in scored_candidates[:8]
+            if int(el.get("score", 0) or 0) >= max(0, top_score - 5_000)
+        ]
+        textual = [
+            el for el in shortlist
+            if str(el.get("tag_name", "") or "").lower() != "img"
+            and anchor_norm in str(el.get("name", "") or "").lower()
+        ]
+        if textual:
+            return max(
+                textual,
+                key=lambda el: (
+                    int(el.get("score", 0) or 0),
+                    str(el.get("tag_name", "") or "").lower() == "a",
+                    str(el.get("tag_name", "") or "").lower() in {"a", "button", "label", "span", "div", "p", "h1", "h2", "h3"},
+                ),
+            )
+        return top
+
     def _remember_resolved_control(
         self,
         *,
@@ -517,11 +558,17 @@ class _ActionsMixin:
         viewport_height: int = 0
 
         if ctx_hint.kind == "near" and ctx_hint.anchor:
-            # Resolve the anchor element via a lightweight scoring pass.
-            anchor_el = await self._resolve_element(
-                page, f"Locate {ctx_hint.anchor}", "locate",
-                [ctx_hint.anchor.lower()], None, strategic_context,
-            )
+            anchor_search_texts = [ctx_hint.anchor.lower()]
+            anchor_candidates = await self._snapshot(page, "locate", anchor_search_texts)
+            scored_anchor_candidates = self._score_elements(
+                anchor_candidates,
+                f"Locate {ctx_hint.anchor}",
+                "locate",
+                anchor_search_texts,
+                None,
+                False,
+            ) if anchor_candidates else []
+            anchor_el = self._pick_near_anchor_candidate(scored_anchor_candidates, ctx_hint.anchor)
             if anchor_el:
                 anchor_rect = {
                     "rect_top": anchor_el.get("rect_top", 0),
@@ -529,6 +576,7 @@ class _ActionsMixin:
                     "rect_bottom": anchor_el.get("rect_bottom", 0),
                     "rect_right": anchor_el.get("rect_right", 0),
                     "frame_index": anchor_el.get("frame_index", 0),
+                    "xpath": anchor_el.get("xpath", ""),
                 }
                 print(f"    📐 NEAR anchor: '{self._fmt_el_name(ctx_hint.anchor)}' at ({anchor_rect['rect_left']}, {anchor_rect['rect_top']})")
 
