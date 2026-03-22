@@ -1,6 +1,34 @@
 @context: E-commerce purchase flow on SauceDemo
 @title: swag-labs-checkout
 
+# --------------------------------------------------------------------------
+# FEATURES DEMONSTRATED:
+#
+#   Auto-Nav annotations (# 📍 Auto-Nav: ...)
+#                       — When "auto_annotate": true in
+#                         manul_engine_configuration.json, the engine
+#                         automatically inserts these comments into .hunt
+#                         files whenever the page URL changes. Page names
+#                         come from pages.json; unmapped pages show the URL.
+#                         These comments are informational — the engine
+#                         does not execute them.
+#
+#   NEAR 'Anchor'       — Contextual qualifier. Biases element resolution
+#                         by Euclidean distance to a resolved anchor.
+#                         Used here: Click 'Add to cart' near 'Sauce Labs
+#                         Fleece Jacket' — the engine first resolves the
+#                         jacket text, then picks the closest 'Add to cart'
+#                         button.
+#
+#   VERIFY ... is present
+#                       — Assertion after each significant navigation.
+#                         Best practice: always verify the expected page
+#                         state before continuing.
+#
+#   Full E2E flow       — Login → browse → add to cart → checkout → verify.
+#                         This is the classic pattern for E-commerce tests.
+# --------------------------------------------------------------------------
+
 STEP 1: Login
     # 📍 Auto-Nav: https://www.saucedemo.com/
     NAVIGATE to https://www.saucedemo.com/
@@ -11,6 +39,8 @@ STEP 1: Login
 STEP 2: Add item to cart
     # 📍 Auto-Nav: Products Catalog
     VERIFY that 'Products' is present
+    # NEAR qualifier: resolves the 'Sauce Labs Fleece Jacket' text first,
+    # then picks the 'Add to cart' button closest to it by Euclidean distance.
     Click 'Add to cart' near 'Sauce Labs Fleece Jacket'
 
 STEP 3: Review cart

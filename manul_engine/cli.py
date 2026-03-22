@@ -553,7 +553,9 @@ async def main() -> None:
         await daemon_main(daemon_args)
         return
 
-    headless = "--headless" in args
+    from . import prompts as _prompts_cli
+
+    headless = True if "--headless" in args else _prompts_cli.HEADLESS_MODE
     debug = "--debug" in args
     html_report = "--html-report" in args
     explain = "--explain" in args
@@ -635,7 +637,6 @@ async def main() -> None:
 
     # Extract --retries <N> flag
     # Priority: CLI flag > MANUL_RETRIES env var > JSON config > 0
-    from . import prompts as _prompts_cli
     retries: int = _prompts_cli.RETRIES
     _cli_retries, args = _pop_int_flag(args, "--retries", minimum=0)
     if _cli_retries is not None:
