@@ -536,7 +536,7 @@ git clone https://github.com/alexbeatnik/ManulEngine.git
 cd ManulEngine
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
-pip install playwright
+pip install playwright==1.58.0
 playwright install chromium
 ```
 
@@ -550,7 +550,7 @@ playwright install chromium
 Optional — local LLM via Ollama:
 
 ```bash
-pip install ollama
+pip install ollama==0.6.1
 ollama pull qwen2.5:0.5b
 ollama serve
 ```

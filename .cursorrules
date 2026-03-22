@@ -66,6 +66,13 @@ pip install manul-engine==0.0.9.15
 pip install "manul-engine[ai]==0.0.9.15"
 ```
 
+- When standalone Python dependencies must be installed manually for this release line, pin them explicitly too:
+
+```bash
+pip install playwright==1.58.0
+pip install ollama==0.6.1
+```
+
 - Do not suggest floating installs such as `pip install manul-engine` when version pinning is required by context.
 
 ## 4. Product Philosophy and Tone

@@ -275,6 +275,8 @@ pip install manul-engine==0.0.9.15
 playwright install
 ```
 
+If you install standalone Python dependencies manually instead of using the packaged extras, the current minimums in this release line are `playwright==1.58.0` and `ollama==0.6.1`.
+
 Optional local AI fallback:
 
 ```bash
