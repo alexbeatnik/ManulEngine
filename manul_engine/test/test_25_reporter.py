@@ -73,6 +73,8 @@ def _make_summary() -> RunSummary:
     )
 
     rs = RunSummary()
+    rs.session_id = "session-20250115T103000Z-4242"
+    rs.invocation_count = 3
     rs.started_at = "2025-01-15 10:30:00"
     rs.ended_at = "2025-01-15 10:30:13"
     rs.total = 3
@@ -122,6 +124,9 @@ def _test_html_structure() -> None:
     _assert("<style>" in html_content, "contains inline <style>")
     _assert("<script>" in html_content, "contains inline <script>")
     _assert("ManulEngine Test Report" in html_content, "heading present")
+    _assert("Run Session" in html_content, "run session banner present")
+    _assert("session-20250115T103000Z-4242" in html_content, "session id rendered")
+    _assert("Merged invocations: 3" in html_content, "invocation count rendered")
 
     # Dashboard stats
     _assert(">3</div>" in html_content or ">3<" in html_content,

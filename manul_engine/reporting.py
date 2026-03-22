@@ -16,6 +16,11 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 
 
+def _default_session_id() -> str:
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return f"session-{stamp}-{os.getpid()}"
+
+
 @dataclass
 class StepResult:
     """Outcome of a single numbered step within a mission."""
@@ -61,6 +66,8 @@ class MissionResult:
 @dataclass
 class RunSummary:
     """Aggregated outcome of an entire ``manul`` CLI invocation."""
+    session_id:  str = field(default_factory=_default_session_id)
+    invocation_count: int = 1
     started_at:  str = ""               # ISO-8601 timestamp
     ended_at:    str = ""
     total:       int = 0
@@ -118,6 +125,8 @@ def _mission_from_dict(data: dict) -> MissionResult:
 
 def _summary_from_dict(data: dict) -> RunSummary:
     return RunSummary(
+        session_id=str(data.get("session_id") or _default_session_id()),
+        invocation_count=max(1, int(data.get("invocation_count", 1) or 1)),
         started_at=str(data.get("started_at", "") or ""),
         ended_at=str(data.get("ended_at", "") or ""),
         total=int(data.get("total", 0) or 0),
@@ -133,6 +142,8 @@ def _summary_from_dict(data: dict) -> RunSummary:
 def recompute_summary(summary: RunSummary) -> RunSummary:
     """Normalize aggregate counters from the mission list."""
     missions = list(summary.missions)
+    summary.session_id = str(summary.session_id or _default_session_id())
+    summary.invocation_count = max(1, int(summary.invocation_count or 1))
     summary.total = len(missions)
     summary.passed = sum(1 for m in missions if m.status == "pass")
     summary.failed = sum(1 for m in missions if m.status == "fail")
@@ -184,6 +195,8 @@ def merge_report_summaries(existing: RunSummary | None, current: RunSummary) -> 
         return recompute_summary(current)
 
     merged = RunSummary(
+        session_id=existing.session_id or current.session_id,
+        invocation_count=max(1, int(existing.invocation_count or 1)) + max(1, int(current.invocation_count or 1)),
         started_at=existing.started_at or current.started_at,
         ended_at=current.ended_at or existing.ended_at,
     )

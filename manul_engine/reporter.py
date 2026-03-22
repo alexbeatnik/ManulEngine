@@ -74,6 +74,27 @@ h1 .logo { font-size: 1.8rem; }
   margin-bottom: 20px;
 }
 
+.session-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: -6px 0 20px;
+}
+
+.session-chip {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 0.78rem;
+  padding: 6px 10px;
+}
+
+.session-chip strong {
+  color: var(--accent);
+}
+
 /* ── Dashboard ────────────────────────── */
 
 .dashboard {
@@ -724,6 +745,13 @@ def _render_html(summary: RunSummary) -> str:
         f'</div>'
     )
 
+    session_banner_html = (
+      f'<div class="session-banner">'
+      f'  <div class="session-chip"><strong>Run Session</strong> {_esc(summary.session_id)}</div>'
+      f'  <div class="session-chip">Merged invocations: {max(1, int(summary.invocation_count or 1))}</div>'
+      f'</div>'
+    )
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -738,6 +766,7 @@ def _render_html(summary: RunSummary) -> str:
 <div class="subtitle">
   {_esc(summary.started_at)} &mdash; {_fmt_duration(summary.duration_ms)} total
 </div>
+{session_banner_html}
 
 <!-- Dashboard -->
 <div class="dashboard">

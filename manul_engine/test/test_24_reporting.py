@@ -127,6 +127,8 @@ def _test_run_summary() -> None:
     print("\n  ── RunSummary data model ──────────────────────────────────")
 
     rs = RunSummary()
+    _assert(bool(rs.session_id), "RunSummary.session_id defaults to non-empty string")
+    _assert(rs.invocation_count == 1, "RunSummary.invocation_count defaults to 1")
     _assert(rs.started_at == "", "RunSummary.started_at defaults to empty string")
     _assert(rs.total == 0, "RunSummary.total defaults to 0")
     _assert(rs.passed == 0, "RunSummary.passed defaults to 0")
@@ -170,6 +172,8 @@ def _test_report_state_merge() -> None:
         merged = merge_report_summaries(loaded, second)
         _assert(loaded is not None, "load_report_state returns persisted summary")
         _assert(len(merged.missions) == 2, "merge_report_summaries accumulates distinct missions")
+        _assert(merged.session_id == first.session_id, "merged summary preserves original session_id")
+        _assert(merged.invocation_count == 2, "merged summary tracks merged invocation count")
         _assert(merged.failed == 1, "merged summary recomputes failed count")
         _assert(merged.passed == 1, "merged summary recomputes passed count")
 
@@ -181,6 +185,7 @@ def _test_report_state_merge() -> None:
         replaced = merge_report_summaries(merged, replacement)
         statuses = {m.file: m.status for m in replaced.missions}
         _assert(len(replaced.missions) == 2, "merge replaces duplicate file instead of duplicating it")
+        _assert(replaced.invocation_count == 3, "replacement merge still increments invocation count")
         _assert(statuses.get("/tmp/a.hunt") == "warning", "later mission replaces prior mission for same file")
         os.chdir(old_cwd)
 
