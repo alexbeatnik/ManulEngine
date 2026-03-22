@@ -90,6 +90,9 @@ def _test_mission_result() -> None:
     mr_fail = MissionResult(file="/tmp/fail.hunt", name="fail.hunt", status="fail", error="Step 3 timeout")
     _assert(bool(mr_fail) is False, "MissionResult(status='fail') is falsy")
 
+    mr_broken = MissionResult(file="/tmp/broken.hunt", name="broken.hunt", status="broken", error="SETUP failed")
+    _assert(bool(mr_broken) is False, "MissionResult(status='broken') is falsy")
+
     mr_flaky = MissionResult(file="/tmp/flaky.hunt", name="flaky.hunt", status="flaky", attempts=3)
     _assert(bool(mr_flaky) is True, "MissionResult(status='flaky') is truthy")
     _assert(mr_flaky.attempts == 3, "MissionResult.attempts stores retry count")
@@ -133,6 +136,7 @@ def _test_run_summary() -> None:
     _assert(rs.total == 0, "RunSummary.total defaults to 0")
     _assert(rs.passed == 0, "RunSummary.passed defaults to 0")
     _assert(rs.failed == 0, "RunSummary.failed defaults to 0")
+    _assert(rs.broken == 0, "RunSummary.broken defaults to 0")
     _assert(rs.flaky == 0, "RunSummary.flaky defaults to 0")
     _assert(rs.missions == [], "RunSummary.missions defaults to empty list")
 
@@ -175,6 +179,7 @@ def _test_report_state_merge() -> None:
         _assert(merged.session_id == first.session_id, "merged summary preserves original session_id")
         _assert(merged.invocation_count == 2, "merged summary tracks merged invocation count")
         _assert(merged.failed == 1, "merged summary recomputes failed count")
+        _assert(merged.broken == 0, "merged summary recomputes broken count")
         _assert(merged.passed == 1, "merged summary recomputes passed count")
 
         replacement = RunSummary(

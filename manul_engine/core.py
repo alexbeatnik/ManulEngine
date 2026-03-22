@@ -31,7 +31,7 @@ except Exception:  # pragma: no cover
 
 from . import prompts
 from .helpers import substitute_memory, compact_log_field, extract_quoted, detect_mode, classify_step, RE_SYSTEM_STEP, parse_hunt_blocks, parse_explicit_wait, ContextualHint
-from .hooks import execute_hook_line
+from .hooks import execute_hook_line, bind_hook_result
 from .js_scripts import SNAPSHOT_JS, DEBUG_MODAL_JS, DEBUG_REMOVE_MODAL_JS
 from .scoring import score_elements, SCALE
 from .actions import _ActionsMixin
@@ -1186,8 +1186,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                     if not result.success:
                                         _step_error = result.message
                                         _step_ok = False
-                                    elif result.var_name and result.return_value is not None:
-                                        self.memory[result.var_name] = result.return_value
+                                    else:
+                                        bind_hook_result(result, self.memory)
                                 elif not await self._execute_step(page, step, strategic_context, step_idx=action_index):
                                     _step_error = "Action failed"
                                     _step_ok = False

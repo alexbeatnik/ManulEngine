@@ -25,7 +25,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.13
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.14
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession
@@ -45,8 +45,8 @@ ManulEngine/
 │   ├── core.py                       ManulEngine class (LLM, resolution, mission runner)
 │   ├── cache.py                      Persistent per-site controls cache mixin
 │   ├── actions.py                    Action execution mixin (click, type, select, hover, drag, scan_page)
-│   ├── reporting.py                  StepResult, MissionResult, RunSummary dataclasses
-│   ├── reporter.py                   Interactive HTML report generator (dark theme, control panel, tag chips, base64 screenshots)
+│   ├── reporting.py                  StepResult, MissionResult, RunSummary dataclasses; run_history + report-session state persistence
+│   ├── reporter.py                   Interactive HTML report generator (dark theme, control panel, tag chips, Run Session banner, base64 screenshots)
 │   ├── variables.py                  ScopedVariables — 4-level variable hierarchy (row, step, mission, global)
 │   └── test/
 │       ├── test_00_engine.py         Engine micro-suite (synthetic DOM via local HTML)
@@ -56,7 +56,7 @@ ManulEngine/
 │       ├── test_13_controls_cache.py Unit: persistent controls cache
 │       ├── test_14_qa_classics.py    Unit: legacy HTML patterns, tables, fieldsets
 │       ├── test_15_facebook_final_boss.py
-│       ├── test_16_hooks.py          Unit: [SETUP]/[TEARDOWN] hooks (43 assertions, no browser)
+│       ├── test_16_hooks.py          Unit: [SETUP]/[TEARDOWN] hooks (56 assertions, no browser)
 │       ├── test_17_frontend_hell.py  Unit: frontend anti-patterns (overlays, z-index traps, React portals)
 │       ├── test_18_disambiguation.py Unit: ambiguous element targeting
 │       ├── test_19_custom_controls.py Unit: Custom Controls registry + engine interception (28 assertions, no browser)
@@ -64,8 +64,8 @@ ManulEngine/
 │       ├── test_21_dynamic_vars.py   Unit: CALL PYTHON ... into {var} dynamic variable capture
 │       ├── test_22_tags.py           Unit: @tags: / --tags CLI filter (20 assertions, no browser)
 │       ├── test_23_advanced_interactions.py  Unit: PRESS/RIGHT CLICK/UPLOAD/explicit waits (58 assertions, no browser)
-│       ├── test_24_reporting.py      Unit: StepResult/MissionResult/RunSummary dataclasses (53 assertions)
-│       ├── test_25_reporter.py       Unit: HTML report generator (65 assertions, no browser)
+│       ├── test_24_reporting.py      Unit: StepResult/MissionResult/RunSummary dataclasses (67 assertions)
+│       ├── test_25_reporter.py       Unit: HTML report generator (70 assertions, no browser)
 │       ├── test_26_wikipedia_search.py Unit: name_attr heuristic scoring (20 assertions, no browser)
 │       ├── test_27_lifecycle_hooks.py  Unit: Global Lifecycle Hook system (57 assertions, no browser)
 │       ├── test_28_logical_steps.py    Unit: Logical STEP ordering and parser (58 assertions, no browser)
@@ -91,14 +91,11 @@ ManulEngine/
 ├── controls/                         User-owned custom Python handlers (loaded from directories listed in `custom_modules_dirs` config)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
-│   ├── demo_controls.hunt            Demo: Custom Controls workflow (companion to controls/demo_custom.py)
-│   ├── demo_login.hunt               Demo: login with @var: static variables
-│   ├── demo_variables.hunt           Demo: @var: + CALL PYTHON into {var} combined
-│   ├── demoqa.hunt
-│   ├── mega.hunt
-│   ├── rahul.hunt
-│   ├── saucedemo.hunt
-│   └── wikipedia.hunt
+│   ├── demoqa.hunt                   DemoQA form, checkbox, radio, and table coverage
+│   ├── mega.hunt                     Large UI gauntlet; includes commented custom-control and hook examples
+│   ├── rahul.hunt                    Rahul Shetty practice flow: radio, autocomplete, hover
+│   ├── saucedemo.hunt                SauceDemo checkout flow with commented lifecycle-hook examples
+│   └── wikipedia.hunt                Wikipedia research flow with commented inline CALL PYTHON examples
 ├── reports/                          Generated logs and HTML reports (auto-created, .gitignored)
 ├── benchmarks/                       Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
 │   └── run_benchmarks.py            Benchmark runner: ManulEngine vs raw Playwright
@@ -163,7 +160,7 @@ This architecture is what makes ManulEngine a **true runtime** rather than just 
 * **Safe iframe Support:** `_snapshot()` iterates `page.frames`, injects `SNAPSHOT_JS` per frame, tags elements with `frame_index`. `_frame_for(page, el)` routes `locator()`/`evaluate()` to the correct Playwright `Frame`. Cross-origin frames silently skipped; stale indices fall back to main frame. All 12+ locator call-sites in `actions.py` route through `frame`.
 * **Clean, Unnumbered DSL:** Scripts read like plain English (`NAVIGATE to url` instead of `1. NAVIGATE to url`).
 * **Logical STEP Grouping:** `STEP [optional number]: [Description]` metadata blocks map manual QA cases directly into `.hunt` files.
-* **Interactive Enterprise HTML Reporter:** Dual-mode, zero-dependency reporter with native HTML5 accordions, auto-expanding failures, Flexbox layout, **"Show Only Failed" toggle**, and **tag filter chips** — inline Vanilla JS, zero dependencies.
+* **Interactive Enterprise HTML Reporter:** Dual-mode, zero-dependency reporter with native HTML5 accordions, auto-expanding failures, Flexbox layout, **"Show Only Failed" toggle**, **tag filter chips**, and a visible **Run Session / Merged invocations** banner for recent cross-invocation report aggregation.
 * **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, `@after_group` orchestrate DB seeding and auth. `ctx.variables` serialise across parallel `--workers`.
 * **Contextual UI Navigator (v0.0.9.13):** action steps can now add `NEAR 'Anchor'`, `ON HEADER`, `ON FOOTER`, and `INSIDE 'Container' row with 'Text'` qualifiers. `actions.py` parses the contextual hint before normal mode detection, resolves anchor or row context, and threads that data into the scorer. `DOMScorer` boosts the proximity channel from `0.10` to `1.5` when a contextual hint is present, then switches from DOM-depth proximity to Euclidean distance, viewport-region checks, or subtree membership depending on the qualifier.
 * **Attribute-Semantic Matching for Functional Icons (v0.0.9.12):** `DOMScorer` now treats discrete keyword tokens in `html_id`, `class_name`, and `data_qa` as a strong signal even when visible text is unhelpful. This closes a real gap for cart-style links and other icon controls that only render badge counts (`"1"`, `"2"`, `"3"`) while the semantic meaning lives in attributes like `shopping_cart_link` or `shopping_cart_container`.
@@ -277,12 +274,13 @@ Unit tests: `manul_engine/test/test_27_lifecycle_hooks.py` (57 assertions, no br
 
 ### 🧹 [SETUP] / [TEARDOWN] Hooks and Inline `CALL PYTHON` Steps
 
-Version 0.0.8.3 introduces a pre/post hook mechanism powered by `manul_engine/hooks.py`. Hooks allow arbitrary synchronous Python to run before and after the browser mission. Version 0.0.8.3 also extends this capability to **inline steps**: `CALL PYTHON <module>.<func>` can now appear as a plain action step anywhere in the main mission body.
+The hook system in `manul_engine/hooks.py` runs synchronous Python before and after the browser mission. The same executor also powers inline `CALL PYTHON <module>.<func>` action steps inside the main mission body, so variable capture and module resolution behave the same way in both places.
 
 **Execution lifecycle:**
 
 ```text
 [SETUP] block         → runs before browser launches
+  setup failure       → mission is marked BROKEN and browser steps are skipped
   browser mission     → hunt steps (may include CALL PYTHON steps)
 [TEARDOWN] block      → runs in finally{}, always after setup succeeds
 ```
@@ -291,9 +289,11 @@ Version 0.0.8.3 introduces a pre/post hook mechanism powered by `manul_engine/ho
 
 **Module resolution order** (per `CALL PYTHON` instruction — identical for hooks and inline steps):
 
-1. Directory of the `.hunt` file — local project helpers.
-2. `Path.cwd()` — project root.
-3. Standard `importlib.import_module` — installed packages / PYTHONPATH.
+1. Directory of the `.hunt` file.
+2. `/scripts` under the `.hunt` directory.
+3. `Path.cwd()` — project root.
+4. `/scripts` under `Path.cwd()`.
+5. Standard `importlib.import_module` — installed packages / PYTHONPATH.
 
 **State isolation:** Modules found via steps 1 and 2 are executed with `spec.loader.exec_module(mod)` into a fresh `ModuleType` object that is **never inserted into `sys.modules`**. This rule applies equally to hook blocks and inline `CALL PYTHON` steps — no `sys.modules` pollution regardless of where in the file the call appears.
 
@@ -319,9 +319,19 @@ execute_hook_line(line, hunt_dir, variables)  → HookResult(success, message, r
 run_hooks(lines, label, hunt_dir, variables)  → bool
 ```
 
-**`HookResult` fields:** `success: bool`, `message: str`, `return_value: str | None`, `var_name: str | None`. The last two fields are populated when the step used the `into {var}` / `to {var}` capture syntax; they are `None` for plain `CALL PYTHON` steps. When `into/to` is present, `return_value` is **always** set to `str(ret)` — even when the function returns `None` (yielding the string `"None"`). This guarantees that `{var}` is always bound after a capture step.
+**Supported hook instructions:**
 
-**Positional arguments (v0.0.9.1):** `CALL PYTHON` now accepts optional positional arguments between the dotted function name and the optional `into {var}` clause. Arguments are tokenised with `shlex.split()` — single-quoted, double-quoted, and unquoted tokens are all accepted. `{var}` placeholders inside arguments are resolved from the engine's runtime memory (`self.memory` for inline steps, `parsed_vars`/`variables` dict for hook blocks). Unresolved placeholders are kept as-is.
+```text
+PRINT "message with {vars}"
+CALL PYTHON <module>.<function>
+CALL PYTHON <module>.<function> with args: "arg1" "arg2"
+CALL PYTHON <module>.<function> into {result}
+CALL PYTHON <module>.<function> with args: "arg1" "arg2" into {result}
+```
+
+**`HookResult` fields:** `success: bool`, `message: str`, `return_value: str | None`, `var_name: str | None`, `return_mapping: dict[str, str]`. The `return_value` / `var_name` pair is populated when the step used `into {var}` / `to {var}` capture syntax. `return_mapping` is populated when a helper returns a top-level dict; its keys are flattened into the shared variable context so later hook lines and browser steps can reference `{key}` directly.
+
+**Positional arguments:** `CALL PYTHON` accepts optional positional arguments between the dotted function name and the optional `into {var}` clause. Arguments are tokenised with `shlex.split()` — single-quoted, double-quoted, and unquoted tokens are all accepted. The optional `with args:` prefix is treated as syntax sugar and stripped before parsing. `{var}` placeholders inside arguments are resolved from the engine's runtime memory (`self.memory` for inline steps, `parsed_vars`/`variables` dict for hook blocks). Unresolved placeholders are kept as-is.
 
 Full syntax variants:
 
@@ -344,9 +354,11 @@ Fill 'Security Code' with '{dynamic_otp}'
 
 `execute_hook_line` captures the return value from `func()`, converts it to a string, and stores it in `HookResult.return_value`. `run_mission` then writes it to `self.memory[var_name]`, making it available for `{placeholder}` substitution in every subsequent step — exactly like `EXTRACT` or `@var:` variables. Both `into` and `to` are accepted as the keyword. Dynamic-variable unit tests live in `manul_engine/test/test_21_dynamic_vars.py`.
 
+When a hook helper returns a dict such as `{"tenant_id": 42, "otp": 123456}`, `bind_hook_result()` flattens it into shared variables. That makes both `{tenant_id}` and `{otp}` available immediately to later hook lines and to the browser mission without additional glue code.
+
 `parse_hunt_file()` in `cli.py` returns a **10-field `ParsedHunt` NamedTuple** `(mission, context, title, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags, data_file, schedule)`. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
 
-The full hook unit test suite (`41 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
+The full hook unit test suite (`56 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
 
 ### 📋 Static Variable Declaration (`@var:`)
 
@@ -531,7 +543,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.13
+pip install manul-engine==0.0.9.14
 playwright install chromium
 ```
 
@@ -625,6 +637,9 @@ manul tests/ --retries 2
 
 # Generate a standalone HTML report
 manul tests/ --html-report
+
+# Report header shows Run Session and Merged invocations when recent
+# CLI/Test Explorer runs are aggregated into the same HTML report.
 
 # Screenshots on failure + HTML report + retries
 manul tests/ --retries 2 --screenshot on-fail --html-report

@@ -204,52 +204,63 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
     in_teardown = False
 
     with open(filepath, "r", encoding="utf-8") as fh:
-        for lineno, line in enumerate(fh, 1):
-            stripped = line.strip()
+        file_lines = list(enumerate(fh, 1))
 
-            # ── Hook block markers ─────────────────────────────────────────────
-            if RE_SETUP.match(stripped):
-                in_setup = True
-                continue
-            if RE_END_SETUP.match(stripped):
-                in_setup = False
-                continue
-            if RE_TEARDOWN.match(stripped):
-                in_teardown = True
-                continue
-            if RE_END_TEARDOWN.match(stripped):
-                in_teardown = False
-                continue
+    idx = 0
+    while idx < len(file_lines):
+        lineno, line = file_lines[idx]
+        stripped = line.strip()
 
-            if in_setup:
-                if stripped and not stripped.startswith("#"):
-                    setup_lines.append(stripped)
-                continue
-            if in_teardown:
-                if stripped and not stripped.startswith("#"):
-                    teardown_lines.append(stripped)
-                continue
+        # ── Hook block markers ─────────────────────────────────────────────
+        if RE_SETUP.match(stripped):
+            in_setup = True
+            idx += 1
+            continue
+        if RE_END_SETUP.match(stripped):
+            in_setup = False
+            idx += 1
+            continue
+        if RE_TEARDOWN.match(stripped):
+            in_teardown = True
+            idx += 1
+            continue
+        if RE_END_TEARDOWN.match(stripped):
+            in_teardown = False
+            idx += 1
+            continue
 
-            # ── Normal mission line ────────────────────────────────────────────
-            if stripped.startswith("@context:"):
-                context = stripped.split(":", 1)[1].strip()
-            elif stripped.startswith("@title:") or stripped.startswith("@blueprint:"):
-                title = stripped.split(":", 1)[1].strip()
-            elif stripped.startswith("@tags:"):
-                raw_tags = stripped.split(":", 1)[1]
-                tags = [t.strip() for t in raw_tags.split(",") if t.strip()]
-            elif stripped.startswith("@var:"):
-                var_part = stripped[5:].strip()
-                m = re.match(r"\{?([^}=\s]+)\}?\s*=\s*(.*)", var_part)
-                if m:
-                    parsed_vars[m.group(1).strip()] = m.group(2).strip()
-            elif stripped.startswith("@data:"):
-                data_file = stripped.split(":", 1)[1].strip()
-            elif stripped.startswith("@schedule:"):
-                schedule = stripped.split(":", 1)[1].strip()
-            elif not stripped.startswith("#") and stripped:
-                mission_lines.append(line)
-                step_file_lines.append(lineno)
+        if in_setup:
+            if stripped and not stripped.startswith("#"):
+                setup_lines.append(stripped)
+            idx += 1
+            continue
+        if in_teardown:
+            if stripped and not stripped.startswith("#"):
+                teardown_lines.append(stripped)
+            idx += 1
+            continue
+
+        # ── Normal mission line ────────────────────────────────────────────
+        if stripped.startswith("@context:"):
+            context = stripped.split(":", 1)[1].strip()
+        elif stripped.startswith("@title:") or stripped.startswith("@blueprint:"):
+            title = stripped.split(":", 1)[1].strip()
+        elif stripped.startswith("@tags:"):
+            raw_tags = stripped.split(":", 1)[1]
+            tags = [t.strip() for t in raw_tags.split(",") if t.strip()]
+        elif stripped.startswith("@var:"):
+            var_part = stripped[5:].strip()
+            m = re.match(r"\{?([^}=\s]+)\}?\s*=\s*(.*)", var_part)
+            if m:
+                parsed_vars[m.group(1).strip()] = m.group(2).strip()
+        elif stripped.startswith("@data:"):
+            data_file = stripped.split(":", 1)[1].strip()
+        elif stripped.startswith("@schedule:"):
+            schedule = stripped.split(":", 1)[1].strip()
+        elif not stripped.startswith("#") and stripped:
+            mission_lines.append(line)
+            step_file_lines.append(lineno)
+        idx += 1
 
     return ParsedHunt(
         mission="".join(mission_lines).strip(),
@@ -348,13 +359,15 @@ async def _run_hunt_file(
     from manul_engine.hooks import run_hooks
 
     hunt_dir = os.path.dirname(os.path.abspath(path))
+    setup_ok = True
 
-    # ── [SETUP] ───────────────────────────────────────────────────────────────
-    # If setup fails, we skip the mission and teardown entirely — there is
-    # nothing to clean up because setup never completed.
-    if not run_hooks(hunt.setup_lines, label="SETUP", hunt_dir=hunt_dir, variables=hunt.parsed_vars):
-        print(f"\n❌ SETUP failed — skipping mission and teardown for {filename}")
-        return MissionResult(file=path, name=filename, status="fail", error="SETUP failed")
+    # ── SETUP / TEARDOWN hooks ───────────────────────────────────────────────
+    # Hook-returned variables are written back into hunt.parsed_vars so they
+    # become mission-scope placeholders for the browser steps.
+    setup_ok = run_hooks(hunt.setup_lines, label="SETUP", hunt_dir=hunt_dir, variables=hunt.parsed_vars)
+    if not setup_ok:
+        print(f"\n💥 SETUP failed — marking {filename} as BROKEN")
+        return MissionResult(file=path, name=filename, status="broken", error="SETUP failed")
 
     # ── Pre-flight: lazy-load only the custom control modules needed ──────
     from manul_engine.controls import extract_required_controls
@@ -428,9 +441,9 @@ async def _run_hunt_file(
         mission_result.error = str(exc)
         return mission_result
     finally:
-        # ── [TEARDOWN] ────────────────────────────────────────────────────────
-        # Always runs after setup succeeds, regardless of mission outcome.
-        # Teardown failures are logged but do not override the mission result.
+        # ── TEARDOWN ─────────────────────────────────────────────────────────
+        # Always runs after the file lifecycle finishes. Failures are logged
+        # but do not override the primary mission outcome.
         run_hooks(hunt.teardown_lines, label="TEARDOWN", hunt_dir=hunt_dir, variables=hunt.parsed_vars)
 
 
@@ -860,6 +873,8 @@ async def main() -> None:
                     _child_status = "flaky"
                 elif status == "PASS" and "SOFT ASSERTION FAILED" in output.upper():
                     _child_status = "warning"
+                elif " BROKEN" in output.upper() or "SETUP FAILED" in output.upper():
+                    _child_status = "broken"
                 else:
                     _child_status = "pass" if status == "PASS" else "fail"
                 _mr = MissionResult(
@@ -879,6 +894,7 @@ async def main() -> None:
         run_summary.total = len(results)
         run_summary.passed = sum(1 for _, s, _ in results if s == "PASS")
         run_summary.failed = sum(1 for _, s, _ in results if s == "FAIL")
+        run_summary.broken = sum(1 for _, s, _ in results if s == "BROKEN")
         run_summary.flaky  = sum(1 for _, s, _ in results if s == "FLAKY")
         run_summary.warning = sum(1 for _, s, _ in results if s == "WARNING")
         passed = run_summary.passed + run_summary.flaky + run_summary.warning  # flaky/warning count as passed overall
@@ -887,6 +903,8 @@ async def main() -> None:
         for name, status, secs in results:
             if status == "PASS":
                 icon = "✅"
+            elif status == "BROKEN":
+                icon = "💥"
             elif status == "FLAKY":
                 icon = "⚠️ "
             elif status == "WARNING":
@@ -896,11 +914,12 @@ async def main() -> None:
             print(f"{icon} {name.ljust(34)} {status}  {secs:5.1f}s")
         print("=" * 60)
         _flaky_note = f"  ({run_summary.flaky} flaky)" if run_summary.flaky else ""
-        print(f"   {passed}/{len(results)} passed{_flaky_note}  •  total {total:.1f}s")
+        _broken_note = f"  ({run_summary.broken} broken)" if run_summary.broken else ""
+        print(f"   {passed}/{len(results)} passed{_flaky_note}{_broken_note}  •  total {total:.1f}s")
         print("=" * 60)
         print(f"\n📄 Full log saved to: {log_file}")
 
-        return run_summary.failed  # number of failures
+        return run_summary.failed + run_summary.broken  # number of non-passing failures
 
     finally:
         # ── @after_all (always runs, even after exceptions) ────────────────
@@ -919,6 +938,7 @@ async def main() -> None:
                 run_summary.total = len(results)
                 run_summary.passed = sum(1 for _, s, _ in results if s == "PASS")
                 run_summary.failed = sum(1 for _, s, _ in results if s == "FAIL")
+                run_summary.broken = sum(1 for _, s, _ in results if s == "BROKEN")
                 run_summary.flaky  = sum(1 for _, s, _ in results if s == "FLAKY")
                 run_summary.warning = sum(1 for _, s, _ in results if s == "WARNING")
             try:

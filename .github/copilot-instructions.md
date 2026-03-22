@@ -68,8 +68,8 @@ manul_engine/
   core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
   cache.py                 _ControlsCacheMixin (persistent per-site controls cache)
   actions.py               _ActionsMixin (navigate, scroll, explicit waits, extract, verify, drag, press, right_click, upload, _execute_step, scan_page)
-  reporting.py             StepResult, BlockResult, MissionResult, RunSummary dataclasses; append_run_history() (JSON Lines persistence to reports/run_history.json)
-  reporter.py              Self-contained HTML report generator (dark theme, native <details>/<summary> accordions, Flexbox step layout, base64 screenshots, control panel with Show Only Failed toggle and tag filter chips)
+  reporting.py             StepResult, BlockResult, MissionResult, RunSummary dataclasses; append_run_history() + report-session persistence (reports/run_history.json, reports/manul_report_state.json)
+  reporter.py              Self-contained HTML report generator (dark theme, native <details>/<summary> accordions, Flexbox step layout, base64 screenshots, control panel with Show Only Failed toggle, tag filter chips, Run Session banner)
   prompts.py               JSON config loader, thresholds, LLM prompt templates
   scoring.py               DOMScorer class — normalised 0.0–1.0 float scoring, WEIGHTS dict, SCALE=177,778, pre-compiled regex, score_elements() backward-compatible API
   js_scripts.py            All JS injected into the browser (TreeWalker-based SNAPSHOT_JS with PRUNE set, SCAN_JS)
@@ -88,7 +88,7 @@ manul_engine/
     test_01_ecommerce.py    synthetic DOM scenario pack
     ...
     test_15_facebook_final_boss.py
-    test_16_hooks.py        [SETUP]/[TEARDOWN] unit tests (43 assertions, no browser)
+    test_16_hooks.py        [SETUP]/[TEARDOWN] unit tests (56 assertions, no browser)
     test_17_frontend_hell.py   frontend anti-patterns (overlays, z-index traps, React portals)
     test_18_disambiguation.py  ambiguous element targeting
     test_19_custom_controls.py Custom Controls registry + engine interception (28 assertions, no browser)
@@ -96,8 +96,8 @@ manul_engine/
     test_21_dynamic_vars.py    CALL PYTHON ... into {var} dynamic variable capture
     test_22_tags.py            @tags: / --tags CLI filter (20 assertions, no browser)
     test_23_advanced_interactions.py  PRESS/RIGHT CLICK/UPLOAD/explicit wait commands (58 assertions, no browser)
-    test_24_reporting.py       StepResult/MissionResult/RunSummary dataclasses (53 assertions)
-    test_25_reporter.py        HTML report generator (65 assertions, no browser)
+    test_24_reporting.py       StepResult/MissionResult/RunSummary dataclasses (67 assertions)
+    test_25_reporter.py        HTML report generator (70 assertions, no browser)
     test_26_wikipedia_search.py  name_attr heuristic scoring (20 assertions, no browser)
     test_27_lifecycle_hooks.py   Global Lifecycle Hook system (57 assertions, no browser)
     test_28_logical_steps.py     Logical STEP ordering and parser (58 assertions, no browser)
@@ -126,9 +126,6 @@ tests/
   rahul.hunt              integration: radios, autocomplete, hover
   saucedemo.hunt          integration: login, inventory, cart
   wikipedia.hunt          integration: search, navigate, extract, verify, shadow-dom inputs
-  demo_controls.hunt      integration: Custom Controls workflow
-  demo_login.hunt         integration: login with @var: static variables
-  demo_variables.hunt     integration: @var: + CALL PYTHON into {var} combined
 benchmarks/
   run_benchmarks.py        Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
 ```
@@ -288,9 +285,9 @@ These keywords are detected via word-boundary regex, bypass heuristics, and are 
 * `SCAN PAGE into {filename}` — Same, but also writes the draft to `{filename}`. Output defaults to `{tests_home}/draft.hunt` (reads `tests_home` from `manul_engine_configuration.json`, defaults to `tests/`).
 * `SET {variable_name} = value` — Sets a runtime variable mid-flight. Both `{braced}` and bare key forms accepted. Quoted values are auto-unquoted. Available for `{placeholder}` substitution in subsequent steps.
 * `DONE.` — Explicitly ends the mission.
-* `[SETUP]` / `[END SETUP]` — Block wrapping `CALL PYTHON <module>.<function>` lines. Runs **before** the browser launches. If any line fails, the mission is skipped and teardown is not called.
+* `[SETUP]` / `[END SETUP]` — Block wrapping `PRINT ...` and `CALL PYTHON ...` lines. Runs **before** the browser launches. If any line fails, the mission is marked as `broken` and browser steps are skipped.
 * `[TEARDOWN]` / `[END TEARDOWN]` — Cleanup block. Runs in a `finally` block **after** the mission (pass or fail). Only executed if `[SETUP]` succeeded. Failure is logged but does not override the mission result.
-* Inside hook blocks, each non-blank non-comment line must have the form: `CALL PYTHON <module>.<function>` (optionally with positional arguments — see Section 7b). The module is resolved in this order: the `.hunt` file's directory → `CWD` → standard `importlib.import_module`. Target functions must be **synchronous**.
+* Inside hook blocks, each non-blank non-comment line must be either `PRINT "message with {vars}"` or `CALL PYTHON <module>.<function>` (optionally with positional arguments or `with args:` and optional `into {var}` capture — see Section 7b). The module is resolved in this order: the `.hunt` file's directory → `.hunt_dir/scripts` → `CWD` → `CWD/scripts` → standard `importlib.import_module`. Target functions must be **synchronous**.
 * **Inline `CALL PYTHON` steps** — `CALL PYTHON <module>.<function>` (with optional positional arguments) is also valid as a standard numbered step anywhere in the main mission body (outside hook blocks). It uses the identical module resolution, state isolation, and sync-only rules as hook blocks. A failure stops the mission immediately.
 
 ### 6. Interaction Actions (Parsed Modes)
@@ -368,6 +365,7 @@ Wrong (do not do this):
 ### 9. Python Hooks (`[SETUP]` / `[TEARDOWN]`) and Inline `CALL PYTHON` Steps
 Hook blocks run synchronous Python functions **outside the browser** — the primary use case is injecting database state or calling an API before the mission starts. Inline `CALL PYTHON` steps run **inside the mission** as numbered steps, with identical safety guarantees.
 * When generating `.hunt` tests that require specific initial data (users, records, session tokens), **ALWAYS** use `[SETUP]` with `CALL PYTHON`. Never use brittle UI steps (e.g., "Click Create User") as test preconditions.
+* Hook syntax is bracket-only. Do not invent `SETUP:` / `TEARDOWN:` aliases.
 * **CRITICAL — Inline Python for mid-test backend interaction:** When a step requires interacting with a backend, database, or API mid-test — such as fetching an OTP, a magic link, a confirmation token, or triggering a backend job before a UI action — **DO NOT simulate it via the UI**. Use an inline `CALL PYTHON <module>.<func>` step directly in the numbered sequence. This is faster, more reliable, and immune to UI timing issues.
   ```text
   2. CLICK the 'Send OTP' button
@@ -375,8 +373,11 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
   4. Fill 'OTP' field with '{otp}'
   ```
 * `[TEARDOWN]` cleanup runs whether the mission passed or failed. Use it to delete test records and reset state.
+* `PRINT "..."` is valid inside hook blocks and should be used for human-readable setup/cleanup logging.
+* `CALL PYTHON ... with args: ...` is valid in both hook blocks and inline steps when you want explicit argument separation in examples.
+* If a setup hook fails, the resulting mission status is `broken`, not `fail`.
 * Target functions **must be synchronous**. Async callables are explicitly rejected with a descriptive error.
-* Module resolution order: hunt file's directory → `CWD` → `sys.path`. Modules from the first two scopes are executed in isolation — never inserted into `sys.modules` — preventing cross-test contamination.
+* Module resolution order: hunt file's directory → `hunt_dir/scripts` → `CWD` → `CWD/scripts` → `sys.path`. Modules from the file-based scopes are executed in isolation — never inserted into `sys.modules` — preventing cross-test contamination.
 
 ## Code patterns to follow
 
@@ -396,11 +397,11 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
 * **Debug mode:** `ManulEngine(debug_mode=True, break_steps={N,...})`. `debug_mode=True` (from `--debug`) highlights the resolved element and pauses before every step using `input()` in TTY or Playwright's `page.pause()`. `break_steps` (from `--break-lines`) pauses only at listed step indices using the stdout/stdin panel protocol when stdout is not a TTY. The two are mutually exclusive in practice — the extension only ever sets `break_steps` via `--break-lines`.
 * **Element highlight in debug mode:** When `debug_mode=True` (or a `break_steps` pause fires), the engine calls `highlight_element(page, locator)` which injects `<style id="manul-debug-style">` (once) and sets `data-manul-debug-highlight="true"` on the target element, producing a persistent 4px magenta outline + glow that stays until `clear_highlight(page)` is called just before the action executes. A separate `_highlight()` method draws a short 2-second flash (non-debug, `setTimeout` inside JS) for non-pausing visual feedback.
-* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). `_module_cache` is a module-level `dict[str, ModuleType]` that caches resolved modules by absolute file path (JIT loading). `_resolve_module()` returns `tuple[ModuleType, bool]` (module, from_cache). `clear_module_cache()` resets the cache (used for test isolation). `parse_hunt_file()` in `cli.py` returns a `ParsedHunt` NamedTuple with 10 fields: `mission`, `context`, `title`, `step_file_lines`, `setup_lines`, `teardown_lines`, `parsed_vars`, `tags`, `data_file`, `schedule`. `parse_hunt_file()` does not build hierarchical blocks; the runtime layer does that later with `parse_hunt_blocks()`. `parsed_vars` is a `dict[str, str]` populated from `@var: {key} = value` header lines. `tags` is a `list[str]` populated from `@tags: tag1, tag2` header lines; empty list when absent. `schedule` is a `str` from `@schedule: <expression>`; empty string when absent. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
+* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). It also supports `PRINT`, optional `with args:` sugar, `/scripts` helper resolution, and `bind_hook_result()` for sharing scalar or dict-returned variables across hook lines and browser steps. `_module_cache` is a module-level `dict[str, ModuleType]` that caches resolved modules by absolute file path (JIT loading). `_resolve_module()` returns `tuple[ModuleType, bool]` (module, from_cache). `clear_module_cache()` resets the cache (used for test isolation). `parse_hunt_file()` in `cli.py` returns a `ParsedHunt` NamedTuple with 10 fields: `mission`, `context`, `title`, `step_file_lines`, `setup_lines`, `teardown_lines`, `parsed_vars`, `tags`, `data_file`, `schedule`. `parse_hunt_file()` does not build hierarchical blocks; the runtime layer does that later with `parse_hunt_blocks()`. `parsed_vars` is a `dict[str, str]` populated from `@var: {key} = value` header lines. `tags` is a `list[str]` populated from `@tags: tag1, tag2` header lines; empty list when absent. `schedule` is a `str` from `@schedule: <expression>`; empty string when absent. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
 * **Auto-Nav annotation:** When `auto_annotate` is enabled, `run_mission()` captures `url_before = page.url` before every action. For `NAVIGATE` actions, the annotation is written above the action itself. For all other actions, `url_after` is checked in the `finally` block — if the URL changed, `_auto_annotate_navigate(page, hunt_file, action_file_lines, action_idx+1)` is called to insert a comment above the next action line. The comment uses the mapped page name when found in `pages.json`, or the full URL when the lookup returns an `"Auto:"` placeholder.
 * **`pages.json` — nested per-site format:** `{ "<site_root_url>": { "Domain": "<display_name>", "<regex_or_exact_url>": "<page_name>" } }`. `lookup_page_name(url)` in `prompts.py` re-reads this file from disk on **every call** (live edits take effect immediately with no restart). Resolution order: exact URL key → regex/substring patterns (skipping `"Domain"` key) → `"Domain"` fallback. When no site block matches, a new nested entry is auto-generated. The longest-prefix site block wins when multiple blocks could match.
 * **`_debug_prompt()` `debug-stop` token:** When Python receives `"debug-stop"` on stdin from the VS Code extension (user pressed ⏹ Debug Stop), it clears **both** `self._user_break_steps = set()` and `self.break_steps = set()`, then breaks the pause loop. The test run continues to completion without any further pauses.
-* **Reporting & HTML reports:** `reporting.py` owns `StepResult`, `BlockResult`, `MissionResult` (with `__bool__` — truthy if status != `"fail"`; has `tags: list[str]` for `@tags` from `.hunt` files and `blocks: list[BlockResult]` for hierarchical execution), `RunSummary` dataclasses, and `append_run_history(mission)` which appends a JSON Lines record to `reports/run_history.json` (keys: `file`, `name`, `timestamp`, `status`, `duration_ms`). History is appended by `cli.py` (sequential, parallel, and failure paths) and `scheduler.py` (`_run_scheduled_job()`). `reporter.py` owns `generate_report(summary, output_path)` — produces a self-contained dark-themed HTML file with dashboard stats, native `<details>/<summary>` accordions (collapsed by default, auto-expanded on failure), Flexbox step rows, inline base64 screenshots, a **control panel** with "Show Only Failed" checkbox toggle, and **tag filter chips** (dynamically collected from all missions' `tags`). Each `<div class="mission">` carries `data-status` and `data-tags` attributes for JS filtering. All artifacts (logs, HTML reports) are saved to `reports/` (auto-created by `cli.py`). The `reports/` directory is `.gitignored`.
+* **Reporting & HTML reports:** `reporting.py` owns `StepResult`, `BlockResult`, `MissionResult` (with `__bool__` — truthy if status != `"fail"`; has `tags: list[str]` for `@tags` from `.hunt` files and `blocks: list[BlockResult]` for hierarchical execution), plus `RunSummary` fields `session_id` and `invocation_count` for recent cross-invocation HTML-report aggregation. `append_run_history(mission)` appends JSON Lines to `reports/run_history.json` (keys: `file`, `name`, `timestamp`, `status`, `duration_ms`). Separate HTML-report session state is persisted in `reports/manul_report_state.json` so repeated CLI or VS Code Test Explorer invocations can merge into the same `reports/manul_report.html` instead of overwriting it with only the last run. History is appended by `cli.py` (sequential, parallel, and failure paths) and `scheduler.py` (`_run_scheduled_job()`). `reporter.py` owns `generate_report(summary, output_path)` — produces a self-contained dark-themed HTML file with dashboard stats, native `<details>/<summary>` accordions (collapsed by default, auto-expanded on failure), Flexbox step rows, inline base64 screenshots, a **control panel** with "Show Only Failed" checkbox toggle, **tag filter chips** (dynamically collected from all missions' `tags`), and a visible **Run Session / Merged invocations** banner. Each `<div class="mission">` carries `data-status` and `data-tags` attributes for JS filtering. All artifacts (logs, HTML reports, persisted report state) are saved to `reports/` (auto-created by `cli.py`). The `reports/` directory is `.gitignored`.
 * **Screenshot capture:** `run_mission()` accepts `screenshot_mode` (`"none"`, `"on-fail"`, `"always"`). Screenshots are stored as base64 PNGs in `StepResult.screenshot`.
 
 ## Running tests
@@ -479,7 +480,7 @@ Environment variables (`MANUL_*`) always override JSON values.
 | `executable_path` | `null` | Absolute path to a custom browser executable (e.g. Electron). Overridable via `MANUL_EXECUTABLE_PATH` |
 | `retries` | `0` | Number of times to retry a failed hunt file before marking it as failed (0 = no retries) |
 | `screenshot` | `"on-fail"` | Screenshot capture mode: `"on-fail"` (default — failed steps only), `"always"` (every step), `"none"` (disabled) |
-| `html_report` | `false` | Generate a self-contained HTML report after the run (`reports/manul_report.html`) |
+| `html_report` | `false` | Generate or refresh a self-contained HTML report after the run (`reports/manul_report.html`). Recent invocations within the same report session are merged via `reports/manul_report_state.json`. |
 Threshold auto-calculation by model size: `<1b → 500`, `1-4b → 750`, `5-9b → 1000`, `10-19b → 1500`, `20b+ → 2000`, `null → 0`.
 
 Suggested config for heuristics-only (recommended default — no Ollama needed):

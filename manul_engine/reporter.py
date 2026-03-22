@@ -40,6 +40,7 @@ _CSS = """\
   --accent:    #89b4fa;
   --green:     #a6e3a1;
   --red:       #f38ba8;
+  --orange:    #fab387;
   --yellow:    #f9e2af;
   --teal:      #94e2d5;
   --radius:    8px;
@@ -124,6 +125,7 @@ h1 .logo { font-size: 1.8rem; }
 }
 .stat-card.passed .value  { color: var(--green); }
 .stat-card.failed .value  { color: var(--red); }
+.stat-card.broken .value  { color: var(--orange); }
 .stat-card.flaky  .value  { color: var(--yellow); }
 .stat-card.warning .value { color: var(--yellow); }
 
@@ -145,6 +147,7 @@ h1 .logo { font-size: 1.8rem; }
   display: flex;
 }
 .pass-bar .seg-pass    { background: var(--green); }
+.pass-bar .seg-broken  { background: var(--orange); }
 .pass-bar .seg-flaky   { background: var(--yellow); }
 .pass-bar .seg-warning { background: var(--yellow); }
 .pass-bar .seg-fail    { background: var(--red); }
@@ -191,6 +194,7 @@ h1 .logo { font-size: 1.8rem; }
 }
 .badge-pass  { background: rgba(166,227,161,0.15); color: var(--green); }
 .badge-fail  { background: rgba(243,139,168,0.15); color: var(--red); }
+.badge-broken { background: rgba(250,179,135,0.15); color: var(--orange); }
 .badge-flaky { background: rgba(249,226,175,0.15); color: var(--yellow); }
 .badge-warning { background: rgba(249,226,175,0.15); color: var(--yellow); }
 
@@ -661,7 +665,7 @@ def _render_lstep_group(label: str | None, steps: list[StepResult], index: int) 
 def _render_mission(mission: MissionResult) -> str:
     """Render one mission accordion block, with optional logical-step grouping."""
     status = mission.status
-    icon = {"pass": "\u2705", "fail": "\u274c", "flaky": "\u26a0\ufe0f", "warning": "\u26a0\ufe0f"}.get(status, "\u2753")
+    icon = {"pass": "\u2705", "fail": "\u274c", "broken": "\U0001f4a5", "flaky": "\u26a0\ufe0f", "warning": "\u26a0\ufe0f"}.get(status, "\u2753")
     badge_class = f"badge-{status}"
     tags_attr = _esc(",".join(mission.tags)) if mission.tags else ""
 
@@ -719,6 +723,7 @@ def _render_html(summary: RunSummary) -> str:
     total = summary.total or 1  # avoid division by zero
     pass_rate = ((summary.passed + summary.flaky + summary.warning) / total) * 100
     pass_pct = (summary.passed / total) * 100
+    broken_pct = (summary.broken / total) * 100
     flaky_pct = (summary.flaky / total) * 100
     warning_pct = (summary.warning / total) * 100
     fail_pct = (summary.failed / total) * 100
@@ -782,6 +787,10 @@ def _render_html(summary: RunSummary) -> str:
     <div class="value">{summary.failed}</div>
     <div class="label">Failed</div>
   </div>
+  <div class="stat-card broken">
+    <div class="value">{summary.broken}</div>
+    <div class="label">Broken</div>
+  </div>
   <div class="stat-card flaky">
     <div class="value">{summary.flaky}</div>
     <div class="label">Flaky</div>
@@ -803,10 +812,11 @@ def _render_html(summary: RunSummary) -> str:
 <!-- Pass-rate bar -->
 <div class="pass-bar-container">
   <div class="pass-bar-label">
-    {summary.passed} passed \u00b7 {summary.flaky} flaky \u00b7 {summary.warning} warning \u00b7 {summary.failed} failed
+    {summary.passed} passed \u00b7 {summary.flaky} flaky \u00b7 {summary.warning} warning \u00b7 {summary.broken} broken \u00b7 {summary.failed} failed
   </div>
   <div class="pass-bar">
     <div class="seg-pass" style="width:{pass_pct:.1f}%"></div>
+    <div class="seg-broken" style="width:{broken_pct:.1f}%"></div>
     <div class="seg-flaky" style="width:{flaky_pct:.1f}%"></div>
     <div class="seg-warning" style="width:{warning_pct:.1f}%"></div>
     <div class="seg-fail" style="width:{fail_pct:.1f}%"></div>

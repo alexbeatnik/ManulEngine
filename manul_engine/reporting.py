@@ -50,7 +50,7 @@ class MissionResult:
     """Outcome of executing a single ``.hunt`` file (possibly with retries)."""
     file:        str                     # absolute path to the .hunt file
     name:        str                     # basename, e.g. "saucedemo.hunt"
-    status:      str = "pass"            # "pass" | "fail" | "flaky" | "warning"
+    status:      str = "pass"            # "pass" | "fail" | "broken" | "flaky" | "warning"
     attempts:    int = 1                 # total attempts (1 = no retries used)
     duration_ms: float = 0.0            # wall clock ms (total, including retries)
     error:       str | None = None       # last error message when status == "fail"
@@ -60,7 +60,7 @@ class MissionResult:
     soft_errors: list[str] = field(default_factory=list)   # collected VERIFY SOFTLY failures
 
     def __bool__(self) -> bool:         # truthy ⇔ not failed
-        return self.status != "fail"
+        return self.status not in ("fail", "broken")
 
 
 @dataclass
@@ -73,6 +73,7 @@ class RunSummary:
     total:       int = 0
     passed:      int = 0
     failed:      int = 0
+    broken:      int = 0
     flaky:       int = 0
     warning:     int = 0
     duration_ms: float = 0.0
@@ -132,6 +133,7 @@ def _summary_from_dict(data: dict) -> RunSummary:
         total=int(data.get("total", 0) or 0),
         passed=int(data.get("passed", 0) or 0),
         failed=int(data.get("failed", 0) or 0),
+        broken=int(data.get("broken", 0) or 0),
         flaky=int(data.get("flaky", 0) or 0),
         warning=int(data.get("warning", 0) or 0),
         duration_ms=float(data.get("duration_ms", 0.0) or 0.0),
@@ -147,6 +149,7 @@ def recompute_summary(summary: RunSummary) -> RunSummary:
     summary.total = len(missions)
     summary.passed = sum(1 for m in missions if m.status == "pass")
     summary.failed = sum(1 for m in missions if m.status == "fail")
+    summary.broken = sum(1 for m in missions if m.status == "broken")
     summary.flaky = sum(1 for m in missions if m.status == "flaky")
     summary.warning = sum(1 for m in missions if m.status == "warning")
     summary.duration_ms = sum(float(m.duration_ms or 0.0) for m in missions)

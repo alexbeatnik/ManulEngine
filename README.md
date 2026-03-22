@@ -370,7 +370,13 @@ Configuration reference:
 | `executable_path` | `null` | Absolute path to a custom executable such as Electron. |
 | `retries` | `0` | Retry failed hunt files this many times. |
 | `screenshot` | `"on-fail"` | Screenshot mode: `none`, `on-fail`, or `always`. |
-| `html_report` | `false` | Generate `reports/manul_report.html` after the run. |
+| `html_report` | `false` | Generate or refresh `reports/manul_report.html` after the run. Recent CLI invocations within the same report session are merged instead of silently overwriting the last file. |
+
+HTML report notes:
+
+- The runtime stores recent report-session state in `reports/manul_report_state.json`.
+- This is what lets separate CLI or Test Explorer invocations accumulate into one `reports/manul_report.html` during a recent session window.
+- The HTML header now shows `Run Session` and `Merged invocations` so it is obvious when the file contains more than one invocation.
 
 ### First hunt file
 
@@ -409,6 +415,8 @@ manul --headless tests/saucedemo.hunt
 manul --html-report --screenshot on-fail tests/
 manul --explain tests/saucedemo.hunt
 ```
+
+When `--html-report` is enabled, repeated runs from VS Code Test Explorer no longer leave only the final hunt in the HTML output. The runtime merges recent invocations into the same report session and labels the report header accordingly.
 
 ## Runtime Reference
 
@@ -457,7 +465,9 @@ Wait for "Submit" to be hidden
 @var: {password} = secret123
 
 [SETUP]
-    CALL PYTHON db_helpers.seed_admin_user
+    PRINT "Preparing demo user for {email}"
+    CALL PYTHON scripts.db_helpers.seed_admin_user with args: "{email}" "{password}"
+    CALL PYTHON scripts.db_helpers.issue_login_token with args: "{email}" into {login_token}
 [END SETUP]
 
 STEP 1: Login
@@ -469,15 +479,22 @@ STEP 1: Login
 
 STEP 2: OTP verification
     Click the 'Send OTP' button
-    CALL PYTHON api_helpers.fetch_otp "{email}" into {otp}
+    CALL PYTHON api_helpers.fetch_otp with args: "{email}" "{login_token}" into {otp}
     Fill 'OTP' field with '{otp}'
     Click the 'Verify' button
     VERIFY that 'Welcome' is present
 
 [TEARDOWN]
-    CALL PYTHON db_helpers.clean_database
+    PRINT "Cleaning up seeded user for {email}"
+    CALL PYTHON scripts.db_helpers.clean_database with args: "{email}"
 [END TEARDOWN]
 ```
+
+- Hook syntax is bracket-only: `[SETUP]` / `[END SETUP]` and `[TEARDOWN]` / `[END TEARDOWN]`.
+- `PRINT "..."` is valid inside hook blocks and resolves `{variables}` before printing.
+- `CALL PYTHON ... with args: ...` is optional sugar for positional arguments; plain `CALL PYTHON mod.func "arg"` still works.
+- File-based helpers resolve from the `.hunt` directory first, then the project root, and also probe a sibling `/scripts` folder in both places before falling back to normal imports.
+- If setup fails, the mission is marked as `broken` and the browser steps are skipped. Teardown still runs after the mission whenever setup succeeded.
 
 ### Tags, scheduler, and execution controls
 
@@ -525,12 +542,12 @@ Representative coverage areas include:
 - visibility filtering and TreeWalker behavior
 - custom controls and lazy control loading
 
-## What's New in v0.0.9.13
+## What's New in v0.0.9.14
 
+- **HTML report session aggregation:** `reports/manul_report.html` now preserves recent results across separate CLI and VS Code Test Explorer invocations instead of keeping only the last invocation.
+- **Visible report-session marker:** the HTML report header now shows `Run Session` and `Merged invocations`, making cross-invocation aggregation explicit instead of implicit.
+- **Persisted report state:** recent HTML-report state is stored in `reports/manul_report_state.json`, while historical sparkline data continues to live in `reports/run_history.json`.
 - **Contextual UI Navigator:** action steps can now carry spatial qualifiers such as `NEAR 'Anchor'`, `ON HEADER`, `ON FOOTER`, and `INSIDE 'Actions' row with 'John Doe'` to disambiguate repeated UI controls without leaving the DSL.
-- **Spatial snapshot data:** the browser snapshot now exports element rectangles and ancestor tag chains, enabling deterministic header/footer region matching and Euclidean proximity scoring against resolved anchor elements.
-- **Context-aware explainability:** explain output now reports contextual proximity reasoning so ambiguous-step debugging shows whether the winner came from row scoping, header/footer routing, or NEAR anchor bias.
-- **Focused regression lab:** added `test_47_contextual_proximity.py` with 67 assertions covering parser extraction, spatial ranking, container scoping, explain payloads, and edge cases for the new contextual DSL qualifiers.
 
 ## License
 

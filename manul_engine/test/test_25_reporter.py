@@ -71,18 +71,25 @@ def _make_summary() -> RunSummary:
         steps=[step_pass, StepResult(index=2, text="DONE.")],
         tags=["regression"],
     )
+    m_broken = MissionResult(
+        file="/tmp/setup.hunt", name="setup.hunt", status="broken",
+        duration_ms=400, error="SETUP failed",
+        steps=[],
+        tags=["infra"],
+    )
 
     rs = RunSummary()
     rs.session_id = "session-20250115T103000Z-4242"
     rs.invocation_count = 3
     rs.started_at = "2025-01-15 10:30:00"
     rs.ended_at = "2025-01-15 10:30:13"
-    rs.total = 3
+    rs.total = 4
     rs.passed = 1
     rs.failed = 1
+    rs.broken = 1
     rs.flaky = 1
-    rs.duration_ms = 12900
-    rs.missions = [m_pass, m_fail, m_flaky]
+    rs.duration_ms = 13300
+    rs.missions = [m_pass, m_fail, m_flaky, m_broken]
     return rs
 
 
@@ -129,15 +136,16 @@ def _test_html_structure() -> None:
     _assert("Merged invocations: 3" in html_content, "invocation count rendered")
 
     # Dashboard stats
-    _assert(">3</div>" in html_content or ">3<" in html_content,
-            "dashboard shows total=3")
-    _assert("33%" in html_content or "33" in html_content,
+    _assert(">4</div>" in html_content or ">4<" in html_content,
+            "dashboard shows total=4")
+    _assert("50%" in html_content or "50" in html_content,
             "pass rate shown")
 
     # Mission names
     _assert("smoke.hunt" in html_content, "smoke.hunt mission name present")
     _assert("login.hunt" in html_content, "login.hunt mission name present")
     _assert("flaky.hunt" in html_content, "flaky.hunt mission name present")
+    _assert("setup.hunt" in html_content, "broken mission name present")
 
     # Step text
     _assert("NAVIGATE to https://example.com" in html_content,
@@ -196,6 +204,7 @@ def _test_status_badges() -> None:
 
     _assert("badge-pass" in html_content, "pass badge class present")
     _assert("badge-fail" in html_content, "fail badge class present")
+    _assert("badge-broken" in html_content, "broken badge class present")
     _assert("badge-flaky" in html_content, "flaky badge class present")
     _assert("3 attempts" in html_content, "flaky mission shows attempt count")
     _assert("passed on retry" in html_content,

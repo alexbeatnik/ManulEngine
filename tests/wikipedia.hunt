@@ -33,6 +33,14 @@
 #                         single .hunt file. Demonstrates that the engine
 #                         handles long sessions without losing state or
 #                         variable context.
+#
+#   Inline CALL PYTHON  — Mid-test backend or helper calls belong in a
+#                         normal action line, not in brittle UI workarounds.
+#                         Example (commented so this public demo stays
+#                         dependency-free):
+#
+#                         CALL PYTHON scripts.research_helpers.pick_topic with args: "cats" into {next_topic}
+#                         CALL PYTHON scripts.research_helpers.fetch_reference with args: "{next_topic}" into {reference_note}
 # --------------------------------------------------------------------------
 
 STEP 1: Land on Wikipedia home
