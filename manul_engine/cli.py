@@ -442,8 +442,8 @@ async def _run_hunt_file(
         return mission_result
     finally:
         # ── TEARDOWN ─────────────────────────────────────────────────────────
-        # Always runs after the file lifecycle finishes. Failures are logged
-        # but do not override the primary mission outcome.
+        # Runs after the mission body finishes whenever this block is reached.
+        # Failures are logged but do not override the primary mission outcome.
         run_hooks(hunt.teardown_lines, label="TEARDOWN", hunt_dir=hunt_dir, variables=hunt.parsed_vars)
 
 

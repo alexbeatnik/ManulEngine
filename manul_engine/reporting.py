@@ -173,7 +173,8 @@ def load_report_state(max_age_seconds: int | None = None) -> RunSummary | None:
     if max_age_seconds > 0 and (now - stat.st_mtime) > max_age_seconds:
         return None
     try:
-        raw = json.loads(open(state_path, encoding="utf-8").read())
+        with open(state_path, encoding="utf-8") as fh:
+            raw = json.load(fh)
     except (OSError, json.JSONDecodeError, ValueError, TypeError):
         return None
     if not isinstance(raw, dict):

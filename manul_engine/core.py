@@ -50,8 +50,8 @@ THRESHOLD_CONTEXT_REUSE   = 0.056   # blind/context reuse from previous step
 
 
 def _confidence(score: int) -> float:
-    """Convert a scaled integer score to a 0.0–1.0 confidence float."""
-    return min(score / SCALE, 1.0)
+    """Convert a scaled integer score to the normalized weighted-score ratio."""
+    return score / SCALE
 
 
 class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
