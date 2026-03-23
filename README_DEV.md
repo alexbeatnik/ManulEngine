@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.15 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.16 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -25,7 +25,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.15
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.16
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession
@@ -543,7 +543,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.15
+pip install manul-engine==0.0.9.16
 playwright install chromium
 ```
 
@@ -689,7 +689,7 @@ manul tests/mission.hunt
 | **Selection** | `Select [Option] from [Dropdown]`, `Check [Checkbox]`, `Uncheck [Checkbox]` |
 | **Mouse Action** | `HOVER over [Element]`, `Drag [Element] and drop it into [Target]` |
 | **Data Extraction** | `EXTRACT [Target] into {variable_name}` |
-| **Verification** | `VERIFY that [Text] is present/absent`, `VERIFY that [Element] is checked/disabled/enabled` |
+| **Verification** | `VERIFY that [Text] is present/absent`, `VERIFY that [Element] is checked/disabled/enabled`, `Verify '<element>' <type> has text '<expected>'`, `Verify '<element>' <type> has placeholder '<expected>'`, `Verify '<element>' <type> has value '<expected>'` |
 | **Page Scanner** | `SCAN PAGE`, `SCAN PAGE into {filename}` |
 | **Debug** | `DEBUG` / `PAUSE` — pause execution at that step (use with `--debug` or VS Code gutter breakpoints) |
 | **Keyboard** | `PRESS ENTER`, `PRESS [Key]`, `PRESS [Key] on [Element]` |
@@ -701,6 +701,24 @@ manul tests/mission.hunt
 *Note: You can append `if exists` or `optional` to the end of any step (outside quoted text) to make it non-blocking, e.g. `Click 'Close Ad' if exists`.*
 
 `disappear` is an alias for Playwright's `hidden` state. The runtime routes these explicit waits through `locator.wait_for()` instead of using hard sleeps.
+
+### Strict Assertions
+
+Use strict assertions when the DSL must validate the exact visible text, exact placeholder attribute, or exact current field value on a resolved element.
+
+```text
+Verify "save" button has text "Save me"
+Verify "Error message" element has text "Invalid credentials"
+Verify 'Login' field has placeholder "Login/Email"
+Verify "Search" input has placeholder "Type to search..."
+Verify "Email" field has value "captain@manul.com"
+Verify "Notes" element has value "treasure map"
+```
+
+- `Verify "<element_name>" <type> has text "<expected_text>"` routes through the normal resolver, then compares `locator.inner_text().strip()` with strict equality.
+- `Verify "<element_name>" <type> has placeholder "<expected_placeholder>"` resolves the target and compares `locator.get_attribute("placeholder")` with strict equality.
+- `Verify "<element_name>" <type> has value "<expected_value>"` resolves the target, reads the current control value via `locator.input_value()` with a `value`-attribute fallback, normalizes missing values to `""`, and compares with strict equality.
+- Failed strict assertions raise `AssertionError` with the resolved locator plus readable `Expected` and `Actual` values.
 
 ---
 
@@ -827,7 +845,7 @@ The published extension provides:
 
 ---
 
-**Version:** 0.0.9.15
+**Version:** 0.0.9.16
 
 **Codename:** Contextual UI Navigator
 

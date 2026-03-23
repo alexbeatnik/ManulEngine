@@ -172,6 +172,33 @@
       "category": "assertion"
     },
     {
+      "id": "verify_text_strict",
+      "label": "VERIFY strict text",
+      "uiText": "Verify '' element has text ''",
+      "snippet": "Verify '${1:element_name}' ${2|button,field,element,input|} has text '${3:Expected Text}'",
+      "regex": "^\\s*(?:\\d+\\.\\s*)?VERIFY\\s+(?P<target_quote>[\"'])(?P<target>.+?)(?P=target_quote)\\s+(?P<element_type>button|field|element|input)\\s+HAS\\s+TEXT\\s+(?P<expected_quote>[\"'])(?P<expected>.*?)(?P=expected_quote)\\s*\\.?\\s*$",
+      "description": "Strict text verification. Resolves the element via heuristics, reads locator.inner_text().strip(), and asserts exact equality against the expected text.",
+      "category": "assertion"
+    },
+    {
+      "id": "verify_placeholder_strict",
+      "label": "VERIFY strict placeholder",
+      "uiText": "Verify '' field has placeholder ''",
+      "snippet": "Verify '${1:element_name}' ${2|button,field,element,input|} has placeholder '${3:Expected Placeholder}'",
+      "regex": "^\\s*(?:\\d+\\.\\s*)?VERIFY\\s+(?P<target_quote>[\"'])(?P<target>.+?)(?P=target_quote)\\s+(?P<element_type>button|field|element|input)\\s+HAS\\s+PLACEHOLDER\\s+(?P<expected_quote>[\"'])(?P<expected>.*?)(?P=expected_quote)\\s*\\.?\\s*$",
+      "description": "Strict placeholder verification. Resolves the element via heuristics, reads its placeholder attribute, and asserts exact equality against the expected placeholder.",
+      "category": "assertion"
+    },
+    {
+      "id": "verify_value_strict",
+      "label": "VERIFY strict value",
+      "uiText": "Verify '' field has value ''",
+      "snippet": "Verify '${1:element_name}' ${2|button,field,element,input|} has value '${3:Expected Value}'",
+      "regex": "^\\s*(?:\\d+\\.\\s*)?VERIFY\\s+(?P<target_quote>[\"'])(?P<target>.+?)(?P=target_quote)\\s+(?P<element_type>button|field|element|input)\\s+HAS\\s+VALUE\\s+(?P<expected_quote>[\"'])(?P<expected>.*?)(?P=expected_quote)\\s*\\.?\\s*$",
+      "description": "Strict value verification. Resolves the element via heuristics, reads its current value via locator.input_value() with a value-attribute fallback, normalizes missing values to an empty string, and asserts exact equality against the expected value.",
+      "category": "assertion"
+    },
+    {
       "id": "verify_softly",
       "label": "VERIFY SOFTLY",
       "uiText": "VERIFY SOFTLY that '' is present",

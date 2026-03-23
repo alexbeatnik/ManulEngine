@@ -81,6 +81,24 @@ _RE_EXPLICIT_WAIT = re.compile(
     r'(?:(?:BE\s+(?P<state_be>VISIBLE|HIDDEN))|(?P<state_disappear>DISAPPEAR))\s*$',
     re.IGNORECASE,
 )
+_RE_VERIFY_STRICT_TEXT = re.compile(
+    r'^\s*(?:\d+\.\s*)?VERIFY\s+(?P<target_quote>["\'])(?P<target>.+?)(?P=target_quote)\s+'
+    r'(?P<element_type>button|field|element|input)\s+HAS\s+TEXT\s+'
+    r'(?P<expected_quote>["\'])(?P<expected>.*?)(?P=expected_quote)\s*\.?\s*$',
+    re.IGNORECASE,
+)
+_RE_VERIFY_STRICT_PLACEHOLDER = re.compile(
+    r'^\s*(?:\d+\.\s*)?VERIFY\s+(?P<target_quote>["\'])(?P<target>.+?)(?P=target_quote)\s+'
+    r'(?P<element_type>button|field|element|input)\s+HAS\s+PLACEHOLDER\s+'
+    r'(?P<expected_quote>["\'])(?P<expected>.*?)(?P=expected_quote)\s*\.?\s*$',
+    re.IGNORECASE,
+)
+_RE_VERIFY_STRICT_VALUE = re.compile(
+    r'^\s*(?:\d+\.\s*)?VERIFY\s+(?P<target_quote>["\'])(?P<target>.+?)(?P=target_quote)\s+'
+    r'(?P<element_type>button|field|element|input)\s+HAS\s+VALUE\s+'
+    r'(?P<expected_quote>["\'])(?P<expected>.*?)(?P=expected_quote)\s*\.?\s*$',
+    re.IGNORECASE,
+)
 
 
 @dataclass(slots=True)
@@ -92,6 +110,15 @@ class HuntBlock:
     block_line: int | None = None
     action_lines: list[int] = field(default_factory=list)
     synthetic: bool = False
+
+
+class StrictVerifyAssertion(NamedTuple):
+    """Parsed strict VERIFY assertion."""
+
+    kind: str
+    target: str
+    element_type: str
+    expected: str
 
 
 def parse_logical_step(step: str) -> "tuple[str | None, str | None]":
@@ -131,6 +158,40 @@ def parse_explicit_wait(step: str) -> "tuple[str | None, str | None]":
     target = m.group("target").strip()
     desired_state = (m.group("state_be") or m.group("state_disappear") or "").strip().lower()
     return target or None, desired_state or None
+
+
+def parse_verify_strict_assertion(step: str) -> "StrictVerifyAssertion | None":
+    """Parse strict VERIFY text/placeholder/value assertions."""
+    step = step.strip()
+
+    m_text = _RE_VERIFY_STRICT_TEXT.match(step)
+    if m_text is not None:
+        return StrictVerifyAssertion(
+            kind="text",
+            target=m_text.group("target").strip(),
+            element_type=m_text.group("element_type").strip().lower(),
+            expected=m_text.group("expected"),
+        )
+
+    m_placeholder = _RE_VERIFY_STRICT_PLACEHOLDER.match(step)
+    if m_placeholder is not None:
+        return StrictVerifyAssertion(
+            kind="placeholder",
+            target=m_placeholder.group("target").strip(),
+            element_type=m_placeholder.group("element_type").strip().lower(),
+            expected=m_placeholder.group("expected"),
+        )
+
+    m_value = _RE_VERIFY_STRICT_VALUE.match(step)
+    if m_value is not None:
+        return StrictVerifyAssertion(
+            kind="value",
+            target=m_value.group("target").strip(),
+            element_type=m_value.group("element_type").strip().lower(),
+            expected=m_value.group("expected"),
+        )
+
+    return None
 
 
 def parse_hunt_blocks(task: str, file_lines: list[int] | None = None) -> list[HuntBlock]:

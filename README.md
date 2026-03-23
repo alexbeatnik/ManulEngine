@@ -271,7 +271,7 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.15
+pip install manul-engine==0.0.9.16
 playwright install
 ```
 
@@ -280,7 +280,7 @@ If you install standalone Python dependencies manually instead of using the pack
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.15"
+pip install "manul-engine[ai]==0.0.9.16"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -461,6 +461,24 @@ Wait for "Submit" to be hidden
 
 `disappear` maps to Playwright's `hidden` state, so the runtime treats `hidden` and `disappear` as the same wait target internally.
 
+### Strict assertions
+
+Use strict assertions when you need exact element text, exact placeholder attributes, or exact current field values instead of loose presence checks.
+
+```text
+Verify "save" button has text "Save me"
+Verify "Error message" element has text "Invalid credentials"
+Verify 'Login' field has placeholder "Login/Email"
+Verify "Search" input has placeholder "Type to search..."
+Verify "Email" field has value "captain@manul.com"
+Verify "Notes" element has value "treasure map"
+```
+
+- `Verify "<element_name>" <type> has text "<expected_text>"` resolves the element through the normal DOM heuristics, reads `locator.inner_text().strip()`, and performs strict `==` comparison.
+- `Verify "<element_name>" <type> has placeholder "<expected_placeholder>"` resolves the element, reads the `placeholder` attribute, and performs strict `==` comparison.
+- `Verify "<element_name>" <type> has value "<expected_value>"` resolves the element, reads its current value with `input_value()` and a `value`-attribute fallback, normalizes missing values to `""`, and performs strict `==` comparison.
+- On mismatch, the runtime raises a readable assertion that includes the resolved element locator plus `Expected` and `Actual` values.
+
 ### Static variables and hooks
 
 ```text
@@ -545,15 +563,15 @@ Representative coverage areas include:
 - visibility filtering and TreeWalker behavior
 - custom controls and lazy control loading
 
-## What's New in v0.0.9.15
+## What's New in v0.0.9.16
 
-- **Release-line sync:** version metadata and public install snippets are aligned on `0.0.9.15`, including the current minimum Python client versions for `playwright` and optional `ollama` usage.
+- **Release-line sync:** version metadata and public install snippets are aligned on `0.0.9.16`, including the current minimum Python client versions for `playwright` and optional `ollama` usage.
 - **DSL contract refresh:** `MANUL_DSL_CONTRACT.md` now reflects the current runtime semantics for hook blocks, contextual qualifiers, `CALL PYTHON`, and debug-oriented system steps.
 - **Prompt sync:** the generation prompts under `prompts/` were updated to match the live DSL, including bracket-only `[SETUP]` / `[TEARDOWN]`, `PRINT`, `CALL PYTHON ... into {var}`, optional `with args:`, and current helper-module resolution rules.
 - **Instruction mirror integrity:** repo-local assistant guidance remains synchronized between `.github/copilot-instructions.md` and the mirrored `custom-instructions/repo/.github/copilot-instructions.md` to avoid customization drift.
 
 ## License
 
-**Version:** 0.0.9.15
+**Version:** 0.0.9.16
 
 Apache-2.0.

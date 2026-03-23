@@ -50,6 +50,9 @@ DONE.
 - `VERIFY that '<target>' is NOT present`
 - `VERIFY that '<target>' is DISABLED`
 - `VERIFY that '<target>' is checked`
+- `Verify '<target>' button has text '<expected_text>'`
+- `Verify '<target>' field has placeholder '<expected_placeholder>'`
+- `Verify '<target>' field has value '<expected_value>'`
 - `VERIFY SOFTLY that '<target>' is present`
 - `SET {variable_name} = value`
 - `CALL PYTHON module.function into {variable_name}`
@@ -96,6 +99,10 @@ Examples:
 - Use `[SETUP]` for file-local backend setup and inline `CALL PYTHON` for mid-test backend values such as OTPs, tokens, or generated IDs.
 - After each significant action (submit, login, navigation) add a `VERIFY` step.
 - Add explicit waits when the HTML suggests async rendering, overlays, progress indicators, delayed content, or client-side hydration.
+- When the required assertion is exact visible text, use `Verify "<element_name>" <type> has text "<expected_text>"`.
+- When the required assertion is an exact placeholder value, use `Verify "<element_name>" field has placeholder "<expected_placeholder>"` or `Verify "<element_name>" input has placeholder "<expected_placeholder>"`.
+- When the required assertion is an exact current field value, use `Verify "<element_name>" field has value "<expected_value>"` or `Verify "<element_name>" input has value "<expected_value>"`.
+- Do not invent alternate assertion phrases; only emit the exact `Verify ... has text ...`, `Verify ... has placeholder ...`, and `Verify ... has value ...` syntax.
 - Use `EXTRACT` + `VERIFY` to validate dynamic values.
 - Steps must be atomic — one action per step.
 - Use real visible text from the HTML, not IDs or class names (unless there is no visible text).

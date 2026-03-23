@@ -5,7 +5,7 @@ import os
 import re
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
-from .helpers import extract_quoted, compact_log_field, SCROLL_WAIT, ACTION_WAIT, NAV_WAIT, detect_mode, parse_explicit_wait, parse_contextual_hint
+from .helpers import extract_quoted, compact_log_field, SCROLL_WAIT, ACTION_WAIT, NAV_WAIT, detect_mode, parse_explicit_wait, parse_contextual_hint, parse_verify_strict_assertion
 from .js_scripts import (
     VISIBLE_TEXT_JS,
     EXTRACT_DATA_JS,
@@ -364,7 +364,125 @@ class _ActionsMixin:
             return True
         return False
 
+    @staticmethod
+    def _strict_verify_mode_for(element_type: str) -> str:
+        if element_type == "button":
+            return "clickable"
+        if element_type in ("field", "input"):
+            return "input"
+        return "locate"
+
+    def _strict_verify_failure(self, *, kind: str, locator_text: str, expected: object, actual: object) -> AssertionError:
+        if kind == "text":
+            label = "text"
+        elif kind == "placeholder":
+            label = "placeholder"
+        else:
+            label = "value"
+        return AssertionError(
+            f"Strict {label} verification failed\n"
+            f"Element locator: {locator_text}\n"
+            f"Expected: {expected!r}\n"
+            f"Actual: {actual!r}"
+        )
+
+    async def _resolve_strict_verify_locator(self, page, step: str, target: str, element_type: str, kind: str):
+        mode = self._strict_verify_mode_for(element_type)
+        target_field = target.lower() if element_type in ("field", "input") else None
+        el = await self._resolve_element(
+            page,
+            step,
+            mode,
+            [target],
+            target_field,
+            "",
+            failed_ids=set(),
+        )
+        if el is None:
+            locator_text = f"{element_type} '{target}'"
+            raise self._strict_verify_failure(
+                kind=kind,
+                locator_text=locator_text,
+                expected="<resolved element>",
+                actual="<element not found>",
+            )
+
+        frame = self._frame_for(page, el)
+        loc = frame.locator(f"xpath={el['xpath']}").first
+        locator_text = f"{element_type} '{target}' -> xpath={el['xpath']}"
+        return loc, locator_text
+
+    async def _execute_verify_text(self, page, step: str, target: str, element_type: str, expected_text: str) -> bool:
+        loc, locator_text = await self._resolve_strict_verify_locator(page, step, target, element_type, "text")
+        actual_text = (await loc.inner_text(timeout=2000)).strip()
+        if actual_text != expected_text:
+            raise self._strict_verify_failure(
+                kind="text",
+                locator_text=locator_text,
+                expected=expected_text,
+                actual=actual_text,
+            )
+        print(f"    ✅ Strict text verified for {locator_text}")
+        return True
+
+    async def _execute_verify_placeholder(self, page, step: str, target: str, element_type: str, expected_placeholder: str) -> bool:
+        loc, locator_text = await self._resolve_strict_verify_locator(page, step, target, element_type, "placeholder")
+        actual_placeholder = await loc.get_attribute("placeholder", timeout=2000)
+        if actual_placeholder != expected_placeholder:
+            raise self._strict_verify_failure(
+                kind="placeholder",
+                locator_text=locator_text,
+                expected=expected_placeholder,
+                actual=actual_placeholder,
+            )
+        print(f"    ✅ Strict placeholder verified for {locator_text}")
+        return True
+
+    async def _execute_verify_value(self, page, step: str, target: str, element_type: str, expected_value: str) -> bool:
+        loc, locator_text = await self._resolve_strict_verify_locator(page, step, target, element_type, "value")
+        try:
+            actual_value = await loc.input_value(timeout=2000)
+        except Exception:
+            actual_value = await loc.get_attribute("value", timeout=2000)
+        if actual_value is None:
+            actual_value = ""
+        if actual_value != expected_value:
+            raise self._strict_verify_failure(
+                kind="value",
+                locator_text=locator_text,
+                expected=expected_value,
+                actual=actual_value,
+            )
+        print(f"    ✅ Strict value verified for {locator_text}")
+        return True
+
     async def _handle_verify(self, page, step: str, step_idx: int = 0) -> bool:
+        strict_verify = parse_verify_strict_assertion(step)
+        if strict_verify is not None:
+            if strict_verify.kind == "text":
+                return await self._execute_verify_text(
+                    page,
+                    step,
+                    strict_verify.target,
+                    strict_verify.element_type,
+                    strict_verify.expected,
+                )
+            if strict_verify.kind == "value":
+                return await self._execute_verify_value(
+                    page,
+                    step,
+                    strict_verify.target,
+                    strict_verify.element_type,
+                    strict_verify.expected,
+                )
+            return await self._execute_verify_placeholder(
+                page,
+                step,
+                strict_verify.target,
+                strict_verify.element_type,
+                strict_verify.expected,
+            )
+
         expected = extract_quoted(step)
         step_no_quotes = re.sub(r"'[^']*'", "", step)
         is_negative = bool(re.search(r'\b(NOT|HIDDEN|ABSENT)\b', step_no_quotes.upper()))

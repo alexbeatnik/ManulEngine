@@ -50,6 +50,9 @@ DONE.
 - `VERIFY that '<target>' is NOT present`
 - `VERIFY that '<target>' is DISABLED`
 - `VERIFY that '<target>' is checked`
+- `Verify '<target>' button has text '<expected_text>'`
+- `Verify '<target>' field has placeholder '<expected_placeholder>'`
+- `Verify '<target>' field has value '<expected_value>'`
 - `VERIFY SOFTLY that '<target>' is present`
 - `SET {variable_name} = value`
 - `CALL PYTHON module.function into {variable_name}`
@@ -108,6 +111,10 @@ Use `CALL PYTHON ... into {var}` for backend-generated runtime values such as OT
 - Use `[SETUP]` for per-file backend setup only when the flow genuinely needs it; use inline `CALL PYTHON` for mid-test backend interaction.
 - After each significant action (submit, login, navigation) add a `VERIFY` step.
 - Add explicit waits when the description suggests asynchronous rendering, loaders, hydration, delayed tables, or disappearing overlays.
+- When the user asks for exact text verification, use `Verify "<element_name>" <type> has text "<expected_text>"`.
+- When the user asks for placeholder verification, use `Verify "<element_name>" field has placeholder "<expected_placeholder>"` or `Verify "<element_name>" input has placeholder "<expected_placeholder>"`.
+- When the user asks for current inputted value verification, use `Verify "<element_name>" field has value "<expected_value>"` or `Verify "<element_name>" input has value "<expected_value>"`.
+- Never invent alternate text-assertion verbs; only use the exact `Verify ... has text ...`, `Verify ... has placeholder ...`, and `Verify ... has value ...` forms.
 - Steps must be atomic — one action per step.
 - Use `SCROLL DOWN` before interacting with elements that might be below the fold.
 - Add `if exists` for elements that might not always appear (cookie banners, ads, modals).
