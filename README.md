@@ -461,6 +461,24 @@ Wait for "Submit" to be hidden
 
 `disappear` maps to Playwright's `hidden` state, so the runtime treats `hidden` and `disappear` as the same wait target internally.
 
+### Strict assertions
+
+Use strict assertions when you need exact element text, exact placeholder attributes, or exact current field values instead of loose presence checks.
+
+```text
+Verify "save" button has text "Save me"
+Verify "Error message" element has text "Invalid credentials"
+Verify 'Login' field has placeholder "Login/Email"
+Verify "Search" input has placeholder "Type to search..."
+Verify "Email" field has value "captain@manul.com"
+Verify "Notes" element has value "treasure map"
+```
+
+- `Verify "<element_name>" <type> has text "<expected_text>"` resolves the element through the normal DOM heuristics, reads `locator.inner_text().strip()`, and performs strict `==` comparison.
+- `Verify "<element_name>" <type> has placeholder "<expected_placeholder>"` resolves the element, reads the `placeholder` attribute, and performs strict `==` comparison.
+- `Verify "<element_name>" <type> has value "<expected_value>"` resolves the element, reads its current value with `input_value()` and a `value`-attribute fallback, normalizes missing values to `""`, and performs strict `==` comparison.
+- On mismatch, the runtime raises a readable assertion that includes the resolved element locator plus `Expected` and `Actual` values.
+
 ### Static variables and hooks
 
 ```text

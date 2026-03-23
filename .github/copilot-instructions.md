@@ -214,6 +214,9 @@ Rules for STEP-grouped files:
 * `SCROLL DOWN` or `SCROLL DOWN inside the list`
 * `EXTRACT [target] into {variable_name}`
 * `VERIFY that [target] is present` / `is NOT present` / `is DISABLED` / `is ENABLED` / `is checked`
+* `Verify "element_name" [button|field|element|input] has text "Expected Text"` — resolves the target via heuristics, reads `locator.inner_text().strip()`, and asserts strict equality.
+* `Verify "element_name" [button|field|element|input] has placeholder "Expected Placeholder"` — resolves the target, reads its `placeholder` attribute, and asserts strict equality.
+* `Verify "element_name" [button|field|element|input] has value "Expected Value"` — resolves the target, reads its current value via `locator.input_value()` with a `value`-attribute fallback, normalizes missing values to an empty string, and asserts strict equality.
 * `VERIFY VISUAL 'Element'` — Takes an element screenshot and compares against a baseline in `visual_baselines/`. Saves baseline on first run. Uses PIL/Pillow threshold comparison (default 1%) or raw byte fallback.
 * `VERIFY SOFTLY that [target] is present` — Same as VERIFY but does **not** stop execution on failure. Failures are collected as soft errors and surfaced as `"warning"` status.
 * `MOCK METHOD "url_pattern" with 'mock_file'` — Intercepts matching network requests via `page.route()` and fulfills from a local file. METHOD: GET, POST, PUT, PATCH, DELETE. Mock file resolved relative to hunt dir → CWD.
@@ -358,6 +361,8 @@ Wrong (do not do this):
 ### 8. Best Practices
 * **Specify Element Type:** Include words like `button`, `field`, `link`, `dropdown`, `checkbox`, `radio` outside quotes. This acts as a strong heuristic signal.
 * **Exact Text Matching:** Put target texts in quotes (`'Save'`) to yield a high heuristic score.
+* **Strict text/placeholder assertions:** When the user asks for exact text or placeholder validation, generate only `Verify "{element_name}" {type} has text "{expected_text}"` or `Verify "{element_name}" field/input has placeholder "{expected_placeholder}"`. Do not invent alternate assertion verbs.
+* **Strict value assertions:** When the user asks for the current inputted value or textarea content, generate only `Verify "{element_name}" field/input has value "{expected_value}"`.
 * **Verify After Actions:** Always use a `VERIFY` step after taking a significant action (e.g., login, form submit) before assuming the new page state.
 * **Implicit Context:** The engine reuses context if you refer to previous elements implicitly, e.g., `Type "Password" into that field`.
 * **MANDATORY — Reporting, Screenshots, and Retries are CLI/Execution concerns, NOT DSL syntax.** Never write steps like `RETRY 3`, `TAKE SCREENSHOT`, `GENERATE REPORT`, or similar in `.hunt` files. These features are controlled exclusively via CLI flags (`--retries`, `--screenshot`, `--html-report`), `manul_engine_configuration.json` keys (`retries`, `screenshot`, `html_report`), or VS Code Extension settings (`manulEngine.retries`, `manulEngine.screenshotMode`, `manulEngine.htmlReport`). When asked to add retries or reporting to a test, instruct the user to use CLI flags or config — never inject pseudo-steps into the hunt file.

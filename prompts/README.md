@@ -169,6 +169,9 @@ DONE.
 - `CALL PYTHON module.function into {var}`
 - `DEBUG VARS`
 - `VERIFY that '<target>' is present / is NOT present / is DISABLED / is checked`
+- `Verify '<target>' button has text '<expected_text>'`
+- `Verify '<target>' field has placeholder '<expected_placeholder>'`
+- `Verify '<target>' field has value '<expected_value>'`
 - `VERIFY SOFTLY that '<target>' is present`
 - `DONE.`
 
@@ -203,6 +206,11 @@ Click 'Submit button'          ✗
 
 ### Generation rules for LLM output
 
+- When the user asks to verify exact visible text, generate `Verify "{element_name}" {type} has text "{expected_text}"`.
+- When the user asks to verify a placeholder attribute, generate `Verify "{element_name}" field has placeholder "{expected_placeholder}"` or `Verify "{element_name}" input has placeholder "{expected_placeholder}"`.
+- When the user asks to verify the current inputted value or textarea content, generate `Verify "{element_name}" field has value "{expected_value}"` or `Verify "{element_name}" input has value "{expected_value}"`.
+- Always quote both the element label and expected value exactly.
+- Do not invent alternate assertions such as `Check if text is`, `Assert placeholder equals`, or `Check field content`.
 - Prefer deterministic DSL steps over vague natural language.
 - Add explicit waits when the page description suggests async loading, spinners, deferred content, or client-side rendering.
 - Use `@var:` for login credentials, emails, names, IDs, and other static inputs.

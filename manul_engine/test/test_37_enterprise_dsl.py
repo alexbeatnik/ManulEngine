@@ -23,7 +23,7 @@ import tempfile
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from manul_engine.helpers import classify_step
+from manul_engine.helpers import classify_step, parse_verify_strict_assertion
 from manul_engine.reporting import StepResult, MissionResult, RunSummary
 from manul_engine.cli import parse_hunt_file
 
@@ -97,12 +97,46 @@ def _test_classify_new_step_kinds() -> None:
     # Regular VERIFY should still work
     _assert(classify_step("VERIFY that 'Welcome' is present") == "verify",
             "Plain VERIFY still classified as 'verify'")
+    _assert(classify_step("Verify 'Save' button has text 'Save me'") == "verify",
+            "Strict VERIFY text classified as 'verify'")
+    _assert(classify_step('Verify "Login" field has placeholder "Login/Email"') == "verify",
+            "Strict VERIFY placeholder classified as 'verify'")
+    _assert(classify_step('Verify "Email" field has value "captain@manul.com"') == "verify",
+            "Strict VERIFY value classified as 'verify'")
 
     # Keywords inside quotes should NOT trigger
     _assert(classify_step("Click 'MOCK Button'") == "action",
             "MOCK inside quotes classified as 'action'")
     _assert(classify_step("Click 'VERIFY VISUAL Now'") == "action",
             "VERIFY VISUAL inside quotes classified as 'action'")
+
+
+def _test_parse_strict_verify_assertions() -> None:
+    print("\n  ── parse_verify_strict_assertion: strict VERIFY forms ─────────")
+
+    parsed_text = parse_verify_strict_assertion('Verify "save" button has text "Save me"')
+    _assert(parsed_text is not None, "Strict text assertion parsed")
+    _assert(parsed_text is not None and parsed_text.kind == "text", "Strict text kind detected")
+    _assert(parsed_text is not None and parsed_text.target == "save", "Strict text target captured")
+    _assert(parsed_text is not None and parsed_text.element_type == "button", "Strict text element type captured")
+    _assert(parsed_text is not None and parsed_text.expected == "Save me", "Strict text expected value captured")
+
+    parsed_placeholder = parse_verify_strict_assertion("Verify 'Login' field has placeholder \"Login/Email\"")
+    _assert(parsed_placeholder is not None, "Strict placeholder assertion parsed")
+    _assert(parsed_placeholder is not None and parsed_placeholder.kind == "placeholder", "Strict placeholder kind detected")
+    _assert(parsed_placeholder is not None and parsed_placeholder.target == "Login", "Strict placeholder target captured")
+    _assert(parsed_placeholder is not None and parsed_placeholder.element_type == "field", "Strict placeholder element type captured")
+    _assert(parsed_placeholder is not None and parsed_placeholder.expected == "Login/Email", "Strict placeholder expected value captured")
+
+    parsed_value = parse_verify_strict_assertion('Verify "Email" field has value "captain@manul.com"')
+    _assert(parsed_value is not None, "Strict value assertion parsed")
+    _assert(parsed_value is not None and parsed_value.kind == "value", "Strict value kind detected")
+    _assert(parsed_value is not None and parsed_value.target == "Email", "Strict value target captured")
+    _assert(parsed_value is not None and parsed_value.element_type == "field", "Strict value element type captured")
+    _assert(parsed_value is not None and parsed_value.expected == "captain@manul.com", "Strict value expected value captured")
+
+    _assert(parse_verify_strict_assertion("VERIFY that 'Welcome' is present") is None,
+            "Legacy VERIFY does not parse as strict assertion")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -404,36 +438,37 @@ def _test_parsed_hunt_compat() -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 async def run_suite() -> tuple[int, int]:
-    """Run all test sections and return (passed, failed)."""
-    global _PASS, _FAIL
-    _PASS = _FAIL = 0
+        """Run all test sections and return (passed, failed)."""
+        global _PASS, _FAIL
+        _PASS = _FAIL = 0
 
-    print("\n" + "=" * 60)
-    print("  TEST 37 — Enterprise DSL Features (v0.0.9.1)")
-    print("=" * 60)
+        print("\n" + "=" * 60)
+        print("  TEST 37 — Enterprise DSL Features (v0.0.9.1)")
+        print("=" * 60)
 
-    # A: classify_step for new keywords
-    _test_classify_new_step_kinds()
+        # A: classify_step for new keywords
+        _test_classify_new_step_kinds()
+        _test_parse_strict_verify_assertions()
 
-    # B: Data-Driven Testing
-    _test_data_driven_parsing()
-    _test_load_data_file()
+        # B: Data-Driven Testing
+        _test_data_driven_parsing()
+        _test_load_data_file()
 
-    # C: Reporting with warning
-    _test_reporting_warning()
+        # C: Reporting with warning
+        _test_reporting_warning()
 
-    # D: Reporter HTML with warning
-    _test_reporter_warning_html()
+        # D: Reporter HTML with warning
+        _test_reporter_warning_html()
 
-    # E: Edge cases
-    _test_mock_edge_cases()
+        # E: Edge cases
+        _test_mock_edge_cases()
 
-    # F: ParsedHunt compatibility
-    _test_parsed_hunt_compat()
+        # F: ParsedHunt compatibility
+        _test_parsed_hunt_compat()
 
-    total = _PASS + _FAIL
-    print(f"\n  {'='*50}")
-    print(f"  RESULTS: {_PASS} passed, {_FAIL} failed")
-    print(f"  {'='*50}")
-    print(f"  \U0001f4ca SCORE: {_PASS}/{total}")
-    return _PASS, _FAIL
+        total = _PASS + _FAIL
+        print(f"\n  {'='*50}")
+        print(f"  RESULTS: {_PASS} passed, {_FAIL} failed")
+        print(f"  {'='*50}")
+        print(f"  \U0001f4ca SCORE: {_PASS}/{total}")
+        return _PASS, _FAIL

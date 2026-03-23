@@ -8,7 +8,7 @@ from playwright.async_api import async_playwright
 from manul_engine import ManulEngine
 
 # ─────────────────────────────────────────────────────────────────────────────
-# MONSTER DOM  —  80 TESTS (Traps + Integration Bugs + Real World Frameworks)
+# MONSTER DOM  —  STRICT VERIFY COVERAGE INCLUDED
 # ─────────────────────────────────────────────────────────────────────────────
 MONSTER_DOM = """
 <!DOCTYPE html>
@@ -204,6 +204,12 @@ MONSTER_DOM = """
 <div><label for="norm_agree_chk">I Agree</label><input type="checkbox" id="norm_agree_chk"></div>
 <div><label for="norm_color_select">Color</label><select id="norm_color_select"><option>Red</option><option>Blue</option></select></div>
 <div id="norm_message_box">Operation completed successfully</div><div id="norm_hidden_error" style="display:none">Critical failure</div>
+<div><button id="strict_save_btn">  Save me  </button></div>
+<div id="strict_error_text">Invalid credentials</div>
+<div><label for="strict_login_field">Login</label><input type="text" id="strict_login_field" placeholder="Login/Email"></div>
+<div><input type="search" id="strict_search_input" aria-label="Search" placeholder="Type to search..."></div>
+<div><label for="strict_email_value">Profile Email</label><input type="email" id="strict_email_value" value="captain@manul.com"></div>
+<div><label for="strict_note_area">Notes</label><textarea id="strict_note_area">treasure map</textarea></div>
 <table id="norm_price_table"><tr><td>Monitor</td><td>$299</td></tr></table>
 
 <button id="rw_tw_btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-150 ease-in-out">Deploy Application</button>
@@ -509,6 +515,64 @@ TESTS = [
         "mode": "clickable", "search_texts": ["Play Video"], "target_field": None,
         "expected": "rw_play_btn",
     },
+    {
+        "name": "81. Strict text button",
+        "verify_step": True,
+        "step": "Verify 'Save me' button has text 'Save me'",
+        "expected_result": True,
+    },
+    {
+        "name": "82. Strict text element",
+        "verify_step": True,
+        "step": "Verify 'Invalid credentials' element has text 'Invalid credentials'",
+        "expected_result": True,
+    },
+    {
+        "name": "83. Strict placeholder field",
+        "verify_step": True,
+        "step": "Verify 'Login' field has placeholder 'Login/Email'",
+        "expected_result": True,
+    },
+    {
+        "name": "84. Strict placeholder input",
+        "verify_step": True,
+        "step": "Verify 'Search' input has placeholder 'Type to search...'",
+        "expected_result": True,
+    },
+    {
+        "name": "85. Strict text mismatch raises",
+        "verify_raises": True,
+        "step": "Verify 'Save me' button has text 'Save you'",
+        "error_contains": [
+            "Strict text verification failed",
+            "Element locator:",
+            "Expected: 'Save you'",
+            "Actual: 'Save me'",
+        ],
+    },
+    {
+        "name": "86. Strict value field",
+        "verify_step": True,
+        "step": "Verify 'Profile Email' field has value 'captain@manul.com'",
+        "expected_result": True,
+    },
+    {
+        "name": "87. Strict value textarea",
+        "verify_step": True,
+        "step": "Verify 'Notes' element has value 'treasure map'",
+        "expected_result": True,
+    },
+    {
+        "name": "88. Strict value mismatch raises",
+        "verify_raises": True,
+        "step": "Verify 'Profile Email' field has value 'admin@test.com'",
+        "error_contains": [
+            "Strict value verification failed",
+            "Element locator:",
+            "Expected: 'admin@test.com'",
+            "Actual: 'captain@manul.com'",
+        ],
+    },
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -535,7 +599,7 @@ def _apply_guards(el: dict, mode: str, search_texts: list[str]) -> str | None:
 # ─────────────────────────────────────────────────────────────────────────────
 async def run_laboratory():
     print("\n" + "=" * 70)
-    print("🧪  MANUL ENGINE LABORATORY — The Chaos Chamber (80 tests)")
+    print(f"🧪  MANUL ENGINE LABORATORY — The Chaos Chamber ({len(TESTS)} tests)")
     print("=" * 70)
 
     manul = ManulEngine(headless=True, disable_cache=True)
@@ -585,6 +649,24 @@ async def run_laboratory():
                         print(f"   ✅ FOLLOWUP  → VERIFY NOT returned {fu_result}")
                     else:
                         print(f"   ❌ FOLLOWUP FAILED")
+
+            elif t.get("verify_raises"):
+                try:
+                    await manul._handle_verify(page, t["step"])
+                    msg = "FAILED — expected AssertionError, got success"
+                    print(f"   ❌ {msg}")
+                    failed += 1
+                    failures.append(f"{t['name']}: {msg}")
+                except AssertionError as exc:
+                    error_text = str(exc)
+                    if all(part in error_text for part in t["error_contains"]):
+                        print("   ✅ PASSED  → Strict VERIFY raised readable AssertionError")
+                        passed += 1
+                    else:
+                        msg = f"FAILED — unexpected AssertionError: {error_text}"
+                        print(f"   ❌ {msg}")
+                        failed += 1
+                        failures.append(f"{t['name']}: {msg}")
 
             elif t.get("execute_step"):
                 result = await manul._execute_step(page, t["step"], "")
