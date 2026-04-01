@@ -401,6 +401,13 @@
       "description": "Declares a static variable pre-populated into runtime memory before any step runs. Available as {key} placeholder in all steps."
     },
     {
+      "id": "script",
+      "label": "@script:",
+      "uiText": "@script: {alias} = scripts.helpers",
+      "snippet": "@script: {${1:alias}} = ${2:scripts.helpers}",
+      "description": "Declares a file-local Python helper alias for later CALL PYTHON usage. Supported forms: module alias (`@script: {auth} = scripts.auth_helpers` -> `CALL PYTHON {auth}.issue_token`) and callable alias (`@script: {issue_token} = scripts.auth_helpers.issue_token` -> `CALL PYTHON {issue_token}`). Alias names must match placeholder identifiers (`^[A-Za-z_]\\w*$`). Targets must be dotted Python import paths only: no '/' , no '\\', and no '.py' suffix."
+    },
+    {
       "id": "data",
       "label": "@data:",
       "uiText": "@data: data/file.json",
