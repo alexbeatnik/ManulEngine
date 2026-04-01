@@ -1,0 +1,52 @@
+@context: Showcase of all supported CALL PYTHON variants with helpers placed in different folders.
+@title: call_python_variants_showcase
+@var: {prefix} = alpha
+@var: {subject} = manul
+@script: {showcase} = scripts.call_python_showcase
+@script: {echo_value} = examples.python.demo_echo.echo_value
+@script: {callable_alias_demo} = playground.nested.demo_tags.callable_alias_demo
+
+# SETUP shows that CALL PYTHON works before the browser mission too.
+# This block demonstrates:
+# - direct dotted module path
+# - module alias via @script
+# - direct positional args + into {var}
+[SETUP]
+PRINT "Setup started for {subject}"
+CALL PYTHON scripts.call_python_showcase.print_setup_banner
+CALL PYTHON {showcase}.build_token with args: "setup" into {setup_token}
+CALL PYTHON examples.python.demo_echo.echo_value "{setup_token}" into {echoed_setup_token}
+[END SETUP]
+
+STEP 1: Direct module path variants
+    # Plain direct call with a full dotted Python path.
+    CALL PYTHON scripts.call_python_showcase.print_setup_banner
+    # Direct call with no explicit args, capturing the return value.
+    CALL PYTHON scripts.call_python_showcase.build_token into {direct_token}
+    # Direct call with positional args written inline after the function name.
+    CALL PYTHON examples.python.demo_echo.echo_value "plain-arg" into {plain_arg_result}
+    # Direct call using the optional 'with args:' syntax sugar.
+    CALL PYTHON examples.python.demo_echo.join_values with args: "left" "right" into {joined_with_args}
+    # 'to {var}' is accepted as an alias for 'into {var}'.
+    CALL PYTHON playground.nested.demo_tags.make_pair "{prefix}" "{subject}" to {pair_value}
+
+STEP 2: Module alias variants
+    # {showcase} points to the module scripts.call_python_showcase.
+    # This keeps repeated CALL PYTHON lines shorter and easier to read.
+    CALL PYTHON {showcase}.print_setup_banner
+    CALL PYTHON {showcase}.build_token with args: "module-alias" into {alias_token}
+
+STEP 3: Callable alias variants
+    # {echo_value} points directly to one callable, so no '.function' suffix is needed.
+    CALL PYTHON {echo_value} "callable-plain" into {callable_plain_result}
+    # Callable aliases work with 'with args:' too.
+    CALL PYTHON {callable_alias_demo} with args: "{subject}" into {callable_with_args_result}
+
+# TEARDOWN uses the same CALL PYTHON rules as SETUP and normal STEP blocks.
+[TEARDOWN]
+PRINT "Teardown started for {subject}"
+CALL PYTHON {showcase}.cleanup_marker into {cleanup_status}
+CALL PYTHON {echo_value} "{cleanup_status}"
+[END TEARDOWN]
+
+DONE.
