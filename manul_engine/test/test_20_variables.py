@@ -275,6 +275,34 @@ DONE.
         os.unlink(tmp_path)
 
 
+def _test_script_alias_requires_placeholder_identifier_name() -> None:
+    print("\n  ── Parser (@script: alias name validation) ───────────────")
+
+    bad_hunt = """\
+@context: Invalid script alias name
+@title: invalid_script_alias_name
+@script: {my-alias} = scripts.print
+
+DONE.
+"""
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".hunt", encoding="utf-8", delete=False
+    ) as tf:
+        tf.write(bad_hunt)
+        tmp_path = tf.name
+
+    try:
+        try:
+            parse_hunt_file(tmp_path)
+            _assert(False, "invalid @script alias name is rejected")
+        except ValueError as exc:
+            msg = str(exc)
+            _assert("Invalid @script alias '{my-alias}'" in msg, "invalid alias name reports offending value", msg)
+            _assert("letters, digits, and underscores" in msg, "invalid alias name explains identifier rule", msg)
+    finally:
+        os.unlink(tmp_path)
+
+
 # ── Section 2: Engine interpolation ──────────────────────────────────────────
 
 async def _test_interpolation() -> None:
@@ -395,6 +423,7 @@ async def run_suite() -> bool:
     _test_script_alias_parser_rewrite()
     _test_script_alias_parser_preserves_step_line_breaks()
     _test_script_alias_requires_dotted_python_path()
+    _test_script_alias_requires_placeholder_identifier_name()
     await _test_interpolation()
 
     total = _PASS + _FAIL

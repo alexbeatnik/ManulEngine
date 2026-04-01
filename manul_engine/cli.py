@@ -162,6 +162,19 @@ class ParsedHunt(NamedTuple):
 
 
 _RE_SCRIPT_ALIAS_TARGET = re.compile(r"^[A-Za-z_][\w]*(?:\.[A-Za-z_][\w]*)*$")
+_RE_SCRIPT_ALIAS_NAME = re.compile(r"^[A-Za-z_][\w]*$")
+
+
+def _validate_script_alias_name(alias_name: str, *, filepath: str, lineno: int) -> str:
+    """Validate that @script alias names match placeholder identifier rules."""
+    normalized = alias_name.strip()
+    if not _RE_SCRIPT_ALIAS_NAME.fullmatch(normalized):
+        raise ValueError(
+            f"Invalid @script alias '{{{alias_name}}}' in {filepath}:{lineno}. "
+            f"Alias names must match placeholder identifiers like '{{auth}}' or '{{issue_token}}' "
+            f"using only letters, digits, and underscores, and cannot start with a digit."
+        )
+    return normalized
 
 
 def _validate_script_alias_target(raw_path: str, *, alias_name: str, filepath: str, lineno: int) -> str:
@@ -305,7 +318,11 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
             script_part = stripped[8:].strip()
             m = re.match(r"\{?([^}=\s]+)\}?\s*=\s*(.*)", script_part)
             if m:
-                alias_name = m.group(1).strip()
+                alias_name = _validate_script_alias_name(
+                    m.group(1),
+                    filepath=filepath,
+                    lineno=lineno,
+                )
                 normalized = _validate_script_alias_target(
                     m.group(2),
                     alias_name=alias_name,
