@@ -365,6 +365,7 @@ Wrong (do not do this):
 ### 8. Best Practices
 * **Specify Element Type:** Include words like `button`, `field`, `link`, `dropdown`, `checkbox`, `radio` outside quotes. This acts as a strong heuristic signal.
 * **Exact Text Matching:** Put target texts in quotes (`'Save'`) to yield a high heuristic score.
+* **Mandatory post-input guard:** After every generated `Fill` or `Type` step, immediately emit a strict value assertion using `Verify "{element_name}" field/input has value "{expected_value}"` before moving on to the next logical action.
 * **Strict text/placeholder assertions:** When the user asks for exact text or placeholder validation, generate only `Verify "{element_name}" {type} has text "{expected_text}"` or `Verify "{element_name}" field/input has placeholder "{expected_placeholder}"`. Do not invent alternate assertion verbs.
 * **Strict value assertions:** When the user asks for the current inputted value or textarea content, generate only `Verify "{element_name}" field/input has value "{expected_value}"`.
 * **Verify After Actions:** Always use a `VERIFY` step after taking a significant action (e.g., login, form submit) before assuming the new page state.

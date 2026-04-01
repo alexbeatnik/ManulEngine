@@ -591,10 +591,11 @@ Representative coverage areas include:
 
 ## What's New in v0.0.9.17
 
-- **Release-line sync:** version metadata and public install snippets are aligned on `0.0.9.17`, including the current minimum Python client versions for `playwright` and optional `ollama` usage.
-- **DSL contract refresh:** `MANUL_DSL_CONTRACT.md` now reflects the current runtime semantics for hook blocks, contextual qualifiers, `CALL PYTHON`, and debug-oriented system steps.
-- **Prompt sync:** the generation prompts under `prompts/` were updated to match the live DSL, including bracket-only `[SETUP]` / `[TEARDOWN]`, `PRINT`, `CALL PYTHON ... into {var}`, optional `with args:`, and current helper-module resolution rules.
-- **Instruction mirror integrity:** repo-local assistant guidance remains synchronized between `.github/copilot-instructions.md` and the mirrored `custom-instructions/repo/.github/copilot-instructions.md` to avoid customization drift.
+- **`CALL PYTHON` authoring cleanup:** `@script:` now supports both module aliases and callable aliases, but only through dotted Python import paths such as `scripts.db_helpers` or `scripts.db_helpers.issue_token`. Slash paths like `scripts/db_helpers.py` are no longer part of the documented syntax.
+- **Simpler helper resolution:** helper lookup for `CALL PYTHON` is now documented and implemented as `hunt dir -> CWD -> sys.path`. The temporary `call_python_dirs` detour is gone, so docs and examples now reflect the shorter runtime model.
+- **Post-input verification rule:** generated `.hunt` flows now treat `Fill` and `Type` as incomplete until the entered value is checked immediately with `Verify "..." field/input has value "..."`. The prompts and assistant guidance were updated to make this the default authoring pattern.
+- **Full `CALL PYTHON` showcase:** the repo now includes a dedicated example hunt plus helper modules demonstrating direct dotted calls, module aliases, callable aliases, `with args:`, inline positional arguments, `into`, and `to` across setup, step, and teardown contexts.
+- **Parser hardening for aliased calls:** STEP-grouped missions containing consecutive aliased `CALL PYTHON` lines no longer risk line-concatenation during `@script` rewrite. The parser now preserves original line endings, and regression coverage was added for that case.
 
 ## License
 

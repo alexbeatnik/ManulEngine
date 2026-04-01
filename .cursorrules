@@ -121,6 +121,7 @@ pip install ollama==0.6.1
   - `Click the 'Delete' button INSIDE 'Actions' row with 'John Doe'`
 - When describing engine behavior, state that `disappear` maps to Playwright's `hidden` state.
 - Prefer explicit waits over recommending `WAIT [seconds]` when the goal is to wait for async rendering, spinners, or deferred UI state changes.
+- After every generated `Fill` or `Type` step, immediately emit `Verify "{element_name}" field/input has value "{expected_value}"` before moving to the next logical action.
 - When the user asks for exact text or placeholder verification, generate only `Verify "{element_name}" {type} has text "{expected_text}"` or `Verify "{element_name}" field/input has placeholder "{expected_placeholder}"`.
 - When the user asks for exact current field content or textarea value verification, generate only `Verify "{element_name}" field/input has value "{expected_value}"`.
 - Do not invent alternate text assertion verbs such as `Check if text is`.

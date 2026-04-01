@@ -861,6 +861,13 @@ The published extension provides:
 
 ---
 
+## Release Notes: v0.0.9.17
+
+- **`CALL PYTHON` parser/model cleanup:** `@script:` aliases now resolve to either modules or callables, but only through dotted import paths. Internal docs should no longer mention slash-path helper imports or `call_python_dirs`.
+- **Resolution order simplified:** helper module lookup is now explicitly `hunt dir -> CWD -> sys.path`, matching `hooks.py` and the public DSL contract.
+- **Prompting rule tightened:** generated `.hunt` files are expected to verify typed input immediately with `Verify ... has value ...` after each `Fill` or `Type` step.
+- **Regression coverage expanded:** parser coverage now includes STEP-grouped aliased `CALL PYTHON` lines staying on separate mission lines, plus the dedicated showcase hunt covering direct/module/callable alias variants.
+
 **Version:** 0.0.9.17
 
 **Codename:** Contextual UI Navigator
