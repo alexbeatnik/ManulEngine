@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.16 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.17 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -25,7 +25,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.16
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.17
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession
@@ -60,7 +60,7 @@ ManulEngine/
 │       ├── test_17_frontend_hell.py  Unit: frontend anti-patterns (overlays, z-index traps, React portals)
 │       ├── test_18_disambiguation.py Unit: ambiguous element targeting
 │       ├── test_19_custom_controls.py Unit: Custom Controls registry + engine interception (28 assertions, no browser)
-│       ├── test_20_variables.py      Unit: @var: static variable declaration (17 assertions, no browser)
+│       ├── test_20_variables.py      Unit: @var: static variable declaration + @script alias parsing (23 assertions, no browser)
 │       ├── test_21_dynamic_vars.py   Unit: CALL PYTHON ... into {var} dynamic variable capture
 │       ├── test_22_tags.py           Unit: @tags: / --tags CLI filter (20 assertions, no browser)
 │       ├── test_23_advanced_interactions.py  Unit: PRESS/RIGHT CLICK/UPLOAD/explicit waits (58 assertions, no browser)
@@ -73,7 +73,7 @@ ManulEngine/
 │       ├── test_30_heuristic_weights.py Synthetic+Unit: DOMScorer priority hierarchy (32 assertions)
 │       ├── test_31_visibility_treewalker.py Synthetic+Unit: TreeWalker PRUNE/checkVisibility (20 assertions)
 │       ├── test_32_verify_enabled.py Synthetic: VERIFY ENABLED/DISABLED state verification (20 assertions)
-│       ├── test_33_call_python_args.py Unit: CALL PYTHON with positional arguments (44 assertions, no browser)
+│       ├── test_33_call_python_args.py Unit: CALL PYTHON with positional arguments + unresolved @script alias handling (50 assertions, no browser)
 │       ├── test_34_verify_checked.py Synthetic: VERIFY checked/NOT checked (20 assertions)
 │       ├── test_35_scanner.py       Synthetic+Unit: Smart Page Scanner build_hunt() (44 assertions)
 │       ├── test_36_scoring_math.py   Unit: exact numerical scoring validation (29 assertions, no browser)
@@ -88,7 +88,7 @@ ManulEngine/
 │       ├── test_45_api.py            Unit: ManulSession public Python API facade (50 assertions, no browser)
 │       ├── test_46_attribute_semantic.py Unit: attribute-semantic icon matching, camelCase dev attrs, cart badges, false-positive resistance (34 assertions, no browser)
 │       └── test_47_contextual_proximity.py Unit: contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser rules (67 assertions, no browser)
-├── controls/                         User-owned custom Python handlers (loaded from directories listed in `custom_modules_dirs` config)
+├── controls/                         User-owned custom Python handlers (loaded from directories listed in `custom_controls_dirs` config)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
 │   ├── demoqa.hunt                   DemoQA form, checkbox, radio, and table coverage
@@ -164,7 +164,7 @@ This architecture is what makes ManulEngine a **true runtime** rather than just 
 * **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, `@after_group` orchestrate DB seeding and auth. `ctx.variables` serialise across parallel `--workers`.
 * **Contextual UI Navigator (v0.0.9.13):** action steps can now add `NEAR 'Anchor'`, `ON HEADER`, `ON FOOTER`, and `INSIDE 'Container' row with 'Text'` qualifiers. `actions.py` parses the contextual hint before normal mode detection, resolves anchor or row context, and threads that data into the scorer. `DOMScorer` boosts the proximity channel from `0.10` to `1.5` when a contextual hint is present, then switches from DOM-depth proximity to Euclidean distance, viewport-region checks, or subtree membership depending on the qualifier.
 * **Attribute-Semantic Matching for Functional Icons (v0.0.9.12):** `DOMScorer` now treats discrete keyword tokens in `html_id`, `class_name`, and `data_qa` as a strong signal even when visible text is unhelpful. This closes a real gap for cart-style links and other icon controls that only render badge counts (`"1"`, `"2"`, `"3"`) while the semantic meaning lives in attributes like `shopping_cart_link` or `shopping_cart_container`.
-* **JIT Module Loading & Configurable Module Directories (v0.0.9.11):** `CALL PYTHON` modules are imported on first use and cached for subsequent calls within the same process (`_module_cache` in `hooks.py`). `@custom_control` modules are loaded once on the first `run_mission()` call instead of during `ManulEngine.__init__`. Module scan directories are configurable via `custom_modules_dirs` in `manul_engine_configuration.json` (default: `["controls"]`).
+* **JIT Module Loading & Dotted Helper Imports (v0.0.9.11):** `CALL PYTHON` modules are imported on first use and cached for subsequent calls within the same process (`_module_cache` in `hooks.py`). `@custom_control` modules are loaded once on the first `run_mission()` call instead of during `ManulEngine.__init__`. Helper imports now rely on dotted Python module paths (`scripts.auth_helpers`, `package.module.function`) rather than configurable helper directories.
 
 ## ✨ Key Features
 
@@ -290,12 +290,10 @@ The hook system in `manul_engine/hooks.py` runs synchronous Python before and af
 **Module resolution order** (per `CALL PYTHON` instruction — identical for hooks and inline steps):
 
 1. Directory of the `.hunt` file.
-2. `/scripts` under the `.hunt` directory.
-3. `Path.cwd()` — project root.
-4. `/scripts` under `Path.cwd()`.
-5. Standard `importlib.import_module` — installed packages / PYTHONPATH.
+2. `Path.cwd()` — project root.
+3. Standard `importlib.import_module` — installed packages / PYTHONPATH.
 
-**State isolation:** Modules found via steps 1 and 2 are executed with `spec.loader.exec_module(mod)` into a fresh `ModuleType` object that is **never inserted into `sys.modules`**. This rule applies equally to hook blocks and inline `CALL PYTHON` steps — no `sys.modules` pollution regardless of where in the file the call appears.
+**State isolation:** Modules found via the file-based search steps are executed with `spec.loader.exec_module(mod)` into a fresh `ModuleType` object that is **never inserted into `sys.modules`**. This rule applies equally to hook blocks and inline `CALL PYTHON` steps — no `sys.modules` pollution regardless of where in the file the call appears.
 
 **Async rejection:** `asyncio.iscoroutinefunction()` is checked before invoking the callable. Async functions are explicitly rejected with a descriptive error message and a concrete workaround (`asyncio.run()` inside the helper). This applies to both hooks and inline calls.
 
@@ -329,6 +327,18 @@ CALL PYTHON <module>.<function> into {result}
 CALL PYTHON <module>.<function> with args: "arg1" "arg2" into {result}
 ```
 
+**File-local script aliases:**
+
+```text
+@script: {auth} = scripts.auth_helpers
+@script: {api} = helpers.api_client
+
+CALL PYTHON {auth}.issue_token into {token}
+CALL PYTHON {api}.fetch_otp "{token}" into {otp}
+```
+
+`parse_hunt_file()` rewrites `CALL PYTHON {alias}.func` to the corresponding dotted module path before the mission or hook block is executed. Alias declarations stay header-only and never appear in the mission body.
+
 **`HookResult` fields:** `success: bool`, `message: str`, `return_value: str | None`, `var_name: str | None`, `return_mapping: dict[str, str]`. The `return_value` / `var_name` pair is populated when the step used `into {var}` / `to {var}` capture syntax. `return_mapping` is populated when a helper returns a top-level dict; its keys are flattened into the shared variable context so later hook lines and browser steps can reference `{key}` directly.
 
 **Positional arguments:** `CALL PYTHON` accepts optional positional arguments between the dotted function name and the optional `into {var}` clause. Arguments are tokenised with `shlex.split()` — single-quoted, double-quoted, and unquoted tokens are all accepted. The optional `with args:` prefix is treated as syntax sugar and stripped before parsing. `{var}` placeholders inside arguments are resolved from the engine's runtime memory (`self.memory` for inline steps, `parsed_vars`/`variables` dict for hook blocks). Unresolved placeholders are kept as-is.
@@ -356,28 +366,34 @@ Fill 'Security Code' with '{dynamic_otp}'
 
 When a hook helper returns a dict such as `{"tenant_id": 42, "otp": 123456}`, `bind_hook_result()` flattens it into shared variables. That makes both `{tenant_id}` and `{otp}` available immediately to later hook lines and to the browser mission without additional glue code.
 
-`parse_hunt_file()` in `cli.py` returns a **10-field `ParsedHunt` NamedTuple** `(mission, context, title, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags, data_file, schedule)`. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
+`parse_hunt_file()` in `cli.py` returns a **10-field `ParsedHunt` NamedTuple** `(mission, context, title, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags, data_file, schedule)`. It also strips header-only `@script:` declarations, validates that they use dotted Python import paths, and rewrites `CALL PYTHON {alias}.func` usages to their real module paths before returning the mission and hook lines. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
 
 The full hook unit test suite (`56 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
 
-### 📋 Static Variable Declaration (`@var:`)
+### 📋 Static Variable Declaration (`@var:`) and Script Aliases (`@script:`)
 
 Version 0.0.8.7 adds static test-data declaration at the top of `.hunt` files:
 
 ```text
 @var: {user_email} = admin@example.com
 @var: {password}   = secret123
+@script: {auth}    = scripts.auth_helpers
+@script: {issue_login_token} = scripts.auth_helpers.issue_login_token
 
 STEP 1: Login
 Fill 'Email' with '{user_email}'
 Fill 'Password' with '{password}'
+CALL PYTHON {auth}.issue_login_token into {login_token}
+CALL PYTHON {issue_login_token} into {login_token_2}
 ```
 
 **How it works:** `parse_hunt_file()` scans for `@var: {key} = value` header lines and returns them as `parsed_vars`. `_run_hunt_file()` passes `parsed_vars` to `run_mission(initial_vars=...)`, which pre-populates `self.memory` before the step loop starts. Both brace and bare-key forms are accepted (`@var: {key} = val` and `@var: key = val` are equivalent). Values are stripped of leading/trailing whitespace. Malformed `@var:` lines (no `=`) are silently skipped.
 
+`@script:` uses the same declaration shape for both helper-module aliases and helper-callable aliases. Examples: `@script: {auth} = scripts.auth_helpers` and `@script: {issue_login_token} = scripts.auth_helpers.issue_login_token`. The parser requires a valid dotted Python import path, rejects slash paths or `.py` suffixes, and rewrites later `CALL PYTHON {auth}.func` or `CALL PYTHON {issue_login_token}` usages in both hook blocks and mission steps.
+
 **Design rule:** When generating or suggesting `.hunt` test files, **never** hardcode test data (emails, passwords, usernames, search queries, IDs, etc.) directly into `Fill` or `Type` steps. Always declare them at the top via `@var:` and reference them via `{placeholder}`. This keeps test logic separate from test data.
 
-Unit tests: `manul_engine/test/test_20_variables.py` (17 assertions, no browser).
+Unit tests: `manul_engine/test/test_20_variables.py` (23 assertions, no browser).
 
 ### 🏷️ Arbitrary Tags (`@tags:`) and `--tags` CLI Filter
 
@@ -543,7 +559,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.16
+pip install manul-engine==0.0.9.17
 playwright install chromium
 ```
 
@@ -576,7 +592,7 @@ The public README is expected to keep the full current runtime surface area plus
   "controls_cache_enabled": true,
   "controls_cache_dir": "cache",
   "semantic_cache_enabled": true,
-  "custom_modules_dirs": ["controls"],
+  "custom_controls_dirs": ["controls"],
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
   "tests_home": "tests",
@@ -845,7 +861,14 @@ The published extension provides:
 
 ---
 
-**Version:** 0.0.9.16
+## Release Notes: v0.0.9.17
+
+- **`CALL PYTHON` parser/model cleanup:** `@script:` aliases now resolve to either modules or callables, but only through dotted import paths. Internal docs should no longer mention slash-path helper imports or `call_python_dirs`.
+- **Resolution order simplified:** helper module lookup is now explicitly `hunt dir -> CWD -> sys.path`, matching `hooks.py` and the public DSL contract.
+- **Prompting rule tightened:** generated `.hunt` files are expected to verify typed input immediately with `Verify ... has value ...` after each `Fill` or `Type` step.
+- **Regression coverage expanded:** parser coverage now includes STEP-grouped aliased `CALL PYTHON` lines staying on separate mission lines, plus the dedicated showcase hunt covering direct/module/callable alias variants.
+
+**Version:** 0.0.9.17
 
 **Codename:** Contextual UI Navigator
 

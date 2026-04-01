@@ -71,20 +71,22 @@
 #
 # LIFECYCLE HOOK EXAMPLE (commented out so this shared demo stays runnable
 # without local Python helpers):
+# @script: {demo} = scripts.demo_helpers
+# @script: {seed_mega_fixture} = scripts.demo_helpers.seed_mega_fixture
 #
 # [SETUP]
 #     PRINT "Preparing mega demo data"
-#     CALL PYTHON scripts.demo_helpers.seed_mega_fixture with args: "shadow" "table"
-#     CALL PYTHON scripts.demo_helpers.issue_debug_token into {debug_token}
+#     CALL PYTHON {seed_mega_fixture} with args: "shadow" "table"
+#     CALL PYTHON {demo}.issue_debug_token into {debug_token}
 # [END SETUP]
 #
 # STEP X: Backend-assisted prep
-#     CALL PYTHON scripts.demo_helpers.fetch_runtime_label with args: "{debug_token}" into {runtime_label}
+#     CALL PYTHON {demo}.fetch_runtime_label with args: "{debug_token}" into {runtime_label}
 #     VERIFY that '{runtime_label}' is present
 #
 # [TEARDOWN]
 #     PRINT "Cleaning mega demo fixture"
-#     CALL PYTHON scripts.demo_helpers.cleanup_mega_fixture
+#     CALL PYTHON {demo}.cleanup_mega_fixture
 # [END TEARDOWN]
 #
 # Notes:

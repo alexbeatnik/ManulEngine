@@ -17,7 +17,7 @@
   "workers": 1,
   "tests_home": "tests",
   "auto_annotate": false,
-  "custom_modules_dirs": [
+  "custom_controls_dirs": [
     "controls"
   ],
   "retries": 0,

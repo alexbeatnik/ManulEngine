@@ -161,6 +161,66 @@ class ParsedHunt(NamedTuple):
     schedule: str   # @schedule: expression (empty string if not declared)
 
 
+_RE_SCRIPT_ALIAS_TARGET = re.compile(r"^[A-Za-z_][\w]*(?:\.[A-Za-z_][\w]*)*$")
+_RE_SCRIPT_ALIAS_NAME = re.compile(r"^[A-Za-z_][\w]*$")
+
+
+def _validate_script_alias_name(alias_name: str, *, filepath: str, lineno: int) -> str:
+    """Validate that @script alias names match placeholder identifier rules."""
+    normalized = alias_name.strip()
+    if not _RE_SCRIPT_ALIAS_NAME.fullmatch(normalized):
+        raise ValueError(
+            f"Invalid @script alias '{{{alias_name}}}' in {filepath}:{lineno}. "
+            f"Alias names must match placeholder identifiers like '{{auth}}' or '{{issue_token}}' "
+            f"using only letters, digits, and underscores, and cannot start with a digit."
+        )
+    return normalized
+
+
+def _validate_script_alias_target(raw_path: str, *, alias_name: str, filepath: str, lineno: int) -> str:
+    """Validate that @script uses a dotted Python import path."""
+    path = raw_path.strip()
+    if len(path) >= 2 and path[0] == path[-1] and path[0] in ('"', "'"):
+        path = path[1:-1].strip()
+    if not path:
+        raise ValueError(
+            f"Invalid @script target for '{{{alias_name}}}' in {filepath}:{lineno}. "
+            f"Use a dotted Python import path like 'scripts.demo_helpers' or "
+            f"'scripts.demo_helpers.seed_mega_fixture'."
+        )
+    if "/" in path or "\\" in path or path.endswith(".py"):
+        raise ValueError(
+            f"Invalid @script target '{path}' for '{{{alias_name}}}' in {filepath}:{lineno}. "
+            f"Use dotted Python import paths only: no '/' , no '\\', and no '.py' suffix."
+        )
+    if not _RE_SCRIPT_ALIAS_TARGET.fullmatch(path):
+        raise ValueError(
+            f"Invalid @script target '{path}' for '{{{alias_name}}}' in {filepath}:{lineno}. "
+            f"Expected a valid dotted Python import path like 'scripts.demo_helpers'."
+        )
+    return path
+
+
+def _rewrite_script_aliases_in_call_python(line: str, script_aliases: dict[str, str]) -> str:
+    """Expand ``CALL PYTHON {alias}`` and ``CALL PYTHON {alias}.func`` aliases."""
+    if not script_aliases:
+        return line
+    line_ending = "\n" if line.endswith("\n") else ""
+    match = re.match(
+        r"^(\s*(?:\d+\.\s*)?CALL\s+PYTHON\s+)\{(\w+)\}(\.[A-Za-z_][\w]*)?(.*)$",
+        line.rstrip("\n"),
+        re.IGNORECASE,
+    )
+    if not match:
+        return line
+    target_path = script_aliases.get(match.group(2))
+    if not target_path:
+        return line
+    suffix = match.group(3) or ""
+    remainder = match.group(4) or ""
+    return f"{match.group(1)}{target_path}{suffix}{remainder}{line_ending}"
+
+
 # ── Parse .hunt file ─────────────────────────────────────────────────────────
 def parse_hunt_file(filepath: str) -> ParsedHunt:
     """Return a :class:`ParsedHunt` with all parsed fields.
@@ -193,6 +253,7 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
     context = ""
     title = ""
     parsed_vars: dict[str, str] = {}
+    script_aliases: dict[str, str] = {}
     tags: list[str] = []
     data_file: str = ""
     schedule: str = ""
@@ -231,12 +292,12 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
 
         if in_setup:
             if stripped and not stripped.startswith("#"):
-                setup_lines.append(stripped)
+                setup_lines.append(_rewrite_script_aliases_in_call_python(stripped, script_aliases))
             idx += 1
             continue
         if in_teardown:
             if stripped and not stripped.startswith("#"):
-                teardown_lines.append(stripped)
+                teardown_lines.append(_rewrite_script_aliases_in_call_python(stripped, script_aliases))
             idx += 1
             continue
 
@@ -253,12 +314,28 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
             m = re.match(r"\{?([^}=\s]+)\}?\s*=\s*(.*)", var_part)
             if m:
                 parsed_vars[m.group(1).strip()] = m.group(2).strip()
+        elif stripped.startswith("@script:"):
+            script_part = stripped[8:].strip()
+            m = re.match(r"\{?([^}=\s]+)\}?\s*=\s*(.*)", script_part)
+            if m:
+                alias_name = _validate_script_alias_name(
+                    m.group(1),
+                    filepath=filepath,
+                    lineno=lineno,
+                )
+                normalized = _validate_script_alias_target(
+                    m.group(2),
+                    alias_name=alias_name,
+                    filepath=filepath,
+                    lineno=lineno,
+                )
+                script_aliases[alias_name] = normalized
         elif stripped.startswith("@data:"):
             data_file = stripped.split(":", 1)[1].strip()
         elif stripped.startswith("@schedule:"):
             schedule = stripped.split(":", 1)[1].strip()
         elif not stripped.startswith("#") and stripped:
-            mission_lines.append(line)
+            mission_lines.append(_rewrite_script_aliases_in_call_python(line, script_aliases))
             step_file_lines.append(lineno)
         idx += 1
 
@@ -371,7 +448,7 @@ async def _run_hunt_file(
 
     # ── Pre-flight: lazy-load only the custom control modules needed ──────
     from manul_engine.controls import extract_required_controls
-    from manul_engine.prompts import CUSTOM_MODULES_DIRS as _custom_dirs
+    from manul_engine.prompts import CUSTOM_CONTROLS_DIRS as _custom_dirs
     _required_controls = extract_required_controls(hunt.mission, os.getcwd(), custom_modules_dirs=_custom_dirs)
 
     manul = ManulEngine(headless=headless, browser=browser, debug_mode=debug, break_steps=break_steps, explain_mode=explain, required_controls=_required_controls or None)

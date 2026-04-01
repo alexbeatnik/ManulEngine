@@ -220,11 +220,12 @@ async with ManulSession() as session:
 
 ### State, variables, and scope
 
-Variable handling is strict rather than ad hoc. The runtime supports `@var:`, `EXTRACT`, `SET`, and `CALL PYTHON ... into {var}` with deterministic placeholder substitution in downstream steps.
+Variable handling is strict rather than ad hoc. The runtime supports `@var:`, `@script:`, `EXTRACT`, `SET`, and `CALL PYTHON ... into {var}` with deterministic placeholder substitution in downstream steps.
 
 Useful patterns:
 
 - `@var:` for static test data at the top of the file.
+- `@script:` for file-local aliases such as `@script: {auth} = scripts.auth_helpers`, then `CALL PYTHON {auth}.issue_token into {token}`; or callable aliases such as `@script: {issue_token} = scripts.auth_helpers.issue_token`, then `CALL PYTHON {issue_token} into {token}`.
 - `EXTRACT ... into {var}` for values pulled from the UI.
 - `SET {var} = value` for mid-run assignment.
 - `CALL PYTHON module.func into {var}` for backend-generated runtime values such as OTPs or tokens.
@@ -271,7 +272,7 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.16
+pip install manul-engine==0.0.9.17
 playwright install
 ```
 
@@ -280,7 +281,7 @@ If you install standalone Python dependencies manually instead of using the pack
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.16"
+pip install "manul-engine[ai]==0.0.9.17"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -313,7 +314,7 @@ Create `manul_engine_configuration.json` in the workspace root. All keys are opt
   "controls_cache_enabled": true,
   "controls_cache_dir": "cache",
   "semantic_cache_enabled": true,
-  "custom_modules_dirs": ["controls"],
+    "custom_controls_dirs": ["controls"],
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
   "tests_home": "tests",
@@ -333,7 +334,7 @@ Notes:
 - `browser_args` passes extra launch flags to the browser.
 - `ai_always`, `ai_policy`, and `ai_threshold` only matter when a model is enabled.
 - `controls_cache_dir`, `tests_home`, and `auto_annotate` control runtime filesystem behavior.
-- `custom_modules_dirs` lists directories where `@custom_control` Python modules are scanned. Default: `["controls"]`.
+- `custom_controls_dirs` lists directories where `@custom_control` Python modules are scanned. Default: `["controls"]`.
 - `channel` targets an installed browser such as Chrome or Edge.
 - `executable_path` targets a custom executable such as an Electron app.
 
@@ -361,7 +362,7 @@ Configuration reference:
 | `controls_cache_enabled` | `true` | Enable the persistent per-site controls cache. |
 | `controls_cache_dir` | `"cache"` | Cache directory relative to CWD or absolute path. |
 | `semantic_cache_enabled` | `true` | Enable in-session semantic cache reuse. |
-| `custom_modules_dirs` | `["controls"]` | List of directories scanned for `@custom_control` Python modules. Resolved relative to CWD. |
+| `custom_controls_dirs` | `["controls"]` | List of directories scanned for `@custom_control` Python modules. Resolved relative to CWD. |
 | `timeout` | `5000` | Default action timeout in ms. |
 | `nav_timeout` | `30000` | Navigation timeout in ms. |
 | `log_name_maxlen` | `0` | Truncate element names in logs. `0` means no limit. |
@@ -484,11 +485,13 @@ Verify "Notes" element has value "treasure map"
 ```text
 @var: {email} = admin@example.com
 @var: {password} = secret123
+@script: {db} = scripts.db_helpers
+@script: {seed_admin_user} = scripts.db_helpers.seed_admin_user
 
 [SETUP]
     PRINT "Preparing demo user for {email}"
-    CALL PYTHON scripts.db_helpers.seed_admin_user with args: "{email}" "{password}"
-    CALL PYTHON scripts.db_helpers.issue_login_token with args: "{email}" into {login_token}
+    CALL PYTHON {seed_admin_user} with args: "{email}" "{password}"
+    CALL PYTHON {db}.issue_login_token with args: "{email}" into {login_token}
 [END SETUP]
 
 STEP 1: Login
@@ -507,15 +510,38 @@ STEP 2: OTP verification
 
 [TEARDOWN]
     PRINT "Cleaning up seeded user for {email}"
-    CALL PYTHON scripts.db_helpers.clean_database with args: "{email}"
+    CALL PYTHON {db}.clean_database with args: "{email}"
 [END TEARDOWN]
 ```
 
 - Hook syntax is bracket-only: `[SETUP]` / `[END SETUP]` and `[TEARDOWN]` / `[END TEARDOWN]`.
 - `PRINT "..."` is valid inside hook blocks and resolves `{variables}` before printing.
 - `CALL PYTHON ... with args: ...` is optional sugar for positional arguments; plain `CALL PYTHON mod.func "arg"` still works.
-- File-based helpers resolve from the `.hunt` directory first, then the project root, and also probe a sibling `/scripts` folder in both places before falling back to normal imports.
+- `@script:` lets you declare a file-local alias once and reuse either `CALL PYTHON {alias}.func` or `CALL PYTHON {callable_alias}` in hooks and mission steps.
+- `@script:` must use dotted Python import paths only: `scripts.db_helpers` or `scripts.db_helpers.issue_login_token`. Slash paths like `scripts/db_helpers.py` are rejected.
+- File-based helpers resolve from the `.hunt` directory first, then the project root, before falling back to normal imports via `sys.path`.
 - If setup fails, the mission is marked as `broken` and the browser steps are skipped. Teardown still runs after the mission whenever setup succeeded.
+
+Supported `CALL PYTHON` forms:
+
+```text
+CALL PYTHON package.module.function
+CALL PYTHON package.module.function with args: "arg1" "arg2"
+CALL PYTHON package.module.function "arg1" "arg2" into {result}
+CALL PYTHON package.module.function into {result}
+CALL PYTHON {module_alias}.function
+CALL PYTHON {module_alias}.function into {result}
+CALL PYTHON {callable_alias}
+CALL PYTHON {callable_alias} with args: "arg1" "arg2"
+CALL PYTHON {callable_alias} into {result}
+```
+
+Alias examples:
+
+```text
+@script: {db} = scripts.db_helpers
+@script: {issue_login_token} = scripts.db_helpers.issue_login_token
+```
 
 ### Tags, scheduler, and execution controls
 
@@ -563,15 +589,16 @@ Representative coverage areas include:
 - visibility filtering and TreeWalker behavior
 - custom controls and lazy control loading
 
-## What's New in v0.0.9.16
+## What's New in v0.0.9.17
 
-- **Release-line sync:** version metadata and public install snippets are aligned on `0.0.9.16`, including the current minimum Python client versions for `playwright` and optional `ollama` usage.
-- **DSL contract refresh:** `MANUL_DSL_CONTRACT.md` now reflects the current runtime semantics for hook blocks, contextual qualifiers, `CALL PYTHON`, and debug-oriented system steps.
-- **Prompt sync:** the generation prompts under `prompts/` were updated to match the live DSL, including bracket-only `[SETUP]` / `[TEARDOWN]`, `PRINT`, `CALL PYTHON ... into {var}`, optional `with args:`, and current helper-module resolution rules.
-- **Instruction mirror integrity:** repo-local assistant guidance remains synchronized between `.github/copilot-instructions.md` and the mirrored `custom-instructions/repo/.github/copilot-instructions.md` to avoid customization drift.
+- **`CALL PYTHON` authoring cleanup:** `@script:` now supports both module aliases and callable aliases, but only through dotted Python import paths such as `scripts.db_helpers` or `scripts.db_helpers.issue_token`. Slash paths like `scripts/db_helpers.py` are no longer part of the documented syntax.
+- **Simpler helper resolution:** helper lookup for `CALL PYTHON` is now documented and implemented as `hunt dir -> CWD -> sys.path`. The temporary `call_python_dirs` detour is gone, so docs and examples now reflect the shorter runtime model.
+- **Post-input verification rule:** generated `.hunt` flows now treat `Fill` and `Type` as incomplete until the entered value is checked immediately with `Verify "..." field/input has value "..."`. The prompts and assistant guidance were updated to make this the default authoring pattern.
+- **Full `CALL PYTHON` showcase:** the repo now includes a dedicated example hunt plus helper modules demonstrating direct dotted calls, module aliases, callable aliases, `with args:`, inline positional arguments, `into`, and `to` across setup, step, and teardown contexts.
+- **Parser hardening for aliased calls:** STEP-grouped missions containing consecutive aliased `CALL PYTHON` lines no longer risk line-concatenation during `@script` rewrite. The parser now preserves original line endings, and regression coverage was added for that case.
 
 ## License
 
-**Version:** 0.0.9.16
+**Version:** 0.0.9.17
 
 Apache-2.0.

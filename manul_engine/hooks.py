@@ -49,7 +49,7 @@ RE_TEARDOWN     = re.compile(r"^\[TEARDOWN\]$",       re.IGNORECASE)
 RE_END_TEARDOWN = re.compile(r"^\[END\s+TEARDOWN\]$", re.IGNORECASE)
 
 _RE_CALL_PYTHON = re.compile(
-    r"^CALL\s+PYTHON\s+([\w.]+)(.*?)$",
+    r"^CALL\s+PYTHON\s+([{}\w.]+)(.*?)$",
     re.IGNORECASE,
 )
 _RE_PRINT = re.compile(r'^PRINT\s+(.+)$', re.IGNORECASE)
@@ -198,23 +198,20 @@ def _resolve_module(module_path: str, hunt_dir: str | None) -> tuple[ModuleType,
     search_roots.append(Path.cwd())
 
     for root in search_roots:
-        candidates = [root / rel_py]
-        if parts and parts[0] != "scripts":
-            candidates.append(root / "scripts" / rel_py)
-        for candidate in candidates:
-            if not candidate.is_file():
-                continue
-            cache_key = str(candidate.resolve())
-            cached = _module_cache.get(cache_key)
-            if cached is not None:
-                return cached, True
-            spec = importlib.util.spec_from_file_location(module_path, candidate)
-            if spec and spec.loader:
-                mod = importlib.util.module_from_spec(spec)
-                # Execute in isolation — does NOT touch sys.modules.
-                spec.loader.exec_module(mod)  # type: ignore[union-attr]
-                _module_cache[cache_key] = mod
-                return mod, False
+        candidate = root / rel_py
+        if not candidate.is_file():
+            continue
+        cache_key = str(candidate.resolve())
+        cached = _module_cache.get(cache_key)
+        if cached is not None:
+            return cached, True
+        spec = importlib.util.spec_from_file_location(module_path, candidate)
+        if spec and spec.loader:
+            mod = importlib.util.module_from_spec(spec)
+            # Execute in isolation — does NOT touch sys.modules.
+            spec.loader.exec_module(mod)  # type: ignore[union-attr]
+            _module_cache[cache_key] = mod
+            return mod, False
 
     # Fallback: standard import (PYTHONPATH / installed packages).
     # Check cache for stdlib/installed modules too.
@@ -314,6 +311,17 @@ def execute_hook_line(
 
     dotted = m.group(1)
     remainder = m.group(2).strip()  # everything after dotted name
+
+    if dotted.startswith("{") and "}" in dotted:
+        alias_name = dotted[1:].split("}", 1)[0]
+        return HookResult(
+            success=False,
+            message=(
+                f"ManulEngine Error: Unresolved @script alias '{{{alias_name}}}' in '{line}'.\n"
+                f"  Declare it in the hunt header, for example: @script: {{{alias_name}}} = scripts.{alias_name}\n"
+                f"  Or alias a callable directly: @script: {{{alias_name}}} = scripts.helpers.{alias_name}"
+            ),
+        )
 
     # Extract 'into {var}' / 'to {var}' clause from the end if present.
     var_name: str | None = None

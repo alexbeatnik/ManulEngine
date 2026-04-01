@@ -174,6 +174,20 @@ def _test_parser_regex() -> None:
         _assert(r.return_value == "a b", "'to' alias with args → return_value='a b'", f"got={r.return_value!r}")
 
 
+def _test_unresolved_script_alias_error() -> None:
+    print("\n  ── CALL PYTHON unresolved @script alias ───────────────────")
+
+    r = execute_hook_line('CALL PYTHON {printer}.emit into {msg}')
+    _assert(not r.success, "unresolved @script alias → failure")
+    _assert("Unresolved @script alias" in r.message, "unresolved alias → helpful message")
+    _assert("@script: {printer}" in r.message, "unresolved alias → declaration hint included")
+
+    r2 = execute_hook_line('CALL PYTHON {seed_mega_fixture} with args: "shadow"')
+    _assert(not r2.success, "unresolved callable @script alias → failure")
+    _assert("@script: {seed_mega_fixture}" in r2.message, "unresolved callable alias → declaration hint included")
+    _assert("alias a callable directly" in r2.message, "unresolved callable alias → callable hint included")
+
+
 # ── Section 3: Variable resolution in args ───────────────────────────────────
 
 def _test_variable_resolution() -> None:
@@ -407,6 +421,7 @@ async def run_suite() -> bool:
 
     _test_parse_call_args()
     _test_parser_regex()
+    _test_unresolved_script_alias_error()
     _test_variable_resolution()
 
     with tempfile.TemporaryDirectory(prefix="manul_args_test_") as tmp_dir:

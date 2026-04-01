@@ -221,8 +221,8 @@ def _test_execute_hook_line__print_and_dict_context(tmp_dir: str) -> None:
     _assert(r2.message == "Cleanup complete for 4242", "PRINT substitutes shared variables")
 
 
-def _test_execute_hook_line__scripts_folder_and_with_args(tmp_dir: str) -> None:
-    print("\n  ── execute_hook_line — /scripts lookup + with args ───────")
+def _test_execute_hook_line__dotted_module_path_and_with_args(tmp_dir: str) -> None:
+    print("\n  ── execute_hook_line — dotted module path + with args ────")
 
     scripts_dir = Path(tmp_dir, "scripts")
     scripts_dir.mkdir(parents=True, exist_ok=True)
@@ -236,15 +236,15 @@ def _test_execute_hook_line__scripts_folder_and_with_args(tmp_dir: str) -> None:
     """)
 
     r1 = execute_hook_line(
-        "CALL PYTHON auth.get_admin_token into {auth_token}",
+        "CALL PYTHON scripts.auth.get_admin_token into {auth_token}",
         hunt_dir=tmp_dir,
         variables={},
     )
-    _assert(r1.success, "helper loaded from /scripts folder in project root")
-    _assert(r1.return_value == "adm_tok_123", "scripts helper return captured into variable")
+    _assert(r1.success, "helper loaded from dotted scripts.auth path")
+    _assert(r1.return_value == "adm_tok_123", "dotted scripts helper return captured into variable")
 
     r2 = execute_hook_line(
-        "CALL PYTHON db_cleanup.delete_user with args: 'manul_tester_77' into {cleanup_status}",
+        "CALL PYTHON scripts.db_cleanup.delete_user with args: 'manul_tester_77' into {cleanup_status}",
         hunt_dir=tmp_dir,
         variables={},
     )
@@ -420,9 +420,9 @@ def _test_run_hooks__shared_variables(tmp_dir: str) -> None:
     variables: dict[str, str] = {}
     ok = run_hooks(
         [
-            "CALL PYTHON auth.get_admin_token into {auth_token}",
+            "CALL PYTHON scripts.auth.get_admin_token into {auth_token}",
             'PRINT "Authenticated with token: {auth_token}"',
-            "CALL PYTHON seed.create_user",
+            "CALL PYTHON scripts.seed.create_user",
             'PRINT "Cleanup complete for {random_id}"',
         ],
         label="SETUP",
@@ -450,7 +450,7 @@ async def run_suite() -> bool:
         _test_execute_hook_line__module_not_found()
         _test_execute_hook_line__success(tmp_dir)
         _test_execute_hook_line__print_and_dict_context(tmp_dir)
-        _test_execute_hook_line__scripts_folder_and_with_args(tmp_dir)
+        _test_execute_hook_line__dotted_module_path_and_with_args(tmp_dir)
         _test_execute_hook_line__function_not_found(tmp_dir)
         _test_execute_hook_line__not_callable(tmp_dir)
         _test_execute_hook_line__runtime_error(tmp_dir)

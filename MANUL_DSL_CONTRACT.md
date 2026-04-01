@@ -6,7 +6,7 @@
 
 ```json
 {
-  "version": "0.0.9.15",
+  "version": "0.0.9.17",
   "generatedFrom": "manul_engine/helpers.py :: classify_step(), detect_mode(), parse_contextual_hint(); manul_engine/core.py :: run_mission(); manul_engine/cli.py :: parse_hunt_file(); manul_engine/actions.py :: _ActionsMixin; manul_engine/scoring.py :: DOMScorer contextual proximity rules; manul_engine/js_scripts.py :: SNAPSHOT_JS geometry export",
   "commands": [
     {
@@ -276,7 +276,7 @@
       "uiText": "CALL PYTHON module.function",
       "snippet": "CALL PYTHON ${1:module}.${2:function}${3: ${4:args}}${5: into {${6:variable}}}",
       "regex": "\\bCALL\\s+PYTHON\\b",
-      "description": "Executes a synchronous Python function inline. Supports positional arguments (including optional 'with args:' sugar) and optional 'into {var}' / 'to {var}' capture. Module resolution order: hunt dir → hunt_dir/scripts → CWD → CWD/scripts → sys.path.",
+      "description": "Executes a synchronous Python function inline. Supports positional arguments (including optional 'with args:' sugar), optional 'into {var}' / 'to {var}' capture, and parser-level @script alias rewriting for CALL PYTHON {alias}.func syntax. Module resolution order: hunt dir → CWD → sys.path.",
       "category": "python"
     },
     {
@@ -399,6 +399,13 @@
       "uiText": "@var: {key} = value",
       "snippet": "@var: {${1:key}} = ${2:value}",
       "description": "Declares a static variable pre-populated into runtime memory before any step runs. Available as {key} placeholder in all steps."
+    },
+    {
+      "id": "script",
+      "label": "@script:",
+      "uiText": "@script: {alias} = scripts.helpers",
+      "snippet": "@script: {${1:alias}} = ${2:scripts.helpers}",
+      "description": "Declares a file-local Python helper alias for later CALL PYTHON usage. Supported forms: module alias (`@script: {auth} = scripts.auth_helpers` -> `CALL PYTHON {auth}.issue_token`) and callable alias (`@script: {issue_token} = scripts.auth_helpers.issue_token` -> `CALL PYTHON {issue_token}`). Alias names must match placeholder identifiers (`^[A-Za-z_]\\w*$`). Targets must be dotted Python import paths only: no '/' , no '\\', and no '.py' suffix."
     },
     {
       "id": "data",

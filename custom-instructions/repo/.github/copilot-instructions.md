@@ -61,7 +61,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.16
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.17
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession
   api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)
@@ -92,7 +92,7 @@ manul_engine/
     test_17_frontend_hell.py   frontend anti-patterns (overlays, z-index traps, React portals)
     test_18_disambiguation.py  ambiguous element targeting
     test_19_custom_controls.py Custom Controls registry + engine interception (28 assertions, no browser)
-    test_20_variables.py       @var: static variable declaration (17 assertions, no browser)
+    test_20_variables.py       @var: static variable declaration + @script alias parsing (23 assertions, no browser)
     test_21_dynamic_vars.py    CALL PYTHON ... into {var} dynamic variable capture
     test_22_tags.py            @tags: / --tags CLI filter (20 assertions, no browser)
     test_23_advanced_interactions.py  PRESS/RIGHT CLICK/UPLOAD/explicit wait commands (58 assertions, no browser)
@@ -105,7 +105,7 @@ manul_engine/
     test_30_heuristic_weights.py DOMScorer priority hierarchy (32 assertions)
     test_31_visibility_treewalker.py TreeWalker PRUNE/checkVisibility (20 assertions)
     test_32_verify_enabled.py    VERIFY ENABLED/DISABLED state verification (20 assertions)
-    test_33_call_python_args.py  CALL PYTHON with positional arguments (44 assertions, no browser)
+    test_33_call_python_args.py  CALL PYTHON with positional arguments + unresolved @script alias handling (50 assertions, no browser)
     test_34_verify_checked.py    VERIFY checked/NOT checked state verification (20 assertions, no browser)
     test_35_scanner.py           Smart Page Scanner build_hunt() (44 assertions, no browser)
     test_36_scoring_math.py      Exact numerical scoring validation (29 assertions, no browser)
@@ -243,6 +243,7 @@ Hunt files are plain-text test scenarios parsed by `parse_hunt_file()` (extracts
 Placed at the top of the file. Used by the engine for logging and LLM context.
 * `@context: [description]` — Strategic context passed to the engine.
 * `@title: [short_title]` — Short title representing the test suite. `@blueprint:` is also accepted for backward compatibility.
+* `@script: {alias} = package.module` or `@script: {callable_alias} = package.module.function` — File-local alias for later `CALL PYTHON {alias}.function` or `CALL PYTHON {callable_alias}` usage. The parser accepts dotted Python import paths only and rejects slash paths or `.py` suffixes.
 * `@tags: tag1, tag2` — Arbitrary comma-separated run tags. Used with `manul --tags smoke tests/` to filter which files execute.
 * `@data: path/to/file.json` — Data-driven testing. Points to a JSON (array-of-objects) or CSV file. The engine loads each row and reruns the entire mission with row values injected as `{placeholders}`. Path resolved relative to hunt file directory, then CWD.
 * `@schedule: <expression>` — Built-in scheduler header. Declares a schedule for the daemon mode (`manul daemon`). Supported expressions: `every N seconds/minutes/hours`, `every minute/hour`, `daily at HH:MM`, `every <weekday>`, `every <weekday> at HH:MM`. Parsed by `parse_schedule()` in `scheduler.py`. Files without `@schedule:` are ignored by the daemon.
@@ -264,7 +265,7 @@ Placed at the top of the file. Used by the engine for logging and LLM context.
 > When generating or suggesting `.hunt` files:
 > 1. You MUST use the **Clean, Unnumbered DSL Syntax**. NEVER prepend numbers (`1. `, `2. `) to execution actions.
 > 2. You MUST use **Logical `STEP` Grouping** (`STEP [optional number]: [Description]`) to structure E2E flows, matching manual QA test cases. These map perfectly to the Enterprise HTML Reporter's accordions.
-> 3. You MUST use **4-space indentation** for all action lines under `STEP` headers; comments inside a `STEP` or hook block follow the same 4-space indentation. `STEP` headers themselves, metadata lines (`@context:`, `@var:`, `@tags:`, `@data:`), hook block markers (`[SETUP]`/`[TEARDOWN]`), top-level comments (`#` before the first `STEP`), and `DONE.` must remain flush-left (zero indentation). This matches the VS Code Auto-Formatter output (`Shift+Alt+F`).
+> 3. You MUST use **4-space indentation** for all action lines under `STEP` headers; comments inside a `STEP` or hook block follow the same 4-space indentation. `STEP` headers themselves, metadata lines (`@context:`, `@var:`, `@script:`, `@tags:`, `@data:`), hook block markers (`[SETUP]`/`[TEARDOWN]`), top-level comments (`#` before the first `STEP`), and `DONE.` must remain flush-left (zero indentation). This matches the VS Code Auto-Formatter output (`Shift+Alt+F`).
 
 ### 5. System Keywords (parser-detected)
 These keywords are detected via word-boundary regex, bypass heuristics, and are handled directly by the engine parser:
@@ -290,7 +291,7 @@ These keywords are detected via word-boundary regex, bypass heuristics, and are 
 * `DONE.` — Explicitly ends the mission.
 * `[SETUP]` / `[END SETUP]` — Block wrapping `PRINT ...` and `CALL PYTHON ...` lines. Runs **before** the browser launches. If any line fails, the mission is marked as `broken` and browser steps are skipped.
 * `[TEARDOWN]` / `[END TEARDOWN]` — Cleanup block. Runs in a `finally` block **after** the mission (pass or fail). Only executed if `[SETUP]` succeeded. Failure is logged but does not override the mission result.
-* Inside hook blocks, each non-blank non-comment line must be either `PRINT "message with {vars}"` or `CALL PYTHON <module>.<function>` (optionally with positional arguments or `with args:` and optional `into {var}` capture — see Section 7b). The module is resolved in this order: the `.hunt` file's directory → `.hunt_dir/scripts` → `CWD` → `CWD/scripts` → standard `importlib.import_module`. Target functions must be **synchronous**.
+* Inside hook blocks, each non-blank non-comment line must be either `PRINT "message with {vars}"` or `CALL PYTHON <module>.<function>` (optionally with positional arguments or `with args:` and optional `into {var}` capture — see Section 7b). `CALL PYTHON {alias}.function` and `CALL PYTHON {callable_alias}` are also valid when the file declares matching `@script:` aliases in the header. The module is resolved in this order: the `.hunt` file's directory → `CWD` → standard `importlib.import_module`. Target functions must be **synchronous**.
 * **Inline `CALL PYTHON` steps** — `CALL PYTHON <module>.<function>` (with optional positional arguments) is also valid as a standard numbered step anywhere in the main mission body (outside hook blocks). It uses the identical module resolution, state isolation, and sync-only rules as hook blocks. A failure stops the mission immediately.
 
 ### 6. Interaction Actions (Parsed Modes)
@@ -312,6 +313,7 @@ Variables extracted using `EXTRACT` can be substituted in downstream steps.
 Declare static test data at the top of the file using `@var: {key} = value`. These values are pre-populated into the engine's runtime memory before any step runs and can be interpolated exactly like `EXTRACT` variables.
 * Both brace and bare-key forms are accepted: `@var: {email} = ...` and `@var: email = ...` are equivalent. Keys are stored without braces.
 * Values may contain spaces and are stripped of leading/trailing whitespace.
+* `@script:` follows the same declaration shape for Python helper aliases: `@script: {auth} = scripts.auth_helpers`, then `CALL PYTHON {auth}.issue_token into {token}`; or `@script: {issue_token} = scripts.auth_helpers.issue_token`, then `CALL PYTHON {issue_token} into {token}`.
 * **MANDATORY rule for AI-generated hunt files:** When generating or suggesting `.hunt` test files, **NEVER hardcode test data** (emails, passwords, usernames, search queries, IDs, etc.) directly inside `Fill`, `Type`, or `Select` steps. **ALWAYS** declare them at the top using `@var:` and reference them via `{placeholder}` in the steps.
 * **MANDATORY contextual rule for AI-generated hunt files:** When the user describes repeated controls, tables, cards, navbars, or footers, prefer contextual qualifiers (`NEAR`, `ON HEADER`, `ON FOOTER`, `INSIDE ... row with ...`) instead of inventing selectors or relying on vague prose.
 
@@ -342,6 +344,8 @@ Fill 'Password' with 'secret123'
 Full syntax variants:
 ```text
 CALL PYTHON <module>.<function>
+CALL PYTHON {alias}.<function>
+CALL PYTHON {callable_alias}
 CALL PYTHON <module>.<function> "arg1" 'arg2' {var}
 CALL PYTHON <module>.<function> "arg1" {var} into {result}
 CALL PYTHON <module>.<function> into {result}
@@ -361,6 +365,7 @@ Wrong (do not do this):
 ### 8. Best Practices
 * **Specify Element Type:** Include words like `button`, `field`, `link`, `dropdown`, `checkbox`, `radio` outside quotes. This acts as a strong heuristic signal.
 * **Exact Text Matching:** Put target texts in quotes (`'Save'`) to yield a high heuristic score.
+* **Mandatory post-input guard:** After every generated `Fill` or `Type` step, immediately emit a strict value assertion using `Verify "{element_name}" field/input has value "{expected_value}"` before moving on to the next logical action.
 * **Strict text/placeholder assertions:** When the user asks for exact text or placeholder validation, generate only `Verify "{element_name}" {type} has text "{expected_text}"` or `Verify "{element_name}" field/input has placeholder "{expected_placeholder}"`. Do not invent alternate assertion verbs.
 * **Strict value assertions:** When the user asks for the current inputted value or textarea content, generate only `Verify "{element_name}" field/input has value "{expected_value}"`.
 * **Verify After Actions:** Always use a `VERIFY` step after taking a significant action (e.g., login, form submit) before assuming the new page state.
@@ -382,7 +387,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * `CALL PYTHON ... with args: ...` is valid in both hook blocks and inline steps when you want explicit argument separation in examples.
 * If a setup hook fails, the resulting mission status is `broken`, not `fail`.
 * Target functions **must be synchronous**. Async callables are explicitly rejected with a descriptive error.
-* Module resolution order: hunt file's directory → `hunt_dir/scripts` → `CWD` → `CWD/scripts` → `sys.path`. Modules from the file-based scopes are executed in isolation — never inserted into `sys.modules` — preventing cross-test contamination.
+* Module resolution order: hunt file's directory → `CWD` → `sys.path`. `@script: {alias} = package.module` can alias a helper module for later `CALL PYTHON {alias}.func` usage, and `@script: {callable_alias} = package.module.function` can alias a specific helper callable for later `CALL PYTHON {callable_alias}` usage. `@script` values must be valid dotted Python import paths. Modules from the file-based scopes are executed in isolation — never inserted into `sys.modules` — preventing cross-test contamination.
 
 ## Code patterns to follow
 
@@ -402,7 +407,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
 * **Debug mode:** `ManulEngine(debug_mode=True, break_steps={N,...})`. `debug_mode=True` (from `--debug`) highlights the resolved element and pauses before every step using `input()` in TTY or Playwright's `page.pause()`. `break_steps` (from `--break-lines`) pauses only at listed step indices using the stdout/stdin panel protocol when stdout is not a TTY. The two are mutually exclusive in practice — the extension only ever sets `break_steps` via `--break-lines`.
 * **Element highlight in debug mode:** When `debug_mode=True` (or a `break_steps` pause fires), the engine calls `highlight_element(page, locator)` which injects `<style id="manul-debug-style">` (once) and sets `data-manul-debug-highlight="true"` on the target element, producing a persistent 4px magenta outline + glow that stays until `clear_highlight(page)` is called just before the action executes. A separate `_highlight()` method draws a short 2-second flash (non-debug, `setTimeout` inside JS) for non-pausing visual feedback.
-* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). It also supports `PRINT`, optional `with args:` sugar, `/scripts` helper resolution, and `bind_hook_result()` for sharing scalar or dict-returned variables across hook lines and browser steps. `_module_cache` is a module-level `dict[str, ModuleType]` that caches resolved modules by absolute file path (JIT loading). `_resolve_module()` returns `tuple[ModuleType, bool]` (module, from_cache). `clear_module_cache()` resets the cache (used for test isolation). `parse_hunt_file()` in `cli.py` returns a `ParsedHunt` NamedTuple with 10 fields: `mission`, `context`, `title`, `step_file_lines`, `setup_lines`, `teardown_lines`, `parsed_vars`, `tags`, `data_file`, `schedule`. `parse_hunt_file()` does not build hierarchical blocks; the runtime layer does that later with `parse_hunt_blocks()`. `parsed_vars` is a `dict[str, str]` populated from `@var: {key} = value` header lines. `tags` is a `list[str]` populated from `@tags: tag1, tag2` header lines; empty list when absent. `schedule` is a `str` from `@schedule: <expression>`; empty string when absent. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
+* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). It also supports `PRINT`, optional `with args:` sugar, the fixed helper-module resolution order (`hunt dir -> CWD -> sys.path`), and `bind_hook_result()` for sharing scalar or dict-returned variables across hook lines and browser steps. `_module_cache` is a module-level `dict[str, ModuleType]` that caches resolved modules by absolute file path (JIT loading). `_resolve_module()` returns `tuple[ModuleType, bool]` (module, from_cache). `clear_module_cache()` resets the cache (used for test isolation). `parse_hunt_file()` in `cli.py` returns a `ParsedHunt` NamedTuple with 10 fields: `mission`, `context`, `title`, `step_file_lines`, `setup_lines`, `teardown_lines`, `parsed_vars`, `tags`, `data_file`, `schedule`. It also strips header-only `@script:` declarations and rewrites `CALL PYTHON {alias}.func` and `CALL PYTHON {callable_alias}` usages to real dotted paths before returning the mission and hook lines. `parse_hunt_file()` does not build hierarchical blocks; the runtime layer does that later with `parse_hunt_blocks()`. `parsed_vars` is a `dict[str, str]` populated from `@var: {key} = value` header lines. `tags` is a `list[str]` populated from `@tags: tag1, tag2` header lines; empty list when absent. `schedule` is a `str` from `@schedule: <expression>`; empty string when absent. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
 * **Auto-Nav annotation:** When `auto_annotate` is enabled, `run_mission()` captures `url_before = page.url` before every action. For `NAVIGATE` actions, the annotation is written above the action itself. For all other actions, `url_after` is checked in the `finally` block — if the URL changed, `_auto_annotate_navigate(page, hunt_file, action_file_lines, action_idx+1)` is called to insert a comment above the next action line. The comment uses the mapped page name when found in `pages.json`, or the full URL when the lookup returns an `"Auto:"` placeholder.
 * **`pages.json` — nested per-site format:** `{ "<site_root_url>": { "Domain": "<display_name>", "<regex_or_exact_url>": "<page_name>" } }`. `lookup_page_name(url)` in `prompts.py` re-reads this file from disk on **every call** (live edits take effect immediately with no restart). Resolution order: exact URL key → regex/substring patterns (skipping `"Domain"` key) → `"Domain"` fallback. When no site block matches, a new nested entry is auto-generated. The longest-prefix site block wins when multiple blocks could match.
 * **`_debug_prompt()` `debug-stop` token:** When Python receives `"debug-stop"` on stdin from the VS Code extension (user pressed ⏹ Debug Stop), it clears **both** `self._user_break_steps = set()` and `self.break_steps = set()`, then breaks the pause loop. The test run continues to completion without any further pauses.
@@ -474,7 +479,7 @@ Environment variables (`MANUL_*`) always override JSON values.
 | `controls_cache_enabled` | `true` | Enables persistent per-site controls cache (file-based, survives between runs) |
 | `controls_cache_dir` | `"cache"` | Directory for cache files (relative to CWD or absolute) |
 | `semantic_cache_enabled` | `true` | Enables in-session semantic cache (`learned_elements`). Remembers resolved elements within a single run (+200,000 score boost). Resets on each new `ManulEngine` instance |
-| `custom_modules_dirs` | `["controls"]` | List of directories scanned for `@custom_control` Python modules. Resolved relative to CWD. Overridable via `MANUL_CUSTOM_MODULES_DIRS` (comma-separated) |
+| `custom_controls_dirs` | `["controls"]` | List of directories scanned for `@custom_control` Python modules. Resolved relative to CWD. Overridable via `MANUL_CUSTOM_CONTROLS_DIRS` (comma-separated). Legacy alias: `custom_modules_dirs` / `MANUL_CUSTOM_MODULES_DIRS` |
 | `log_name_maxlen` | `0` | If > 0, truncates element names in logs |
 | `log_thought_maxlen` | `0` | If > 0, truncates LLM “thought” strings in logs |
 | `timeout` | `5000` | Default action timeout (ms) |
@@ -558,7 +563,7 @@ Suggested config for mixed mode (optional AI self-healing fallback):
 * `_CUSTOM_CONTROLS` — module-level `dict[tuple[str, str], Callable]` keyed by `(page_name_lower, target_name_lower)`.
 * `@custom_control(page, target)` — decorator; both sync and async handlers accepted.
 * `get_custom_control(page_name, target_name) -> Callable | None` — case-insensitive lookup.
-* `load_custom_controls(workspace_dir, required_modules=None, custom_modules_dirs=None)` — supports just-in-time loading for custom controls. Scans directories listed in `custom_modules_dirs` (default: `["controls"]` from config). The CLI computes `required_controls = extract_required_controls(hunt.mission, workspace_dir, custom_modules_dirs)` before engine startup, then `run_mission()` calls `load_custom_controls()` unconditionally so only the Python files needed for each hunt are imported. Per-file idempotency (`_LOADED_FILES`) prevents duplicate imports across sequential runs. Modules still execute in isolated `ModuleType` sandboxes.
+* `load_custom_controls(workspace_dir, required_modules=None, custom_modules_dirs=None)` — supports just-in-time loading for custom controls. The loader is fed from `custom_controls_dirs` config (default: `["controls"]`; legacy alias `custom_modules_dirs`). The CLI computes `required_controls = extract_required_controls(hunt.mission, workspace_dir, custom_modules_dirs)` before engine startup, then `run_mission()` calls `load_custom_controls()` unconditionally so only the Python files needed for each hunt are imported. Per-file idempotency (`_LOADED_FILES`) prevents duplicate imports across sequential runs. Modules still execute in isolated `ModuleType` sandboxes.
 
 **Interception point in `core.py`:** the `else` branch of the step loop (action steps) checks `get_custom_control(lookup_page_name(page.url), first_quoted_token)` before any DOM snapshot. If a handler is found, it is called with `(page, mode, value)` and `_execute_step` is skipped entirely via `elif not await self._execute_step(...)` on the else path.
 
