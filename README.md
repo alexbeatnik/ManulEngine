@@ -271,7 +271,7 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.16
+pip install manul-engine==0.0.9.17
 playwright install
 ```
 
@@ -280,7 +280,7 @@ If you install standalone Python dependencies manually instead of using the pack
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.16"
+pip install "manul-engine[ai]==0.0.9.17"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -563,15 +563,15 @@ Representative coverage areas include:
 - visibility filtering and TreeWalker behavior
 - custom controls and lazy control loading
 
-## What's New in v0.0.9.16
+## What's New in v0.0.9.17
 
-- **Release-line sync:** version metadata and public install snippets are aligned on `0.0.9.16`, including the current minimum Python client versions for `playwright` and optional `ollama` usage.
+- **Release-line sync:** version metadata and public install snippets are aligned on `0.0.9.17`, including the current minimum Python client versions for `playwright` and optional `ollama` usage.
 - **DSL contract refresh:** `MANUL_DSL_CONTRACT.md` now reflects the current runtime semantics for hook blocks, contextual qualifiers, `CALL PYTHON`, and debug-oriented system steps.
 - **Prompt sync:** the generation prompts under `prompts/` were updated to match the live DSL, including bracket-only `[SETUP]` / `[TEARDOWN]`, `PRINT`, `CALL PYTHON ... into {var}`, optional `with args:`, and current helper-module resolution rules.
 - **Instruction mirror integrity:** repo-local assistant guidance remains synchronized between `.github/copilot-instructions.md` and the mirrored `custom-instructions/repo/.github/copilot-instructions.md` to avoid customization drift.
 
 ## License
 
-**Version:** 0.0.9.16
+**Version:** 0.0.9.17
 
 Apache-2.0.

@@ -85,6 +85,7 @@ Examples:
 - **Click:** `Click the '<label>' button` / `Click the '<label>' link` / `Click on the '<label>' button`
 - **Double-click:** `DOUBLE CLICK the '<label>' button`
 - **Type:** `Fill '<field_label>' field with '<value>'` / `Type '<value>' into the '<field_label>' field`
+- After every `Fill` or `Type` step, immediately add `Verify '<field_label>' field has value '<value>'` or `Verify '<field_label>' input has value '<value>'`.
 - **Select/Dropdown:** `Select '<option>' from the '<dropdown_label>' dropdown`
 - **Checkbox:** `Check the checkbox for '<label>'` / `Uncheck the checkbox for '<label>'`
 - **Radio:** `Click the radio button for '<label>'`
@@ -110,6 +111,7 @@ Use `CALL PYTHON ... into {var}` for backend-generated runtime values such as OT
 - Prefer `@var:` over hardcoding static values directly into `Fill` steps.
 - Use `[SETUP]` for per-file backend setup only when the flow genuinely needs it; use inline `CALL PYTHON` for mid-test backend interaction.
 - After each significant action (submit, login, navigation) add a `VERIFY` step.
+- After each text input step, immediately verify the entered value with `Verify '<field_label>' field has value '<value>'` or `Verify '<field_label>' input has value '<value>'` before moving on.
 - Add explicit waits when the description suggests asynchronous rendering, loaders, hydration, delayed tables, or disappearing overlays.
 - When the user asks for exact text verification, use `Verify "<element_name>" <type> has text "<expected_text>"`.
 - When the user asks for placeholder verification, use `Verify "<element_name>" field has placeholder "<expected_placeholder>"` or `Verify "<element_name>" input has placeholder "<expected_placeholder>"`.
@@ -133,12 +135,13 @@ Requirements:
 1. Cover the **happy path** end-to-end (all fields filled, form submitted, result verified).
 2. Use realistic placeholder test data where values are needed.
 3. Add VERIFY steps after every major state change.
-4. If the URL is mentioned in the description, use it. Otherwise use `https://example.com` as a placeholder.
-5. Structure the output with `STEP` groups.
-6. Use `@var:` when the same static value is reused or when credentials are present.
-7. Use explicit waits instead of `WAIT <seconds>` when the description implies async UI state changes.
-8. When the description indicates ambiguity between repeated controls, emit the appropriate contextual qualifier (`NEAR`, `ON HEADER`, `ON FOOTER`, `INSIDE ... row with ...`).
-9. When the description clearly needs backend-generated data, use `CALL PYTHON ... into {var}` instead of hardcoding runtime values.
+4. After every text input step, immediately verify the entered value with the exact `Verify ... has value ...` syntax.
+5. If the URL is mentioned in the description, use it. Otherwise use `https://example.com` as a placeholder.
+6. Structure the output with `STEP` groups.
+7. Use `@var:` when the same static value is reused or when credentials are present.
+8. Use explicit waits instead of `WAIT <seconds>` when the description implies async UI state changes.
+9. When the description indicates ambiguity between repeated controls, emit the appropriate contextual qualifier (`NEAR`, `ON HEADER`, `ON FOOTER`, `INSIDE ... row with ...`).
+10. When the description clearly needs backend-generated data, use `CALL PYTHON ... into {var}` instead of hardcoding runtime values.
 
 **Description:**
 ```
