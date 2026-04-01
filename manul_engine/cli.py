@@ -192,9 +192,10 @@ def _rewrite_script_aliases_in_call_python(line: str, script_aliases: dict[str, 
     """Expand ``CALL PYTHON {alias}`` and ``CALL PYTHON {alias}.func`` aliases."""
     if not script_aliases:
         return line
+    line_ending = "\n" if line.endswith("\n") else ""
     match = re.match(
         r"^(\s*(?:\d+\.\s*)?CALL\s+PYTHON\s+)\{(\w+)\}(\.[A-Za-z_][\w]*)?(.*)$",
-        line,
+        line.rstrip("\n"),
         re.IGNORECASE,
     )
     if not match:
@@ -204,7 +205,7 @@ def _rewrite_script_aliases_in_call_python(line: str, script_aliases: dict[str, 
         return line
     suffix = match.group(3) or ""
     remainder = match.group(4) or ""
-    return f"{match.group(1)}{target_path}{suffix}{remainder}"
+    return f"{match.group(1)}{target_path}{suffix}{remainder}{line_ending}"
 
 
 # ── Parse .hunt file ─────────────────────────────────────────────────────────

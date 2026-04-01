@@ -201,6 +201,52 @@ DONE.
     )
 
 
+def _test_script_alias_parser_preserves_step_line_breaks() -> None:
+    print("\n  ── Parser (@script: preserve mission line breaks) ───────────")
+
+    hunt_content = """\
+@context: Preserve line breaks
+@title: preserve_breaks
+@script: {showcase} = scripts.call_python_showcase
+
+STEP 1: Aliased calls stay separate
+    CALL PYTHON {showcase}.print_setup_banner
+    CALL PYTHON {showcase}.build_token with args: "module-alias" into {alias_token}
+
+STEP 2: Next step header stays separate
+    DONE.
+"""
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".hunt", encoding="utf-8", delete=False
+    ) as tf:
+        tf.write(hunt_content)
+        tmp_path = tf.name
+
+    try:
+        result = parse_hunt_file(tmp_path)
+    finally:
+        os.unlink(tmp_path)
+
+    mission = result.mission
+    mission_lines = [line.strip() for line in mission.splitlines()]
+
+    _assert(
+        "CALL PYTHON scripts.call_python_showcase.print_setup_banner" in mission_lines,
+        "module alias rewrite preserves first action as its own line",
+        f"mission_lines={mission_lines!r}",
+    )
+    _assert(
+        'CALL PYTHON scripts.call_python_showcase.build_token with args: "module-alias" into {alias_token}' in mission_lines,
+        "module alias rewrite preserves second action as its own line",
+        f"mission_lines={mission_lines!r}",
+    )
+    _assert(
+        "STEP 2: Next step header stays separate" in mission_lines,
+        "module alias rewrite does not concatenate the next STEP header",
+        f"mission_lines={mission_lines!r}",
+    )
+
+
 def _test_script_alias_requires_dotted_python_path() -> None:
     print("\n  ── Parser (@script: dotted Python path validation) ────────")
 
@@ -347,6 +393,7 @@ async def run_suite() -> bool:
 
     _test_parser()
     _test_script_alias_parser_rewrite()
+    _test_script_alias_parser_preserves_step_line_breaks()
     _test_script_alias_requires_dotted_python_path()
     await _test_interpolation()
 
