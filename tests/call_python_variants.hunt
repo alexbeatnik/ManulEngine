@@ -12,10 +12,10 @@
 # - module alias via @script
 # - direct positional args + into {var}
 [SETUP]
-PRINT "Setup started for {subject}"
-CALL PYTHON scripts.call_python_showcase.print_setup_banner
-CALL PYTHON {showcase}.build_token with args: "setup" into {setup_token}
-CALL PYTHON examples.python.demo_echo.echo_value "{setup_token}" into {echoed_setup_token}
+    PRINT "Setup started for {subject}"
+    CALL PYTHON scripts.call_python_showcase.print_setup_banner
+    CALL PYTHON {showcase}.build_token with args: "setup" into {setup_token}
+    CALL PYTHON examples.python.demo_echo.echo_value "{setup_token}" into {echoed_setup_token}
 [END SETUP]
 
 STEP 1: Direct module path variants
@@ -44,9 +44,9 @@ STEP 3: Callable alias variants
 
 # TEARDOWN uses the same CALL PYTHON rules as SETUP and normal STEP blocks.
 [TEARDOWN]
-PRINT "Teardown started for {subject}"
-CALL PYTHON {showcase}.cleanup_marker into {cleanup_status}
-CALL PYTHON {echo_value} "{cleanup_status}"
+    PRINT "Teardown started for {subject}"
+    CALL PYTHON {showcase}.cleanup_marker into {cleanup_status}
+    CALL PYTHON {echo_value} "{cleanup_status}"
 [END TEARDOWN]
 
 DONE.
