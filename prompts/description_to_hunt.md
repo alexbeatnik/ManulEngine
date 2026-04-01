@@ -72,7 +72,7 @@ DONE.
     - `CALL PYTHON module.function with args: "arg1" "arg2"`
     - `CALL PYTHON module.function into {var}`
 - If setup fails, the mission becomes `broken` and browser steps are skipped.
-- Module resolution for `CALL PYTHON`: hunt dir → each configured `call_python_dirs` directory under hunt dir → CWD → matching helper dirs under CWD → `sys.path`.
+- Module resolution for `CALL PYTHON`: hunt dir → CWD → `sys.path`.
 - `@script: {alias} = scripts.auth_helpers` lets later steps call `CALL PYTHON {alias}.issue_token into {token}`.
 - `@script: {issue_token} = scripts.auth_helpers.issue_token` lets later steps call `CALL PYTHON {issue_token} into {token}`.
 

@@ -291,7 +291,7 @@ These keywords are detected via word-boundary regex, bypass heuristics, and are 
 * `DONE.` — Explicitly ends the mission.
 * `[SETUP]` / `[END SETUP]` — Block wrapping `PRINT ...` and `CALL PYTHON ...` lines. Runs **before** the browser launches. If any line fails, the mission is marked as `broken` and browser steps are skipped.
 * `[TEARDOWN]` / `[END TEARDOWN]` — Cleanup block. Runs in a `finally` block **after** the mission (pass or fail). Only executed if `[SETUP]` succeeded. Failure is logged but does not override the mission result.
-* Inside hook blocks, each non-blank non-comment line must be either `PRINT "message with {vars}"` or `CALL PYTHON <module>.<function>` (optionally with positional arguments or `with args:` and optional `into {var}` capture — see Section 7b). `CALL PYTHON {alias}.function` and `CALL PYTHON {callable_alias}` are also valid when the file declares matching `@script:` aliases in the header. The module is resolved in this order: the `.hunt` file's directory → configured `call_python_dirs` under the `.hunt` directory → `CWD` → configured `call_python_dirs` under `CWD` → standard `importlib.import_module`. Target functions must be **synchronous**.
+* Inside hook blocks, each non-blank non-comment line must be either `PRINT "message with {vars}"` or `CALL PYTHON <module>.<function>` (optionally with positional arguments or `with args:` and optional `into {var}` capture — see Section 7b). `CALL PYTHON {alias}.function` and `CALL PYTHON {callable_alias}` are also valid when the file declares matching `@script:` aliases in the header. The module is resolved in this order: the `.hunt` file's directory → `CWD` → standard `importlib.import_module`. Target functions must be **synchronous**.
 * **Inline `CALL PYTHON` steps** — `CALL PYTHON <module>.<function>` (with optional positional arguments) is also valid as a standard numbered step anywhere in the main mission body (outside hook blocks). It uses the identical module resolution, state isolation, and sync-only rules as hook blocks. A failure stops the mission immediately.
 
 ### 6. Interaction Actions (Parsed Modes)
@@ -386,7 +386,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * `CALL PYTHON ... with args: ...` is valid in both hook blocks and inline steps when you want explicit argument separation in examples.
 * If a setup hook fails, the resulting mission status is `broken`, not `fail`.
 * Target functions **must be synchronous**. Async callables are explicitly rejected with a descriptive error.
-* Module resolution order: hunt file's directory → configured `call_python_dirs` under the hunt directory → `CWD` → configured `call_python_dirs` under `CWD` → `sys.path`. `@script: {alias} = package.module` can alias a helper module for later `CALL PYTHON {alias}.func` usage, and `@script: {callable_alias} = package.module.function` can alias a specific helper callable for later `CALL PYTHON {callable_alias}` usage. `@script` values must be valid dotted Python import paths. Modules from the file-based scopes are executed in isolation — never inserted into `sys.modules` — preventing cross-test contamination.
+* Module resolution order: hunt file's directory → `CWD` → `sys.path`. `@script: {alias} = package.module` can alias a helper module for later `CALL PYTHON {alias}.func` usage, and `@script: {callable_alias} = package.module.function` can alias a specific helper callable for later `CALL PYTHON {callable_alias}` usage. `@script` values must be valid dotted Python import paths. Modules from the file-based scopes are executed in isolation — never inserted into `sys.modules` — preventing cross-test contamination.
 
 ## Code patterns to follow
 
@@ -479,7 +479,6 @@ Environment variables (`MANUL_*`) always override JSON values.
 | `controls_cache_dir` | `"cache"` | Directory for cache files (relative to CWD or absolute) |
 | `semantic_cache_enabled` | `true` | Enables in-session semantic cache (`learned_elements`). Remembers resolved elements within a single run (+200,000 score boost). Resets on each new `ManulEngine` instance |
 | `custom_controls_dirs` | `["controls"]` | List of directories scanned for `@custom_control` Python modules. Resolved relative to CWD. Overridable via `MANUL_CUSTOM_CONTROLS_DIRS` (comma-separated). Legacy alias: `custom_modules_dirs` / `MANUL_CUSTOM_MODULES_DIRS` |
-| `call_python_dirs` | `["scripts"]` | List of helper directories searched for `CALL PYTHON` modules under the hunt directory and CWD. Overridable via `MANUL_CALL_PYTHON_DIRS` (comma-separated) |
 | `log_name_maxlen` | `0` | If > 0, truncates element names in logs |
 | `log_thought_maxlen` | `0` | If > 0, truncates LLM “thought” strings in logs |
 | `timeout` | `5000` | Default action timeout (ms) |

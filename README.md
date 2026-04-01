@@ -315,7 +315,6 @@ Create `manul_engine_configuration.json` in the workspace root. All keys are opt
   "controls_cache_dir": "cache",
   "semantic_cache_enabled": true,
     "custom_controls_dirs": ["controls"],
-    "call_python_dirs": ["scripts"],
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
   "tests_home": "tests",
@@ -336,7 +335,6 @@ Notes:
 - `ai_always`, `ai_policy`, and `ai_threshold` only matter when a model is enabled.
 - `controls_cache_dir`, `tests_home`, and `auto_annotate` control runtime filesystem behavior.
 - `custom_controls_dirs` lists directories where `@custom_control` Python modules are scanned. Default: `["controls"]`.
-- `call_python_dirs` lists helper directories searched for `CALL PYTHON` modules under both the hunt directory and the project root. Default: `["scripts"]`.
 - `channel` targets an installed browser such as Chrome or Edge.
 - `executable_path` targets a custom executable such as an Electron app.
 
@@ -365,7 +363,6 @@ Configuration reference:
 | `controls_cache_dir` | `"cache"` | Cache directory relative to CWD or absolute path. |
 | `semantic_cache_enabled` | `true` | Enable in-session semantic cache reuse. |
 | `custom_controls_dirs` | `["controls"]` | List of directories scanned for `@custom_control` Python modules. Resolved relative to CWD. |
-| `call_python_dirs` | `["scripts"]` | List of helper directories searched for `CALL PYTHON` modules under the hunt directory and CWD. |
 | `timeout` | `5000` | Default action timeout in ms. |
 | `nav_timeout` | `30000` | Navigation timeout in ms. |
 | `log_name_maxlen` | `0` | Truncate element names in logs. `0` means no limit. |
@@ -522,7 +519,7 @@ STEP 2: OTP verification
 - `CALL PYTHON ... with args: ...` is optional sugar for positional arguments; plain `CALL PYTHON mod.func "arg"` still works.
 - `@script:` lets you declare a file-local alias once and reuse either `CALL PYTHON {alias}.func` or `CALL PYTHON {callable_alias}` in hooks and mission steps.
 - `@script:` must use dotted Python import paths only: `scripts.db_helpers` or `scripts.db_helpers.issue_login_token`. Slash paths like `scripts/db_helpers.py` are rejected.
-- File-based helpers resolve from the `.hunt` directory first, then configured `call_python_dirs` under that directory, then the project root, then matching helper directories under the project root, before falling back to normal imports.
+- File-based helpers resolve from the `.hunt` directory first, then the project root, before falling back to normal imports via `sys.path`.
 - If setup fails, the mission is marked as `broken` and the browser steps are skipped. Teardown still runs after the mission whenever setup succeeded.
 
 Supported `CALL PYTHON` forms:

@@ -105,7 +105,7 @@ pip install ollama==0.6.1
 
 - Document explicit waits as first-class DSL steps, not as ad hoc examples or sleep-based workarounds.
 - Document lifecycle hooks with bracket-only syntax: `[SETUP]` / `[END SETUP]` and `[TEARDOWN]` / `[END TEARDOWN]`. Do not introduce `SETUP:` / `TEARDOWN:` aliases.
-- When documenting hooks, mention that `PRINT "..."`, `CALL PYTHON ... into {var}`, optional `with args:`, `@script: {alias} = package.module`, `@script: {callable_alias} = package.module.function`, and configurable helper-directory resolution via `call_python_dirs` are supported.
+- When documenting hooks, mention that `PRINT "..."`, `CALL PYTHON ... into {var}`, optional `with args:`, `@script: {alias} = package.module`, `@script: {callable_alias} = package.module.function`, and the `hunt dir → CWD → sys.path` resolution order are supported.
 - When documenting failure semantics, state that setup-hook failures mark the mission as `broken` and skip browser steps.
 - Supported syntax:
   - `Wait for "Welcome, User" to be visible`

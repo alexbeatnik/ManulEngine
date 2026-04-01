@@ -164,7 +164,7 @@ This architecture is what makes ManulEngine a **true runtime** rather than just 
 * **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, `@after_group` orchestrate DB seeding and auth. `ctx.variables` serialise across parallel `--workers`.
 * **Contextual UI Navigator (v0.0.9.13):** action steps can now add `NEAR 'Anchor'`, `ON HEADER`, `ON FOOTER`, and `INSIDE 'Container' row with 'Text'` qualifiers. `actions.py` parses the contextual hint before normal mode detection, resolves anchor or row context, and threads that data into the scorer. `DOMScorer` boosts the proximity channel from `0.10` to `1.5` when a contextual hint is present, then switches from DOM-depth proximity to Euclidean distance, viewport-region checks, or subtree membership depending on the qualifier.
 * **Attribute-Semantic Matching for Functional Icons (v0.0.9.12):** `DOMScorer` now treats discrete keyword tokens in `html_id`, `class_name`, and `data_qa` as a strong signal even when visible text is unhelpful. This closes a real gap for cart-style links and other icon controls that only render badge counts (`"1"`, `"2"`, `"3"`) while the semantic meaning lives in attributes like `shopping_cart_link` or `shopping_cart_container`.
-* **JIT Module Loading & Configurable Module Directories (v0.0.9.11):** `CALL PYTHON` modules are imported on first use and cached for subsequent calls within the same process (`_module_cache` in `hooks.py`). `@custom_control` modules are loaded once on the first `run_mission()` call instead of during `ManulEngine.__init__`. Module scan directories are configurable independently via `custom_controls_dirs` (default: `["controls"]`) and `call_python_dirs` (default: `["scripts"]`) in `manul_engine_configuration.json`.
+* **JIT Module Loading & Dotted Helper Imports (v0.0.9.11):** `CALL PYTHON` modules are imported on first use and cached for subsequent calls within the same process (`_module_cache` in `hooks.py`). `@custom_control` modules are loaded once on the first `run_mission()` call instead of during `ManulEngine.__init__`. Helper imports now rely on dotted Python module paths (`scripts.auth_helpers`, `package.module.function`) rather than configurable helper directories.
 
 ## ✨ Key Features
 
@@ -290,10 +290,8 @@ The hook system in `manul_engine/hooks.py` runs synchronous Python before and af
 **Module resolution order** (per `CALL PYTHON` instruction — identical for hooks and inline steps):
 
 1. Directory of the `.hunt` file.
-2. Each configured `call_python_dirs` directory under the `.hunt` file directory.
-3. `Path.cwd()` — project root.
-4. Each configured `call_python_dirs` directory under `Path.cwd()`.
-5. Standard `importlib.import_module` — installed packages / PYTHONPATH.
+2. `Path.cwd()` — project root.
+3. Standard `importlib.import_module` — installed packages / PYTHONPATH.
 
 **State isolation:** Modules found via the file-based search steps are executed with `spec.loader.exec_module(mod)` into a fresh `ModuleType` object that is **never inserted into `sys.modules`**. This rule applies equally to hook blocks and inline `CALL PYTHON` steps — no `sys.modules` pollution regardless of where in the file the call appears.
 
@@ -370,7 +368,7 @@ When a hook helper returns a dict such as `{"tenant_id": 42, "otp": 123456}`, `b
 
 `parse_hunt_file()` in `cli.py` returns a **10-field `ParsedHunt` NamedTuple** `(mission, context, title, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags, data_file, schedule)`. It also strips header-only `@script:` declarations, validates that they use dotted Python import paths, and rewrites `CALL PYTHON {alias}.func` usages to their real module paths before returning the mission and hook lines. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
 
-The full hook unit test suite (`58 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
+The full hook unit test suite (`56 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
 
 ### 📋 Static Variable Declaration (`@var:`) and Script Aliases (`@script:`)
 
@@ -595,7 +593,6 @@ The public README is expected to keep the full current runtime surface area plus
   "controls_cache_dir": "cache",
   "semantic_cache_enabled": true,
   "custom_controls_dirs": ["controls"],
-  "call_python_dirs": ["scripts"],
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
   "tests_home": "tests",

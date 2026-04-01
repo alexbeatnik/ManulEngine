@@ -62,9 +62,6 @@ _json_cfg_browser_args: "list[str]" = []
 # custom_controls_dirs: list of directory names to scan for @custom_control modules.
 _json_cfg_custom_modules_dirs: "list[str] | None" = None
 _json_cfg_custom_controls_dirs: "list[str] | None" = None
-# call_python_dirs: list of directory names to search for CALL PYTHON helpers.
-_json_cfg_call_python_dirs: "list[str] | None" = None
-
 if _CONFIG_PATH.exists():
     try:
         with open(_CONFIG_PATH, encoding="utf-8") as _f:
@@ -84,8 +81,6 @@ if _CONFIG_PATH.exists():
             _json_cfg_custom_modules_dirs = [str(d).strip() for d in _json_cfg["custom_modules_dirs"] if str(d).strip()]
         if isinstance(_json_cfg.get("custom_controls_dirs"), list):
             _json_cfg_custom_controls_dirs = [str(d).strip() for d in _json_cfg["custom_controls_dirs"] if str(d).strip()]
-        if isinstance(_json_cfg.get("call_python_dirs"), list):
-            _json_cfg_call_python_dirs = [str(d).strip() for d in _json_cfg["call_python_dirs"] if str(d).strip()]
     except (json.JSONDecodeError, OSError) as _cfg_err:
         import warnings
         warnings.warn(f"ManulEngine: could not load config file '{_CONFIG_PATH}': {_cfg_err}")
@@ -189,7 +184,7 @@ SCREENSHOT: str = _raw_screenshot if _raw_screenshot in _VALID_SCREENSHOT else "
 HTML_REPORT: bool = env_bool("MANUL_HTML_REPORT")
 EXPLAIN_MODE: bool = env_bool("MANUL_EXPLAIN")
 
-# ── Custom control & CALL PYTHON directories ────────────────────────────────
+# ── Custom control directories ──────────────────────────────────────────────
 # custom_controls_dirs is the canonical config key. custom_modules_dirs remains
 # as a backward-compatible alias for existing projects.
 _raw_custom_controls_dirs = os.getenv("MANUL_CUSTOM_CONTROLS_DIRS", "").strip()
@@ -209,12 +204,6 @@ CUSTOM_CONTROLS_DIRS: "list[str]" = (
 )
 # Backward-compatible export for older call sites.
 CUSTOM_MODULES_DIRS: "list[str]" = CUSTOM_CONTROLS_DIRS
-
-_raw_call_python_dirs = os.getenv("MANUL_CALL_PYTHON_DIRS", "").strip()
-_env_call_python_dirs: "list[str]" = [
-    part.strip() for part in _raw_call_python_dirs.split(",") if part.strip()
-] if _raw_call_python_dirs else []
-CALL_PYTHON_DIRS: "list[str]" = _env_call_python_dirs or _json_cfg_call_python_dirs or ["scripts"]
 
 
 def _auto_populate_registry(url: str) -> str:

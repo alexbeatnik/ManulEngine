@@ -20,9 +20,6 @@
   "custom_controls_dirs": [
     "controls"
   ],
-  "call_python_dirs": [
-    "scripts"
-  ],
   "retries": 0,
   "screenshot": "on-fail",
   "html_report": true

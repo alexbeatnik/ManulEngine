@@ -187,7 +187,7 @@ DONE.
     - `CALL PYTHON {callable_alias}`
     - `CALL PYTHON module.function with args: "arg1" "arg2"`
     - `CALL PYTHON module.function into {var}`
-- `CALL PYTHON` module resolution order: hunt dir → configured `call_python_dirs` under hunt dir → CWD → matching helper dirs under CWD → `sys.path`
+- `CALL PYTHON` module resolution order: hunt dir → CWD → `sys.path`
 - `@script: {alias} = scripts.helper` rewrites later `CALL PYTHON {alias}.function` usages to the real module path.
 - `@script: {issue_token} = scripts.helpers.issue_token` rewrites later `CALL PYTHON {issue_token}` usages to the real callable path.
 - `@script:` accepts dotted Python import paths only. Slash paths like `scripts/helper.py` are invalid.
