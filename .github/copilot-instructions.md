@@ -474,7 +474,8 @@ Environment variables (`MANUL_*`) always override JSON values.
 | `controls_cache_enabled` | `true` | Enables persistent per-site controls cache (file-based, survives between runs) |
 | `controls_cache_dir` | `"cache"` | Directory for cache files (relative to CWD or absolute) |
 | `semantic_cache_enabled` | `true` | Enables in-session semantic cache (`learned_elements`). Remembers resolved elements within a single run (+200,000 score boost). Resets on each new `ManulEngine` instance |
-| `custom_modules_dirs` | `["controls"]` | List of directories scanned for `@custom_control` Python modules. Resolved relative to CWD. Overridable via `MANUL_CUSTOM_MODULES_DIRS` (comma-separated) |
+| `custom_controls_dirs` | `["controls"]` | List of directories scanned for `@custom_control` Python modules. Resolved relative to CWD. Overridable via `MANUL_CUSTOM_CONTROLS_DIRS` (comma-separated). Legacy alias: `custom_modules_dirs` / `MANUL_CUSTOM_MODULES_DIRS` |
+| `call_python_dirs` | `["scripts"]` | List of helper directories searched for `CALL PYTHON` modules under the hunt directory and CWD. Overridable via `MANUL_CALL_PYTHON_DIRS` (comma-separated) |
 | `log_name_maxlen` | `0` | If > 0, truncates element names in logs |
 | `log_thought_maxlen` | `0` | If > 0, truncates LLM “thought” strings in logs |
 | `timeout` | `5000` | Default action timeout (ms) |
@@ -558,7 +559,7 @@ Suggested config for mixed mode (optional AI self-healing fallback):
 * `_CUSTOM_CONTROLS` — module-level `dict[tuple[str, str], Callable]` keyed by `(page_name_lower, target_name_lower)`.
 * `@custom_control(page, target)` — decorator; both sync and async handlers accepted.
 * `get_custom_control(page_name, target_name) -> Callable | None` — case-insensitive lookup.
-* `load_custom_controls(workspace_dir, required_modules=None, custom_modules_dirs=None)` — supports just-in-time loading for custom controls. Scans directories listed in `custom_modules_dirs` (default: `["controls"]` from config). The CLI computes `required_controls = extract_required_controls(hunt.mission, workspace_dir, custom_modules_dirs)` before engine startup, then `run_mission()` calls `load_custom_controls()` unconditionally so only the Python files needed for each hunt are imported. Per-file idempotency (`_LOADED_FILES`) prevents duplicate imports across sequential runs. Modules still execute in isolated `ModuleType` sandboxes.
+* `load_custom_controls(workspace_dir, required_modules=None, custom_modules_dirs=None)` — supports just-in-time loading for custom controls. The loader is fed from `custom_controls_dirs` config (default: `["controls"]`; legacy alias `custom_modules_dirs`). The CLI computes `required_controls = extract_required_controls(hunt.mission, workspace_dir, custom_modules_dirs)` before engine startup, then `run_mission()` calls `load_custom_controls()` unconditionally so only the Python files needed for each hunt are imported. Per-file idempotency (`_LOADED_FILES`) prevents duplicate imports across sequential runs. Modules still execute in isolated `ModuleType` sandboxes.
 
 **Interception point in `core.py`:** the `else` branch of the step loop (action steps) checks `get_custom_control(lookup_page_name(page.url), first_quoted_token)` before any DOM snapshot. If a handler is found, it is called with `(page, mode, value)` and `_execute_step` is skipped entirely via `elif not await self._execute_step(...)` on the else path.
 

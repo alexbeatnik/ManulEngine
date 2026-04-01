@@ -37,7 +37,7 @@ from .scoring import score_elements, SCALE
 from .actions import _ActionsMixin
 from .cache import _ControlsCacheMixin
 from .controls import load_custom_controls, get_custom_control
-from . import prompts as _prompts_mod  # for CUSTOM_MODULES_DIRS access
+from . import prompts as _prompts_mod  # for CUSTOM_CONTROLS_DIRS access
 from .reporting import StepResult, MissionResult, BlockResult
 from .variables import ScopedVariables
 
@@ -950,7 +950,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         load_custom_controls(
             str(Path.cwd()),
             required_modules=self._required_controls,
-            custom_modules_dirs=_prompts_mod.CUSTOM_MODULES_DIRS,
+            custom_modules_dirs=_prompts_mod.CUSTOM_CONTROLS_DIRS,
         )
 
         async with async_playwright() as p:

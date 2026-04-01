@@ -313,7 +313,8 @@ Create `manul_engine_configuration.json` in the workspace root. All keys are opt
   "controls_cache_enabled": true,
   "controls_cache_dir": "cache",
   "semantic_cache_enabled": true,
-  "custom_modules_dirs": ["controls"],
+    "custom_controls_dirs": ["controls"],
+    "call_python_dirs": ["scripts"],
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
   "tests_home": "tests",
@@ -333,7 +334,8 @@ Notes:
 - `browser_args` passes extra launch flags to the browser.
 - `ai_always`, `ai_policy`, and `ai_threshold` only matter when a model is enabled.
 - `controls_cache_dir`, `tests_home`, and `auto_annotate` control runtime filesystem behavior.
-- `custom_modules_dirs` lists directories where `@custom_control` Python modules are scanned. Default: `["controls"]`.
+- `custom_controls_dirs` lists directories where `@custom_control` Python modules are scanned. Default: `["controls"]`.
+- `call_python_dirs` lists helper directories searched for `CALL PYTHON` modules under both the hunt directory and the project root. Default: `["scripts"]`.
 - `channel` targets an installed browser such as Chrome or Edge.
 - `executable_path` targets a custom executable such as an Electron app.
 
@@ -361,7 +363,8 @@ Configuration reference:
 | `controls_cache_enabled` | `true` | Enable the persistent per-site controls cache. |
 | `controls_cache_dir` | `"cache"` | Cache directory relative to CWD or absolute path. |
 | `semantic_cache_enabled` | `true` | Enable in-session semantic cache reuse. |
-| `custom_modules_dirs` | `["controls"]` | List of directories scanned for `@custom_control` Python modules. Resolved relative to CWD. |
+| `custom_controls_dirs` | `["controls"]` | List of directories scanned for `@custom_control` Python modules. Resolved relative to CWD. |
+| `call_python_dirs` | `["scripts"]` | List of helper directories searched for `CALL PYTHON` modules under the hunt directory and CWD. |
 | `timeout` | `5000` | Default action timeout in ms. |
 | `nav_timeout` | `30000` | Navigation timeout in ms. |
 | `log_name_maxlen` | `0` | Truncate element names in logs. `0` means no limit. |

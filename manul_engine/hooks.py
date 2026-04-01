@@ -14,8 +14,10 @@ Block syntax in a .hunt file::
 Module resolution order for each ``CALL PYTHON`` instruction:
 
 1. Directory of the ``.hunt`` file  — local project helpers
-2. Current working directory        — project root
-3. ``sys.path``                     — installed packages / PYTHONPATH
+2. Configured helper directories under the ``.hunt`` file directory
+3. Current working directory        — project root
+4. Configured helper directories under the project root
+5. ``sys.path``                     — installed packages / PYTHONPATH
 
 To keep global interpreter state clean, file-based modules (resolved via steps
 1 and 2) are **not** inserted into ``sys.modules``.  They are loaded into an
@@ -171,8 +173,10 @@ def _resolve_module(module_path: str, hunt_dir: str | None) -> tuple[ModuleType,
     Search order:
 
     1. *hunt_dir* — the directory containing the ``.hunt`` file.
-    2. ``Path.cwd()`` — the project root.
-    3. Standard ``importlib.import_module`` — installed packages / PYTHONPATH.
+    2. Configured CALL PYTHON helper directories under *hunt_dir*.
+    3. ``Path.cwd()`` — the project root.
+    4. Configured CALL PYTHON helper directories under ``Path.cwd()``.
+    5. Standard ``importlib.import_module`` — installed packages / PYTHONPATH.
 
     File-based modules (found in steps 1/2) are executed in a fresh
     ``ModuleType`` object the first time they are resolved in a given Python
@@ -191,6 +195,7 @@ def _resolve_module(module_path: str, hunt_dir: str | None) -> tuple[ModuleType,
     # "utils.db.helpers"    → utils/db/helpers.py
     parts  = module_path.split(".")
     rel_py = Path(*parts).with_suffix(".py")
+    from .prompts import CALL_PYTHON_DIRS
 
     search_roots: list[Path] = []
     if hunt_dir:
@@ -199,8 +204,10 @@ def _resolve_module(module_path: str, hunt_dir: str | None) -> tuple[ModuleType,
 
     for root in search_roots:
         candidates = [root / rel_py]
-        if parts and parts[0] != "scripts":
-            candidates.append(root / "scripts" / rel_py)
+        for helper_dir in CALL_PYTHON_DIRS:
+            if parts and parts[0] == helper_dir:
+                continue
+            candidates.append(root / helper_dir / rel_py)
         for candidate in candidates:
             if not candidate.is_file():
                 continue
@@ -355,11 +362,13 @@ def execute_hook_line(
                 f"'{module_path}.py'" if "." not in module_path
                 else f"'{module_path}' package"
             )
+            from .prompts import CALL_PYTHON_DIRS
+            helper_dirs = ", ".join(f"'{d}'" for d in CALL_PYTHON_DIRS) or "<none>"
             return HookResult(
                 success=False,
                 message=(
                     f"ManulEngine Error: Module '{module_path}' not found.\n"
-                    f"  Searched in: hunt file directory, CWD, and sys.path.\n"
+                    f"  Searched in: hunt file directory, helper dirs {helper_dirs}, CWD, matching helper dirs under CWD, and sys.path.\n"
                     f"  Make sure {hint} exists or is installed and importable."
                 ),
             )

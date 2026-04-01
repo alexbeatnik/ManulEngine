@@ -17,8 +17,11 @@
   "workers": 1,
   "tests_home": "tests",
   "auto_annotate": false,
-  "custom_modules_dirs": [
+  "custom_controls_dirs": [
     "controls"
+  ],
+  "call_python_dirs": [
+    "scripts"
   ],
   "retries": 0,
   "screenshot": "on-fail",

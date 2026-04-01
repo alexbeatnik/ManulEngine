@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import json
 import sys
 import tempfile
 import textwrap
@@ -252,6 +253,42 @@ def _test_execute_hook_line__scripts_folder_and_with_args(tmp_dir: str) -> None:
     _assert(r2.return_value == "deleted:manul_tester_77", "with args: forwards positional argument")
 
 
+def _test_execute_hook_line__custom_call_python_dirs(tmp_dir: str) -> None:
+    print("\n  ── execute_hook_line — configurable CALL PYTHON dirs ─────")
+
+    tools_dir = Path(tmp_dir, "tools")
+    tools_dir.mkdir(parents=True, exist_ok=True)
+    _make_helper(str(tools_dir), "topic_picker.py", """\
+        def choose(seed):
+            return f"topic:{seed}"
+    """)
+
+    cfg_path = Path(tmp_dir, "manul_engine_configuration.json")
+    cfg_path.write_text(json.dumps({"call_python_dirs": ["tools"]}) + "\n", encoding="utf-8")
+
+    old_cwd = os.getcwd()
+    try:
+        os.chdir(tmp_dir)
+        from manul_engine import prompts as prompts_mod
+        prompts_mod = __import__("importlib").reload(prompts_mod)
+        from manul_engine import hooks as hooks_mod
+        hooks_mod = __import__("importlib").reload(hooks_mod)
+        r = hooks_mod.execute_hook_line(
+            'CALL PYTHON topic_picker.choose "cats" into {topic}',
+            hunt_dir=tmp_dir,
+            variables={},
+        )
+        _assert(r.success, "helper loaded from configured CALL PYTHON dir", r.message)
+        _assert(r.return_value == "topic:cats", "configured helper dir return captured")
+    finally:
+        os.chdir(old_cwd)
+        from manul_engine import prompts as prompts_mod
+        __import__("importlib").reload(prompts_mod)
+        from manul_engine import hooks as hooks_mod
+        hooks_mod.clear_module_cache()
+        __import__("importlib").reload(hooks_mod)
+
+
 def _test_execute_hook_line__function_not_found(tmp_dir: str) -> None:
     print("\n  ── execute_hook_line — function not found ───────────────")
 
@@ -451,6 +488,7 @@ async def run_suite() -> bool:
         _test_execute_hook_line__success(tmp_dir)
         _test_execute_hook_line__print_and_dict_context(tmp_dir)
         _test_execute_hook_line__scripts_folder_and_with_args(tmp_dir)
+        _test_execute_hook_line__custom_call_python_dirs(tmp_dir)
         _test_execute_hook_line__function_not_found(tmp_dir)
         _test_execute_hook_line__not_callable(tmp_dir)
         _test_execute_hook_line__runtime_error(tmp_dir)

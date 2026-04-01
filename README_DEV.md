@@ -88,7 +88,7 @@ ManulEngine/
 │       ├── test_45_api.py            Unit: ManulSession public Python API facade (50 assertions, no browser)
 │       ├── test_46_attribute_semantic.py Unit: attribute-semantic icon matching, camelCase dev attrs, cart badges, false-positive resistance (34 assertions, no browser)
 │       └── test_47_contextual_proximity.py Unit: contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser rules (67 assertions, no browser)
-├── controls/                         User-owned custom Python handlers (loaded from directories listed in `custom_modules_dirs` config)
+├── controls/                         User-owned custom Python handlers (loaded from directories listed in `custom_controls_dirs` config)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
 │   ├── demoqa.hunt                   DemoQA form, checkbox, radio, and table coverage
@@ -164,7 +164,7 @@ This architecture is what makes ManulEngine a **true runtime** rather than just 
 * **Global Lifecycle Hooks:** `@before_all`, `@after_all`, `@before_group`, `@after_group` orchestrate DB seeding and auth. `ctx.variables` serialise across parallel `--workers`.
 * **Contextual UI Navigator (v0.0.9.13):** action steps can now add `NEAR 'Anchor'`, `ON HEADER`, `ON FOOTER`, and `INSIDE 'Container' row with 'Text'` qualifiers. `actions.py` parses the contextual hint before normal mode detection, resolves anchor or row context, and threads that data into the scorer. `DOMScorer` boosts the proximity channel from `0.10` to `1.5` when a contextual hint is present, then switches from DOM-depth proximity to Euclidean distance, viewport-region checks, or subtree membership depending on the qualifier.
 * **Attribute-Semantic Matching for Functional Icons (v0.0.9.12):** `DOMScorer` now treats discrete keyword tokens in `html_id`, `class_name`, and `data_qa` as a strong signal even when visible text is unhelpful. This closes a real gap for cart-style links and other icon controls that only render badge counts (`"1"`, `"2"`, `"3"`) while the semantic meaning lives in attributes like `shopping_cart_link` or `shopping_cart_container`.
-* **JIT Module Loading & Configurable Module Directories (v0.0.9.11):** `CALL PYTHON` modules are imported on first use and cached for subsequent calls within the same process (`_module_cache` in `hooks.py`). `@custom_control` modules are loaded once on the first `run_mission()` call instead of during `ManulEngine.__init__`. Module scan directories are configurable via `custom_modules_dirs` in `manul_engine_configuration.json` (default: `["controls"]`).
+* **JIT Module Loading & Configurable Module Directories (v0.0.9.11):** `CALL PYTHON` modules are imported on first use and cached for subsequent calls within the same process (`_module_cache` in `hooks.py`). `@custom_control` modules are loaded once on the first `run_mission()` call instead of during `ManulEngine.__init__`. Module scan directories are configurable independently via `custom_controls_dirs` (default: `["controls"]`) and `call_python_dirs` (default: `["scripts"]`) in `manul_engine_configuration.json`.
 
 ## ✨ Key Features
 
@@ -290,12 +290,12 @@ The hook system in `manul_engine/hooks.py` runs synchronous Python before and af
 **Module resolution order** (per `CALL PYTHON` instruction — identical for hooks and inline steps):
 
 1. Directory of the `.hunt` file.
-2. `/scripts` under the `.hunt` directory.
+2. Each configured `call_python_dirs` directory under the `.hunt` file directory.
 3. `Path.cwd()` — project root.
-4. `/scripts` under `Path.cwd()`.
+4. Each configured `call_python_dirs` directory under `Path.cwd()`.
 5. Standard `importlib.import_module` — installed packages / PYTHONPATH.
 
-**State isolation:** Modules found via steps 1 and 2 are executed with `spec.loader.exec_module(mod)` into a fresh `ModuleType` object that is **never inserted into `sys.modules`**. This rule applies equally to hook blocks and inline `CALL PYTHON` steps — no `sys.modules` pollution regardless of where in the file the call appears.
+**State isolation:** Modules found via the file-based search steps are executed with `spec.loader.exec_module(mod)` into a fresh `ModuleType` object that is **never inserted into `sys.modules`**. This rule applies equally to hook blocks and inline `CALL PYTHON` steps — no `sys.modules` pollution regardless of where in the file the call appears.
 
 **Async rejection:** `asyncio.iscoroutinefunction()` is checked before invoking the callable. Async functions are explicitly rejected with a descriptive error message and a concrete workaround (`asyncio.run()` inside the helper). This applies to both hooks and inline calls.
 
@@ -576,7 +576,8 @@ The public README is expected to keep the full current runtime surface area plus
   "controls_cache_enabled": true,
   "controls_cache_dir": "cache",
   "semantic_cache_enabled": true,
-  "custom_modules_dirs": ["controls"],
+  "custom_controls_dirs": ["controls"],
+  "call_python_dirs": ["scripts"],
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
   "tests_home": "tests",

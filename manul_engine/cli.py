@@ -371,7 +371,7 @@ async def _run_hunt_file(
 
     # ── Pre-flight: lazy-load only the custom control modules needed ──────
     from manul_engine.controls import extract_required_controls
-    from manul_engine.prompts import CUSTOM_MODULES_DIRS as _custom_dirs
+    from manul_engine.prompts import CUSTOM_CONTROLS_DIRS as _custom_dirs
     _required_controls = extract_required_controls(hunt.mission, os.getcwd(), custom_modules_dirs=_custom_dirs)
 
     manul = ManulEngine(headless=headless, browser=browser, debug_mode=debug, break_steps=break_steps, explain_mode=explain, required_controls=_required_controls or None)
