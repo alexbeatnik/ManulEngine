@@ -144,6 +144,91 @@ def _test_parser() -> None:
     )
 
 
+def _test_script_alias_parser_rewrite() -> None:
+    print("\n  ── Parser (@script: alias rewrite) ─────────────────────────")
+
+    hunt_content = """\
+@context: Script aliases
+@title: script_aliases
+@script: {printer} = scripts.print
+@script: {seed_mega_fixture} = scripts.demo_helpers.seed_mega_fixture
+
+[SETUP]
+CALL PYTHON {printer}.bootstrap
+CALL PYTHON {seed_mega_fixture} with args: "shadow" "table"
+[END SETUP]
+
+STEP 1: Use alias in mission
+CALL PYTHON {printer}.emit into {message}
+CALL PYTHON {seed_mega_fixture} into {fixture_id}
+DONE.
+"""
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".hunt", encoding="utf-8", delete=False
+    ) as tf:
+        tf.write(hunt_content)
+        tmp_path = tf.name
+
+    try:
+        result = parse_hunt_file(tmp_path)
+    finally:
+        os.unlink(tmp_path)
+
+    mission, _, _, _, setup_lines, _, _, *_ = result
+
+    _assert(
+        "@script:" not in mission,
+        "@script: header is not included in mission body",
+        f"mission={mission!r}",
+    )
+    _assert(
+        setup_lines == [
+            "CALL PYTHON scripts.print.bootstrap",
+            'CALL PYTHON scripts.demo_helpers.seed_mega_fixture with args: "shadow" "table"',
+        ],
+        "@script aliases rewrite hook CALL PYTHON lines",
+        f"setup_lines={setup_lines!r}",
+    )
+    _assert(
+        "CALL PYTHON scripts.print.emit into {message}" in mission,
+        "module-style @script alias rewrites mission CALL PYTHON line",
+        f"mission={mission!r}",
+    )
+    _assert(
+        "CALL PYTHON scripts.demo_helpers.seed_mega_fixture into {fixture_id}" in mission,
+        "callable-style @script alias rewrites mission CALL PYTHON line",
+        f"mission={mission!r}",
+    )
+
+
+def _test_script_alias_requires_dotted_python_path() -> None:
+    print("\n  ── Parser (@script: dotted Python path validation) ────────")
+
+    bad_hunt = """\
+@context: Invalid script alias
+@title: invalid_script_alias
+@script: {printer} = scripts/print.py
+
+DONE.
+"""
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".hunt", encoding="utf-8", delete=False
+    ) as tf:
+        tf.write(bad_hunt)
+        tmp_path = tf.name
+
+    try:
+        try:
+            parse_hunt_file(tmp_path)
+            _assert(False, "slash-style @script path is rejected")
+        except ValueError as exc:
+            msg = str(exc)
+            _assert("Invalid @script target 'scripts/print.py'" in msg, "invalid @script path reports offending value", msg)
+            _assert("no '/'" in msg and "no '.py' suffix" in msg, "invalid @script path explains dotted-path rule", msg)
+    finally:
+        os.unlink(tmp_path)
+
+
 # ── Section 2: Engine interpolation ──────────────────────────────────────────
 
 async def _test_interpolation() -> None:
@@ -261,6 +346,8 @@ async def run_suite() -> bool:
     _FAIL = 0
 
     _test_parser()
+    _test_script_alias_parser_rewrite()
+    _test_script_alias_requires_dotted_python_path()
     await _test_interpolation()
 
     total = _PASS + _FAIL

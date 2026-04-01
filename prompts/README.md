@@ -129,6 +129,8 @@ jq -Rs '{model: "qwen2.5:7b", prompt: ., stream: false}' prompts/html_to_hunt.md
 @title: tag_name
 @var: {email} = test@example.com
 @var: {password} = Password123
+@script: {auth} = scripts.auth_helpers
+@script: {issue_token} = scripts.auth_helpers.issue_token
 
 STEP 1: Open the page
     NAVIGATE to https://example.com
@@ -150,6 +152,7 @@ DONE.
 - Do not use legacy numbered action lines like `1.` / `2.`.
 - Keep `DONE.` flush-left.
 - Prefer `@var:` for static test data instead of hardcoding values inside `Fill` steps.
+- Use `@script:` when the same Python helper module or helper callable is referenced multiple times in one file.
 
 ### Keywords
 - `NAVIGATE to <url>`
@@ -180,9 +183,14 @@ DONE.
 - Valid hook lines:
     - `PRINT "message with {vars}"`
     - `CALL PYTHON module.function`
+    - `CALL PYTHON {alias}.function`
+    - `CALL PYTHON {callable_alias}`
     - `CALL PYTHON module.function with args: "arg1" "arg2"`
     - `CALL PYTHON module.function into {var}`
-- `CALL PYTHON` module resolution order: hunt dir → `hunt_dir/scripts` → CWD → `CWD/scripts` → `sys.path`
+- `CALL PYTHON` module resolution order: hunt dir → configured `call_python_dirs` under hunt dir → CWD → matching helper dirs under CWD → `sys.path`
+- `@script: {alias} = scripts.helper` rewrites later `CALL PYTHON {alias}.function` usages to the real module path.
+- `@script: {issue_token} = scripts.helpers.issue_token` rewrites later `CALL PYTHON {issue_token}` usages to the real callable path.
+- `@script:` accepts dotted Python import paths only. Slash paths like `scripts/helper.py` are invalid.
 - Failing setup marks the mission as `broken` and skips browser steps
 
 ### Contextual qualifiers
@@ -214,6 +222,7 @@ Click 'Submit button'          ✗
 - Prefer deterministic DSL steps over vague natural language.
 - Add explicit waits when the page description suggests async loading, spinners, deferred content, or client-side rendering.
 - Use `@var:` for login credentials, emails, names, IDs, and other static inputs.
+- Use `@script:` for reusable helper-module aliases or helper-callable aliases when several `CALL PYTHON` steps target the same implementation.
 - Use `CALL PYTHON ... into {var}` when the flow clearly needs OTPs, tokens, magic links, or backend-generated values.
 - Do not generate `SETUP:` / `TEARDOWN:` aliases; only bracketed hook blocks are valid.
 - Add `VERIFY` after major state changes.

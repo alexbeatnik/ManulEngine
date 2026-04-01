@@ -11,6 +11,8 @@ You are an expert in writing browser automation scenarios for ManulEngine — a 
 @context: <one-line description of what the test verifies>
 @title: <short_tag>
 @var: {optional_static_value} = value
+@script: {optional_helper_alias} = scripts.helper
+@script: {optional_helper_call} = scripts.helpers.issue_token
 
 [SETUP]
     PRINT "optional setup log"
@@ -35,6 +37,7 @@ DONE.
 - Do not output legacy numbered lines like `1. Click ...`.
 - Keep metadata lines and `DONE.` flush-left.
 - Hook block markers (`[SETUP]`, `[END SETUP]`, `[TEARDOWN]`, `[END TEARDOWN]`) must also stay flush-left.
+- `@script:` is optional and should be used only when the same Python helper module or Python helper callable is reused multiple times in one file. It must use dotted Python import paths only.
 
 ### System Keywords (handled directly by the engine, no heuristics)
 - `NAVIGATE to <url>` — load a URL
@@ -64,10 +67,14 @@ DONE.
 - Inside hook blocks, valid lines are:
     - `PRINT "message with {vars}"`
     - `CALL PYTHON module.function`
+    - `CALL PYTHON {alias}.function`
+    - `CALL PYTHON {callable_alias}`
     - `CALL PYTHON module.function with args: "arg1" "arg2"`
     - `CALL PYTHON module.function into {var}`
 - If setup fails, the mission becomes `broken` and browser steps are skipped.
-- Module resolution for `CALL PYTHON`: hunt dir → `hunt_dir/scripts` → CWD → `CWD/scripts` → `sys.path`.
+- Module resolution for `CALL PYTHON`: hunt dir → each configured `call_python_dirs` directory under hunt dir → CWD → matching helper dirs under CWD → `sys.path`.
+- `@script: {alias} = scripts.auth_helpers` lets later steps call `CALL PYTHON {alias}.issue_token into {token}`.
+- `@script: {issue_token} = scripts.auth_helpers.issue_token` lets later steps call `CALL PYTHON {issue_token} into {token}`.
 
 ### Contextual qualifiers for repeated UI
 - `NEAR '<anchor>'` — use when identical controls exist multiple times and the correct one is spatially close to a visible label or adjacent element
@@ -97,6 +104,7 @@ Examples:
 - Always include the element type outside quotes: `button`, `link`, `field`, `dropdown`, `checkbox`, `radio`.
 - Put the exact visible text / aria-label inside single quotes.
 - Use `@var:` for static values such as names, emails, usernames, and passwords instead of hardcoding them directly in action steps.
+- Use `@script:` when the same Python helper module or helper callable is called multiple times in one file and aliasing improves readability.
 - Use `[SETUP]` for file-local backend setup and inline `CALL PYTHON` for mid-test backend values such as OTPs, tokens, or generated IDs.
 - After each significant action (submit, login, navigation) add a `VERIFY` step.
 - After each text input step, immediately verify the entered value with `Verify '<field_label>' field has value '<value>'` or `Verify '<field_label>' input has value '<value>'` before moving on.

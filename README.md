@@ -220,11 +220,12 @@ async with ManulSession() as session:
 
 ### State, variables, and scope
 
-Variable handling is strict rather than ad hoc. The runtime supports `@var:`, `EXTRACT`, `SET`, and `CALL PYTHON ... into {var}` with deterministic placeholder substitution in downstream steps.
+Variable handling is strict rather than ad hoc. The runtime supports `@var:`, `@script:`, `EXTRACT`, `SET`, and `CALL PYTHON ... into {var}` with deterministic placeholder substitution in downstream steps.
 
 Useful patterns:
 
 - `@var:` for static test data at the top of the file.
+- `@script:` for file-local aliases such as `@script: {auth} = scripts.auth_helpers`, then `CALL PYTHON {auth}.issue_token into {token}`; or callable aliases such as `@script: {issue_token} = scripts.auth_helpers.issue_token`, then `CALL PYTHON {issue_token} into {token}`.
 - `EXTRACT ... into {var}` for values pulled from the UI.
 - `SET {var} = value` for mid-run assignment.
 - `CALL PYTHON module.func into {var}` for backend-generated runtime values such as OTPs or tokens.
@@ -487,11 +488,13 @@ Verify "Notes" element has value "treasure map"
 ```text
 @var: {email} = admin@example.com
 @var: {password} = secret123
+@script: {db} = scripts.db_helpers
+@script: {seed_admin_user} = scripts.db_helpers.seed_admin_user
 
 [SETUP]
     PRINT "Preparing demo user for {email}"
-    CALL PYTHON scripts.db_helpers.seed_admin_user with args: "{email}" "{password}"
-    CALL PYTHON scripts.db_helpers.issue_login_token with args: "{email}" into {login_token}
+    CALL PYTHON {seed_admin_user} with args: "{email}" "{password}"
+    CALL PYTHON {db}.issue_login_token with args: "{email}" into {login_token}
 [END SETUP]
 
 STEP 1: Login
@@ -510,15 +513,38 @@ STEP 2: OTP verification
 
 [TEARDOWN]
     PRINT "Cleaning up seeded user for {email}"
-    CALL PYTHON scripts.db_helpers.clean_database with args: "{email}"
+    CALL PYTHON {db}.clean_database with args: "{email}"
 [END TEARDOWN]
 ```
 
 - Hook syntax is bracket-only: `[SETUP]` / `[END SETUP]` and `[TEARDOWN]` / `[END TEARDOWN]`.
 - `PRINT "..."` is valid inside hook blocks and resolves `{variables}` before printing.
 - `CALL PYTHON ... with args: ...` is optional sugar for positional arguments; plain `CALL PYTHON mod.func "arg"` still works.
-- File-based helpers resolve from the `.hunt` directory first, then the project root, and also probe a sibling `/scripts` folder in both places before falling back to normal imports.
+- `@script:` lets you declare a file-local alias once and reuse either `CALL PYTHON {alias}.func` or `CALL PYTHON {callable_alias}` in hooks and mission steps.
+- `@script:` must use dotted Python import paths only: `scripts.db_helpers` or `scripts.db_helpers.issue_login_token`. Slash paths like `scripts/db_helpers.py` are rejected.
+- File-based helpers resolve from the `.hunt` directory first, then configured `call_python_dirs` under that directory, then the project root, then matching helper directories under the project root, before falling back to normal imports.
 - If setup fails, the mission is marked as `broken` and the browser steps are skipped. Teardown still runs after the mission whenever setup succeeded.
+
+Supported `CALL PYTHON` forms:
+
+```text
+CALL PYTHON package.module.function
+CALL PYTHON package.module.function with args: "arg1" "arg2"
+CALL PYTHON package.module.function "arg1" "arg2" into {result}
+CALL PYTHON package.module.function into {result}
+CALL PYTHON {module_alias}.function
+CALL PYTHON {module_alias}.function into {result}
+CALL PYTHON {callable_alias}
+CALL PYTHON {callable_alias} with args: "arg1" "arg2"
+CALL PYTHON {callable_alias} into {result}
+```
+
+Alias examples:
+
+```text
+@script: {db} = scripts.db_helpers
+@script: {issue_login_token} = scripts.db_helpers.issue_login_token
+```
 
 ### Tags, scheduler, and execution controls
 

@@ -276,7 +276,7 @@
       "uiText": "CALL PYTHON module.function",
       "snippet": "CALL PYTHON ${1:module}.${2:function}${3: ${4:args}}${5: into {${6:variable}}}",
       "regex": "\\bCALL\\s+PYTHON\\b",
-      "description": "Executes a synchronous Python function inline. Supports positional arguments (including optional 'with args:' sugar) and optional 'into {var}' / 'to {var}' capture. Module resolution order: hunt dir → hunt_dir/scripts → CWD → CWD/scripts → sys.path.",
+      "description": "Executes a synchronous Python function inline. Supports positional arguments (including optional 'with args:' sugar), optional 'into {var}' / 'to {var}' capture, and parser-level @script alias rewriting for CALL PYTHON {alias}.func syntax. Module resolution order: hunt dir → configured call_python_dirs under hunt dir → CWD → matching helper dirs under CWD → sys.path.",
       "category": "python"
     },
     {

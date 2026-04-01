@@ -51,7 +51,7 @@ RE_TEARDOWN     = re.compile(r"^\[TEARDOWN\]$",       re.IGNORECASE)
 RE_END_TEARDOWN = re.compile(r"^\[END\s+TEARDOWN\]$", re.IGNORECASE)
 
 _RE_CALL_PYTHON = re.compile(
-    r"^CALL\s+PYTHON\s+([\w.]+)(.*?)$",
+    r"^CALL\s+PYTHON\s+([{}\w.]+)(.*?)$",
     re.IGNORECASE,
 )
 _RE_PRINT = re.compile(r'^PRINT\s+(.+)$', re.IGNORECASE)
@@ -321,6 +321,17 @@ def execute_hook_line(
 
     dotted = m.group(1)
     remainder = m.group(2).strip()  # everything after dotted name
+
+    if dotted.startswith("{") and "}" in dotted:
+        alias_name = dotted[1:].split("}", 1)[0]
+        return HookResult(
+            success=False,
+            message=(
+                f"ManulEngine Error: Unresolved @script alias '{{{alias_name}}}' in '{line}'.\n"
+                f"  Declare it in the hunt header, for example: @script: {{{alias_name}}} = scripts.{alias_name}\n"
+                f"  Or alias a callable directly: @script: {{{alias_name}}} = scripts.helpers.{alias_name}"
+            ),
+        )
 
     # Extract 'into {var}' / 'to {var}' clause from the end if present.
     var_name: str | None = None

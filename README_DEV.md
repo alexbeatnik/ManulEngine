@@ -60,7 +60,7 @@ ManulEngine/
 │       ├── test_17_frontend_hell.py  Unit: frontend anti-patterns (overlays, z-index traps, React portals)
 │       ├── test_18_disambiguation.py Unit: ambiguous element targeting
 │       ├── test_19_custom_controls.py Unit: Custom Controls registry + engine interception (28 assertions, no browser)
-│       ├── test_20_variables.py      Unit: @var: static variable declaration (17 assertions, no browser)
+│       ├── test_20_variables.py      Unit: @var: static variable declaration + @script alias parsing (23 assertions, no browser)
 │       ├── test_21_dynamic_vars.py   Unit: CALL PYTHON ... into {var} dynamic variable capture
 │       ├── test_22_tags.py           Unit: @tags: / --tags CLI filter (20 assertions, no browser)
 │       ├── test_23_advanced_interactions.py  Unit: PRESS/RIGHT CLICK/UPLOAD/explicit waits (58 assertions, no browser)
@@ -73,7 +73,7 @@ ManulEngine/
 │       ├── test_30_heuristic_weights.py Synthetic+Unit: DOMScorer priority hierarchy (32 assertions)
 │       ├── test_31_visibility_treewalker.py Synthetic+Unit: TreeWalker PRUNE/checkVisibility (20 assertions)
 │       ├── test_32_verify_enabled.py Synthetic: VERIFY ENABLED/DISABLED state verification (20 assertions)
-│       ├── test_33_call_python_args.py Unit: CALL PYTHON with positional arguments (44 assertions, no browser)
+│       ├── test_33_call_python_args.py Unit: CALL PYTHON with positional arguments + unresolved @script alias handling (50 assertions, no browser)
 │       ├── test_34_verify_checked.py Synthetic: VERIFY checked/NOT checked (20 assertions)
 │       ├── test_35_scanner.py       Synthetic+Unit: Smart Page Scanner build_hunt() (44 assertions)
 │       ├── test_36_scoring_math.py   Unit: exact numerical scoring validation (29 assertions, no browser)
@@ -329,6 +329,18 @@ CALL PYTHON <module>.<function> into {result}
 CALL PYTHON <module>.<function> with args: "arg1" "arg2" into {result}
 ```
 
+**File-local script aliases:**
+
+```text
+@script: {auth} = scripts.auth_helpers
+@script: {api} = helpers.api_client
+
+CALL PYTHON {auth}.issue_token into {token}
+CALL PYTHON {api}.fetch_otp "{token}" into {otp}
+```
+
+`parse_hunt_file()` rewrites `CALL PYTHON {alias}.func` to the corresponding dotted module path before the mission or hook block is executed. Alias declarations stay header-only and never appear in the mission body.
+
 **`HookResult` fields:** `success: bool`, `message: str`, `return_value: str | None`, `var_name: str | None`, `return_mapping: dict[str, str]`. The `return_value` / `var_name` pair is populated when the step used `into {var}` / `to {var}` capture syntax. `return_mapping` is populated when a helper returns a top-level dict; its keys are flattened into the shared variable context so later hook lines and browser steps can reference `{key}` directly.
 
 **Positional arguments:** `CALL PYTHON` accepts optional positional arguments between the dotted function name and the optional `into {var}` clause. Arguments are tokenised with `shlex.split()` — single-quoted, double-quoted, and unquoted tokens are all accepted. The optional `with args:` prefix is treated as syntax sugar and stripped before parsing. `{var}` placeholders inside arguments are resolved from the engine's runtime memory (`self.memory` for inline steps, `parsed_vars`/`variables` dict for hook blocks). Unresolved placeholders are kept as-is.
@@ -356,28 +368,34 @@ Fill 'Security Code' with '{dynamic_otp}'
 
 When a hook helper returns a dict such as `{"tenant_id": 42, "otp": 123456}`, `bind_hook_result()` flattens it into shared variables. That makes both `{tenant_id}` and `{otp}` available immediately to later hook lines and to the browser mission without additional glue code.
 
-`parse_hunt_file()` in `cli.py` returns a **10-field `ParsedHunt` NamedTuple** `(mission, context, title, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags, data_file, schedule)`. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
+`parse_hunt_file()` in `cli.py` returns a **10-field `ParsedHunt` NamedTuple** `(mission, context, title, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags, data_file, schedule)`. It also strips header-only `@script:` declarations, validates that they use dotted Python import paths, and rewrites `CALL PYTHON {alias}.func` usages to their real module paths before returning the mission and hook lines. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
 
-The full hook unit test suite (`56 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
+The full hook unit test suite (`58 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
 
-### 📋 Static Variable Declaration (`@var:`)
+### 📋 Static Variable Declaration (`@var:`) and Script Aliases (`@script:`)
 
 Version 0.0.8.7 adds static test-data declaration at the top of `.hunt` files:
 
 ```text
 @var: {user_email} = admin@example.com
 @var: {password}   = secret123
+@script: {auth}    = scripts.auth_helpers
+@script: {issue_login_token} = scripts.auth_helpers.issue_login_token
 
 STEP 1: Login
 Fill 'Email' with '{user_email}'
 Fill 'Password' with '{password}'
+CALL PYTHON {auth}.issue_login_token into {login_token}
+CALL PYTHON {issue_login_token} into {login_token_2}
 ```
 
 **How it works:** `parse_hunt_file()` scans for `@var: {key} = value` header lines and returns them as `parsed_vars`. `_run_hunt_file()` passes `parsed_vars` to `run_mission(initial_vars=...)`, which pre-populates `self.memory` before the step loop starts. Both brace and bare-key forms are accepted (`@var: {key} = val` and `@var: key = val` are equivalent). Values are stripped of leading/trailing whitespace. Malformed `@var:` lines (no `=`) are silently skipped.
 
+`@script:` uses the same declaration shape for both helper-module aliases and helper-callable aliases. Examples: `@script: {auth} = scripts.auth_helpers` and `@script: {issue_login_token} = scripts.auth_helpers.issue_login_token`. The parser requires a valid dotted Python import path, rejects slash paths or `.py` suffixes, and rewrites later `CALL PYTHON {auth}.func` or `CALL PYTHON {issue_login_token}` usages in both hook blocks and mission steps.
+
 **Design rule:** When generating or suggesting `.hunt` test files, **never** hardcode test data (emails, passwords, usernames, search queries, IDs, etc.) directly into `Fill` or `Type` steps. Always declare them at the top via `@var:` and reference them via `{placeholder}`. This keeps test logic separate from test data.
 
-Unit tests: `manul_engine/test/test_20_variables.py` (17 assertions, no browser).
+Unit tests: `manul_engine/test/test_20_variables.py` (23 assertions, no browser).
 
 ### 🏷️ Arbitrary Tags (`@tags:`) and `--tags` CLI Filter
 

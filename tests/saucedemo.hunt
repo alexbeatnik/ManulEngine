@@ -41,18 +41,19 @@
 #
 # Example lifecycle block for a real project (kept commented so this demo
 # remains self-contained):
+# @script: {auth} = scripts.auth_helpers
 # [SETUP]
 #     PRINT "Preparing SauceDemo user {username}"
-#     CALL PYTHON scripts.auth_helpers.ensure_user with args: "{username}" "{password}"
+#     CALL PYTHON {auth}.ensure_user with args: "{username}" "{password}"
 # [END SETUP]
 #
 # STEP X: Backend-assisted step example
-#     CALL PYTHON scripts.auth_helpers.fetch_cart_seed with args: "{username}" into {cart_seed}
+#     CALL PYTHON {auth}.fetch_cart_seed with args: "{username}" into {cart_seed}
 #     VERIFY that '{cart_seed}' is present
 #
 # [TEARDOWN]
 #     PRINT "Cleaning SauceDemo user {username}"
-#     CALL PYTHON scripts.auth_helpers.cleanup_user with args: "{username}"
+#     CALL PYTHON {auth}.cleanup_user with args: "{username}"
 # [END TEARDOWN]
 
 STEP 1: Login

@@ -39,8 +39,9 @@
 #                         Example (commented so this public demo stays
 #                         dependency-free):
 #
-#                         CALL PYTHON scripts.research_helpers.pick_topic with args: "cats" into {next_topic}
-#                         CALL PYTHON scripts.research_helpers.fetch_reference with args: "{next_topic}" into {reference_note}
+#                         @script: {research} = scripts.research_helpers
+#                         CALL PYTHON {research}.pick_topic with args: "cats" into {next_topic}
+#                         CALL PYTHON {research}.fetch_reference with args: "{next_topic}" into {reference_note}
 # --------------------------------------------------------------------------
 
 STEP 1: Land on Wikipedia home
