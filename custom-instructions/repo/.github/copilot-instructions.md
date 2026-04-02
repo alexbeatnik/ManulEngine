@@ -61,7 +61,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.17
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.18
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession
   api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)
@@ -120,6 +120,7 @@ manul_engine/
     test_45_api.py               ManulSession public Python API facade (50 assertions, no browser)
     test_46_attribute_semantic.py Attribute-semantic icon matching, camelCase dev attrs, cart badges, false-positive resistance (34 assertions, no browser)
     test_47_contextual_proximity.py Contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser coverage (67 assertions, no browser)
+    test_48_prompts_config.py  Configuration loading, threshold derivation, page-name lookup, _KEY_MAP, env_bool (83 assertions, no browser)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
@@ -491,6 +492,7 @@ Environment variables (`MANUL_*`) always override JSON values.
 | `retries` | `0` | Number of times to retry a failed hunt file before marking it as failed (0 = no retries) |
 | `screenshot` | `"on-fail"` | Screenshot capture mode: `"on-fail"` (default — failed steps only), `"always"` (every step), `"none"` (disabled) |
 | `html_report` | `false` | Generate or refresh a self-contained HTML report after the run (`reports/manul_report.html`). Recent invocations within the same report session are merged via `reports/manul_report_state.json`. |
+| `explain_mode` | `false` | Enable DOMScorer explain output. Shows per-channel scoring breakdowns for each resolved element. Overridable via `MANUL_EXPLAIN` |
 Threshold auto-calculation by model size: `<1b → 500`, `1-4b → 750`, `5-9b → 1000`, `10-19b → 1500`, `20b+ → 2000`, `null → 0`.
 
 Suggested config for heuristics-only (recommended default — no Ollama needed):

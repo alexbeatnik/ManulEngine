@@ -41,6 +41,9 @@ from . import prompts as _prompts_mod  # for CUSTOM_CONTROLS_DIRS access
 from .reporting import StepResult, MissionResult, BlockResult
 from .variables import ScopedVariables
 
+# ── Pre-compiled patterns ─────────────────────────────────────────────────────
+_RE_NUMBERED_PREFIX = re.compile(r'^\s*\d+\.\s*')
+
 # ── Score confidence thresholds (normalised 0.0–1.0 floats) ──────────────────
 # Compared against best_score / SCALE.  Values > 1.0 are possible because the
 # cache channel weight (2.0) allows the weighted sum to exceed 1.0.
@@ -1178,9 +1181,9 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                     _step_ok = False
 
                             elif step_kind == "call_python":
-                                instruction = re.sub(r'^\s*\d+\.\s*', '', step).strip()
+                                instruction = _RE_NUMBERED_PREFIX.sub('', step).strip()
                                 if re.match(r'CALL\s+PYTHON\b', instruction.upper()):
-                                    raw_instr = re.sub(r'^\s*\d+\.\s*', '', raw_step).strip()
+                                    raw_instr = _RE_NUMBERED_PREFIX.sub('', raw_step).strip()
                                     result = execute_hook_line(raw_instr, hunt_dir=hunt_dir, variables=self.memory)
                                     print(f"     {result.message}")
                                     if not result.success:
@@ -1288,7 +1291,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                             _healed = self._last_step_healed
                             _step_result = StepResult(
                                 index=action_index,
-                                text=re.sub(r'^\s*\d+\.\s*', '', step),
+                                text=_RE_NUMBERED_PREFIX.sub('', step),
                                 status=_sr_status,
                                 duration_ms=duration_ms,
                                 error=_step_error,

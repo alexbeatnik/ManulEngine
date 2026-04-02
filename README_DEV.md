@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.17 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.18 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -25,7 +25,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.17
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.18
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession
@@ -559,7 +559,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.17
+pip install manul-engine==0.0.9.18
 playwright install chromium
 ```
 
@@ -738,9 +738,9 @@ Verify "Notes" element has value "treasure map"
 
 ---
 
-## 🐾 Chaos Chamber Verified (2567 Tests)
+## 🐾 Chaos Chamber Verified (2731 Tests)
 
-The engine is battle-tested with **2567** synthetic DOM/unit tests across 48 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, visibility edge cases, attribute-semantic icon matching, camelCase developer attributes, and contextual UI disambiguation across repeated controls.
+The engine is battle-tested with **2731** synthetic DOM/unit tests across 49 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, visibility edge cases, attribute-semantic icon matching, camelCase developer attributes, and contextual UI disambiguation across repeated controls.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py`.
@@ -775,6 +775,7 @@ The engine is battle-tested with **2567** synthetic DOM/unit tests across 48 tes
 * **Public Python API unit suite:** `manul_engine/test/test_45_api.py`.
 * **Attribute-semantic heuristic suite:** `manul_engine/test/test_46_attribute_semantic.py`.
 * **Contextual navigator unit suite:** `manul_engine/test/test_47_contextual_proximity.py`.
+* **Prompts & Config unit suite:** `manul_engine/test/test_48_prompts_config.py`.
 * **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
 
 Run the synthetic suite:
@@ -861,15 +862,16 @@ The published extension provides:
 
 ---
 
-## Release Notes: v0.0.9.17
+## Release Notes: v0.0.9.18
 
-- **`CALL PYTHON` parser/model cleanup:** `@script:` aliases now resolve to either modules or callables, but only through dotted import paths. Internal docs should no longer mention slash-path helper imports or `call_python_dirs`.
-- **Resolution order simplified:** helper module lookup is now explicitly `hunt dir -> CWD -> sys.path`, matching `hooks.py` and the public DSL contract.
-- **Prompting rule tightened:** generated `.hunt` files are expected to verify typed input immediately with `Verify ... has value ...` after each `Fill` or `Type` step.
-- **Regression coverage expanded:** parser coverage now includes STEP-grouped aliased `CALL PYTHON` lines staying on separate mission lines, plus the dedicated showcase hunt covering direct/module/callable alias variants.
+- **Code optimization:** pre-compiled the repeated numbered-prefix regex (`_RE_NUMBERED_PREFIX`) in `core.py` at module level, matching the convention in `helpers.py`. Removes redundant `re.compile` work from the step execution loop.
+- **Dedicated prompts/config test suite:** `test_48_prompts_config.py` adds 83 assertions covering `_threshold_for_model`, `get_threshold` priority chain, `lookup_page_name` resolution (exact, regex, Domain fallback, auto-populate), `_KEY_MAP` completeness, `env_bool` helper, and module-level defaults.
+- **Test suite expanded to 2731 assertions** across 49 suites (was 2648 / 48 in v0.0.9.17).
+- **`explain_mode` config key documented** in the README configuration table (was available via `MANUL_EXPLAIN` but omitted from the reference).
+- **Full documentation sync:** README.md, README_DEV.md, `.github/copilot-instructions.md`, and `.cursorrules` updated to v0.0.9.18 with accurate test counts, file listings, and feature descriptions.
 
-**Version:** 0.0.9.17
+**Version:** 0.0.9.18
 
-**Codename:** Contextual UI Navigator
+**Codename:** Quality Audit
 
 **Status:** Hunting...
