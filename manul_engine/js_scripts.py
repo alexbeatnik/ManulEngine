@@ -1006,7 +1006,8 @@ SCAN_JS = """() => {
         // For radio/checkbox prefer the associated <label for="..."> text.
         if (tag === 'INPUT' && (type === 'radio' || type === 'checkbox')) {
             if (el.id) {
-                const lbl = document.querySelector('label[for="' + el.id + '"]');
+                const root = el.getRootNode();
+                const lbl = root.querySelector('label[for="' + CSS.escape(el.id) + '"]');
                 if (lbl) return lbl.innerText.trim();
             }
             const closestLbl = el.closest('label');
@@ -1072,7 +1073,10 @@ SCAN_JS = """() => {
 
             const entry = { type: kind, identifier: label };
             const mid = el.getAttribute('data-manul-id');
-            if (mid !== null) entry.manul_id = parseInt(mid, 10);
+            if (mid !== null) {
+                const parsedManulId = parseInt(mid, 10);
+                if (Number.isFinite(parsedManulId)) entry.manul_id = parsedManulId;
+            }
             // Include current value for fillable elements so callers can verify state.
             if ((kind === 'input' || kind === 'select') && el.value !== undefined && el.value !== '') {
                 entry.value = el.value;

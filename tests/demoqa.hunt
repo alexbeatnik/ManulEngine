@@ -34,7 +34,7 @@ STEP 1: Text box form submission
     Fill 'Current Address' field with '42 Shadow Lane'
     Fill 'Permanent Address' field with '7 Phantom Street'
     Click the 'Submit' button
-    # Multi-token VERIFY: all quoted tokens must be present on the page.
+    # Separate VERIFY steps: each quoted value is asserted independently.
     VERIFY that 'Ghost Manul' is present
     VERIFY that 'ghost@manul.ai' is present
 

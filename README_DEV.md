@@ -95,7 +95,7 @@ ManulEngine/
 │   ├── mega.hunt                     Large UI gauntlet; includes commented custom-control and hook examples
 │   ├── rahul.hunt                    Rahul Shetty practice flow: radio, autocomplete, hover
 │   ├── saucedemo.hunt                SauceDemo checkout flow with commented lifecycle-hook examples
-│   └── wikipedia.hunt                Wikipedia research flow with commented inline CALL PYTHON examples
+│   └── call_python_variants.hunt     All CALL PYTHON variants: positional args, aliases, to/into capture
 ├── reports/                          Generated logs and HTML reports (auto-created, .gitignored)
 ├── benchmarks/                       Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
 │   └── run_benchmarks.py            Benchmark runner: ManulEngine vs raw Playwright
@@ -630,7 +630,7 @@ Synthetic tests (`python manul.py test`) disable cache by default for determinis
 ```bash
 # Installed CLI (after pip install manul-engine)
 manul tests/                       # run all *.hunt files
-manul tests/wikipedia.hunt         # single hunt
+manul tests/saucedemo.hunt         # single hunt
 manul --headless tests/            # headless mode
 manul --browser firefox tests/     # run in Firefox
 manul tests/ --workers 4           # run 4 hunt files in parallel

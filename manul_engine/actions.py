@@ -663,10 +663,11 @@ class _ActionsMixin:
             # Determine value vs target order from DSL structure:
             #   "Type 'VALUE' into 'TARGET'"  — 'into' comes AFTER first quoted → value is first
             #   "Fill 'TARGET' field with 'VALUE'" — 'with' comes AFTER first quoted → value is last
-            # Heuristic: if the step contains 'into' anywhere, treat first quoted as value.
-            # This covers both "Type" and any custom phrasing with "into".
+            # Detect 'into' only in the unquoted DSL structure so quoted values like
+            # "Fill 'Notes' field with 'go into settings'" do not flip target/value order.
             # "Fill ... with" and bare "enter" treat last quoted as value (original behaviour).
-            if " into " in step_l:
+            step_l_unquoted = re.sub(r"""(['"])(?:\\.|(?!\1).)*\1""", " ", step_l)
+            if re.search(r"\binto\b", step_l_unquoted):
                 txt_to_type  = expected[0]   # value is first
                 search_texts = expected[1:]  # remaining quoted strings are the target
             else:

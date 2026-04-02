@@ -126,7 +126,7 @@ tests/
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
   rahul.hunt              integration: radios, autocomplete, hover
   saucedemo.hunt          integration: login, inventory, cart
-  wikipedia.hunt          integration: search, navigate, extract, verify, shadow-dom inputs
+  call_python_variants.hunt  integration: all CALL PYTHON variants (positional args, aliases, to/into capture)
 benchmarks/
   run_benchmarks.py        Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
 ```
@@ -429,7 +429,7 @@ python manul.py test
 
 # Integration tests (needs Playwright browsers; Ollama optional)
 manul tests/                     # run all *.hunt files in tests/
-manul tests/wikipedia.hunt       # single hunt
+manul tests/saucedemo.hunt       # single hunt
 manul --headless tests/          # headless mode
 manul --browser firefox tests/   # run in Firefox instead of Chromium
 manul --tags smoke tests/        # run only files tagged 'smoke'
