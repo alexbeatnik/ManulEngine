@@ -6,7 +6,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/manul-engine?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/manul-engine)
-[![VS Code Extension](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Extension&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
+[![Manul Engine Extension](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=Manul%20Engine%20Extension&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
 [![MCP Server](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-mcp-server?label=MCP%20Server&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-mcp-server)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-d97706)](#status)
 
@@ -109,7 +109,7 @@ If an external agent needs to drive the browser, `.hunt` is a safer constrained 
 
 ### Explainability layers
 
-The runtime and companion VS Code extension expose multiple explainability layers instead of forcing you to inspect a terminal dump.
+The runtime and companion Manul Engine Extension for VS Code expose multiple explainability layers instead of forcing you to inspect a terminal dump.
 
 **CLI: `--explain`**
 
@@ -287,9 +287,9 @@ ollama pull qwen2.5:0.5b
 ollama serve
 ```
 
-### VS Code Extension
+### Manul Engine Extension
 
-ManulEngine has a companion VS Code extension. Normal installation should use the published Marketplace build:
+ManulEngine has a companion Manul Engine Extension for VS Code. Normal installation should use the published Marketplace build:
 
 - https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine
 

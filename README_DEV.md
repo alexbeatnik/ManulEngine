@@ -105,7 +105,7 @@ ManulEngine/
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 ```
 
-Companion VS Code extension source is maintained separately and is not included in this workspace.
+Companion Manul Engine Extension for VS Code source is maintained separately and is not included in this workspace.
 
 ---
 
@@ -823,9 +823,9 @@ The default prompt templates now also teach contextual disambiguation syntax for
 
 ---
 
-## 🖱️ VS Code Extension
+## 🖱️ Manul Engine Extension
 
-The companion VS Code extension is published separately from this runtime repository. Normal installation should use the published Marketplace build.
+The companion Manul Engine Extension for VS Code is published separately from this runtime repository. Normal installation should use the published Marketplace build.
 
 Marketplace page:
 
