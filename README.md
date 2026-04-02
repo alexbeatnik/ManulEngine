@@ -9,7 +9,7 @@
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-d97706)](#status)
 
-Deterministic, DSL-first web and desktop automation on top of Playwright, with explainable heuristics, a standalone Python API, and optional local AI fallback.
+Deterministic, DSL web and desktop automation on top of Playwright, with explainable heuristics, a standalone Python API, and optional local AI fallback.
 
 ## Status
 
@@ -272,7 +272,7 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.17
+pip install manul-engine==0.0.9.18
 playwright install
 ```
 
@@ -281,7 +281,7 @@ If you install standalone Python dependencies manually instead of using the pack
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.17"
+pip install "manul-engine[ai]==0.0.9.18"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -375,6 +375,7 @@ Configuration reference:
 | `retries` | `0` | Retry failed hunt files this many times. |
 | `screenshot` | `"on-fail"` | Screenshot mode: `none`, `on-fail`, or `always`. |
 | `html_report` | `false` | Generate or refresh `reports/manul_report.html` after the run. Recent CLI invocations within the same report session are merged instead of silently overwriting the last file. |
+| `explain_mode` | `false` | Enable DOMScorer explain output. Shows per-channel scoring breakdowns for each resolved element. |
 
 HTML report notes:
 
@@ -589,16 +590,16 @@ Representative coverage areas include:
 - visibility filtering and TreeWalker behavior
 - custom controls and lazy control loading
 
-## What's New in v0.0.9.17
+## What's New in v0.0.9.18
 
-- **`CALL PYTHON` authoring cleanup:** `@script:` now supports both module aliases and callable aliases, but only through dotted Python import paths such as `scripts.db_helpers` or `scripts.db_helpers.issue_token`. Slash paths like `scripts/db_helpers.py` are no longer part of the documented syntax.
-- **Simpler helper resolution:** helper lookup for `CALL PYTHON` is now documented and implemented as `hunt dir -> CWD -> sys.path`. The temporary `call_python_dirs` detour is gone, so docs and examples now reflect the shorter runtime model.
-- **Post-input verification rule:** generated `.hunt` flows now treat `Fill` and `Type` as incomplete until the entered value is checked immediately with `Verify "..." field/input has value "..."`. The prompts and assistant guidance were updated to make this the default authoring pattern.
-- **Full `CALL PYTHON` showcase:** the repo now includes a dedicated example hunt plus helper modules demonstrating direct dotted calls, module aliases, callable aliases, `with args:`, inline positional arguments, `into`, and `to` across setup, step, and teardown contexts.
-- **Parser hardening for aliased calls:** STEP-grouped missions containing consecutive aliased `CALL PYTHON` lines no longer risk line-concatenation during `@script` rewrite. The parser now preserves original line endings, and regression coverage was added for that case.
+- **Code optimization:** pre-compiled a repeated regex pattern (`_RE_NUMBERED_PREFIX`) in `core.py` at module level, following the same convention already established in `helpers.py`. Eliminates redundant `re.compile` calls inside the step execution loop.
+- **New test suite — `test_48_prompts_config`:** dedicated unit tests for `prompts.py` covering threshold auto-derivation, `get_threshold` priority chain, `lookup_page_name` resolution (exact match, regex, Domain fallback, auto-population), `_KEY_MAP` completeness, `env_bool` helper, and module-level config defaults. 83 assertions, no browser required.
+- **Test suite expanded to 2731 assertions** across 49 test files (up from 2648 / 48 suites in v0.0.9.17).
+- **`explain_mode` config key documented:** previously available in code and via `MANUL_EXPLAIN` env var, now listed in the configuration reference table.
+- **Documentation fully synchronized:** README.md, README_DEV.md, `.github/copilot-instructions.md`, and `.cursorrules` updated to reflect the current codebase state, test counts, and version.
 
 ## License
 
-**Version:** 0.0.9.17
+**Version:** 0.0.9.18
 
 Apache-2.0.
