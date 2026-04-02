@@ -6,7 +6,8 @@
 
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/manul-engine?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/manul-engine)
-[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
+[![VS Code Extension](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Extension&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
+[![MCP Server](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-mcp-server?label=MCP%20Server&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-mcp-server)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-d97706)](#status)
 
 Deterministic, DSL-first web and desktop automation on top of Playwright, with explainable heuristics, a standalone Python API, and optional local AI fallback.
@@ -295,6 +296,43 @@ ManulEngine has a companion VS Code extension. Normal installation should use th
 ```bash
 code --install-extension manul-engine.manul-engine
 ```
+
+### MCP Server for Copilot Chat
+
+A separate VS Code extension turns ManulEngine into a native MCP server so GitHub Copilot chat can drive a real browser through natural language:
+
+- https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-mcp-server
+
+```bash
+code --install-extension manul-engine.manul-mcp-server
+```
+
+After installation and **Reload Window**, `ManulMcpServer` appears in the MCP Servers panel and Copilot gains the following tools:
+
+| Tool | What it does |
+|------|--------------|
+| `manul_run_step` | Run a single DSL step or natural-language action in the browser |
+| `manul_run_goal` | Convert a natural-language goal into steps and execute them |
+| `manul_run_hunt` | Run a full `.hunt` document passed as text |
+| `manul_run_hunt_file` | Run a `.hunt` file from disk |
+| `manul_validate_hunt` | Validate a `.hunt` document without running it |
+| `manul_normalize_step` | Preview how a step will be normalized to DSL before sending it |
+| `manul_get_state` | Get current browser and session state |
+| `manul_preview_goal` | Preview goal-to-DSL conversion without execution |
+| `manul_scan_page` | List all interactive elements on the current page |
+| `manul_save_hunt` | Save a `.hunt` file to disk |
+
+The MCP bridge maintains a persistent Playwright session across calls. No separate HTTP server is required — the extension spawns a Python runner directly.
+
+Natural-language input is accepted for `manul_run_step` and `manul_run_goal` and normalized to proper DSL before execution:
+
+```
+# These are equivalent:
+manul_run_step: click login
+manul_run_step: Click the 'login' button
+```
+
+See the [ManulMcpServer repository](https://github.com/alexbeatnik/ManulMcpServer) for the full developer guide.
 
 ### Configuration
 
