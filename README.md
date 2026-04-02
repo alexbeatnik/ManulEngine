@@ -272,7 +272,7 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.18
+pip install manul-engine==0.0.9.19
 playwright install
 ```
 
@@ -281,7 +281,7 @@ If you install standalone Python dependencies manually instead of using the pack
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.18"
+pip install "manul-engine[ai]==0.0.9.19"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -590,16 +590,15 @@ Representative coverage areas include:
 - visibility filtering and TreeWalker behavior
 - custom controls and lazy control loading
 
-## What's New in v0.0.9.18
+## What's New in v0.0.9.19
 
-- **Code optimization:** pre-compiled a repeated regex pattern (`_RE_NUMBERED_PREFIX`) in `core.py` at module level, following the same convention already established in `helpers.py`. Eliminates redundant `re.compile` calls inside the step execution loop.
-- **New test suite — `test_48_prompts_config`:** dedicated unit tests for `prompts.py` covering threshold auto-derivation, `get_threshold` priority chain, `lookup_page_name` resolution (exact match, regex, Domain fallback, auto-population), `_KEY_MAP` completeness, `env_bool` helper, and module-level config defaults. 83 assertions, no browser required.
-- **Test suite expanded to 2731 assertions** across 49 test files (up from 2648 / 48 suites in v0.0.9.17).
-- **`explain_mode` config key documented:** previously available in code and via `MANUL_EXPLAIN` env var, now listed in the configuration reference table.
-- **Documentation fully synchronized:** README.md, README_DEV.md, `.github/copilot-instructions.md`, and `.cursorrules` updated to reflect the current codebase state, test counts, and version.
+- **Input handling fixed in `actions.py`:** the runtime now correctly distinguishes `Type 'VALUE' into 'TARGET'` from `Fill 'TARGET' field with 'VALUE'`, so `into` phrasing no longer swaps the value and target.
+- **Checkbox/radio labels improved in `SCAN_JS`:** the scanner now prefers associated label text from `label[for]`, wrapping `<label>`, or adjacent label nodes instead of falling back too early to raw element text.
+- **Scanner output carries more state:** `SCAN PAGE` entries now include `manul_id` and non-empty current `value` data for fillable controls, which makes downstream tooling and generated hunts more reliable on prefilled forms.
+- **Release line synchronized to `0.0.9.19`:** package metadata and release-facing docs were updated alongside the runtime changes.
 
 ## License
 
-**Version:** 0.0.9.18
+**Version:** 0.0.9.19
 
 Apache-2.0.

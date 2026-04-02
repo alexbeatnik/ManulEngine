@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.18 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.19 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -25,7 +25,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.18
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.19
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession
@@ -559,7 +559,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.18
+pip install manul-engine==0.0.9.19
 playwright install chromium
 ```
 
@@ -862,15 +862,14 @@ The published extension provides:
 
 ---
 
-## Release Notes: v0.0.9.18
+## Release Notes: v0.0.9.19
 
-- **Code optimization:** pre-compiled the repeated numbered-prefix regex (`_RE_NUMBERED_PREFIX`) in `core.py` at module level, matching the convention in `helpers.py`. Removes redundant `re.compile` work from the step execution loop.
-- **Dedicated prompts/config test suite:** `test_48_prompts_config.py` adds 83 assertions covering `_threshold_for_model`, `get_threshold` priority chain, `lookup_page_name` resolution (exact, regex, Domain fallback, auto-populate), `_KEY_MAP` completeness, `env_bool` helper, and module-level defaults.
-- **Test suite expanded to 2731 assertions** across 49 suites (was 2648 / 48 in v0.0.9.17).
-- **`explain_mode` config key documented** in the README configuration table (was available via `MANUL_EXPLAIN` but omitted from the reference).
-- **Full documentation sync:** README.md, README_DEV.md, `.github/copilot-instructions.md`, and `.cursorrules` updated to v0.0.9.18 with accurate test counts, file listings, and feature descriptions.
+- **`actions.py` input-order fix:** `_execute_step()` now treats `into` phrasing as value-first (`Type 'VALUE' into 'TARGET'`) while preserving the existing `Fill 'TARGET' field with 'VALUE'` behavior. This removes a real target/value inversion bug for typed-input steps.
+- **`js_scripts.py` label extraction upgrade:** `SCAN_JS.bestLabel()` now prefers associated checkbox/radio labels from `label[for]`, wrapping `<label>`, and adjacent label siblings before falling back to generic text/attributes.
+- **Richer scanner payloads:** scan results now include `manul_id` plus the current non-empty `value` for `input` and `select` controls, giving downstream tooling enough state to reason about prefilled controls.
+- **Release line synchronized to `0.0.9.19`:** package metadata and the repo-local documentation set were updated together.
 
-**Version:** 0.0.9.18
+**Version:** 0.0.9.19
 
 **Codename:** Quality Audit
 

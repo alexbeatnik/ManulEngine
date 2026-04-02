@@ -61,7 +61,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.18
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.19
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession
   api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)
@@ -398,11 +398,12 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * **iframe routing in `core.py`:** `_snapshot()` iterates `page.frames`, evaluates `SNAPSHOT_JS` per frame, tags elements with `frame_index`. `_frame_for(page, el)` resolves the correct Playwright `Frame` by index with stale fallback to main frame. All 12+ locator call-sites in `actions.py` route through the resolved frame. Cross-origin frames are silently skipped (3-retry, 1.5s backoff on `closed` errors).
 * **TreeWalker in `js_scripts.py`:** `SNAPSHOT_JS` uses `document.createTreeWalker()` with a `PRUNE` set (`SCRIPT, STYLE, SVG, NOSCRIPT, TEMPLATE, META, PATH, G, BR, HR`). Visibility checked via `checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })` with `offsetWidth/offsetHeight` fallback. Hidden checkbox/radio/file inputs are kept (special-input exception). No `getComputedStyle` in the hot loop.
 * `actions.py` is a **mixin** (`_ActionsMixin`) inherited by `ManulEngine` in `core.py`. Explicit waits live here as `_handle_wait_for_element()` and are executed as parser-level system steps rather than generic heuristic actions.
+* **Input phrasing in `actions.py`:** steps containing `into` are parsed as value-first (`Type 'VALUE' into 'TARGET'`); `Fill ... with ...` and generic enter/fill phrasing remain value-last. Do not invert these forms when generating DSL.
 * `cache.py` is a **mixin** (`_ControlsCacheMixin`) inherited by `ManulEngine` in `core.py`. It owns all persistent per-site controls-cache logic.
 * `ManulEngine` MRO: `class ManulEngine(_ControlsCacheMixin, _ActionsMixin)` in `core.py`.
 * `prompts.py` loads config from `manul_engine_configuration.json` (CWD first, then package root fallback). No dotenv dependency.
 * `js_scripts.py` owns **all** JavaScript constants injected into the browser — no inline JS in Python files. This includes `SCAN_JS` (Smart Page Scanner).
-* `scanner.py` owns the standalone scan logic: `SCAN_JS` is imported from `js_scripts.py`; `build_hunt()` maps raw element dicts to hunt steps; `scan_page()` is the async Playwright runner; `scan_main()` is the async CLI entry called by `cli.py`. `_default_output()` reads `tests_home` from the config to derive the default output path.
+* `scanner.py` owns the standalone scan logic: `SCAN_JS` is imported from `js_scripts.py`; `build_hunt()` maps raw element dicts to hunt steps; `scan_page()` is the async Playwright runner; `scan_main()` is the async CLI entry called by `cli.py`. `_default_output()` reads `tests_home` from the config to derive the default output path. `SCAN_JS.bestLabel()` should prefer associated checkbox/radio labels, and scan entries may include `manul_id` plus current non-empty values for fillable controls.
 * `helpers.py` provides `HuntBlock`, `parse_hunt_blocks(task, file_lines=None)`, `env_bool(name, default)`, `detect_mode(step)`, and `classify_step(step)`. `parse_hunt_blocks()` is the runtime-level hierarchical parser that groups STEP headers into parent blocks and action lines into child lists while preserving block and action file lines for breakpoint mapping.
 * **Null model = heuristics-only:** When `model` is `None`, `_llm_json()` returns `None` immediately. `get_threshold(None)` returns `0`. No Ollama calls are made.
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
@@ -687,7 +688,9 @@ async with ManulSession() as session:
 * **Overlapped Elements:** Modern UIs use invisible overlays. The engine primarily uses Playwright with `force=True` plus retries/alternate candidates; JS helpers (`window.manulClick`, `window.manulType`) are mainly used for Shadow DOM elements.
 * **Deep Text Verification:** Standard `document.body.innerText` does not see text inside Shadow DOMs or Input values. `_handle_verify` uses a JS collector (`VISIBLE_TEXT_JS`) plus fallback checks.
 * **Form Auto-clearing:** Before typing into an input using `loc.type()`, always `await loc.fill("")` to prevent appending text to pre-filled placeholders (especially critical on Wikipedia and search bars).
+* **Input order semantics:** `Type 'VALUE' into 'TARGET'` is value-first because `into` marks the target after the first quoted string. `Fill 'TARGET' field with 'VALUE'` stays target-first/value-last. Do not describe or generate these forms interchangeably.
 * **Checkbox/Radio strictness:** Heuristics must ruthlessly penalize (-50_000) non-checkbox elements when the user specifically asks to "Check" or "Select the radio", to prevent clicking a nearby `<td>` that happens to share the target text.
+* **Scanner label quality:** For checkbox/radio controls, prefer visible label association (`label[for]`, wrapping `<label>`, adjacent label) over generic text extraction so generated hunt identifiers match what humans see.
 * **Contextual navigation:** Prefer DSL qualifiers such as `NEAR 'Search'`, `ON HEADER`, `ON FOOTER`, and `INSIDE 'Actions' row with 'John Doe'` before suggesting brittle selectors or custom controls for repeated standard widgets.
 * **SVG quirks:** `el.className` might not be a string. In `SNAPSHOT_JS`, safely extract it: `typeof el.className === 'string' ? el.className : el.getAttribute('class')`.
 * **Table Extraction & Legacy HTML:** When extracting rows based on text, use the shared `wordMatch()` helper from `EXTRACT_DATA_JS` instead of ad‑hoc `.includes()` calls. It uses word-boundary matching for short tokens and falls back to substring matching for longer tokens to reduce partial hits (e.g., "Javascript" vs "Java"). For legacy forms without explicit `<label>` tags, inputs inside `<fieldset>` should inherit context from `<legend>`.
