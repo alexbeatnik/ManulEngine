@@ -24,11 +24,11 @@ STEP 1: Direct module path variants
     # Direct call with no explicit args, capturing the return value.
     CALL PYTHON scripts.call_python_showcase.build_token into {direct_token}
     # Direct call with positional args written inline after the function name.
-    CALL PYTHON examples.python.demo_echo.echo_value "plain-arg" into {plain_arg_result}
+    CALL PYTHON examples.python.demo_echo.echo_value with args: "plain-arg" into {plain_arg_result}
     # Direct call using the optional 'with args:' syntax sugar.
     CALL PYTHON examples.python.demo_echo.join_values with args: "left" "right" into {joined_with_args}
     # 'to {var}' is accepted as an alias for 'into {var}'.
-    CALL PYTHON playground.nested.demo_tags.make_pair "{prefix}" "{subject}" to {pair_value}
+    CALL PYTHON playground.nested.demo_tags.make_pair with args: "{prefix}" "{subject}" into {pair_value}
 
 STEP 2: Module alias variants
     # {showcase} points to the module scripts.call_python_showcase.
@@ -38,7 +38,7 @@ STEP 2: Module alias variants
 
 STEP 3: Callable alias variants
     # {echo_value} points directly to one callable, so no '.function' suffix is needed.
-    CALL PYTHON {echo_value} "callable-plain" into {callable_plain_result}
+    CALL PYTHON {echo_value} with args: "callable-plain" into {callable_plain_result}
     # Callable aliases work with 'with args:' too.
     CALL PYTHON {callable_alias_demo} with args: "{subject}" into {callable_with_args_result}
 

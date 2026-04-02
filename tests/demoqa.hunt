@@ -35,51 +35,52 @@ STEP 1: Text box form submission
     Fill 'Permanent Address' field with '7 Phantom Street'
     Click the 'Submit' button
     # Multi-token VERIFY: all quoted tokens must be present on the page.
-    VERIFY that 'Ghost Manul' and 'ghost@manul.ai' are present.
+    VERIFY that 'Ghost Manul' is present
+    VERIFY that 'ghost@manul.ai' is present
 
 STEP 2: Checkbox tree
     NAVIGATE to https://demoqa.com/checkbox
-    Click the expand arrow button
+    Click the 'Expand all' button
     # "checkbox for 'Home'" — the engine applies strict checkbox mode:
     # non-checkbox elements get a heavy scoring penalty.
-    Click the checkbox for 'Home'
+    Check the checkbox for 'Home'
     WAIT 2
-    VERIFY that 'You have selected' is present.
+    VERIFY that 'You have selected' is present
 
 STEP 3: Radio button
     NAVIGATE to https://demoqa.com/radio-button
     # "radio button for 'Impressive'" — strict radio mode, same as checkbox.
     Click the radio button for 'Impressive'
-    VERIFY that 'Impressive' is present.
+    VERIFY that 'Impressive' is present
 
 STEP 4: Web tables — data extraction
     NAVIGATE to https://demoqa.com/webtables
     # EXTRACT finds the row containing 'Alden' and extracts the Salary column.
-    EXTRACT the Salary of 'Alden' into {alden_salary}
-    VERIFY that '2000' is present.
+    EXTRACT the 'Salary of Alden' into {alden_salary}
+    VERIFY that '2000' is present
 
 STEP 5: Button interactions
     NAVIGATE to https://demoqa.com/buttons
     DOUBLE CLICK the 'Double Click Me' button
-    VERIFY that 'You have done a double click' is present.
+    VERIFY that 'You have done a double click' is present
     Click the 'Click Me' button
-    VERIFY that 'You have done a dynamic click' is present.
+    VERIFY that 'You have done a dynamic click' is present
 
 STEP 6: Select menu
     NAVIGATE to https://demoqa.com/select-menu
     # Select uses Playwright's select_option() for native <select> tags.
     # Falls back to click() for custom div-based dropdowns.
     Select 'Purple' from the 'Select Value' dropdown
-    VERIFY that 'Purple' is present.
+    VERIFY that 'Purple' is present
 
 STEP 7: Date picker
     NAVIGATE to https://demoqa.com/date-picker
     Fill 'Date Of Birth' field with '01/15/1990'
-    VERIFY that '01/15/1990' is present.
+    VERIFY that '01/15/1990' is present
 
 STEP 8: Navigation links
     NAVIGATE to https://demoqa.com/slider
-    VERIFY that 'Slider' is present.
+    VERIFY that 'Slider' is present
     NAVIGATE to https://demoqa.com/links
     # "Click on the 'Home' link" — including "link" outside the quotes
     # acts as an element-type hint, boosting <a> tags in scoring.
