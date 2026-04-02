@@ -355,4 +355,5 @@ async def run_suite() -> tuple[int, int]:
 
 
 if __name__ == "__main__":
-    asyncio.run(run_suite())
+    _passed, _failed = asyncio.run(run_suite())
+    sys.exit(0 if _failed == 0 else 1)
