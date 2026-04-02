@@ -9,7 +9,7 @@
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-d97706)](#status)
 
-Deterministic, DSL web and desktop automation on top of Playwright, with explainable heuristics, a standalone Python API, and optional local AI fallback.
+Deterministic, DSL-first web and desktop automation on top of Playwright, with explainable heuristics, a standalone Python API, and optional local AI fallback.
 
 ## Status
 
