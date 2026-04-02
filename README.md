@@ -6,7 +6,8 @@
 
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/manul-engine?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/manul-engine)
-[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=VS%20Code%20Marketplace&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
+[![Manul Engine Extension](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=Manul%20Engine%20Extension&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
+[![MCP Server](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-mcp-server?label=MCP%20Server&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-mcp-server)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-d97706)](#status)
 
 Deterministic, DSL-first web and desktop automation on top of Playwright, with explainable heuristics, a standalone Python API, and optional local AI fallback.
@@ -108,7 +109,7 @@ If an external agent needs to drive the browser, `.hunt` is a safer constrained 
 
 ### Explainability layers
 
-The runtime and companion VS Code extension expose multiple explainability layers instead of forcing you to inspect a terminal dump.
+The runtime and companion Manul Engine Extension for VS Code expose multiple explainability layers instead of forcing you to inspect a terminal dump.
 
 **CLI: `--explain`**
 
@@ -272,7 +273,7 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.18
+pip install manul-engine==0.0.9.19
 playwright install
 ```
 
@@ -281,20 +282,57 @@ If you install standalone Python dependencies manually instead of using the pack
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.18"
+pip install "manul-engine[ai]==0.0.9.19"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
 
-### VS Code Extension
+### Manul Engine Extension
 
-ManulEngine has a companion VS Code extension. Normal installation should use the published Marketplace build:
+ManulEngine has a companion Manul Engine Extension for VS Code. Normal installation should use the published Marketplace build:
 
 - https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine
 
 ```bash
 code --install-extension manul-engine.manul-engine
 ```
+
+### MCP Server for Copilot Chat
+
+A separate VS Code extension turns ManulEngine into a native MCP server so GitHub Copilot chat can drive a real browser through natural language:
+
+- https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-mcp-server
+
+```bash
+code --install-extension manul-engine.manul-mcp-server
+```
+
+After installation and **Reload Window**, `ManulMcpServer` appears in the MCP Servers panel and Copilot gains the following tools:
+
+| Tool | What it does |
+|------|--------------|
+| `manul_run_step` | Run a single DSL step or natural-language action in the browser |
+| `manul_run_goal` | Convert a natural-language goal into steps and execute them |
+| `manul_run_hunt` | Run a full `.hunt` document passed as text |
+| `manul_run_hunt_file` | Run a `.hunt` file from disk |
+| `manul_validate_hunt` | Validate a `.hunt` document without running it |
+| `manul_normalize_step` | Preview how a step will be normalized to DSL before sending it |
+| `manul_get_state` | Get current browser and session state |
+| `manul_preview_goal` | Preview goal-to-DSL conversion without execution |
+| `manul_scan_page` | List all interactive elements on the current page |
+| `manul_save_hunt` | Save a `.hunt` file to disk |
+
+The MCP bridge maintains a persistent Playwright session across calls. No separate HTTP server is required — the extension spawns a Python runner directly.
+
+Natural-language input is accepted for `manul_run_step` and `manul_run_goal` and normalized to proper DSL before execution:
+
+```
+# These are equivalent:
+manul_run_step: click login
+manul_run_step: Click the 'login' button
+```
+
+See the [ManulMcpServer repository](https://github.com/alexbeatnik/ManulMcpServer) for the full developer guide.
 
 ### Configuration
 
@@ -590,16 +628,15 @@ Representative coverage areas include:
 - visibility filtering and TreeWalker behavior
 - custom controls and lazy control loading
 
-## What's New in v0.0.9.18
+## What's New in v0.0.9.19
 
-- **Code optimization:** pre-compiled a repeated regex pattern (`_RE_NUMBERED_PREFIX`) in `core.py` at module level, following the same convention already established in `helpers.py`. Eliminates redundant `re.compile` calls inside the step execution loop.
-- **New test suite — `test_48_prompts_config`:** dedicated unit tests for `prompts.py` covering threshold auto-derivation, `get_threshold` priority chain, `lookup_page_name` resolution (exact match, regex, Domain fallback, auto-population), `_KEY_MAP` completeness, `env_bool` helper, and module-level config defaults. 83 assertions, no browser required.
-- **Test suite expanded to 2731 assertions** across 49 test files (up from 2648 / 48 suites in v0.0.9.17).
-- **`explain_mode` config key documented:** previously available in code and via `MANUL_EXPLAIN` env var, now listed in the configuration reference table.
-- **Documentation fully synchronized:** README.md, README_DEV.md, `.github/copilot-instructions.md`, and `.cursorrules` updated to reflect the current codebase state, test counts, and version.
+- **Input handling fixed in `actions.py`:** the runtime now correctly distinguishes `Type 'VALUE' into 'TARGET'` from `Fill 'TARGET' field with 'VALUE'`, so `into` phrasing no longer swaps the value and target.
+- **Checkbox/radio labels improved in `SCAN_JS`:** the scanner now prefers associated label text from `label[for]`, wrapping `<label>`, or adjacent label nodes instead of falling back too early to raw element text.
+- **Scanner output carries more state:** `SCAN PAGE` entries now include `manul_id` and non-empty current `value` data for fillable controls, which makes downstream tooling and generated hunts more reliable on prefilled forms.
+- **Release line synchronized to `0.0.9.19`:** package metadata and release-facing docs were updated alongside the runtime changes.
 
 ## License
 
-**Version:** 0.0.9.18
+**Version:** 0.0.9.19
 
 Apache-2.0.

@@ -21,9 +21,9 @@
 #
 #   NEAR 'Anchor'       — Contextual qualifier. Biases element resolution
 #                         by Euclidean distance to a resolved anchor.
-#                         Used here: Click 'Add to cart' near 'Sauce Labs
-#                         Fleece Jacket' — the engine first resolves the
-#                         jacket text, then picks the closest 'Add to cart'
+#                         Used here: Click 'Add to cart' button NEAR 'Sauce
+#                         Labs Fleece Jacket' — the engine first resolves
+#                         the jacket text, then picks the closest matching
 #                         button.
 #
 #   VERIFY ... is present
@@ -59,8 +59,8 @@
 STEP 1: Login
     # 📍 Auto-Nav: https://www.saucedemo.com/
     NAVIGATE to https://www.saucedemo.com/
-    Fill 'Username' with '{username}'
-    Fill 'Password' with '{password}'
+    Fill 'Username' field with '{username}'
+    Fill 'Password' field with '{password}'
     Click 'Login' button
 
 STEP 2: Add item to cart
@@ -69,7 +69,7 @@ STEP 2: Add item to cart
     # NEAR qualifier: resolves the 'Sauce Labs Fleece Jacket' text first,
     # then prefers the matching 'Add to cart' button in the same product card,
     # using both visual distance and DOM container affinity.
-    Click 'Add to cart' near 'Sauce Labs Fleece Jacket'
+    Click 'Add to cart' button NEAR 'Sauce Labs Fleece Jacket'
 
 STEP 3: Review cart
     # 📍 Auto-Nav: Shopping Cart
@@ -79,9 +79,9 @@ STEP 3: Review cart
 
 STEP 4: Fill shipping info
     # 📍 Auto-Nav: Checkout: Your Info
-    Fill 'First Name' with 'FirstName'
-    Fill 'Last Name' with 'LastName'
-    Fill 'Zip/Postal Code' with '49000'
+    Fill 'First Name' field with 'FirstName'
+    Fill 'Last Name' field with 'LastName'
+    Fill 'Zip/Postal Code' field with '49000'
     Click 'Continue' button
 
 STEP 5: Complete order

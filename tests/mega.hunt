@@ -106,8 +106,8 @@ STEP 2: Text inputs
     Fill "Phone" field with "9876543210"
     # Adding "textarea" outside the quotes acts as an element-type hint,
     # boosting the score for <textarea> tags over <input> tags.
-    Fill "Address" textarea with "Selenium Avenue, 42, AI City"
-    VERIFY that 'Mega Manul' is present.
+    Fill 'Address' field with 'Selenium Avenue, 42, AI City'
+    VERIFY that 'Mega Manul' is present
 
 STEP 3: Radio button and checkboxes
     # Including "radio button" or "checkbox" outside the target quotes
@@ -115,21 +115,21 @@ STEP 3: Radio button and checkboxes
     # heavy penalty (-50,000), preventing accidental clicks on <td> or
     # <label> elements that share the same text.
     Click the radio button for "Male"
-    VERIFY that 'Male' is checked.
-    Click the checkbox for "Monday"
-    VERIFY that 'Monday' is checked.
-    Click the checkbox for "Tuesday"
-    VERIFY that 'Tuesday' is checked.
-    Click the checkbox for "Thursday"
-    VERIFY that 'Thursday' is checked.
+    VERIFY that 'Male' is checked
+    Check the checkbox for 'Monday'
+    VERIFY that 'Monday' is checked
+    Check the checkbox for 'Tuesday'
+    VERIFY that 'Tuesday' is checked
+    Check the checkbox for 'Thursday'
+    VERIFY that 'Thursday' is checked
 
 STEP 4: Selection lists
     # "Select ... from ... dropdown" uses Playwright's select_option()
     # for native <select> elements. If the target is a custom div-based
     # dropdown, the engine gracefully falls back to click().
     Select "Japan" from the "Country" dropdown
-    VERIFY that 'Japan' is present.
-    Select "Blue" from the "Colors" list
+    VERIFY that 'Japan' is present
+    Select 'Blue' from the 'Colors' dropdown
 
 STEP 5: Date picker and interactive buttons
     Fill "Date Picker 1" field with "12/31/2026"
@@ -137,54 +137,57 @@ STEP 5: Date picker and interactive buttons
     Click the "START" button
     # DOUBLE CLICK is detected as a "clickable" mode and uses
     # Playwright's dblclick() instead of click().
-    DOUBLE CLICK the button that says "Copy Text"
-    VERIFY that 'Hello World!' is present.
+    DOUBLE CLICK the 'Copy Text' button
+    VERIFY that 'Hello World!' is present
 
 STEP 6: Drag and drop
     # Drag-and-drop resolves two elements (source and destination)
     # and uses Playwright's drag_to(). Both targets are quoted.
     Drag the element "Drag me to my target" and drop it into "Drop here"
-    VERIFY that 'Dropped!' is present.
+    VERIFY that 'Dropped!' is present
 
 STEP 7: Data extraction from web table
     SCROLL DOWN
     # EXTRACT captures text into runtime variables {chrome_cpu}, etc.
     # These variables live in engine memory and can be referenced in
     # later steps with {placeholder} syntax.
-    EXTRACT the CPU of "Chrome" into {chrome_cpu}
-    EXTRACT the CPU of "Firefox" into {firefox_cpu}
-    EXTRACT the Price of "Master In Selenium" into {book_price}
-    EXTRACT the Price of "Selenium" into {selenium_price}
-    VERIFY that '3000' is present.
+    EXTRACT the 'CPU of Chrome' into {chrome_cpu}
+    EXTRACT the 'CPU of Firefox' into {firefox_cpu}
+    EXTRACT the 'Price of Master In Selenium' into {book_price}
+    EXTRACT the 'Price of Selenium' into {selenium_price}
+    VERIFY that '3000' is present
 
 STEP 8: Paginated table interaction
     SCROLL DOWN
-    Click on page "2" in the pagination list
-    Select the checkbox for the product with ID "7"
-    Click on page "4" in the pagination list
-    Select the checkbox for the product with ID "17"
+    Click on the '2' link
+    Check the checkbox for '7'
+    Click on the '4' link
+    Check the checkbox for '17'
 
 STEP 9: Scrolling dropdown
     SCROLL DOWN
-    Click the "Scrolling DropDown" input field
+    Click the 'Scrolling DropDown' element
     # "SCROLL DOWN inside the list" targets the first dropdown-style
     # scroll container and sets scrollTop = scrollHeight.
     SCROLL DOWN inside the list
-    Click "Item 100"
-    VERIFY that 'Item 100' is present.
+    Click the 'Item 100' element
+    VERIFY that 'Item 100' is present
 
 STEP 10: Shadow DOM input
     # Shadow DOM elements are discovered by the TreeWalker in
     # SNAPSHOT_JS. Interactions use JS fallback helpers
     # (window.manulClick, window.manulType) when Playwright's
     # native locators cannot reach inside the shadow root.
-    SCROLL DOWN to the very bottom
-    Locate the text input inside the Shadow Root
-    Type "Shadow Boss" into that field
-    VERIFY that 'Shadow Boss' is present.
+    SCROLL DOWN
+    Type 'Shadow Boss' into the 'Shadow Root' field
+    VERIFY that 'Shadow Boss' is present
 
 STEP 11: Final validation
     # A multi-assertion VERIFY — all quoted tokens must be present
     # in the visible page text for this step to pass.
-    VERIFY that "Mega Manul" and "Japan" and "Dropped!" and "Item 100" and "Shadow Boss" are present.
+    VERIFY that 'Mega Manul' is present
+    VERIFY that 'Japan' is present
+    VERIFY that 'Dropped!' is present
+    VERIFY that 'Item 100' is present
+    VERIFY that 'Shadow Boss' is present
 DONE.

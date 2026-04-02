@@ -660,8 +660,19 @@ class _ActionsMixin:
         search_texts = []
 
         if mode == "input" and expected:
-            txt_to_type  = expected[-1]
-            search_texts = expected[:-1]
+            # Determine value vs target order from DSL structure:
+            #   "Type 'VALUE' into 'TARGET'"  — 'into' comes AFTER first quoted → value is first
+            #   "Fill 'TARGET' field with 'VALUE'" — 'with' comes AFTER first quoted → value is last
+            # Detect 'into' only in the unquoted DSL structure so quoted values like
+            # "Fill 'Notes' field with 'go into settings'" do not flip target/value order.
+            # "Fill ... with" and bare "enter" treat last quoted as value (original behaviour).
+            step_l_unquoted = re.sub(r"""(['"])(?:\\.|(?!\1).)*\1""", " ", step_l)
+            if re.search(r"\binto\b", step_l_unquoted):
+                txt_to_type  = expected[0]   # value is first
+                search_texts = expected[1:]  # remaining quoted strings are the target
+            else:
+                txt_to_type  = expected[-1]  # Fill/generic: value is last
+                search_texts = expected[:-1]
             m = re.search(r'(?:into\s+the\s+|into\s+)([a-zA-Z0-9_]+)\s*field', step_l)
             if m and m.group(1) not in ("that", "the", "a", "an"): target_field = m.group(1).lower()
         else:

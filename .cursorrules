@@ -45,25 +45,25 @@ Follow these rules before generating code, documentation, architecture notes, or
 
 ## 3. Versioning and Dependencies
 
-- Treat `0.0.9.18` as the current engine version for this documentation and release line.
+- Treat `0.0.9.19` as the current engine version for this documentation and release line.
 - When version metadata is required in config examples or integration code, use:
 
 ```json
 {
-  "manulEngineVersion": "0.0.9.18"
+  "manulEngineVersion": "0.0.9.19"
 }
 ```
 
 - When generating `pip install` commands, pin the exact version, for example:
 
 ```bash
-pip install manul-engine==0.0.9.18
+pip install manul-engine==0.0.9.19
 ```
 
 - If the AI extra is needed, pin that exact version too:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.18"
+pip install "manul-engine[ai]==0.0.9.19"
 ```
 
 - When standalone Python dependencies must be installed manually for this release line, pin them explicitly too:
@@ -104,9 +104,11 @@ pip install ollama==0.6.1
 ## 6. DSL Step Rules
 
 - Document explicit waits as first-class DSL steps, not as ad hoc examples or sleep-based workarounds.
+- When documenting typing syntax, keep the argument order exact: `Type 'Value' into 'Target'` is value-first because `into` marks the target, while `Fill 'Target' field with 'Value'` remains target-first/value-last.
 - Document lifecycle hooks with bracket-only syntax: `[SETUP]` / `[END SETUP]` and `[TEARDOWN]` / `[END TEARDOWN]`. Do not introduce `SETUP:` / `TEARDOWN:` aliases.
 - When documenting hooks, mention that `PRINT "..."`, `CALL PYTHON ... into {var}`, optional `with args:`, `@script: {alias} = package.module`, `@script: {callable_alias} = package.module.function`, and the `hunt dir → CWD → sys.path` resolution order are supported.
 - When documenting failure semantics, state that setup-hook failures mark the mission as `broken` and skip browser steps.
+- When documenting `SCAN PAGE`, mention that checkbox/radio identifiers should come from associated labels when available, and that fillable controls may surface current non-empty values for downstream tooling.
 - Supported syntax:
   - `Wait for "Welcome, User" to be visible`
   - `Wait for 'Loading...' to disappear`

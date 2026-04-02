@@ -12,12 +12,12 @@
 >
 > A feature that appears in one file but not the others is a documentation bug.
 > This `.github/copilot-instructions.md` file is the single canonical source of Copilot/LLM instructions for this repository. Any mirrored copies used by tooling or templates must reference this file or be kept byte-for-byte in sync as generated artifacts.
-> If the same change also affects the companion VS Code extension's Marketplace listing or release notes, update those in the separate extension repository when that repo is part of the task.
+> If the same change also affects the companion Manul Engine Extension for VS Code's Marketplace listing or release notes, update those in the separate extension repository when that repo is part of the task.
 
 ## SOLO DEV ALPHA POSITIONING
 
 > **CRITICAL — Read this first.**
-> In this repository, ManulEngine should be documented as a solo-developed alpha-stage runtime with a companion VS Code extension. Manul Studio, when mentioned, is a separate repository rather than the IDE surface of this one.
+> In this repository, ManulEngine should be documented as a solo-developed alpha-stage runtime with a companion Manul Engine Extension for VS Code. Manul Studio, when mentioned, is a separate repository rather than the IDE surface of this one.
 > Never imply guarantees of stability, maturity, support, or production-readiness.
 > When project status is relevant, be explicit that bugs are expected, APIs may change, and the project is meant for exploration and technical feedback rather than production CI/CD promises.
 
@@ -33,7 +33,7 @@ ManulEngine is a **deterministic, DSL-first Web & Desktop Automation Runtime**. 
 5. **Never describe ManulEngine as "AI-powered" or "neuro-symbolic".** The correct framing is: "a deterministic, DSL-first Web & Desktop Automation Runtime backed by Playwright, with optional local AI for self-healing."
 6. **Understand the four automation pillars.** ManulEngine scripts (`.hunt` files) can serve as QA/E2E tests, RPA workflows, synthetic monitors, or AI-agent execution targets. The same DSL commands (`NAVIGATE`, `CLICK`, `FILL`, `EXTRACT`, `VERIFY`, `CALL PYTHON`, etc.) apply to all four use cases. When generating `.hunt` files, adapt the structure to the user's intent — a monitoring script may skip `VERIFY` in favour of `EXTRACT`; an RPA script may use `CALL PYTHON` extensively for data processing; an AI-agent script should use strict DSL commands (never raw Playwright calls) for safety.
 7. **When updating public docs, keep the runtime-reference layer intact.** README.md is not only a landing page. It should retain concrete sections for explainability layers, configuration surface, automation pillars, desktop automation, hooks/variables orchestration, and test/benchmark coverage.
-8. **When documenting the companion VS Code extension for end users, prefer the published Marketplace install path.** Do not default public docs to local extension build instructions unless the user explicitly asks about extension development.
+8. **When documenting the companion Manul Engine Extension for VS Code for end users, prefer the published Marketplace install path.** Do not default public docs to local extension build instructions unless the user explicitly asks about extension development.
 9. **For public README assets, use absolute URLs.** If an image or badge must render on PyPI or other package indexes, use an absolute GitHub raw URL rather than a relative repository path like `images/foo.png`.
 
 ## What is this project?
@@ -61,7 +61,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.18
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.19
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession
   api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)
@@ -126,7 +126,7 @@ tests/
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
   rahul.hunt              integration: radios, autocomplete, hover
   saucedemo.hunt          integration: login, inventory, cart
-  wikipedia.hunt          integration: search, navigate, extract, verify, shadow-dom inputs
+  call_python_variants.hunt  integration: all CALL PYTHON variants (positional args, aliases, to/into capture)
 benchmarks/
   run_benchmarks.py        Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
 ```
@@ -398,11 +398,12 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * **iframe routing in `core.py`:** `_snapshot()` iterates `page.frames`, evaluates `SNAPSHOT_JS` per frame, tags elements with `frame_index`. `_frame_for(page, el)` resolves the correct Playwright `Frame` by index with stale fallback to main frame. All 12+ locator call-sites in `actions.py` route through the resolved frame. Cross-origin frames are silently skipped (3-retry, 1.5s backoff on `closed` errors).
 * **TreeWalker in `js_scripts.py`:** `SNAPSHOT_JS` uses `document.createTreeWalker()` with a `PRUNE` set (`SCRIPT, STYLE, SVG, NOSCRIPT, TEMPLATE, META, PATH, G, BR, HR`). Visibility checked via `checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })` with `offsetWidth/offsetHeight` fallback. Hidden checkbox/radio/file inputs are kept (special-input exception). No `getComputedStyle` in the hot loop.
 * `actions.py` is a **mixin** (`_ActionsMixin`) inherited by `ManulEngine` in `core.py`. Explicit waits live here as `_handle_wait_for_element()` and are executed as parser-level system steps rather than generic heuristic actions.
+* **Input phrasing in `actions.py`:** steps containing `into` are parsed as value-first (`Type 'VALUE' into 'TARGET'`); `Fill ... with ...` and generic enter/fill phrasing remain value-last. Do not invert these forms when generating DSL.
 * `cache.py` is a **mixin** (`_ControlsCacheMixin`) inherited by `ManulEngine` in `core.py`. It owns all persistent per-site controls-cache logic.
 * `ManulEngine` MRO: `class ManulEngine(_ControlsCacheMixin, _ActionsMixin)` in `core.py`.
 * `prompts.py` loads config from `manul_engine_configuration.json` (CWD first, then package root fallback). No dotenv dependency.
 * `js_scripts.py` owns **all** JavaScript constants injected into the browser — no inline JS in Python files. This includes `SCAN_JS` (Smart Page Scanner).
-* `scanner.py` owns the standalone scan logic: `SCAN_JS` is imported from `js_scripts.py`; `build_hunt()` maps raw element dicts to hunt steps; `scan_page()` is the async Playwright runner; `scan_main()` is the async CLI entry called by `cli.py`. `_default_output()` reads `tests_home` from the config to derive the default output path.
+* `scanner.py` owns the standalone scan logic: `SCAN_JS` is imported from `js_scripts.py`; `build_hunt()` maps raw element dicts to hunt steps; `scan_page()` is the async Playwright runner; `scan_main()` is the async CLI entry called by `cli.py`. `_default_output()` reads `tests_home` from the config to derive the default output path. `SCAN_JS.bestLabel()` should prefer associated checkbox/radio labels, and scan entries may include `manul_id` plus current non-empty values for fillable controls.
 * `helpers.py` provides `HuntBlock`, `parse_hunt_blocks(task, file_lines=None)`, `env_bool(name, default)`, `detect_mode(step)`, and `classify_step(step)`. `parse_hunt_blocks()` is the runtime-level hierarchical parser that groups STEP headers into parent blocks and action lines into child lists while preserving block and action file lines for breakpoint mapping.
 * **Null model = heuristics-only:** When `model` is `None`, `_llm_json()` returns `None` immediately. `get_threshold(None)` returns `0`. No Ollama calls are made.
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
@@ -428,7 +429,7 @@ python manul.py test
 
 # Integration tests (needs Playwright browsers; Ollama optional)
 manul tests/                     # run all *.hunt files in tests/
-manul tests/wikipedia.hunt       # single hunt
+manul tests/saucedemo.hunt       # single hunt
 manul --headless tests/          # headless mode
 manul --browser firefox tests/   # run in Firefox instead of Chromium
 manul --tags smoke tests/        # run only files tagged 'smoke'
@@ -662,7 +663,7 @@ async with ManulSession() as session:
 
 **When to recommend ManulSession vs .hunt files:**
 * Recommend `ManulSession` when the user wants to write automation in pure Python, integrate with existing pytest suites, build RPA scripts, or use ManulEngine as a library.
-* Recommend `.hunt` files when the user wants shared QA artifacts readable by non-technical stakeholders, or when using the VS Code extension's Test Explorer / debug features.
+* Recommend `.hunt` files when the user wants shared QA artifacts readable by non-technical stakeholders, or when using the Manul Engine Extension for VS Code's Test Explorer / debug features.
 
 ---
 
@@ -687,7 +688,9 @@ async with ManulSession() as session:
 * **Overlapped Elements:** Modern UIs use invisible overlays. The engine primarily uses Playwright with `force=True` plus retries/alternate candidates; JS helpers (`window.manulClick`, `window.manulType`) are mainly used for Shadow DOM elements.
 * **Deep Text Verification:** Standard `document.body.innerText` does not see text inside Shadow DOMs or Input values. `_handle_verify` uses a JS collector (`VISIBLE_TEXT_JS`) plus fallback checks.
 * **Form Auto-clearing:** Before typing into an input using `loc.type()`, always `await loc.fill("")` to prevent appending text to pre-filled placeholders (especially critical on Wikipedia and search bars).
+* **Input order semantics:** `Type 'VALUE' into 'TARGET'` is value-first because `into` marks the target after the first quoted string. `Fill 'TARGET' field with 'VALUE'` stays target-first/value-last. Do not describe or generate these forms interchangeably.
 * **Checkbox/Radio strictness:** Heuristics must ruthlessly penalize (-50_000) non-checkbox elements when the user specifically asks to "Check" or "Select the radio", to prevent clicking a nearby `<td>` that happens to share the target text.
+* **Scanner label quality:** For checkbox/radio controls, prefer visible label association (`label[for]`, wrapping `<label>`, adjacent label) over generic text extraction so generated hunt identifiers match what humans see.
 * **Contextual navigation:** Prefer DSL qualifiers such as `NEAR 'Search'`, `ON HEADER`, `ON FOOTER`, and `INSIDE 'Actions' row with 'John Doe'` before suggesting brittle selectors or custom controls for repeated standard widgets.
 * **SVG quirks:** `el.className` might not be a string. In `SNAPSHOT_JS`, safely extract it: `typeof el.className === 'string' ? el.className : el.getAttribute('class')`.
 * **Table Extraction & Legacy HTML:** When extracting rows based on text, use the shared `wordMatch()` helper from `EXTRACT_DATA_JS` instead of ad‑hoc `.includes()` calls. It uses word-boundary matching for short tokens and falls back to substring matching for longer tokens to reduce partial hits (e.g., "Javascript" vs "Java"). For legacy forms without explicit `<label>` tags, inputs inside `<fieldset>` should inherit context from `<legend>`.
@@ -724,7 +727,7 @@ Each element dict returned by `SNAPSHOT_JS` contains:
 * `self.learned_elements` — semantic cache: `(mode, search_texts, target_field) → {name, tag}`.
 * `self.last_xpath` — used for Contextual Reuse (if next step says "in that field").
 
-## Companion VS Code extension
+## Companion Manul Engine Extension for VS Code
 
 The companion extension is published separately from this runtime repository. When the extension source is checked out in its own repository or added to the workspace, it provides hunt file language support, Test Explorer integration, a config sidebar, cache browser, and an interactive debug runner.
 
@@ -761,4 +764,4 @@ When the version changes, **ALL** of the following files must be updated:
 | `.github/copilot-instructions.md` | Version in the repo layout section (this file) |
 | `.cursorrules` | Version examples and pinned `pip install` commands under `## 3. Versioning and Dependencies` |
 
-Companion VS Code extension versioning and Marketplace release notes are maintained in the separate extension repository.
+Companion Manul Engine Extension for VS Code versioning and Marketplace release notes are maintained in the separate extension repository.

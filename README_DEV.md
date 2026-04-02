@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.18 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.19 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -25,7 +25,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.18
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.19
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession
@@ -95,7 +95,7 @@ ManulEngine/
 │   ├── mega.hunt                     Large UI gauntlet; includes commented custom-control and hook examples
 │   ├── rahul.hunt                    Rahul Shetty practice flow: radio, autocomplete, hover
 │   ├── saucedemo.hunt                SauceDemo checkout flow with commented lifecycle-hook examples
-│   └── wikipedia.hunt                Wikipedia research flow with commented inline CALL PYTHON examples
+│   └── call_python_variants.hunt     All CALL PYTHON variants: positional args, aliases, to/into capture
 ├── reports/                          Generated logs and HTML reports (auto-created, .gitignored)
 ├── benchmarks/                       Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
 │   └── run_benchmarks.py            Benchmark runner: ManulEngine vs raw Playwright
@@ -105,7 +105,7 @@ ManulEngine/
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
 ```
 
-Companion VS Code extension source is maintained separately and is not included in this workspace.
+Companion Manul Engine Extension for VS Code source is maintained separately and is not included in this workspace.
 
 ---
 
@@ -559,7 +559,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.18
+pip install manul-engine==0.0.9.19
 playwright install chromium
 ```
 
@@ -630,7 +630,7 @@ Synthetic tests (`python manul.py test`) disable cache by default for determinis
 ```bash
 # Installed CLI (after pip install manul-engine)
 manul tests/                       # run all *.hunt files
-manul tests/wikipedia.hunt         # single hunt
+manul tests/saucedemo.hunt         # single hunt
 manul --headless tests/            # headless mode
 manul --browser firefox tests/     # run in Firefox
 manul tests/ --workers 4           # run 4 hunt files in parallel
@@ -823,9 +823,9 @@ The default prompt templates now also teach contextual disambiguation syntax for
 
 ---
 
-## 🖱️ VS Code Extension
+## 🖱️ Manul Engine Extension
 
-The companion VS Code extension is published separately from this runtime repository. Normal installation should use the published Marketplace build.
+The companion Manul Engine Extension for VS Code is published separately from this runtime repository. Normal installation should use the published Marketplace build.
 
 Marketplace page:
 
@@ -862,15 +862,14 @@ The published extension provides:
 
 ---
 
-## Release Notes: v0.0.9.18
+## Release Notes: v0.0.9.19
 
-- **Code optimization:** pre-compiled the repeated numbered-prefix regex (`_RE_NUMBERED_PREFIX`) in `core.py` at module level, matching the convention in `helpers.py`. Removes redundant `re.compile` work from the step execution loop.
-- **Dedicated prompts/config test suite:** `test_48_prompts_config.py` adds 83 assertions covering `_threshold_for_model`, `get_threshold` priority chain, `lookup_page_name` resolution (exact, regex, Domain fallback, auto-populate), `_KEY_MAP` completeness, `env_bool` helper, and module-level defaults.
-- **Test suite expanded to 2731 assertions** across 49 suites (was 2648 / 48 in v0.0.9.17).
-- **`explain_mode` config key documented** in the README configuration table (was available via `MANUL_EXPLAIN` but omitted from the reference).
-- **Full documentation sync:** README.md, README_DEV.md, `.github/copilot-instructions.md`, and `.cursorrules` updated to v0.0.9.18 with accurate test counts, file listings, and feature descriptions.
+- **`actions.py` input-order fix:** `_execute_step()` now treats `into` phrasing as value-first (`Type 'VALUE' into 'TARGET'`) while preserving the existing `Fill 'TARGET' field with 'VALUE'` behavior. This removes a real target/value inversion bug for typed-input steps.
+- **`js_scripts.py` label extraction upgrade:** `SCAN_JS.bestLabel()` now prefers associated checkbox/radio labels from `label[for]`, wrapping `<label>`, and adjacent label siblings before falling back to generic text/attributes.
+- **Richer scanner payloads:** scan results now include `manul_id` plus the current non-empty `value` for `input` and `select` controls, giving downstream tooling enough state to reason about prefilled controls.
+- **Release line synchronized to `0.0.9.19`:** package metadata and the repo-local documentation set were updated together.
 
-**Version:** 0.0.9.18
+**Version:** 0.0.9.19
 
 **Codename:** Quality Audit
 
