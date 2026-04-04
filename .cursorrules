@@ -45,25 +45,25 @@ Follow these rules before generating code, documentation, architecture notes, or
 
 ## 3. Versioning and Dependencies
 
-- Treat `0.0.9.19` as the current engine version for this documentation and release line.
+- Treat `0.0.9.20` as the current engine version for this documentation and release line.
 - When version metadata is required in config examples or integration code, use:
 
 ```json
 {
-  "manulEngineVersion": "0.0.9.19"
+  "manulEngineVersion": "0.0.9.20"
 }
 ```
 
 - When generating `pip install` commands, pin the exact version, for example:
 
 ```bash
-pip install manul-engine==0.0.9.19
+pip install manul-engine==0.0.9.20
 ```
 
 - If the AI extra is needed, pin that exact version too:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.19"
+pip install "manul-engine[ai]==0.0.9.20"
 ```
 
 - When standalone Python dependencies must be installed manually for this release line, pin them explicitly too:
