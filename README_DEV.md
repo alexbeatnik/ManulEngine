@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.20 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.21 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -25,7 +25,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.20
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.21
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession
@@ -559,7 +559,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.20
+pip install manul-engine==0.0.9.21
 playwright install chromium
 ```
 
@@ -862,12 +862,13 @@ The published extension provides:
 
 ---
 
-## Release Notes: v0.0.9.20
+## Release Notes: v0.0.9.21
 
-- **`core.py` import tightening:** broad `os` imports were replaced with targeted environment and path access so static supply-chain scanners no longer misclassify the runtime as using shell access.
-- **Release line synchronized to `0.0.9.20`:** package metadata and the repo-local documentation set were updated together.
+- **CLI hardening:** `_Tee.isatty()` delegates to the real terminal; subprocess workers timeout after 600s (configurable via `MANUL_WORKER_TIMEOUT`); `_find_manul_exe()` uses `sys.executable -m manul_engine`; `--executable-path` forwarded to workers; pre-compiled regex in `_read_tags()`; `electron` removed from `--browser` (use `--executable-path`).
+- **CLI Contract:** new `MANUL_CLI_CONTRACT.md` machine-readable contract for downstream tooling.
+- **Release line synchronized to `0.0.9.21`:** package metadata and the repo-local documentation set were updated together.
 
-**Version:** 0.0.9.20
+**Version:** 0.0.9.21
 
 **Codename:** Quality Audit
 
