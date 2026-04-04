@@ -127,3 +127,4 @@ pip install ollama==0.6.1
 - When the user asks for exact text or placeholder verification, generate only `Verify "{element_name}" {type} has text "{expected_text}"` or `Verify "{element_name}" field/input has placeholder "{expected_placeholder}"`.
 - When the user asks for exact current field content or textarea value verification, generate only `Verify "{element_name}" field/input has value "{expected_value}"`.
 - Do not invent alternate text assertion verbs such as `Check if text is`.
+- When documenting import directives, use `@import: Block1, Block2 from source.hunt` and `@export: Block1`. `USE BlockName` expands an imported block inline. `@import: * from lib.hunt` is wildcard import; `@import: Login as AuthLogin from lib.hunt` is aliased import. Imported `@var:` declarations inherit at the lowest (import) scope.

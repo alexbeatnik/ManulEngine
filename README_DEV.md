@@ -47,7 +47,9 @@ ManulEngine/
 │   ├── actions.py                    Action execution mixin (click, type, select, hover, drag, scan_page)
 │   ├── reporting.py                  StepResult, MissionResult, RunSummary dataclasses; run_history + report-session state persistence
 │   ├── reporter.py                   Interactive HTML report generator (dark theme, control panel, tag chips, Run Session banner, base64 screenshots)
-│   ├── variables.py                  ScopedVariables — 4-level variable hierarchy (row, step, mission, global)
+│   ├── variables.py                  ScopedVariables — 5-level variable hierarchy (row, step, mission, global, import)
+│   ├── imports.py                   @import/@export/USE system — parse_import_directive(), resolve_imports(), expand_use_directives(), validate_exports()
+│   ├── packager.py                  Pack/install .huntlib archives — pack(), install(), _update_lockfile(), resolve_lockfile()
 │   └── test/
 │       ├── test_00_engine.py         Engine micro-suite (synthetic DOM via local HTML)
 │       ├── test_01_ecommerce.py      Scenario pack: ecommerce
@@ -83,12 +85,14 @@ ManulEngine/
 │       ├── test_40_self_healing_cache.py Unit: Self-Healing Controls Cache — stale detection, HEALED logging, cache auto-update (16 assertions)
 │       ├── test_41_recorder.py      Unit: Semantic Test Recorder — JS bridge, DSL generator, step aggregation (no browser)
 │       ├── test_42_scheduler.py     Unit: Built-in Scheduler — parse_schedule, next_run_delay, ParsedHunt integration (51 assertions, no browser)
-│       ├── test_43_scoped_variables.py Unit: ScopedVariables 4-level hierarchy, scope isolation, dict compat (43 assertions, no browser)
+│       ├── test_43_scoped_variables.py Unit: ScopedVariables 5-level hierarchy, scope isolation, dict compat (44 assertions, no browser)
 │       ├── test_44_explain_mode.py   Unit: DOMScorer explain output, channel breakdown, --explain CLI flag (33 assertions, no browser)
 │       ├── test_45_api.py            Unit: ManulSession public Python API facade (50 assertions, no browser)
 │       ├── test_46_attribute_semantic.py Unit: attribute-semantic icon matching, camelCase dev attrs, cart badges, false-positive resistance (34 assertions, no browser)
-│       └── test_47_contextual_proximity.py Unit: contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser rules (67 assertions, no browser)
-├── controls/                         User-owned custom Python handlers (loaded from directories listed in `custom_controls_dirs` config)
+│       └── test_47_contextual_proximity.py Unit: contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser rules (67 assertions, no browser)│       ├── test_48_prompts_config.py  Unit: Configuration loading, threshold derivation, page-name lookup, _KEY_MAP, env_bool (83 assertions, no browser)
+│       ├── test_50_imports.py         Unit: @import/@export/USE directive system (84 assertions, no browser)
+│       ├── test_51_packager.py        Unit: Pack/install .huntlib archives and lockfile (21 assertions, no browser)
+│       └── test_52_exports.py         Unit: @export validation, wildcard exports, access control (19 assertions, no browser)├── controls/                         User-owned custom Python handlers (loaded from directories listed in `custom_controls_dirs` config)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
 │   ├── demoqa.hunt                   DemoQA form, checkbox, radio, and table coverage
@@ -380,7 +384,7 @@ Fill 'Security Code' with '{dynamic_otp}'
 
 When a hook helper returns a dict such as `{"tenant_id": 42, "otp": 123456}`, `bind_hook_result()` flattens it into shared variables. That makes both `{tenant_id}` and `{otp}` available immediately to later hook lines and to the browser mission without additional glue code.
 
-`parse_hunt_file()` in `cli.py` returns a **10-field `ParsedHunt` NamedTuple** `(mission, context, title, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags, data_file, schedule)`. It also strips header-only `@script:` declarations, validates that they use dotted Python import paths, and rewrites `CALL PYTHON {alias}.func` usages to their real module paths before returning the mission and hook lines. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
+`parse_hunt_file()` in `cli.py` returns a **12-field `ParsedHunt` NamedTuple** `(mission, context, title, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags, data_file, schedule, exports, imports)`. It also strips header-only `@script:` declarations, validates that they use dotted Python import paths, and rewrites `CALL PYTHON {alias}.func` usages to their real module paths before returning the mission and hook lines. `parse_hunt_file()` also resolves `@import:` directives via `resolve_imports()` and expands `USE` directives via `expand_use_directives()` before returning the mission text. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
 
 The full hook unit test suite (`56 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
 

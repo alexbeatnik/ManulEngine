@@ -81,7 +81,9 @@ manul_engine/
   lifecycle.py             Global Lifecycle Hook Registry (@before_all, @after_all, @before_group, @after_group, GlobalContext, load_hooks_file)
   recorder.py              Semantic Test Recorder — JS injection, Python bridge, DSL generator
   scheduler.py             Built-in Scheduler — parse_schedule(), Schedule dataclass, next_run_delay(), daemon_main()
-  variables.py             ScopedVariables — 4-level variable hierarchy (row, step, mission, global)
+  variables.py             ScopedVariables — 5-level variable hierarchy (row, step, mission, global, import)
+  imports.py               @import/@export/USE system — parse_import_directive(), resolve_imports(), expand_use_directives(), validate_exports()
+  packager.py              Pack/install .huntlib archives — pack(), install(), _update_lockfile(), resolve_lockfile()
   _test_runner.py          Dev-only synthetic test runner (not in public CLI)
   test/
     test_00_engine.py       synthetic DOM micro-suite (local HTML via Playwright)
@@ -115,12 +117,15 @@ manul_engine/
     test_40_self_healing_cache.py Self-Healing Controls Cache (16 assertions)
     test_41_recorder.py          Semantic Test Recorder JS bridge + DSL generator + step aggregation (no browser)
     test_42_scheduler.py         Built-in Scheduler — parse_schedule, next_run_delay, ParsedHunt integration (51 assertions, no browser)
-    test_43_scoped_variables.py  ScopedVariables 4-level hierarchy, scope isolation, dict compat (43 assertions, no browser)
+    test_43_scoped_variables.py  ScopedVariables 5-level hierarchy, scope isolation, dict compat (44 assertions, no browser)
     test_44_explain_mode.py      DOMScorer explain output, channel breakdown, --explain CLI flag (33 assertions, no browser)
     test_45_api.py               ManulSession public Python API facade (50 assertions, no browser)
     test_46_attribute_semantic.py Attribute-semantic icon matching, camelCase dev attrs, cart badges, false-positive resistance (34 assertions, no browser)
     test_47_contextual_proximity.py Contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser coverage (67 assertions, no browser)
     test_48_prompts_config.py  Configuration loading, threshold derivation, page-name lookup, _KEY_MAP, env_bool (83 assertions, no browser)
+    test_50_imports.py         @import/@export/USE directive system (84 assertions, no browser)
+    test_51_packager.py        Pack/install .huntlib archives and lockfile (21 assertions, no browser)
+    test_52_exports.py         @export validation, wildcard exports, access control (19 assertions, no browser)
 tests/
   demoqa.hunt             integration: forms, checkboxes, radios, tables
   mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
@@ -137,6 +142,12 @@ contracts/
   MANUL_HOOKS_CONTRACT.md  Machine-readable contract: hooks & lifecycle
   MANUL_REPORTING_CONTRACT.md Machine-readable contract: reporting pipeline
   MANUL_SCORING_CONTRACT.md  Machine-readable contract: DOMScorer heuristics
+Dockerfile                 Multi-stage CI/CD runner image (ghcr.io/alexbeatnik/manul-engine)
+.dockerignore              Build-context exclusions for Docker
+docker-compose.yml         Local dev/CI compose: manul, manul-daemon, manul-serve services
+.github/workflows/
+  docker-publish.yml       Multi-platform Docker image build + GHCR push
+  manul-ci.yml             Reusable example workflow for downstream repos
 ```
 
 ## How the engine works
@@ -256,6 +267,8 @@ Placed at the top of the file. Used by the engine for logging and LLM context.
 * `@tags: tag1, tag2` — Arbitrary comma-separated run tags. Used with `manul --tags smoke tests/` to filter which files execute.
 * `@data: path/to/file.json` — Data-driven testing. Points to a JSON (array-of-objects) or CSV file. The engine loads each row and reruns the entire mission with row values injected as `{placeholders}`. Path resolved relative to hunt file directory, then CWD.
 * `@schedule: <expression>` — Built-in scheduler header. Declares a schedule for the daemon mode (`manul daemon`). Supported expressions: `every N seconds/minutes/hours`, `every minute/hour`, `daily at HH:MM`, `every <weekday>`, `every <weekday> at HH:MM`. Parsed by `parse_schedule()` in `scheduler.py`. Files without `@schedule:` are ignored by the daemon.
+* `@import: Block1, Block2 from source.hunt` — Imports named STEP blocks from another `.hunt` file. Supports named imports (`@import: Login, Logout from lib/auth.hunt`), wildcard (`@import: * from lib.hunt`), aliases (`@import: Login as AuthLogin from lib.hunt`), and package-style sources (`@import: Login from @my-lib`). Imported blocks are expanded inline via `USE` directives. `@var:` declarations from the source file are inherited at `LEVEL_IMPORT` (lowest priority).
+* `@export: Block1, Block2` — Declares which STEP blocks are importable by other `.hunt` files. Multiple `@export:` lines are allowed. `@export: *` makes all blocks available. When no `@export:` is declared and a wildcard `@import: *` is used, all blocks are available (open by default).
 
 ### 3. Comments
 * Use `#` at the beginning of a line for comments. Any line whose trimmed text starts with `#` is ignored during execution; `#` appearing after a step on the same line is treated as part of the step text, not a comment.
@@ -274,7 +287,7 @@ Placed at the top of the file. Used by the engine for logging and LLM context.
 > When generating or suggesting `.hunt` files:
 > 1. You MUST use the **Clean, Unnumbered DSL Syntax**. NEVER prepend numbers (`1. `, `2. `) to execution actions.
 > 2. You MUST use **Logical `STEP` Grouping** (`STEP [optional number]: [Description]`) to structure E2E flows, matching manual QA test cases. These map perfectly to the Enterprise HTML Reporter's accordions.
-> 3. You MUST use **4-space indentation** for all action lines under `STEP` headers; comments inside a `STEP` or hook block follow the same 4-space indentation. `STEP` headers themselves, metadata lines (`@context:`, `@var:`, `@script:`, `@tags:`, `@data:`), hook block markers (`[SETUP]`/`[TEARDOWN]`), top-level comments (`#` before the first `STEP`), and `DONE.` must remain flush-left (zero indentation). This matches the VS Code Auto-Formatter output (`Shift+Alt+F`).
+> 3. You MUST use **4-space indentation** for all action lines under `STEP` headers; comments inside a `STEP` or hook block follow the same 4-space indentation. `STEP` headers themselves, metadata lines (`@context:`, `@var:`, `@script:`, `@tags:`, `@data:`, `@import:`, `@export:`), hook block markers (`[SETUP]`/`[TEARDOWN]`), top-level comments (`#` before the first `STEP`), and `DONE.` must remain flush-left (zero indentation). This matches the VS Code Auto-Formatter output (`Shift+Alt+F`).
 
 ### 5. System Keywords (parser-detected)
 These keywords are detected via word-boundary regex, bypass heuristics, and are handled directly by the engine parser:
@@ -297,6 +310,7 @@ These keywords are detected via word-boundary regex, bypass heuristics, and are 
 * `SCAN PAGE` — Runs `SCAN_JS` on the current page, maps results to hunt steps, prints a draft to console.
 * `SCAN PAGE into {filename}` — Same, but also writes the draft to `{filename}`. Output defaults to `{tests_home}/draft.hunt` (reads `tests_home` from `manul_engine_configuration.json`, defaults to `tests/`).
 * `SET {variable_name} = value` — Sets a runtime variable mid-flight. Both `{braced}` and bare key forms accepted. Quoted values are auto-unquoted. Available for `{placeholder}` substitution in subsequent steps.
+* `USE BlockName` — Expands an imported STEP block inline at parse time. The block must have been imported via `@import:`. Aliased names (from `as` clause) are supported. Case-insensitive matching. Expanded actions replace the `USE` line in the mission body with synthetic line numbers (0).
 * `DONE.` — Explicitly ends the mission.
 * `[SETUP]` / `[END SETUP]` — Block wrapping `PRINT ...` and `CALL PYTHON ...` lines. Runs **before** the browser launches. If any line fails, the mission is marked as `broken` and browser steps are skipped.
 * `[TEARDOWN]` / `[END TEARDOWN]` — Cleanup block. Runs in a `finally` block **after** the mission (pass or fail). Only executed if `[SETUP]` succeeded. Failure is logged but does not override the mission result.
@@ -417,7 +431,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
 * **Debug mode:** `ManulEngine(debug_mode=True, break_steps={N,...})`. `debug_mode=True` (from `--debug`) highlights the resolved element and pauses before every step using `input()` in TTY or Playwright's `page.pause()`. `break_steps` (from `--break-lines`) pauses only at listed step indices using the stdout/stdin panel protocol when stdout is not a TTY. The two are mutually exclusive in practice — the extension only ever sets `break_steps` via `--break-lines`.
 * **Element highlight in debug mode:** When `debug_mode=True` (or a `break_steps` pause fires), the engine calls `highlight_element(page, locator)` which injects `<style id="manul-debug-style">` (once) and sets `data-manul-debug-highlight="true"` on the target element, producing a persistent 4px magenta outline + glow that stays until `clear_highlight(page)` is called just before the action executes. A separate `_highlight()` method draws a short 2-second flash (non-debug, `setTimeout` inside JS) for non-pausing visual feedback.
-* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). It also supports `PRINT`, optional `with args:` sugar, the fixed helper-module resolution order (`hunt dir -> CWD -> sys.path`), and `bind_hook_result()` for sharing scalar or dict-returned variables across hook lines and browser steps. `_module_cache` is a module-level `dict[str, ModuleType]` that caches resolved modules by absolute file path (JIT loading). `_resolve_module()` returns `tuple[ModuleType, bool]` (module, from_cache). `clear_module_cache()` resets the cache (used for test isolation). `parse_hunt_file()` in `cli.py` returns a `ParsedHunt` NamedTuple with 10 fields: `mission`, `context`, `title`, `step_file_lines`, `setup_lines`, `teardown_lines`, `parsed_vars`, `tags`, `data_file`, `schedule`. It also strips header-only `@script:` declarations and rewrites `CALL PYTHON {alias}.func` and `CALL PYTHON {callable_alias}` usages to real dotted paths before returning the mission and hook lines. `parse_hunt_file()` does not build hierarchical blocks; the runtime layer does that later with `parse_hunt_blocks()`. `parsed_vars` is a `dict[str, str]` populated from `@var: {key} = value` header lines. `tags` is a `list[str]` populated from `@tags: tag1, tag2` header lines; empty list when absent. `schedule` is a `str` from `@schedule: <expression>`; empty string when absent. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
+* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). It also supports `PRINT`, optional `with args:` sugar, the fixed helper-module resolution order (`hunt dir -> CWD -> sys.path`), and `bind_hook_result()` for sharing scalar or dict-returned variables across hook lines and browser steps. `_module_cache` is a module-level `dict[str, ModuleType]` that caches resolved modules by absolute file path (JIT loading). `_resolve_module()` returns `tuple[ModuleType, bool]` (module, from_cache). `clear_module_cache()` resets the cache (used for test isolation). `parse_hunt_file()` in `cli.py` returns a `ParsedHunt` NamedTuple with 12 fields: `mission`, `context`, `title`, `step_file_lines`, `setup_lines`, `teardown_lines`, `parsed_vars`, `tags`, `data_file`, `schedule`, `exports`, `imports`. It also strips header-only `@script:` declarations and rewrites `CALL PYTHON {alias}.func` and `CALL PYTHON {callable_alias}` usages to real dotted paths before returning the mission and hook lines. `parse_hunt_file()` does not build hierarchical blocks; the runtime layer does that later with `parse_hunt_blocks()`. `parsed_vars` is a `dict[str, str]` populated from `@var: {key} = value` header lines. `tags` is a `list[str]` populated from `@tags: tag1, tag2` header lines; empty list when absent. `schedule` is a `str` from `@schedule: <expression>`; empty string when absent. `exports` is a `list[str]` from `@export:` header lines; empty list when absent. `imports` is a `list[ImportDirective]` from `@import:` header lines; empty list when absent. `parse_hunt_file()` also resolves imports via `resolve_imports()` and expands `USE` directives via `expand_use_directives()` before returning the mission text. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
 * **Auto-Nav annotation:** When `auto_annotate` is enabled, `run_mission()` captures `url_before = page.url` before every action. For `NAVIGATE` actions, the annotation is written above the action itself. For all other actions, `url_after` is checked in the `finally` block — if the URL changed, `_auto_annotate_navigate(page, hunt_file, action_file_lines, action_idx+1)` is called to insert a comment above the next action line. The comment uses the mapped page name when found in `pages.json`, or the full URL when the lookup returns an `"Auto:"` placeholder.
 * **`pages.json` — nested per-site format:** `{ "<site_root_url>": { "Domain": "<display_name>", "<regex_or_exact_url>": "<page_name>" } }`. `lookup_page_name(url)` in `prompts.py` re-reads this file from disk on **every call** (live edits take effect immediately with no restart). Resolution order: exact URL key → regex/substring patterns (skipping `"Domain"` key) → `"Domain"` fallback. When no site block matches, a new nested entry is auto-generated. The longest-prefix site block wins when multiple blocks could match.
 * **`_debug_prompt()` `debug-stop` token:** When Python receives `"debug-stop"` on stdin from the VS Code extension (user pressed ⏹ Debug Stop), it clears **both** `self._user_break_steps = set()` and `self.break_steps = set()`, then breaks the pause loop. The test run continues to completion without any further pauses.
@@ -471,6 +485,32 @@ To use Ollama: install the [Ollama app](https://ollama.com), run `pip install ol
 **Rule:** after any engine change, `python manul.py test` must exit with code **0**.
 Tip: `"model": null` (the default) forces heuristics-only mode. This is the recommended configuration for deterministic tests and CI pipelines.
 Note: `python manul.py test` disables persistent controls cache by default for deterministic synthetic suites. `test_13_controls_cache.py` explicitly enables cache in a temporary `cache/run_<datetime>` folder and removes it after the test.
+
+## Docker CI/CD Runner
+
+ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headless CI runner image published to `ghcr.io/alexbeatnik/manul-engine`.
+
+```bash
+docker run --rm --shm-size=1g \
+  -v $(pwd)/tests:/workspace/tests:ro \
+  -v $(pwd)/reports:/workspace/reports \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.22 \
+  --html-report --screenshot on-fail tests/
+```
+
+Image characteristics:
+* Two-stage build: `deps` (pip install + Playwright browsers) → `runtime` (slim, no build tools or pip cache).
+* Non-root user `manul` (UID 1000). No `--privileged` needed.
+* `dumb-init` as PID 1 for proper signal handling and exit-code propagation.
+* CI defaults baked in: `MANUL_HEADLESS=true`, `MANUL_BROWSER_ARGS="--no-sandbox --disable-dev-shm-usage"`, `TZ=UTC`, `LANG=C.UTF-8`.
+* Build args: `MANUL_VERSION` (pip version), `PYTHON_VERSION` (base image), `BROWSERS` (space-separated, default `chromium`).
+* Volume mount pattern: `/workspace/tests` (ro), `/workspace/reports` (rw), `/workspace/cache` (rw), `/workspace/controls` (ro), `/workspace/scripts` (ro).
+
+`docker-compose.yml` defines three services: `manul` (test runner), `manul-daemon` (scheduled hunts, `restart: unless-stopped`), `manul-serve` (HTTP API on port 8000).
+
+GitHub Actions workflows:
+* `docker-publish.yml` — builds multi-platform images (`linux/amd64`, `linux/arm64`), pushes to GHCR, tags: `latest`, semver, git SHA.
+* `manul-ci.yml` — reusable example workflow for downstream repos to run `.hunt` tests against the published image.
 
 ## Configuration (manul_engine_configuration.json)
 
