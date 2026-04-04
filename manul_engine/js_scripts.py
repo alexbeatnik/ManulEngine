@@ -279,13 +279,6 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
             }
         }
 
-        // ── Assign stable runtime ID ──────────────────────────────────
-        if (!el.dataset.manulId) {
-            const id = window.manulIdCounter++;
-            el.dataset.manulId = id;
-            window.manulElements[id] = el;
-        }
-
         results.push({ el, inShadow, hidden, rect });
     };
 
@@ -306,6 +299,16 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
     };
 
     walk(document.body || document.documentElement, false);
+
+    // ── Assign stable runtime IDs (batched after layout reads to prevent CSS thrashing) ───
+    for (let i = 0; i < results.length; i++) {
+        const el = results[i].el;
+        if (!el.dataset.manulId) {
+            const id = window.manulIdCounter++;
+            el.dataset.manulId = id;
+            window.manulElements[id] = el;
+        }
+    }
 
     // ── Sort by vertical position (cached rects — no extra reflows) ───
     results.sort((a, b) => a.rect.top - b.rect.top);

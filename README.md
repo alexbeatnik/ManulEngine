@@ -630,6 +630,9 @@ Representative coverage areas include:
 
 ## What's New in v0.0.9.21
 
+- **Stability and Performance**: Fixed Javascript layout thrashing in `SNAPSHOT_JS` by grouping geometry reads and batching `dataset.manulId` DOM writes, entirely removing CSS recalculation spikes within the `TreeWalker` loop.
+- **Cross-origin Iframe Resilience**: Hardened `_frame_for` routing in `core.py` by matching frame URLs (`frame.url`, `frame.name`) alongside indices, and added exception guards for transient "execution context" destructions during rapidly reloading frames.
+- **LLM Robustness**: Enhanced `_llm_json` fallback decoder to cleanly strip Markdown codeblock wrappers (````json ... ````) commonly output by smaller local LLMs like Qwen2.5.
 - **CLI hardening:** `_Tee.isatty()` now delegates to the underlying terminal; subprocess workers have a configurable timeout (`MANUL_WORKER_TIMEOUT`); `_find_manul_exe()` uses `sys.executable -m manul_engine` for cross-venv safety; `--executable-path` forwarded to parallel workers; pre-compiled regex in header scan; removed `electron` from `--browser` (use `--executable-path` instead).
 - **Machine-readable contracts:** `contracts/` directory with 7 contract files for downstream tooling integration — CLI, DSL, Config, Reporting, Scoring, API, and Hooks & Lifecycle.
 - **Release line synchronized to `0.0.9.21`:** package metadata and release-facing docs were updated alongside the runtime changes.

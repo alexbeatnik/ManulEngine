@@ -206,17 +206,27 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                 format="json",
             )
             raw = resp["message"]["content"]
+            
+            # Strip markdown code blocks before searching for open brace
+            raw_clean = raw.strip()
+            if raw_clean.startswith("```json"):
+                raw_clean = raw_clean[7:]
+            elif raw_clean.startswith("```"):
+                raw_clean = raw_clean[3:]
+            if raw_clean.endswith("```"):
+                raw_clean = raw_clean[:-3]
+                
             # Use json.JSONDecoder to find the first complete JSON object
             # instead of greedy regex which fails on nested braces.
             decoder = json.JSONDecoder()
-            start = raw.find("{")
+            start = raw_clean.find("{")
             if start != -1:
                 try:
-                    obj, _ = decoder.raw_decode(raw, start)
+                    obj, _ = decoder.raw_decode(raw_clean, start)
                     return obj
                 except json.JSONDecodeError:
                     pass
-            return json.loads(raw)
+            return json.loads(raw_clean)
         except Exception as e:
             print(f"    ⚠️  LLM error: {e}")
             return None
@@ -570,9 +580,20 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         main frame so callers never get ``None``.
         """
         idx = el.get("frame_index", 0)
+        url = el.get("frame_url")
+        name = el.get("frame_name")
         frames = page.frames
+        
+        # 1. Try URL and name match (most robust across frame reloads)
+        if url is not None and name is not None:
+            for f in frames:
+                if f.url == url and f.name == name:
+                    return f
+                    
+        # 2. Try blind index fallback (assuming no frame shifting)
         if 0 <= idx < len(frames):
             return frames[idx]
+            
         return page  # main frame fallback
 
     async def _snapshot(self, page, mode: str, texts: list[str]) -> list[dict]:
@@ -592,10 +613,13 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                     frame_els = await frame.evaluate(SNAPSHOT_JS, args)
                     for el in frame_els:
                         el["frame_index"] = idx
+                        el["frame_url"] = frame.url
+                        el["frame_name"] = frame.name
                     all_elements.extend(frame_els)
                     break  # success — stop retry loop
                 except Exception as exc:
-                    if "closed" in str(exc).lower() and attempt < 2:
+                    err_msg = str(exc).lower()
+                    if ("closed" in err_msg or "execution context" in err_msg or "detached" in err_msg) and attempt < 2:
                         await asyncio.sleep(1.5)
                         continue
                     if idx == 0:
