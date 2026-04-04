@@ -110,6 +110,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Extract version from tag
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "manul_version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "manul_version=0.0.9.22" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -132,8 +141,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            MANUL_VERSION=${{ github.ref_name && startsWith(github.ref, 'refs/tags/v') && format('{0}', github.ref_name) || '0.0.9.22' }}
+            MANUL_VERSION=${{ steps.version.outputs.manul_version }}
 
       - name: Smoke test
         run: |
-          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${GITHUB_SHA::7} --help
+          TAG="sha-${GITHUB_SHA::7}"
+          docker pull "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}"
+          docker run --rm "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}" --help
