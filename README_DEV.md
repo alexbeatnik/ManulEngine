@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.21 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.22 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -25,7 +25,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.21
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.22
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession
@@ -111,6 +111,12 @@ ManulEngine/
 │   ├── README.md                     Usage guide (Copilot, ChatGPT, Claude, Ollama)
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
+├── Dockerfile                        Multi-stage CI/CD runner image (ghcr.io/alexbeatnik/manul-engine)
+├── .dockerignore                     Build-context exclusions for Docker
+├── docker-compose.yml                Local dev/CI compose: manul, manul-daemon, manul-serve services
+└── .github/workflows/
+    ├── docker-publish.yml            Multi-platform Docker image build + GHCR push
+    └── manul-ci.yml                  Reusable example workflow for downstream repos
 ```
 
 Companion Manul Engine Extension for VS Code source is maintained separately and is not included in this workspace.
@@ -567,7 +573,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.21
+pip install manul-engine==0.0.9.22
 playwright install chromium
 ```
 
@@ -679,7 +685,38 @@ python manul.py --headless tests/
 
 ---
 
-## 🚀 Quick Start
+## � Docker CI/CD Runner
+
+ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headless CI runner image published to `ghcr.io/alexbeatnik/manul-engine`.
+
+```bash
+docker run --rm --shm-size=1g \
+  -v $(pwd)/tests:/workspace/tests:ro \
+  -v $(pwd)/reports:/workspace/reports \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.22 \
+  --html-report --screenshot on-fail tests/
+```
+
+**Image characteristics:**
+* Two-stage build: `deps` (pip install + Playwright browsers) → `runtime` (slim, no build tools or pip cache).
+* Non-root user `manul` (UID 1000). No `--privileged` needed.
+* `dumb-init` as PID 1 for proper signal handling and exit-code propagation.
+* CI defaults baked in: `MANUL_HEADLESS=true`, `MANUL_BROWSER_ARGS="--no-sandbox --disable-dev-shm-usage"`, `TZ=UTC`, `LANG=C.UTF-8`.
+* Build args: `MANUL_VERSION` (pip version), `PYTHON_VERSION` (base image), `BROWSERS` (space-separated, default `chromium`).
+* Volume mount pattern: `/workspace/tests` (ro), `/workspace/reports` (rw), `/workspace/cache` (rw), `/workspace/controls` (ro), `/workspace/scripts` (ro).
+
+**docker-compose.yml** defines three services:
+* `manul` — test runner
+* `manul-daemon` — scheduled hunts (`restart: unless-stopped`)
+* `manul-serve` — HTTP API on port 8000
+
+**GitHub Actions workflows:**
+* `docker-publish.yml` — builds multi-platform images (`linux/amd64`, `linux/arm64`), pushes to GHCR, tags: `latest`, semver, git SHA.
+* `manul-ci.yml` — reusable example workflow for downstream repos to run `.hunt` tests against the published image.
+
+---
+
+## �🚀 Quick Start
 
 Create a hunt file: `tests/mission.hunt`
 
@@ -870,17 +907,16 @@ The published extension provides:
 
 ---
 
-## Release Notes: v0.0.9.21
+## Release Notes: v0.0.9.22
 
-- **Stability and Performance**: Fixed JavaScript layout thrashing in `SNAPSHOT_JS` by grouping geometry reads and batching `dataset.manulId` DOM writes, entirely removing CSS recalculation spikes within the `TreeWalker` loop.
-- **Cross-origin Iframe Resilience**: Hardened `_frame_for` routing in `core.py` by matching frame URLs (`frame.url`, `frame.name`) alongside indices, and added exception guards for transient "execution context" destructions during rapidly reloading frames.
-- **LLM Robustness**: Enhanced `_llm_json` fallback decoder to cleanly strip Markdown codeblock wrappers (````json ... ````) commonly output by smaller local LLMs like Qwen2.5.
-- **CLI hardening:** `_Tee.isatty()` delegates to the real terminal; subprocess workers timeout after 600s (configurable via `MANUL_WORKER_TIMEOUT`); `_find_manul_exe()` uses `sys.executable -m manul_engine`; `--executable-path` forwarded to workers; pre-compiled regex in `_read_tags()`; `electron` removed from `--browser` (use `--executable-path`).
-- **Machine-readable contracts:** `contracts/` directory with 7 contract files — CLI, DSL, Config, Reporting, Scoring, API, and Hooks & Lifecycle — for VS Code extension, Manul Studio, CI/CD, and 3rd-party integrations.
-- **Release line synchronized to `0.0.9.21`:** package metadata and the repo-local documentation set were updated together.
+- **Docker CI/CD runner:** Multi-stage `Dockerfile` packaging ManulEngine as a headless CI runner image (`ghcr.io/alexbeatnik/manul-engine`). Two-stage build: `deps` (pip install + Playwright browsers) → `runtime` (slim image). Non-root `manul` user (UID 1000), `dumb-init` PID 1, Chromium-only by default (configurable via `BROWSERS` build arg). Includes `docker-compose.yml` with `manul`, `manul-daemon`, and `manul-serve` services.
+- **GitHub Actions workflows:** `docker-publish.yml` builds multi-platform images (`linux/amd64`, `linux/arm64`) and pushes to GHCR on `main` push or `v*` tags. `manul-ci.yml` is a reusable example workflow for downstream repositories.
+- **`.dockerignore`:** Excludes `.git`, `reports/`, `cache/`, `__pycache__`, tests, images, and markdown from the build context.
+- **CI defaults baked into image:** `MANUL_HEADLESS=true`, `MANUL_BROWSER_ARGS="--no-sandbox --disable-dev-shm-usage"`, `TZ=UTC`, `LANG=C.UTF-8`, `PYTHONUNBUFFERED=1`.
+- **Release line synchronized to `0.0.9.22`:** package metadata and the repo-local documentation set were updated together.
 
-**Version:** 0.0.9.21
+**Version:** 0.0.9.22
 
-**Codename:** Quality Audit
+**Codename:** Containerised Manul
 
 **Status:** Hunting...

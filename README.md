@@ -273,7 +273,7 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.21
+pip install manul-engine==0.0.9.22
 playwright install
 ```
 
@@ -282,7 +282,7 @@ If you install standalone Python dependencies manually instead of using the pack
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.21"
+pip install "manul-engine[ai]==0.0.9.22"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -628,17 +628,40 @@ Representative coverage areas include:
 - visibility filtering and TreeWalker behavior
 - custom controls and lazy control loading
 
-## What's New in v0.0.9.21
+## Docker CI/CD Runner
 
-- **Stability and Performance**: Fixed JavaScript layout thrashing in `SNAPSHOT_JS` by grouping geometry reads and batching `dataset.manulId` DOM writes, entirely removing CSS recalculation spikes within the `TreeWalker` loop.
-- **Cross-origin Iframe Resilience**: Hardened `_frame_for` routing in `core.py` by matching frame URLs (`frame.url`, `frame.name`) alongside indices, and added exception guards for transient "execution context" destructions during rapidly reloading frames.
-- **LLM Robustness**: Enhanced `_llm_json` fallback decoder to cleanly strip Markdown codeblock wrappers (````json ... ````) commonly output by smaller local LLMs like Qwen2.5.
-- **CLI hardening:** `_Tee.isatty()` now delegates to the underlying terminal; subprocess workers have a configurable timeout (`MANUL_WORKER_TIMEOUT`); `_find_manul_exe()` uses `sys.executable -m manul_engine` for cross-venv safety; `--executable-path` forwarded to parallel workers; pre-compiled regex in header scan; removed `electron` from `--browser` (use `--executable-path` instead).
-- **Machine-readable contracts:** `contracts/` directory with 7 contract files for downstream tooling integration — CLI, DSL, Config, Reporting, Scoring, API, and Hooks & Lifecycle.
-- **Release line synchronized to `0.0.9.21`:** package metadata and release-facing docs were updated alongside the runtime changes.
+ManulEngine ships a production-ready Docker image for headless CI pipelines.
+
+```bash
+docker run --rm --shm-size=1g \
+  -v $(pwd)/tests:/workspace/tests:ro \
+  -v $(pwd)/reports:/workspace/reports \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.22 \
+  --html-report --screenshot on-fail tests/
+```
+
+All `MANUL_*` environment variables work as overrides:
+
+```bash
+docker run --rm --shm-size=1g \
+  -e MANUL_WORKERS=4 \
+  -e MANUL_BROWSER=firefox \
+  -v $(pwd)/tests:/workspace/tests:ro \
+  -v $(pwd)/reports:/workspace/reports \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.22 \
+  tests/
+```
+
+The image runs as non-root user `manul` (UID 1000), includes `dumb-init` for proper signal handling, and sets `--no-sandbox --disable-dev-shm-usage` by default. Build with additional browsers via `--build-arg BROWSERS="chromium firefox"`. A `docker-compose.yml` is included for local development with `manul`, `manul-daemon`, and `manul-serve` services.
+
+## What's New in v0.0.9.22
+
+- **Docker CI/CD runner:** Multi-stage `Dockerfile` packaging ManulEngine as a headless CI runner image (`ghcr.io/alexbeatnik/manul-engine`). Non-root `manul` user (UID 1000), `dumb-init` PID 1, Chromium-only by default (configurable via `BROWSERS` build arg). Includes `docker-compose.yml` with `manul`, `manul-daemon`, and `manul-serve` services.
+- **GitHub Actions workflows:** `docker-publish.yml` builds multi-platform images (`linux/amd64`, `linux/arm64`) and pushes to GHCR on `main` push or `v*` tags. `manul-ci.yml` provides a reusable example workflow for downstream repositories.
+- **Release line synchronized to `0.0.9.22`:** package metadata and release-facing docs were updated alongside the Docker infrastructure.
 
 ## License
 
-**Version:** 0.0.9.21
+**Version:** 0.0.9.22
 
 Apache-2.0.

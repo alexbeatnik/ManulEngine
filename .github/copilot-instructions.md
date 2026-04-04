@@ -61,7 +61,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.21
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.22
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession
   api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)
@@ -137,6 +137,12 @@ contracts/
   MANUL_HOOKS_CONTRACT.md  Machine-readable contract: hooks & lifecycle
   MANUL_REPORTING_CONTRACT.md Machine-readable contract: reporting pipeline
   MANUL_SCORING_CONTRACT.md  Machine-readable contract: DOMScorer heuristics
+Dockerfile                 Multi-stage CI/CD runner image (ghcr.io/alexbeatnik/manul-engine)
+.dockerignore              Build-context exclusions for Docker
+docker-compose.yml         Local dev/CI compose: manul, manul-daemon, manul-serve services
+.github/workflows/
+  docker-publish.yml       Multi-platform Docker image build + GHCR push
+  manul-ci.yml             Reusable example workflow for downstream repos
 ```
 
 ## How the engine works
@@ -471,6 +477,32 @@ To use Ollama: install the [Ollama app](https://ollama.com), run `pip install ol
 **Rule:** after any engine change, `python manul.py test` must exit with code **0**.
 Tip: `"model": null` (the default) forces heuristics-only mode. This is the recommended configuration for deterministic tests and CI pipelines.
 Note: `python manul.py test` disables persistent controls cache by default for deterministic synthetic suites. `test_13_controls_cache.py` explicitly enables cache in a temporary `cache/run_<datetime>` folder and removes it after the test.
+
+## Docker CI/CD Runner
+
+ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headless CI runner image published to `ghcr.io/alexbeatnik/manul-engine`.
+
+```bash
+docker run --rm --shm-size=1g \
+  -v $(pwd)/tests:/workspace/tests:ro \
+  -v $(pwd)/reports:/workspace/reports \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.22 \
+  --html-report --screenshot on-fail tests/
+```
+
+Image characteristics:
+* Two-stage build: `deps` (pip install + Playwright browsers) → `runtime` (slim, no build tools or pip cache).
+* Non-root user `manul` (UID 1000). No `--privileged` needed.
+* `dumb-init` as PID 1 for proper signal handling and exit-code propagation.
+* CI defaults baked in: `MANUL_HEADLESS=true`, `MANUL_BROWSER_ARGS="--no-sandbox --disable-dev-shm-usage"`, `TZ=UTC`, `LANG=C.UTF-8`.
+* Build args: `MANUL_VERSION` (pip version), `PYTHON_VERSION` (base image), `BROWSERS` (space-separated, default `chromium`).
+* Volume mount pattern: `/workspace/tests` (ro), `/workspace/reports` (rw), `/workspace/cache` (rw), `/workspace/controls` (ro), `/workspace/scripts` (ro).
+
+`docker-compose.yml` defines three services: `manul` (test runner), `manul-daemon` (scheduled hunts, `restart: unless-stopped`), `manul-serve` (HTTP API on port 8000).
+
+GitHub Actions workflows:
+* `docker-publish.yml` — builds multi-platform images (`linux/amd64`, `linux/arm64`), pushes to GHCR, tags: `latest`, semver, git SHA.
+* `manul-ci.yml` — reusable example workflow for downstream repos to run `.hunt` tests against the published image.
 
 ## Configuration (manul_engine_configuration.json)
 
