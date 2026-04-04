@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.21 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.22 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -25,7 +25,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.21
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.22
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession
@@ -47,7 +47,9 @@ ManulEngine/
 │   ├── actions.py                    Action execution mixin (click, type, select, hover, drag, scan_page)
 │   ├── reporting.py                  StepResult, MissionResult, RunSummary dataclasses; run_history + report-session state persistence
 │   ├── reporter.py                   Interactive HTML report generator (dark theme, control panel, tag chips, Run Session banner, base64 screenshots)
-│   ├── variables.py                  ScopedVariables — 4-level variable hierarchy (row, step, mission, global)
+│   ├── variables.py                  ScopedVariables — 5-level variable hierarchy (row, step, mission, global, import)
+│   ├── imports.py                   @import/@export/USE system — parse_import_directive(), resolve_imports(), expand_use_directives(), validate_exports()
+│   ├── packager.py                  Pack/install .huntlib archives — pack(), install(), _update_lockfile(), resolve_lockfile()
 │   └── test/
 │       ├── test_00_engine.py         Engine micro-suite (synthetic DOM via local HTML)
 │       ├── test_01_ecommerce.py      Scenario pack: ecommerce
@@ -83,11 +85,15 @@ ManulEngine/
 │       ├── test_40_self_healing_cache.py Unit: Self-Healing Controls Cache — stale detection, HEALED logging, cache auto-update (16 assertions)
 │       ├── test_41_recorder.py      Unit: Semantic Test Recorder — JS bridge, DSL generator, step aggregation (no browser)
 │       ├── test_42_scheduler.py     Unit: Built-in Scheduler — parse_schedule, next_run_delay, ParsedHunt integration (51 assertions, no browser)
-│       ├── test_43_scoped_variables.py Unit: ScopedVariables 4-level hierarchy, scope isolation, dict compat (43 assertions, no browser)
+│       ├── test_43_scoped_variables.py Unit: ScopedVariables 5-level hierarchy, scope isolation, dict compat (44 assertions, no browser)
 │       ├── test_44_explain_mode.py   Unit: DOMScorer explain output, channel breakdown, --explain CLI flag (33 assertions, no browser)
 │       ├── test_45_api.py            Unit: ManulSession public Python API facade (50 assertions, no browser)
 │       ├── test_46_attribute_semantic.py Unit: attribute-semantic icon matching, camelCase dev attrs, cart badges, false-positive resistance (34 assertions, no browser)
-│       └── test_47_contextual_proximity.py Unit: contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser rules (67 assertions, no browser)
+│       ├── test_47_contextual_proximity.py Unit: contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser rules (67 assertions, no browser)
+│       ├── test_48_prompts_config.py  Unit: Configuration loading, threshold derivation, page-name lookup, _KEY_MAP, env_bool (83 assertions, no browser)
+│       ├── test_50_imports.py         Unit: @import/@export/USE directive system (84 assertions, no browser)
+│       ├── test_51_packager.py        Unit: Pack/install .huntlib archives and lockfile (21 assertions, no browser)
+│       └── test_52_exports.py         Unit: @export validation, wildcard exports, access control (19 assertions, no browser)
 ├── controls/                         User-owned custom Python handlers (loaded from directories listed in `custom_controls_dirs` config)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
@@ -111,6 +117,14 @@ ManulEngine/
 │   ├── README.md                     Usage guide (Copilot, ChatGPT, Claude, Ollama)
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
+├── Dockerfile                        Multi-stage CI/CD runner image (ghcr.io/alexbeatnik/manul-engine)
+├── .dockerignore                     Build-context exclusions for Docker
+├── docker-compose.yml                Local dev/CI compose: manul, manul-daemon services
+└── .github/workflows/
+    ├── synthetic-tests.yml            PR quality gate (synthetic test suite)
+    ├── release.yml                    Unified release: PyPI + GHCR + GitHub Release on v* tag
+    ├── docker-dev.yml                 Dev Docker image on main push (amd64-only)
+    └── manul-ci.yml                   Reusable example workflow for downstream repos
 ```
 
 Companion Manul Engine Extension for VS Code source is maintained separately and is not included in this workspace.
@@ -374,7 +388,7 @@ Fill 'Security Code' with '{dynamic_otp}'
 
 When a hook helper returns a dict such as `{"tenant_id": 42, "otp": 123456}`, `bind_hook_result()` flattens it into shared variables. That makes both `{tenant_id}` and `{otp}` available immediately to later hook lines and to the browser mission without additional glue code.
 
-`parse_hunt_file()` in `cli.py` returns a **10-field `ParsedHunt` NamedTuple** `(mission, context, title, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags, data_file, schedule)`. It also strips header-only `@script:` declarations, validates that they use dotted Python import paths, and rewrites `CALL PYTHON {alias}.func` usages to their real module paths before returning the mission and hook lines. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
+`parse_hunt_file()` in `cli.py` returns a **12-field `ParsedHunt` NamedTuple** `(mission, context, title, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags, data_file, schedule, exports, imports)`. It also strips header-only `@script:` declarations, validates that they use dotted Python import paths, and rewrites `CALL PYTHON {alias}.func` usages to their real module paths before returning the mission and hook lines. `parse_hunt_file()` also resolves `@import:` directives via `resolve_imports()` and expands `USE` directives via `expand_use_directives()` before returning the mission text. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
 
 The full hook unit test suite (`56 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
 
@@ -567,7 +581,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.21
+pip install manul-engine==0.0.9.22
 playwright install chromium
 ```
 
@@ -676,6 +690,37 @@ python manul.py test
 python manul.py tests/
 python manul.py --headless tests/
 ```
+
+---
+
+## 🐳 Docker CI/CD Runner
+
+ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headless CI runner image published to `ghcr.io/alexbeatnik/manul-engine`.
+
+```bash
+docker run --rm --shm-size=1g \
+  -v $(pwd)/tests:/workspace/tests:ro \
+  -v $(pwd)/reports:/workspace/reports \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.22 \
+  --html-report --screenshot on-fail tests/
+```
+
+**Image characteristics:**
+* Two-stage build: `deps` (pip install + Playwright browsers) → `runtime` (slim, no build tools or pip cache).
+* Non-root user `manul` (UID 1000). No `--privileged` needed.
+* `dumb-init` as PID 1 for proper signal handling and exit-code propagation.
+* CI defaults baked in: `MANUL_HEADLESS=true`, `MANUL_BROWSER_ARGS="--no-sandbox --disable-dev-shm-usage"`, `TZ=UTC`, `LANG=C.UTF-8`.
+* Build args: `MANUL_VERSION` (pip version), `PYTHON_VERSION` (base image), `BROWSERS` (space-separated, default `chromium`).
+* Volume mount pattern: `/workspace/tests` (ro), `/workspace/reports` (rw), `/workspace/cache` (rw), `/workspace/controls` (ro), `/workspace/scripts` (ro).
+
+**docker-compose.yml** defines two services:
+* `manul` — test runner
+* `manul-daemon` — scheduled hunts (`restart: unless-stopped`)
+
+**GitHub Actions workflows:**
+* `release.yml` — unified release pipeline: synthetic tests → PyPI publish (OIDC) → GHCR multi-arch image → GitHub Release.
+* `docker-dev.yml` — pushes a `main`-tagged dev image to GHCR on every merge to `main`.
+* `manul-ci.yml` — reusable example workflow for downstream repos to run `.hunt` tests against the published image.
 
 ---
 
@@ -870,17 +915,16 @@ The published extension provides:
 
 ---
 
-## Release Notes: v0.0.9.21
+## Release Notes: v0.0.9.22
 
-- **Stability and Performance**: Fixed JavaScript layout thrashing in `SNAPSHOT_JS` by grouping geometry reads and batching `dataset.manulId` DOM writes, entirely removing CSS recalculation spikes within the `TreeWalker` loop.
-- **Cross-origin Iframe Resilience**: Hardened `_frame_for` routing in `core.py` by matching frame URLs (`frame.url`, `frame.name`) alongside indices, and added exception guards for transient "execution context" destructions during rapidly reloading frames.
-- **LLM Robustness**: Enhanced `_llm_json` fallback decoder to cleanly strip Markdown codeblock wrappers (````json ... ````) commonly output by smaller local LLMs like Qwen2.5.
-- **CLI hardening:** `_Tee.isatty()` delegates to the real terminal; subprocess workers timeout after 600s (configurable via `MANUL_WORKER_TIMEOUT`); `_find_manul_exe()` uses `sys.executable -m manul_engine`; `--executable-path` forwarded to workers; pre-compiled regex in `_read_tags()`; `electron` removed from `--browser` (use `--executable-path`).
-- **Machine-readable contracts:** `contracts/` directory with 7 contract files — CLI, DSL, Config, Reporting, Scoring, API, and Hooks & Lifecycle — for VS Code extension, Manul Studio, CI/CD, and 3rd-party integrations.
-- **Release line synchronized to `0.0.9.21`:** package metadata and the repo-local documentation set were updated together.
+- **Docker CI/CD runner:** Multi-stage `Dockerfile` packaging ManulEngine as a headless CI runner image (`ghcr.io/alexbeatnik/manul-engine`). Two-stage build: `builder` (pip install + Playwright browsers) → `runtime` (slim image). Non-root `manul` user (UID 1000), `dumb-init` PID 1, Chromium-only by default (configurable via `BROWSERS` build arg). Includes `docker-compose.yml` with `manul` and `manul-daemon` services.
+- **GitHub Actions workflows:** `release.yml` handles unified release automation (PyPI + GHCR + GitHub Release on `v*` tags). `docker-dev.yml` pushes dev images to GHCR on `main` merge. `manul-ci.yml` is a reusable example workflow for downstream repositories.
+- **`.dockerignore`:** Excludes common repository-only artifacts such as `.git`, `reports/`, `cache/`, and `__pycache__` from the build context.
+- **CI defaults baked into image:** `MANUL_HEADLESS=true`, `MANUL_BROWSER_ARGS="--no-sandbox --disable-dev-shm-usage"`, `TZ=UTC`, `LANG=C.UTF-8`, `PYTHONUNBUFFERED=1`.
+- **Release line synchronized to `0.0.9.22`:** package metadata and the repo-local documentation set were updated together.
 
-**Version:** 0.0.9.21
+**Version:** 0.0.9.22
 
-**Codename:** Quality Audit
+**Codename:** Containerised Manul
 
 **Status:** Hunting...

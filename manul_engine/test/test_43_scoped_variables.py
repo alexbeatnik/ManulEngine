@@ -196,6 +196,7 @@ def _test_dump() -> None:
     _assert("Level 2" in output, "dump contains Level 2 header")
     _assert("Level 3" in output, "dump contains Level 3 header")
     _assert("Level 4" in output, "dump contains Level 4 header")
+    _assert("Level 5" in output, "dump contains Level 5 header")
     _assert("{token} = abc123" in output, "dump shows global var")
     _assert("{email} = test@test.com" in output, "dump shows mission var")
     _assert("{otp} = 999888" in output, "dump shows step var")

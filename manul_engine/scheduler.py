@@ -250,7 +250,11 @@ async def daemon_main(args: list[str]) -> None:
 
     scheduled_jobs: list[tuple[str, Schedule]] = []
     for hf in hunt_files:
-        parsed = parse_hunt_file(hf)
+        try:
+            parsed = parse_hunt_file(hf)
+        except Exception as exc:
+            print(f"⚠️  Skipping {os.path.basename(hf)}: {exc}")
+            continue
         if parsed.schedule:
             try:
                 sched = parse_schedule(parsed.schedule)

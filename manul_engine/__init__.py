@@ -50,6 +50,7 @@ from .lifecycle import (
     after_group,
 )
 from .variables import ScopedVariables
+from .imports import HuntImportError
 
 __all__ = [
     "ManulEngine",
@@ -61,4 +62,5 @@ __all__ = [
     "before_group",
     "after_group",
     "ScopedVariables",
+    "HuntImportError",
 ]

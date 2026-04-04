@@ -23,6 +23,13 @@ from typing import NamedTuple
 from .reporting import StepResult, MissionResult, RunSummary, append_run_history
 from .hooks import RE_SETUP, RE_END_SETUP, RE_TEARDOWN, RE_END_TEARDOWN
 from .helpers import parse_hunt_blocks
+from .imports import (
+    ImportDirective,
+    HuntImportError,
+    parse_import_directive,
+    resolve_imports,
+    expand_use_directives,
+)
 
 
 # ── Pre-compiled regex for _read_tags fast header scan ────────────────────────
@@ -74,6 +81,8 @@ Usage:
   manul scan <URL>           — scan a URL and generate a draft .hunt file
   manul record <URL>         — record interactions in a browser and generate a .hunt file
   manul daemon <directory>    — run scheduled .hunt files as a long-running daemon
+  manul pack [dir]           — pack a .hunt library into a distributable .huntlib archive
+  manul install <source>     — install a .huntlib archive locally (or --global)
 
 Flags:
   --headless                 — run browser in headless mode
@@ -87,6 +96,10 @@ Flags:
   --html-report              — generate a self-contained manul_report.html after the run
   --explain                  — print detailed heuristic score breakdown for each element resolution
   --executable-path <path>   — absolute path to a custom browser or Electron app executable
+
+Pack/install flags:
+  --output <dir>             — output directory for `manul pack` (default: current dir)
+  --global                   — install .huntlib to global ~/.manul/hunt_libs/ (with `install`)
 
 Scan-specific flags (only with `manul scan`):
   --output <file>            — output file for the draft (default: draft.hunt)
@@ -158,7 +171,7 @@ class _Tee:
 class ParsedHunt(NamedTuple):
     """Structured result of parsing a ``.hunt`` file.
 
-    Behaves exactly like a 9-tuple for backward compatibility
+    Behaves exactly like a 12-tuple for backward compatibility
     (positional indexing and unpacking both work), but also
     supports named attribute access.
     """
@@ -172,6 +185,8 @@ class ParsedHunt(NamedTuple):
     tags: list[str]
     data_file: str  # @data: path (empty string if not declared)
     schedule: str   # @schedule: expression (empty string if not declared)
+    exports: list[str]  # @export: block names (empty list if none declared)
+    imports: list[ImportDirective]  # @import: directives (empty list if none declared)
 
 
 _RE_SCRIPT_ALIAS_TARGET = re.compile(r"^[A-Za-z_][\w]*(?:\.[A-Za-z_][\w]*)*$")
@@ -268,6 +283,8 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
     tags: list[str] = []
     data_file: str = ""
     schedule: str = ""
+    exports: list[str] = []
+    import_directives: list[ImportDirective] = []
     mission_lines:  list[str] = []
     step_file_lines: list[int] = []
     setup_lines:    list[str] = []
@@ -345,10 +362,43 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
             data_file = stripped.split(":", 1)[1].strip()
         elif stripped.startswith("@schedule:"):
             schedule = stripped.split(":", 1)[1].strip()
+        elif stripped.startswith("@export:"):
+            export_part = stripped.split(":", 1)[1].strip()
+            if export_part:
+                for _en in export_part.split(","):
+                    _en = _en.strip()
+                    if _en:
+                        exports.append(_en)
+        elif stripped.startswith("@import:"):
+            directive = parse_import_directive(stripped)
+            if directive is None:
+                raise HuntImportError(
+                    f"Invalid @import directive at {filepath}:{lineno}: {stripped!r}. "
+                    "Expected syntax: @import: <name>[, <name> ...] from <path>"
+                )
+            import_directives.append(directive)
         elif not stripped.startswith("#") and stripped:
             mission_lines.append(_rewrite_script_aliases_in_call_python(line, script_aliases))
             step_file_lines.append(lineno)
         idx += 1
+
+    # ── Resolve @import: directives and expand USE commands ──────────────────
+    imported_blocks: dict[str, list[str]] = {}
+    import_vars: dict[str, str] = {}
+    try:
+        if import_directives:
+            hunt_dir = os.path.dirname(os.path.abspath(filepath))
+            imported_blocks, import_vars = resolve_imports(
+                import_directives, hunt_dir, filepath,
+            )
+
+        # Expand USE <BlockName> directives in mission body
+        if mission_lines:
+            mission_lines, step_file_lines = expand_use_directives(
+                mission_lines, step_file_lines, imported_blocks,
+            )
+    except HuntImportError:
+        raise  # Callers (_run_hunt_file, daemon_main) catch and return controlled error
 
     return ParsedHunt(
         mission="".join(mission_lines).strip(),
@@ -361,6 +411,8 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
         tags=tags,
         data_file=data_file,
         schedule=schedule,
+        exports=exports,
+        imports=import_directives,
     )
 
 
@@ -411,7 +463,11 @@ async def _run_hunt_file(
     print(f"📜 EXECUTING MANUL HUNT: {filename}")
     print(f"{'='*60}")
 
-    hunt = parse_hunt_file(path)
+    try:
+        hunt = parse_hunt_file(path)
+    except HuntImportError as exc:
+        print(f"\n💥 Import error in {filename}: {exc}")
+        return MissionResult(file=path, name=filename, status="broken", error=str(exc))
 
     # Map file line numbers (from editor gutter breakpoints) to action indices.
     # STEP headers now map to the first action inside their block.
@@ -463,6 +519,19 @@ async def _run_hunt_file(
     _global_scope: dict[str, str] = dict(global_vars or {})
     _mission_scope: dict[str, str] = dict(hunt.parsed_vars)
 
+    # ── Import-level variables (lowest priority) ─────────────────────────────
+    _import_scope: dict[str, str] = {}
+    if hunt.imports:
+        try:
+            _, _import_scope = resolve_imports(
+                hunt.imports,
+                os.path.dirname(os.path.abspath(path)),
+                path,
+            )
+        except HuntImportError as exc:
+            print(f"\n💥 Import resolution failed: {exc}")
+            return MissionResult(file=path, name=filename, status="broken", error=str(exc))
+
     # ── Data-Driven Testing (@data:) ──────────────────────────────────────
     data_rows: list[dict[str, str]] = [{}]
     if hunt.data_file:
@@ -494,6 +563,7 @@ async def _run_hunt_file(
                 initial_vars=_mission_scope,
                 global_vars=_global_scope,
                 row_vars=row_vars,
+                import_vars=_import_scope,
                 screenshot_mode=screenshot_mode,
             )
             all_step_results.extend(mission_result.steps)
@@ -623,7 +693,7 @@ async def main() -> "int | None":
     # so that `manul --headless scan https://…` also works.
     _non_flag_args = [
         a for i, a in enumerate(args)
-        if a not in ("--headless", "--debug", "--html-report", "--explain")
+        if a not in ("--headless", "--debug", "--html-report", "--explain", "--global")
         and not (i > 0 and args[i - 1] in ("--browser", "--workers", "--output", "--break-lines", "--tags", "--retries", "--screenshot", "--executable-path"))
         and a not in ("--browser", "--workers", "--output", "--break-lines", "--tags", "--retries", "--screenshot", "--executable-path")
     ]
@@ -647,6 +717,24 @@ async def main() -> "int | None":
         daemon_idx = args.index("daemon")
         daemon_args = args[:daemon_idx] + args[daemon_idx + 1:]
         await daemon_main(daemon_args)
+        return
+
+    if _non_flag_args and _non_flag_args[0] == "pack":
+        from manul_engine.packager import pack
+        source_dir = _non_flag_args[1] if len(_non_flag_args) > 1 else os.getcwd()
+        _output_dir, args = _pop_flag(args, "--output")
+        archive = pack(source_dir, output_dir=_output_dir)
+        print(f"📦 Packed: {archive}")
+        return
+
+    if _non_flag_args and _non_flag_args[0] == "install":
+        from manul_engine.packager import install as _install_pkg
+        if len(_non_flag_args) < 2:
+            print("Error: manul install requires a source path.", file=sys.stderr)
+            sys.exit(1)
+        _global_flag = "--global" in args
+        dest = _install_pkg(_non_flag_args[1], global_install=_global_flag)
+        print(f"📦 Installed to: {dest}")
         return
 
     from . import prompts as _prompts_cli

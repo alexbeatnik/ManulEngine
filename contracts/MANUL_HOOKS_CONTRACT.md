@@ -5,7 +5,7 @@
 
 ```json
 {
-  "version": "0.0.9.21",
+  "version": "0.0.9.22",
   "generatedFrom": "manul_engine/hooks.py :: HookResult, extract_hook_blocks(), execute_hook_line(), run_hooks(); manul_engine/lifecycle.py :: GlobalContext, @before_all, @after_all, @before_group, @after_group, _HookRegistry, load_hooks_file(); manul_engine/variables.py :: ScopedVariables",
 
   "fileHooks": {
@@ -176,15 +176,16 @@
   "scopedVariables": {
     "class": "ScopedVariables",
     "module": "manul_engine/variables.py",
-    "description": "Four-level variable hierarchy with strict precedence resolution. Used throughout the engine for {placeholder} substitution.",
+    "description": "Five-level variable hierarchy with strict precedence resolution. Used throughout the engine for {placeholder} substitution.",
 
     "levels": [
       { "constant": "LEVEL_ROW",     "priority": 1, "label": "row",     "description": "Per-iteration from @data CSV/JSON rows. Cleared between iterations." },
       { "constant": "LEVEL_STEP",    "priority": 2, "label": "step",    "description": "Runtime: EXTRACT, SET, CALL PYTHON ... into. Default write target for dict[]-style access." },
       { "constant": "LEVEL_MISSION", "priority": 3, "label": "mission", "description": "File-level @var: declarations and [SETUP] hook returns." },
-      { "constant": "LEVEL_GLOBAL",  "priority": 4, "label": "global",  "description": "CLI/env context and @before_all lifecycle hook variables." }
+      { "constant": "LEVEL_GLOBAL",  "priority": 4, "label": "global",  "description": "CLI/env context and @before_all lifecycle hook variables." },
+      { "constant": "LEVEL_IMPORT",  "priority": 5, "label": "import",  "description": "@var: declarations inherited from @import: source files. Lowest priority — overridden by all other levels." }
     ],
-    "resolutionOrder": "Highest priority first: row → step → mission → global. First non-null match wins.",
+    "resolutionOrder": "Highest priority first: row → step → mission → global → import. First non-null match wins.",
 
     "methods": [
       { "name": "resolve",        "signature": "(name: str) -> str | None" },

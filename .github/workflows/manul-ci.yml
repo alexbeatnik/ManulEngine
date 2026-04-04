@@ -1,0 +1,41 @@
+# ============================================================================
+# Reusable example: Run ManulEngine .hunt tests in any repository's CI
+# Copy this file to your project's .github/workflows/ directory and change
+# the trigger to suit your needs (e.g. on: [push, pull_request]).
+#
+# This file lives in the ManulEngine repo as a reference template.
+# It is set to workflow_dispatch so it does NOT run automatically here.
+# ============================================================================
+
+name: Manul E2E Tests (example)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  manul:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run hunt tests
+        run: |
+          docker run --rm \
+            --shm-size=1g \
+            -v ${{ github.workspace }}/tests:/workspace/tests:ro \
+            -v ${{ github.workspace }}/reports:/workspace/reports \
+            -v ${{ github.workspace }}/controls:/workspace/controls:ro \
+            -v ${{ github.workspace }}/scripts:/workspace/scripts:ro \
+            -e MANUL_HEADLESS=true \
+            -e MANUL_HTML_REPORT=true \
+            -e MANUL_SCREENSHOT=on-fail \
+            -e MANUL_WORKERS=2 \
+            ghcr.io/alexbeatnik/manul-engine:0.0.9.22 \
+            --html-report --screenshot on-fail --workers 2 tests/
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: manul-report
+          path: reports/

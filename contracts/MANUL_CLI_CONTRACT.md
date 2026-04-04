@@ -5,8 +5,8 @@
 
 ```json
 {
-  "version": "0.0.9.21",
-  "generatedFrom": "manul_engine/cli.py :: main(), _run_hunt_file(), parse_hunt_file(), sync_main(); manul_engine/prompts.py :: _KEY_MAP, global config constants; manul_engine/scanner.py :: scan_main(); manul_engine/recorder.py :: record_main(); manul_engine/scheduler.py :: daemon_main()",
+  "version": "0.0.9.22",
+  "generatedFrom": "manul_engine/cli.py :: main(), _run_hunt_file(), parse_hunt_file(), sync_main(); manul_engine/prompts.py :: _KEY_MAP, global config constants; manul_engine/scanner.py :: scan_main(); manul_engine/recorder.py :: record_main(); manul_engine/scheduler.py :: daemon_main(); manul_engine/packager.py :: pack(), install()",
   "entryPoints": {
     "console_script": "manul",
     "module": "python -m manul_engine",
@@ -76,6 +76,32 @@
       "syntax": "python manul.py test",
       "description": "Dev-only: runs the synthetic DOM test suite. Only available via the dev CLI entry point (manul.py), not the installed console_scripts command.",
       "devOnly": true
+    },
+    {
+      "id": "pack",
+      "syntax": "manul pack <directory> [--output <dir>]",
+      "description": "Pack a .hunt library directory into a distributable .huntlib archive. Requires a huntlib.json manifest with 'name' and 'version' fields.",
+      "positionalArgs": [
+        {
+          "name": "directory",
+          "required": true,
+          "description": "Path to the library source directory containing huntlib.json and .hunt files."
+        }
+      ],
+      "specificFlags": ["--output"]
+    },
+    {
+      "id": "install",
+      "syntax": "manul install <source> [--global]",
+      "description": "Install a .huntlib archive or a directory into hunt_libs/ (local) or ~/.manul/hunt_libs/ (global).",
+      "positionalArgs": [
+        {
+          "name": "source",
+          "required": true,
+          "description": "Path to a .huntlib archive file or a library directory containing huntlib.json."
+        }
+      ],
+      "specificFlags": ["--global"]
     }
   ],
   "flags": [
@@ -328,18 +354,20 @@
     ]
   },
   "parsedHuntFile": {
-    "type": "ParsedHunt (NamedTuple, 10 fields)",
+    "type": "ParsedHunt (NamedTuple, 12 fields)",
     "fields": [
-      { "name": "mission",         "type": "str",            "description": "Concatenated mission body (non-header, non-hook, non-comment lines)" },
-      { "name": "context",         "type": "str",            "description": "@context: value" },
-      { "name": "title",           "type": "str",            "description": "@title: value (or @blueprint:)" },
-      { "name": "step_file_lines", "type": "list[int]",      "description": "1-based file line numbers for each mission line, for breakpoint mapping" },
-      { "name": "setup_lines",     "type": "list[str]",      "description": "Extracted [SETUP] block instruction strings" },
-      { "name": "teardown_lines",  "type": "list[str]",      "description": "Extracted [TEARDOWN] block instruction strings" },
-      { "name": "parsed_vars",     "type": "dict[str, str]", "description": "Key/value pairs from @var: headers (keys stored without braces)" },
-      { "name": "tags",            "type": "list[str]",      "description": "Tags from @tags: header (empty list if absent)" },
-      { "name": "data_file",       "type": "str",            "description": "@data: file path (empty string if absent)" },
-      { "name": "schedule",        "type": "str",            "description": "@schedule: expression (empty string if absent)" }
+      { "name": "mission",         "type": "str",                     "description": "Concatenated mission body (non-header, non-hook, non-comment lines). USE directives are expanded inline." },
+      { "name": "context",         "type": "str",                     "description": "@context: value" },
+      { "name": "title",           "type": "str",                     "description": "@title: value (or @blueprint:)" },
+      { "name": "step_file_lines", "type": "list[int]",               "description": "1-based file line numbers for each mission line, for breakpoint mapping. Expanded USE actions get synthetic line 0." },
+      { "name": "setup_lines",     "type": "list[str]",               "description": "Extracted [SETUP] block instruction strings" },
+      { "name": "teardown_lines",  "type": "list[str]",               "description": "Extracted [TEARDOWN] block instruction strings" },
+      { "name": "parsed_vars",     "type": "dict[str, str]",          "description": "Key/value pairs from @var: headers (keys stored without braces)" },
+      { "name": "tags",            "type": "list[str]",               "description": "Tags from @tags: header (empty list if absent)" },
+      { "name": "data_file",       "type": "str",                     "description": "@data: file path (empty string if absent)" },
+      { "name": "schedule",        "type": "str",                     "description": "@schedule: expression (empty string if absent)" },
+      { "name": "exports",         "type": "list[str]",               "description": "Block names from @export: headers (empty list if absent). ['*'] for wildcard export." },
+      { "name": "imports",         "type": "list[ImportDirective]",   "description": "Parsed @import: directives (empty list if absent). Each has block_names, source, aliases." }
     ],
     "scriptAliasRewriting": "@script: aliases are resolved and rewritten to real dotted paths in mission lines and hook lines before returning"
   },

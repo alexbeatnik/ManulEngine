@@ -6,8 +6,8 @@
 
 ```json
 {
-  "version": "0.0.9.21",
-  "generatedFrom": "manul_engine/helpers.py :: classify_step(), detect_mode(), parse_contextual_hint(); manul_engine/core.py :: run_mission(); manul_engine/cli.py :: parse_hunt_file(); manul_engine/actions.py :: _ActionsMixin; manul_engine/scoring.py :: DOMScorer contextual proximity rules; manul_engine/js_scripts.py :: SNAPSHOT_JS geometry export",
+  "version": "0.0.9.22",
+  "generatedFrom": "manul_engine/helpers.py :: classify_step(), detect_mode(), parse_contextual_hint(); manul_engine/core.py :: run_mission(); manul_engine/cli.py :: parse_hunt_file(); manul_engine/actions.py :: _ActionsMixin; manul_engine/scoring.py :: DOMScorer contextual proximity rules; manul_engine/js_scripts.py :: SNAPSHOT_JS geometry export; manul_engine/imports.py :: parse_import_directive(), resolve_imports(), expand_use_directives()",
   "commands": [
     {
       "id": "navigate",
@@ -323,6 +323,15 @@
       "regex": "^\\s*(?:\\d+\\.\\s*)?STEP\\s*\\d*\\s*:",
       "description": "Declares a hierarchical STEP block. All action lines following this header belong to this block until the next STEP header. The number is optional. Used for HTML report accordions and console grouping.",
       "category": "structure"
+    },
+    {
+      "id": "use_import",
+      "label": "USE",
+      "uiText": "USE Login",
+      "snippet": "USE ${1:BlockName}",
+      "regex": "^\\s*(?:\\d+\\.\\s*)?USE\\b",
+      "description": "Expands an imported STEP block inline at parse time. The block must have been imported via @import:. Aliased names (from 'as' clause) are supported. Case-insensitive matching.",
+      "category": "structure"
     }
   ],
   "contextualQualifiers": [
@@ -420,6 +429,20 @@
       "uiText": "@schedule: daily at 09:00",
       "snippet": "@schedule: ${1|every 30 seconds,every 1 minute,every 5 minutes,every 15 minutes,every 1 hour,daily at 09:00,every monday|}",
       "description": "Declares a schedule for daemon mode (manul daemon). Supported: every N seconds/minutes/hours, every minute/hour, daily at HH:MM, every <weekday>, every <weekday> at HH:MM."
+    },
+    {
+      "id": "import",
+      "label": "@import:",
+      "uiText": "@import: Login, Logout from lib/auth.hunt",
+      "snippet": "@import: ${1:BlockName} from ${2:source.hunt}",
+      "description": "Imports named STEP blocks from another .hunt file. Supports named imports (@import: Login, Logout from lib.hunt), wildcard (@import: * from lib.hunt), aliases (@import: Login as AuthLogin from lib.hunt), and package-style sources (@import: Login from @my-lib). Imported blocks are available for USE directives. @var: declarations from the source file are inherited at LEVEL_IMPORT (lowest priority)."
+    },
+    {
+      "id": "export",
+      "label": "@export:",
+      "uiText": "@export: Login, Logout",
+      "snippet": "@export: ${1:BlockName}",
+      "description": "Declares which STEP blocks are importable by other .hunt files. Multiple @export: lines are allowed. @export: * makes all blocks available. When no @export: is declared and a wildcard @import: * is used, all blocks are available (open by default)."
     }
   ],
   "hookBlocks": [

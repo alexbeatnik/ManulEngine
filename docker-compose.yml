@@ -1,0 +1,27 @@
+services:
+  manul:
+    build:
+      context: .
+      args:
+        MANUL_VERSION: "0.0.9.22"
+        BROWSERS: "chromium"
+    image: ghcr.io/alexbeatnik/manul-engine:0.0.9.22
+    shm_size: "1gb"
+    volumes:
+      - ./tests:/workspace/tests:ro
+      - ./reports:/workspace/reports
+      - ./cache:/workspace/cache
+      - ./controls:/workspace/controls:ro
+      - ./scripts:/workspace/scripts:ro
+    environment:
+      MANUL_HEADLESS: "true"
+      MANUL_HTML_REPORT: "true"
+      MANUL_SCREENSHOT: "on-fail"
+      MANUL_WORKERS: "2"
+    command: ["--html-report", "--screenshot", "on-fail", "tests/"]
+
+  manul-daemon:
+    extends:
+      service: manul
+    command: ["daemon", "tests/"]
+    restart: unless-stopped

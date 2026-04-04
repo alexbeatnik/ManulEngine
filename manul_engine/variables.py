@@ -2,11 +2,12 @@
 """
 Strict scoped variable state management for ManulEngine.
 
-Implements a four-level precedence hierarchy (highest → lowest):
+Implements a five-level precedence hierarchy (highest → lowest):
   Level 1 — Row Vars:     Injected per-iteration from @data CSV/JSON.
   Level 2 — Step Vars:    Created mid-flight via EXTRACT or CALL PYTHON into {var}.
   Level 3 — Mission Vars: Declared in the file header via @var:.
   Level 4 — Global Vars:  Passed via CLI, env, or @before_all lifecycle hooks.
+  Level 5 — Import Vars:  Declared in imported .hunt files via @var:.
 
 resolve() strictly respects this order: a higher-level variable always
 shadows a lower-level one with the same name.
@@ -16,7 +17,7 @@ from __future__ import annotations
 
 
 class ScopedVariables:
-    """Four-level variable store with strict precedence resolution.
+    """Five-level variable store with strict precedence resolution.
 
     Each level is a plain dict.  ``resolve(name)`` checks levels top-down;
     ``substitute(text)`` replaces all ``{var}`` placeholders using the
@@ -27,8 +28,9 @@ class ScopedVariables:
     LEVEL_STEP = "step"
     LEVEL_MISSION = "mission"
     LEVEL_GLOBAL = "global"
+    LEVEL_IMPORT = "import"
 
-    _LEVELS = (LEVEL_ROW, LEVEL_STEP, LEVEL_MISSION, LEVEL_GLOBAL)
+    _LEVELS = (LEVEL_ROW, LEVEL_STEP, LEVEL_MISSION, LEVEL_GLOBAL, LEVEL_IMPORT)
 
     def __init__(self) -> None:
         self._stores: dict[str, dict[str, str]] = {
@@ -36,6 +38,7 @@ class ScopedVariables:
             self.LEVEL_STEP: {},
             self.LEVEL_MISSION: {},
             self.LEVEL_GLOBAL: {},
+            self.LEVEL_IMPORT: {},
         }
 
     # ── Read ──────────────────────────────────────────────────────────────
@@ -111,6 +114,7 @@ class ScopedVariables:
             self.LEVEL_STEP: "Level 2 — Step Vars (EXTRACT / CALL PYTHON into)",
             self.LEVEL_MISSION: "Level 3 — Mission Vars (@var:)",
             self.LEVEL_GLOBAL: "Level 4 — Global Vars (CLI / env / @before_all)",
+            self.LEVEL_IMPORT: "Level 5 — Import Vars (@import file @var:)",
         }
         for level in self._LEVELS:
             store = self._stores[level]
