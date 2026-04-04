@@ -273,7 +273,7 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.19
+pip install manul-engine==0.0.9.20
 playwright install
 ```
 
@@ -282,7 +282,7 @@ If you install standalone Python dependencies manually instead of using the pack
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.19"
+pip install "manul-engine[ai]==0.0.9.20"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -628,15 +628,13 @@ Representative coverage areas include:
 - visibility filtering and TreeWalker behavior
 - custom controls and lazy control loading
 
-## What's New in v0.0.9.19
+## What's New in v0.0.9.20
 
-- **Input handling fixed in `actions.py`:** the runtime now correctly distinguishes `Type 'VALUE' into 'TARGET'` from `Fill 'TARGET' field with 'VALUE'`, so `into` phrasing no longer swaps the value and target.
-- **Checkbox/radio labels improved in `SCAN_JS`:** the scanner now prefers associated label text from `label[for]`, wrapping `<label>`, or adjacent label nodes instead of falling back too early to raw element text.
-- **Scanner output carries more state:** `SCAN PAGE` entries now include `manul_id` and non-empty current `value` data for fillable controls, which makes downstream tooling and generated hunts more reliable on prefilled forms.
-- **Release line synchronized to `0.0.9.19`:** package metadata and release-facing docs were updated alongside the runtime changes.
+- **Socket.dev false-positive cleanup in `core.py`:** broad `import os` usage was narrowed to targeted imports and `Path(...).name`, which removes a misleading `Shell access` supply-chain alert without changing runtime behavior.
+- **Release line synchronized to `0.0.9.20`:** package metadata and release-facing docs were updated alongside the runtime changes.
 
 ## License
 
-**Version:** 0.0.9.19
+**Version:** 0.0.9.20
 
 Apache-2.0.

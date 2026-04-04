@@ -61,7 +61,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.19
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.20
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession
   api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)

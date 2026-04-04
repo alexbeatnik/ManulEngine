@@ -17,7 +17,7 @@ drag-and-drop, click/type/select/hover via _execute_step).
 import asyncio
 import inspect
 import json
-import os
+from os import environ as _environ
 import re
 import time
 import traceback
@@ -959,7 +959,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         async with async_playwright() as p:
             if self.browser == "electron":
                 # Electron: connect to a running Chromium instance via CDP.
-                _cdp_port = os.environ.get("MANUL_CDP_PORT", "9222")
+                _cdp_port = _environ.get("MANUL_CDP_PORT", "9222")
                 _cdp_url = f"http://localhost:{_cdp_port}"
                 try:
                     browser = await p.chromium.connect_over_cdp(_cdp_url)
@@ -969,7 +969,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                         f"    💡 Ensure the Electron app is running with "
                         f"--remote-debugging-port={_cdp_port}"
                     )
-                    return MissionResult(file=hunt_file or "", name=os.path.basename(hunt_file) if hunt_file else "", status="fail")
+                    return MissionResult(file=hunt_file or "", name=Path(hunt_file).name if hunt_file else "", status="fail")
                 # Reuse existing context/page from the Electron app.
                 if browser.contexts:
                     ctx = browser.contexts[0]
@@ -1015,7 +1015,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
 
             blocks = parse_hunt_blocks(parsed_task, step_file_lines)
             if not blocks:
-                return MissionResult(file=hunt_file or "", name=os.path.basename(hunt_file) if hunt_file else "", status="fail")
+                return MissionResult(file=hunt_file or "", name=Path(hunt_file).name if hunt_file else "", status="fail")
 
             ok = True
             done = False
@@ -1081,9 +1081,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                 print(f"    🔴 BREAKPOINT at action {action_index} — opening Playwright Inspector…")
                                 await page.pause()
 
-                        import os as _os_nav
                         _auto_annotate_live = (
-                            _os_nav.environ.get("MANUL_AUTO_ANNOTATE", "").strip().lower()
+                            _environ.get("MANUL_AUTO_ANNOTATE", "").strip().lower()
                             in ("1", "true", "yes")
                         ) or prompts.AUTO_ANNOTATE
                         try:
@@ -1356,7 +1355,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             _status = "warning"
         return MissionResult(
             file=hunt_file or "",
-            name=os.path.basename(hunt_file) if hunt_file else "",
+            name=Path(hunt_file).name if hunt_file else "",
             status=_status,
             steps=_step_results,
             blocks=_block_results,
