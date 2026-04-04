@@ -14,10 +14,10 @@ services:
       - ./controls:/workspace/controls:ro
       - ./scripts:/workspace/scripts:ro
     environment:
-      - MANUL_HEADLESS=true
-      - MANUL_HTML_REPORT=true
-      - MANUL_SCREENSHOT=on-fail
-      - MANUL_WORKERS=2
+      MANUL_HEADLESS: "true"
+      MANUL_HTML_REPORT: "true"
+      MANUL_SCREENSHOT: "on-fail"
+      MANUL_WORKERS: "2"
     command: ["--html-report", "--screenshot", "on-fail", "tests/"]
 
   manul-daemon:

@@ -11,31 +11,19 @@ ARG MANUL_VERSION=0.0.9.22
 ARG BROWSERS=chromium
 
 # ===========================================================================
-# Stage 1: deps — install Python packages + Playwright browsers
+# Stage 1: builder — install Python packages + Playwright browsers
 # ===========================================================================
-FROM python:${PYTHON_VERSION}-slim-bookworm AS deps
+FROM python:${PYTHON_VERSION}-slim-bookworm AS builder
 
 ARG MANUL_VERSION
 ARG BROWSERS
 
-# System packages required by Playwright Chromium + fonts for screenshots
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        # Playwright Chromium runtime deps
-        libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
-        libdrm2 libdbus-1-3 libxkbcommon0 libatspi2.0-0 \
-        libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 \
-        libpango-1.0-0 libcairo2 libasound2 libwayland-client0 \
-        # Fonts for correct text rendering in screenshots
-        fonts-liberation fonts-noto-color-emoji \
-        # PID 1 init
-        dumb-init \
-    && rm -rf /var/lib/apt/lists/*
+ENV PLAYWRIGHT_BROWSERS_PATH=/home/manul/.cache/ms-playwright
 
 # Install ManulEngine (no pip cache to keep layer small)
 RUN pip install --no-cache-dir manul-engine==${MANUL_VERSION}
 
-# Install Playwright browser(s)
-ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
+# Install Playwright browser(s) — downloads binaries + system deps
 RUN playwright install --with-deps ${BROWSERS}
 
 # ===========================================================================
@@ -44,9 +32,8 @@ RUN playwright install --with-deps ${BROWSERS}
 FROM python:${PYTHON_VERSION}-slim-bookworm AS runtime
 
 ARG MANUL_VERSION
-ARG BROWSERS
 
-# Re-install only the minimal runtime system libraries (no build tools)
+# Runtime system libraries for Playwright Chromium + fonts + PID 1
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
         libdrm2 libdbus-1-3 libxkbcommon0 libatspi2.0-0 \
@@ -54,16 +41,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libpango-1.0-0 libcairo2 libasound2 libwayland-client0 \
         fonts-liberation fonts-noto-color-emoji \
         dumb-init \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Copy installed Python packages from deps stage
-COPY --from=deps /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-COPY --from=deps /usr/local/bin/manul /usr/local/bin/manul
-COPY --from=deps /usr/local/bin/playwright /usr/local/bin/playwright
-
-# Copy Playwright browser binaries from deps stage
-ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright-browsers
-COPY --from=deps /opt/playwright-browsers /opt/playwright-browsers
+# Copy installed Python packages from builder stage
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin/manul /usr/local/bin/manul
+COPY --from=builder /usr/local/bin/playwright /usr/local/bin/playwright
 
 # ---------------------------------------------------------------------------
 # Non-root user
@@ -71,11 +54,17 @@ COPY --from=deps /opt/playwright-browsers /opt/playwright-browsers
 RUN groupadd --gid 1000 manul \
     && useradd --uid 1000 --gid manul --shell /bin/bash --create-home manul
 
+# Copy Playwright browser binaries from builder stage
+ENV PLAYWRIGHT_BROWSERS_PATH=/home/manul/.cache/ms-playwright
+COPY --from=builder /home/manul/.cache/ms-playwright /home/manul/.cache/ms-playwright
+RUN chown -R manul:manul /home/manul/.cache
+
 # ---------------------------------------------------------------------------
 # Working directory
 # ---------------------------------------------------------------------------
 WORKDIR /workspace
-RUN chown manul:manul /workspace
+RUN mkdir -p /workspace/reports /workspace/cache \
+    && chown -R manul:manul /workspace
 
 # ---------------------------------------------------------------------------
 # Environment — sensible CI defaults
@@ -86,6 +75,7 @@ ENV MANUL_HEADLESS=true \
     MANUL_HTML_REPORT=true \
     MANUL_WORKERS=1 \
     MANUL_BROWSER_ARGS="--no-sandbox --disable-dev-shm-usage" \
+    PLAYWRIGHT_BROWSERS_PATH=/home/manul/.cache/ms-playwright \
     TZ=UTC \
     LANG=C.UTF-8 \
     PYTHONUNBUFFERED=1
@@ -96,12 +86,13 @@ ENV MANUL_HEADLESS=true \
 LABEL org.opencontainers.image.source="https://github.com/alexbeatnik/ManulEngine" \
       org.opencontainers.image.description="ManulEngine — deterministic DSL-first browser automation CI runner" \
       org.opencontainers.image.licenses="Apache-2.0" \
-      org.opencontainers.image.version="${MANUL_VERSION}"
+      org.opencontainers.image.version="0.0.9.22" \
+      org.opencontainers.image.vendor="alexbeatnik"
 
 # ---------------------------------------------------------------------------
 # Health check (useful for serve / daemon modes)
 # ---------------------------------------------------------------------------
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
     CMD ["manul", "--help"]
 
 # Switch to non-root
