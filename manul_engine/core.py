@@ -1016,7 +1016,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             else:
                 _launch_args: list[str] = ["--start-maximized"] if self.browser == "chromium" else []
                 # --no-sandbox: only when running as root or inside a container
-                if self.browser == "chromium" and (os.getuid() == 0 or os.path.exists("/.dockerenv")):
+                _is_root = hasattr(os, "getuid") and os.getuid() == 0
+                if self.browser == "chromium" and (_is_root or os.path.exists("/.dockerenv")):
                     _launch_args.insert(0, "--no-sandbox")
                 _launch_args = _launch_args + [a for a in self.browser_args if a not in _launch_args]
                 _launch_opts: dict = dict(headless=self.headless, args=_launch_args)

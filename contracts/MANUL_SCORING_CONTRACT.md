@@ -182,7 +182,9 @@
       { "key": "rect_bottom",         "type": "int",      "description": "Math.round(boundingClientRect.bottom)." },
       { "key": "rect_right",          "type": "int",      "description": "Math.round(boundingClientRect.right)." },
       { "key": "ancestors",           "type": "string[]", "description": "Recent ancestor tag names (up to 8 levels)." },
-      { "key": "frame_index",         "type": "int",      "description": "Index into page.frames (0 = main). Added by Python _snapshot(), not by JS." }
+      { "key": "frame_index",         "type": "int",      "description": "Index into page.frames (0 = main). Added by Python _snapshot(), not by JS." },
+      { "key": "frame_url",           "type": "string",   "description": "Frame URL captured by Python _snapshot(), not by JS. Used by _frame_for() as a reload-tolerant routing hint." },
+      { "key": "frame_name",          "type": "string",   "description": "Frame name captured by Python _snapshot(), not by JS. Used by _frame_for() as an additional reload-tolerant routing hint." }
     ],
     "nameSuffixes": [
       { "suffix": "[HIDDEN]",     "meaning": "Intentionally hidden (aria-hidden, off-screen left < -999, visibility hidden)." },

@@ -129,6 +129,14 @@ tests/
   call_python_variants.hunt  integration: all CALL PYTHON variants (positional args, aliases, to/into capture)
 benchmarks/
   run_benchmarks.py        Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
+contracts/
+  MANUL_API_CONTRACT.md    Machine-readable contract: ManulSession Python API
+  MANUL_CLI_CONTRACT.md    Machine-readable contract: CLI interface
+  MANUL_CONFIG_CONTRACT.md Machine-readable contract: configuration surface
+  MANUL_DSL_CONTRACT.md    Machine-readable contract: .hunt DSL commands
+  MANUL_HOOKS_CONTRACT.md  Machine-readable contract: hooks & lifecycle
+  MANUL_REPORTING_CONTRACT.md Machine-readable contract: reporting pipeline
+  MANUL_SCORING_CONTRACT.md  Machine-readable contract: DOMScorer heuristics
 ```
 
 ## How the engine works

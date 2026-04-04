@@ -55,8 +55,8 @@
       "envVar": "MANUL_BROWSER",
       "type": "string",
       "default": "chromium",
-      "allowedValues": ["chromium", "firefox", "webkit"],
-      "description": "Playwright browser engine. For Electron apps, use executable_path instead.",
+      "allowedValues": ["chromium", "firefox", "webkit", "electron"],
+      "description": "Playwright browser engine. `electron` is a legacy/runtime-config-only value still accepted via JSON config or MANUL_BROWSER for CDP/Electron compatibility, but the CLI `--browser` flag remains limited to `chromium`, `firefox`, or `webkit`. For Electron/desktop automation, prefer `executable_path` with the OPEN APP command.",
       "cliFlag": "--browser"
     },
     {
@@ -252,7 +252,7 @@
       "type": "integer",
       "default": 15,
       "minimum": 1,
-      "description": "Maximum polling retries for VERIFY steps before declaring failure. Each retry waits ~0.5s."
+      "description": "Maximum polling retries for VERIFY steps before declaring failure. Each retry waits ~1.0s for checked/enabled/disabled state verification and ~1.5s for text presence verification."
     },
     {
       "key": "explain_mode",

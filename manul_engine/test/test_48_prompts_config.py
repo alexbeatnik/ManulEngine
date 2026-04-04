@@ -41,6 +41,7 @@ from manul_engine.prompts import (
     AI_POLICY,
     BROWSER,
     SCREENSHOT,
+    VERIFY_MAX_RETRIES,
 )
 from manul_engine.helpers import env_bool
 
@@ -294,6 +295,54 @@ def test_screenshot_valid() -> None:
             f"SCREENSHOT is '{SCREENSHOT}'")
 
 
+# ── 10. VERIFY_MAX_RETRIES config ───────────────────────────────────────────
+
+def test_verify_max_retries_default() -> None:
+    _assert(VERIFY_MAX_RETRIES == 15,
+            f"default VERIFY_MAX_RETRIES is 15 (got {VERIFY_MAX_RETRIES})")
+
+
+def test_verify_max_retries_minimum() -> None:
+    _assert(VERIFY_MAX_RETRIES >= 1,
+            f"VERIFY_MAX_RETRIES >= 1 (got {VERIFY_MAX_RETRIES})")
+
+
+def test_verify_max_retries_env_override() -> None:
+    import importlib
+    import manul_engine.prompts as _p
+    with patch.dict(os.environ, {"MANUL_VERIFY_MAX_RETRIES": "3"}):
+        importlib.reload(_p)
+        val = _p.VERIFY_MAX_RETRIES
+    importlib.reload(_p)  # restore
+    _assert(val == 3,
+            f"MANUL_VERIFY_MAX_RETRIES=3 override",
+            f"got {val}")
+
+
+def test_verify_max_retries_env_floor() -> None:
+    import importlib
+    import manul_engine.prompts as _p
+    with patch.dict(os.environ, {"MANUL_VERIFY_MAX_RETRIES": "0"}):
+        importlib.reload(_p)
+        val = _p.VERIFY_MAX_RETRIES
+    importlib.reload(_p)  # restore
+    _assert(val == 1,
+            f"MANUL_VERIFY_MAX_RETRIES=0 floors to 1",
+            f"got {val}")
+
+
+def test_verify_max_retries_env_garbage() -> None:
+    import importlib
+    import manul_engine.prompts as _p
+    with patch.dict(os.environ, {"MANUL_VERIFY_MAX_RETRIES": "abc"}):
+        importlib.reload(_p)
+        val = _p.VERIFY_MAX_RETRIES
+    importlib.reload(_p)  # restore
+    _assert(val == 15,
+            f"MANUL_VERIFY_MAX_RETRIES=abc falls back to 15",
+            f"got {val}")
+
+
 # ── Entry point ──────────────────────────────────────────────────────────────
 
 async def run_suite() -> tuple[int, int]:
@@ -343,6 +392,13 @@ async def run_suite() -> tuple[int, int]:
     test_ai_policy_valid()
     test_browser_valid()
     test_screenshot_valid()
+
+    print("\n  10. VERIFY_MAX_RETRIES config")
+    test_verify_max_retries_default()
+    test_verify_max_retries_minimum()
+    test_verify_max_retries_env_override()
+    test_verify_max_retries_env_floor()
+    test_verify_max_retries_env_garbage()
 
     total = _PASS + _FAIL
     print(f"\n{'='*50}")
