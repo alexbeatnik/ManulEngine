@@ -357,9 +357,12 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
         elif stripped.startswith("@schedule:"):
             schedule = stripped.split(":", 1)[1].strip()
         elif stripped.startswith("@export:"):
-            name = stripped.split(":", 1)[1].strip()
-            if name:
-                exports.append(name)
+            export_part = stripped.split(":", 1)[1].strip()
+            if export_part:
+                for _en in export_part.split(","):
+                    _en = _en.strip()
+                    if _en:
+                        exports.append(_en)
         elif stripped.startswith("@import:"):
             directive = parse_import_directive(stripped)
             if directive is not None:
@@ -379,15 +382,15 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
         )
 
     # Expand USE <BlockName> directives in mission body
-    if imported_blocks and mission_lines:
+    if mission_lines:
         mission_lines, step_file_lines = expand_use_directives(
             mission_lines, step_file_lines, imported_blocks,
         )
 
-    # Merge import vars into parsed_vars only for keys not already declared
+    # Merge import vars into parsed_vars for keys not already declared
     # (import vars are lowest priority — LEVEL_IMPORT)
-    _import_var_keys = set(import_vars.keys()) - set(parsed_vars.keys())
-    _import_only_vars = {k: import_vars[k] for k in _import_var_keys}
+    for _ik, _iv in import_vars.items():
+        parsed_vars.setdefault(_ik, _iv)
 
     return ParsedHunt(
         mission="".join(mission_lines).strip(),

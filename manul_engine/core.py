@@ -1277,6 +1277,12 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                 print("    🏁 MISSION ACCOMPLISHED")
                                 done = True
 
+                            elif step_kind == "use_import":
+                                raise RuntimeError(
+                                    f"Unresolved USE directive at runtime: {step!r}. "
+                                    f"USE blocks must be expanded at parse time via @import: headers."
+                                )
+
                             else:
                                 _cc_mode = detect_mode(step)
                                 _cc_quoted = extract_quoted(step, preserve_case=True)

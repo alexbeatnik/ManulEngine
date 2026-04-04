@@ -89,10 +89,12 @@ ManulEngine/
 │       ├── test_44_explain_mode.py   Unit: DOMScorer explain output, channel breakdown, --explain CLI flag (33 assertions, no browser)
 │       ├── test_45_api.py            Unit: ManulSession public Python API facade (50 assertions, no browser)
 │       ├── test_46_attribute_semantic.py Unit: attribute-semantic icon matching, camelCase dev attrs, cart badges, false-positive resistance (34 assertions, no browser)
-│       └── test_47_contextual_proximity.py Unit: contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser rules (67 assertions, no browser)│       ├── test_48_prompts_config.py  Unit: Configuration loading, threshold derivation, page-name lookup, _KEY_MAP, env_bool (83 assertions, no browser)
+│       ├── test_47_contextual_proximity.py Unit: contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser rules (67 assertions, no browser)
+│       ├── test_48_prompts_config.py  Unit: Configuration loading, threshold derivation, page-name lookup, _KEY_MAP, env_bool (83 assertions, no browser)
 │       ├── test_50_imports.py         Unit: @import/@export/USE directive system (84 assertions, no browser)
 │       ├── test_51_packager.py        Unit: Pack/install .huntlib archives and lockfile (21 assertions, no browser)
-│       └── test_52_exports.py         Unit: @export validation, wildcard exports, access control (19 assertions, no browser)├── controls/                         User-owned custom Python handlers (loaded from directories listed in `custom_controls_dirs` config)
+│       └── test_52_exports.py         Unit: @export validation, wildcard exports, access control (19 assertions, no browser)
+├── controls/                         User-owned custom Python handlers (loaded from directories listed in `custom_controls_dirs` config)
 │   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
 ├── tests/                            Integration hunt tests (real websites)
 │   ├── demoqa.hunt                   DemoQA form, checkbox, radio, and table coverage
@@ -689,7 +691,7 @@ python manul.py --headless tests/
 
 ---
 
-## � Docker CI/CD Runner
+## 🐳 Docker CI/CD Runner
 
 ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headless CI runner image published to `ghcr.io/alexbeatnik/manul-engine`.
 
@@ -715,12 +717,13 @@ docker run --rm --shm-size=1g \
 * `manul-serve` — HTTP API on port 8000
 
 **GitHub Actions workflows:**
-* `docker-publish.yml` — builds multi-platform images (`linux/amd64`, `linux/arm64`), pushes to GHCR, tags: `latest`, semver, git SHA.
+* `release.yml` — unified release pipeline: synthetic tests → PyPI publish (OIDC) → GHCR multi-arch image → GitHub Release.
+* `docker-dev.yml` — pushes a `main`-tagged dev image to GHCR on every merge to `main`.
 * `manul-ci.yml` — reusable example workflow for downstream repos to run `.hunt` tests against the published image.
 
 ---
 
-## �🚀 Quick Start
+## 🚀 Quick Start
 
 Create a hunt file: `tests/mission.hunt`
 

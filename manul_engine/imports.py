@@ -212,9 +212,12 @@ def _extract_exported_blocks(
 
             # Headers
             if stripped.startswith("@export:"):
-                name = stripped.split(":", 1)[1].strip()
-                if name:
-                    exports.append(name)
+                export_part = stripped.split(":", 1)[1].strip()
+                if export_part:
+                    for name in export_part.split(","):
+                        cleaned = name.strip()
+                        if cleaned:
+                            exports.append(cleaned)
                 continue
             if stripped.startswith("@var:"):
                 var_part = stripped[5:].strip()

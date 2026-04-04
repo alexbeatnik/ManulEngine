@@ -32,6 +32,7 @@ RUN playwright install --with-deps ${BROWSERS}
 FROM python:${PYTHON_VERSION}-slim-bookworm AS runtime
 
 ARG MANUL_VERSION
+ARG PYTHON_VERSION
 
 # Runtime system libraries for Playwright Chromium + fonts + PID 1
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -44,7 +45,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy installed Python packages from builder stage
-COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/lib/python${PYTHON_VERSION}/site-packages /usr/local/lib/python${PYTHON_VERSION}/site-packages
 COPY --from=builder /usr/local/bin/manul /usr/local/bin/manul
 COPY --from=builder /usr/local/bin/playwright /usr/local/bin/playwright
 

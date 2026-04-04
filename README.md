@@ -637,7 +637,7 @@ Representative coverage areas include:
 
 ## Docker CI/CD Runner
 
-ManulEngine ships a production-ready Docker image for headless CI pipelines.
+ManulEngine ships an alpha-stage headless CI runner image for browser automation pipelines.
 
 ```bash
 docker run --rm --shm-size=1g \
