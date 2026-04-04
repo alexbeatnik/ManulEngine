@@ -521,7 +521,7 @@ async def run_suite() -> tuple[int, int]:
     _test_validate_exports()
 
     total = _PASS + _FAIL
-    print(f"\n  {'='*50}")
-    print(f"  RESULT: {_PASS} passed, {_FAIL} failed")
-    print(f"  {'='*50}")
+    print(f"\n    SCORE: {_PASS}/{total}")
+    if _FAIL:
+        print(f"    \u26a0\ufe0f  {_FAIL} assertion(s) failed!")
     return _PASS, _FAIL
