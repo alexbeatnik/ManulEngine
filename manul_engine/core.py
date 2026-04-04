@@ -320,7 +320,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         try:
             if by_js_id:
                 ctx = frame or page
-                await ctx.evaluate("(id, c, b) => window.manulHighlight(id, c, b)", [target, color, bg])
+                await ctx.evaluate("([id, c, b]) => window.manulHighlight(id, c, b)", [target, color, bg])
             else:
                 await target.evaluate("""(el, args) => {
                     const [color, bg] = args;

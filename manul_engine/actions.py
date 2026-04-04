@@ -509,10 +509,11 @@ class _ActionsMixin:
         search_text = expected[0] if expected else ""
         for retry in range(self._VERIFY_MAX_RETRIES):
             disabled_result = await page.evaluate(STATE_CHECK_JS, [search_text, state_check])
-            if disabled_result is not None:
-                icon = '✅' if disabled_result else '❌'
-                print(f"    {icon} Element {state_check}={disabled_result}")
-                return disabled_result
+            if disabled_result is True:
+                print(f"    ✅ Element {state_check}=True")
+                return True
+            if disabled_result is False:
+                print(f"    ❌ Element {state_check}=False")
             if retry < self._VERIFY_MAX_RETRIES - 1:
                 await asyncio.sleep(1)
                 continue
@@ -865,7 +866,7 @@ class _ActionsMixin:
             try:
                 if mode == "input":
                     print(f"    ⌨️  Typed '{txt_to_type}' → '{self._fmt_el_name(name)}'")
-                    if is_shad: await frame.evaluate("(id, val) => window.manulType(id, val)", [el_id, txt_to_type])
+                    if is_shad: await frame.evaluate("([id, val]) => window.manulType(id, val)", [el_id, txt_to_type])
                     else:
                         is_readonly = await loc.evaluate("el => el.readOnly || el.hasAttribute('readonly')")
                         if is_readonly:
