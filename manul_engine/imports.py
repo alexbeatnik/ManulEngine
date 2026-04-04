@@ -105,7 +105,12 @@ def resolve_source_path(
     cwd = cwd or os.getcwd()
 
     # If it looks like a file path (contains / or \ or ends with .hunt)
-    if "/" in source or "\\" in source or source.endswith(".hunt"):
+    # but NOT a scoped package like "@scope/pkg"
+    is_file_path = (
+        ("/" in source or "\\" in source or source.endswith(".hunt"))
+        and not source.startswith("@")
+    )
+    if is_file_path:
         candidates = [
             os.path.normpath(os.path.join(hunt_dir, source)),
             os.path.normpath(os.path.join(cwd, source)),

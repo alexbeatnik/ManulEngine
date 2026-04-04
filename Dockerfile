@@ -33,21 +33,19 @@ FROM python:${PYTHON_VERSION}-slim-bookworm AS runtime
 
 ARG MANUL_VERSION
 ARG PYTHON_VERSION
-
-# Runtime system libraries for Playwright Chromium + fonts + PID 1
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
-        libdrm2 libdbus-1-3 libxkbcommon0 libatspi2.0-0 \
-        libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 \
-        libpango-1.0-0 libcairo2 libasound2 libwayland-client0 \
-        fonts-liberation fonts-noto-color-emoji \
-        dumb-init \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+ARG BROWSERS
 
 # Copy installed Python packages from builder stage
 COPY --from=builder /usr/local/lib/python${PYTHON_VERSION}/site-packages /usr/local/lib/python${PYTHON_VERSION}/site-packages
 COPY --from=builder /usr/local/bin/manul /usr/local/bin/manul
 COPY --from=builder /usr/local/bin/playwright /usr/local/bin/playwright
+
+# Install runtime system deps for Playwright browsers + fonts + PID 1
+# Using playwright install-deps ensures the dep list stays in sync with
+# the Playwright version rather than a hand-maintained apt list.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        dumb-init fonts-liberation fonts-noto-color-emoji \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # ---------------------------------------------------------------------------
 # Non-root user
@@ -59,6 +57,9 @@ RUN groupadd --gid 1000 manul \
 ENV PLAYWRIGHT_BROWSERS_PATH=/home/manul/.cache/ms-playwright
 COPY --from=builder /home/manul/.cache/ms-playwright /home/manul/.cache/ms-playwright
 RUN chown -R manul:manul /home/manul/.cache
+
+# Install OS-level deps required by copied browsers (must run as root, before USER)
+RUN playwright install-deps ${BROWSERS}
 
 # ---------------------------------------------------------------------------
 # Working directory

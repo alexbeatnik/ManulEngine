@@ -375,22 +375,20 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
     # ── Resolve @import: directives and expand USE commands ──────────────────
     imported_blocks: dict[str, list[str]] = {}
     import_vars: dict[str, str] = {}
-    if import_directives:
-        hunt_dir = os.path.dirname(os.path.abspath(filepath))
-        imported_blocks, import_vars = resolve_imports(
-            import_directives, hunt_dir, filepath,
-        )
+    try:
+        if import_directives:
+            hunt_dir = os.path.dirname(os.path.abspath(filepath))
+            imported_blocks, import_vars = resolve_imports(
+                import_directives, hunt_dir, filepath,
+            )
 
-    # Expand USE <BlockName> directives in mission body
-    if mission_lines:
-        mission_lines, step_file_lines = expand_use_directives(
-            mission_lines, step_file_lines, imported_blocks,
-        )
-
-    # Merge import vars into parsed_vars for keys not already declared
-    # (import vars are lowest priority — LEVEL_IMPORT)
-    for _ik, _iv in import_vars.items():
-        parsed_vars.setdefault(_ik, _iv)
+        # Expand USE <BlockName> directives in mission body
+        if mission_lines:
+            mission_lines, step_file_lines = expand_use_directives(
+                mission_lines, step_file_lines, imported_blocks,
+            )
+    except HuntImportError:
+        raise  # Let callers (_run_hunt_file) handle with a controlled error path
 
     return ParsedHunt(
         mission="".join(mission_lines).strip(),

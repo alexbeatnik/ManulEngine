@@ -144,9 +144,11 @@ contracts/
   MANUL_SCORING_CONTRACT.md  Machine-readable contract: DOMScorer heuristics
 Dockerfile                 Multi-stage CI/CD runner image (ghcr.io/alexbeatnik/manul-engine)
 .dockerignore              Build-context exclusions for Docker
-docker-compose.yml         Local dev/CI compose: manul, manul-daemon, manul-serve services
+docker-compose.yml         Local dev/CI compose: manul, manul-daemon services
 .github/workflows/
-  docker-publish.yml       Multi-platform Docker image build + GHCR push
+  synthetic-tests.yml      PR quality gate (synthetic test suite)
+  release.yml              Unified release: PyPI + GHCR + GitHub Release on v* tag
+  docker-dev.yml           Dev Docker image on main push (amd64-only)
   manul-ci.yml             Reusable example workflow for downstream repos
 ```
 

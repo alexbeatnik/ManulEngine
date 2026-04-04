@@ -91,7 +91,7 @@ jobs:
 
   # ── 5. Build & push Docker image to GHCR ───────────────────────────
   build-docker:
-    needs: test
+    needs: [test, publish-pypi]
     runs-on: ubuntu-latest
     permissions:
       contents: read

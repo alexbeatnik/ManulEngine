@@ -659,14 +659,14 @@ docker run --rm --shm-size=1g \
   tests/
 ```
 
-The image runs as non-root user `manul` (UID 1000), includes `dumb-init` for proper signal handling, and sets `--no-sandbox --disable-dev-shm-usage` by default. Build with additional browsers via `--build-arg BROWSERS="chromium firefox"`. A `docker-compose.yml` is included for local development with `manul`, `manul-daemon`, and `manul-serve` services.
+The image runs as non-root user `manul` (UID 1000), includes `dumb-init` for proper signal handling, and sets `--no-sandbox --disable-dev-shm-usage` by default. Build with additional browsers via `--build-arg BROWSERS="chromium firefox"`. A `docker-compose.yml` is included for local development with `manul` and `manul-daemon` services.
 
 ## What's New in v0.0.9.22
 
 - **@import / @export / USE system:** Reusable `.hunt` libraries. `@import: Login from lib/auth.hunt` pulls named STEP blocks, `USE Login` expands them inline, and `@export:` controls visibility. `@var:` from source files inherit at the lowest (import) scope. Wildcard imports, aliases (`@import: Login as AuthLogin`), and package-style sources (`@import: Login from @my-lib`) are all supported.
 - **`manul pack` / `manul install` CLI:** Pack `.hunt` libraries into distributable `.huntlib` archives and install them locally or globally (`~/.manul/hunt_libs/`). Lockfile (`huntlib-lock.json`) tracks installed versions.
-- **Docker CI/CD runner:** Multi-stage `Dockerfile` packaging ManulEngine as a headless CI runner image (`ghcr.io/alexbeatnik/manul-engine`). Non-root `manul` user (UID 1000), `dumb-init` PID 1, Chromium-only by default (configurable via `BROWSERS` build arg). Includes `docker-compose.yml` with `manul`, `manul-daemon`, and `manul-serve` services.
-- **GitHub Actions workflows:** `docker-publish.yml` builds multi-platform images (`linux/amd64`, `linux/arm64`) and pushes to GHCR on `main` push or `v*` tags. `manul-ci.yml` provides a reusable example workflow for downstream repositories.
+- **Docker CI/CD runner:** Multi-stage `Dockerfile` packaging ManulEngine as a headless CI runner image (`ghcr.io/alexbeatnik/manul-engine`). Non-root `manul` user (UID 1000), `dumb-init` PID 1, Chromium-only by default (configurable via `BROWSERS` build arg). Includes `docker-compose.yml` with `manul` and `manul-daemon` services.
+- **GitHub Actions workflows:** `release.yml` handles unified release automation (PyPI + GHCR + GitHub Release on `v*` tags), `docker-dev.yml` pushes dev images on `main` merge, and `manul-ci.yml` provides a reusable example workflow for downstream repositories.
 - **Release line synchronized to `0.0.9.22`:** package metadata and release-facing docs were updated alongside the Docker infrastructure.
 
 ## License

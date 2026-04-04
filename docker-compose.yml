@@ -25,10 +25,3 @@ services:
       service: manul
     command: ["daemon", "tests/"]
     restart: unless-stopped
-
-  manul-serve:
-    extends:
-      service: manul
-    ports:
-      - "8000:8000"
-    command: ["serve"]
