@@ -21,6 +21,13 @@ import time
 from typing import NamedTuple
 
 from .reporting import StepResult, MissionResult, RunSummary, append_run_history
+from .hooks import RE_SETUP, RE_END_SETUP, RE_TEARDOWN, RE_END_TEARDOWN
+from .helpers import parse_hunt_blocks
+
+
+# ── Pre-compiled regex for _read_tags fast header scan ────────────────────────
+_RE_NUMBERED_LINE = re.compile(r"^\d+\.")
+_RE_STEP_MARKER = re.compile(r"^STEP\b", re.IGNORECASE)
 
 
 # ── CLI flag extraction helpers ──────────────────────────────────────────────
@@ -135,10 +142,16 @@ class _Tee:
         self._file.flush()
 
     def isatty(self) -> bool:
-        return False
+        return self._term.isatty()
 
     def close(self) -> None:
         self._file.close()
+
+    def __enter__(self) -> "_Tee":
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self.close()
 
 
 # ── Structured return type for parse_hunt_file ───────────────────────────────
@@ -248,8 +261,6 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
     at the top of the file.  If no ``@tags:`` line is present, returns ``[]``.
     Used by the CLI ``--tags`` flag to filter which hunt files are executed.
     """
-    from .hooks import RE_SETUP, RE_END_SETUP, RE_TEARDOWN, RE_END_TEARDOWN
-
     context = ""
     title = ""
     parsed_vars: dict[str, str] = {}
@@ -367,26 +378,20 @@ def _read_tags(path: str) -> list[str]:
             if stripped.startswith("@tags:"):
                 raw = stripped.split(":", 1)[1]
                 return [t.strip() for t in raw.split(",") if t.strip()]
-            if re.match(r'^\d+\.', stripped) or re.match(r'^STEP\b', stripped, re.IGNORECASE):
+            if _RE_NUMBERED_LINE.match(stripped) or _RE_STEP_MARKER.match(stripped):
                 break
     return []
 
 
 # ── Find the current manul executable ───────────────────────────────────────
-def _find_manul_exe() -> str:
-    """Return the path used to invoke the current process (for subprocess workers)."""
-    # If invoked as the installed `manul` console script, sys.argv[0] is the right path.
-    candidate = os.path.abspath(sys.argv[0])
-    if candidate.endswith(("manul", "manul.exe", "__main__.py")) and os.path.exists(candidate):
-        return candidate
-    # Try shutil.which as a more reliable lookup when argv[0] is just "manul".
-    import shutil
-    which = shutil.which("manul")
-    if which:
-        return which
-    # Final fallback: use __main__.py next to this file so create_subprocess_exec
-    # can prepend sys.executable and call it correctly.
-    return str(os.path.join(os.path.dirname(__file__), "__main__.py"))
+def _find_manul_exe() -> list[str]:
+    """Return the command prefix used to spawn subprocess workers.
+
+    Always uses ``[sys.executable, '-m', 'manul_engine']`` to guarantee
+    the same Python interpreter and installed package version, avoiding
+    cross-venv mismatches that ``shutil.which('manul')`` can introduce.
+    """
+    return [sys.executable, "-m", "manul_engine"]
 
 
 # ── Execute a single .hunt file ───────────────────────────────────────────────
@@ -399,6 +404,7 @@ async def _run_hunt_file(
     screenshot_mode: str = "none",
     global_vars: "dict[str, str] | None" = None,
     explain: bool = False,
+    executable_path: "str | None" = None,
 ) -> MissionResult:
     filename = os.path.basename(path)
     print(f"\n{'='*60}")
@@ -410,7 +416,6 @@ async def _run_hunt_file(
     # Map file line numbers (from editor gutter breakpoints) to action indices.
     # STEP headers now map to the first action inside their block.
     _break_lines = break_lines or set()
-    from .helpers import parse_hunt_blocks
     break_steps: set[int] = set()
     if _break_lines:
         action_index = 0
@@ -451,7 +456,7 @@ async def _run_hunt_file(
     from manul_engine.prompts import CUSTOM_CONTROLS_DIRS as _custom_dirs
     _required_controls = extract_required_controls(hunt.mission, os.getcwd(), custom_modules_dirs=_custom_dirs)
 
-    manul = ManulEngine(headless=headless, browser=browser, debug_mode=debug, break_steps=break_steps, explain_mode=explain, required_controls=_required_controls or None)
+    manul = ManulEngine(headless=headless, browser=browser, debug_mode=debug, break_steps=break_steps, explain_mode=explain, required_controls=_required_controls or None, executable_path=executable_path)
     mission_result = MissionResult(file=path, name=filename, status="fail")
     # Feed global lifecycle vars and per-file @var: declarations as separate scopes
     # so the engine can enforce strict precedence.
@@ -553,6 +558,7 @@ def _load_data_file(data_path: str, hunt_dir: str) -> list[dict[str, str]]:
                 raw = json.load(f)
             if isinstance(raw, list):
                 return [{str(k): str(v) for k, v in item.items()} for item in raw if isinstance(item, dict)]
+            print(f"    ⚠️  @data: expected a JSON array of objects in {data_path}, got {type(raw).__name__}")
             return []
         elif resolved.endswith(".csv"):
             with open(resolved, "r", encoding="utf-8", newline="") as f:
@@ -597,7 +603,7 @@ def _collect(path: str) -> list[str]:
 
 
 # ── Main entry point ──────────────────────────────────────────────────────────
-async def main() -> None:
+async def main() -> "int | None":
     try:
         if hasattr(sys.stdout, "reconfigure"):
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -662,13 +668,13 @@ async def main() -> None:
             sys.exit(1)
 
     # Extract --browser <name> flag
-    _VALID_BROWSERS = {"chromium", "firefox", "webkit", "electron"}
+    _VALID_BROWSERS = {"chromium", "firefox", "webkit"}
     browser: str | None = None
     _browser_raw, args = _pop_flag(args, "--browser")
     if _browser_raw is not None:
         candidate = _browser_raw.strip().lower()
         if candidate not in _VALID_BROWSERS:
-            print(f"Error: unsupported browser '{_browser_raw}'. Allowed: chromium, firefox, webkit, electron.", file=sys.stderr)
+            print(f"Error: unsupported browser '{_browser_raw}'. Allowed: chromium, firefox, webkit.", file=sys.stderr)
             sys.exit(1)
         browser = candidate
 
@@ -851,6 +857,7 @@ async def main() -> None:
                     screenshot_mode=screenshot_mode,
                     global_vars=_lc_ctx.variables,
                     explain=explain,
+                    executable_path=executable_path,
                 )
                 mission_result.tags = file_tags
                 # ── Retry loop ────────────────────────────────────────────
@@ -862,6 +869,7 @@ async def main() -> None:
                             screenshot_mode=screenshot_mode,
                             global_vars=_lc_ctx.variables,
                             explain=explain,
+                            executable_path=executable_path,
                         )
                         mission_result.tags = file_tags
                         mission_result.attempts = attempt
@@ -889,16 +897,11 @@ async def main() -> None:
             
             sem = asyncio.Semaphore(workers)
             manul_exe = _find_manul_exe()
+            _worker_timeout = float(os.getenv("MANUL_WORKER_TIMEOUT", "600"))
             # Serialise ctx.variables so worker processes can inherit them.
             _global_vars_json = serialize_global_vars(_lc_ctx)
 
             async def _run_subprocess(path: str) -> tuple[str, str, float, str, str]:
-                # Build base command: executable + optional script path
-                base: list[str]
-                if manul_exe.endswith(".py"):
-                    base = [sys.executable, manul_exe]
-                else:
-                    base = [manul_exe]
                 # Flags first, then the hunt file path.
                 # --workers 1 is mandatory: without it the child process would
                 # read workers=N from JSON again and try to spawn grandchildren,
@@ -908,16 +911,18 @@ async def main() -> None:
                     flags.append("--headless")
                 # --debug and --break-lines require interactive stdio and must not
                 # be forwarded to parallel subprocesses — workers is already forced
-                # to 1 when either flag is set (see validation below).
+                # to 1 when either flag is set (see validation above).
                 if browser:
                     flags += ["--browser", browser]
+                if executable_path:
+                    flags += ["--executable-path", executable_path]
                 if retries:
                     flags += ["--retries", str(retries)]
                 if screenshot_mode is not None:
                     flags += ["--screenshot", screenshot_mode]
                 # Do NOT forward --html-report: the parent process generates
                 # the consolidated report; workers would overwrite each other.
-                cmd = base + flags + [path]
+                cmd = manul_exe + flags + [path]
 
                 # Inject serialised global vars into the child's environment.
                 child_env = {**os.environ, "MANUL_GLOBAL_VARS": _global_vars_json}
@@ -930,7 +935,15 @@ async def main() -> None:
                         stderr=asyncio.subprocess.STDOUT,
                         env=child_env,
                     )
-                    raw, _ = await proc.communicate()
+                    try:
+                        raw, _ = await asyncio.wait_for(
+                            proc.communicate(), timeout=_worker_timeout,
+                        )
+                    except asyncio.TimeoutError:
+                        proc.kill()
+                        await proc.wait()
+                        elapsed = time.perf_counter() - t0
+                        return os.path.basename(path), "FAIL", elapsed, f"⏰ TIMEOUT after {_worker_timeout}s: {path}\n", path
                     elapsed = time.perf_counter() - t0
                     output = raw.decode("utf-8", errors="replace")
                     status = "PASS" if proc.returncode == 0 else "FAIL"

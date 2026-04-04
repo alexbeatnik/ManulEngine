@@ -61,7 +61,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.20
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.21
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession
   api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)
@@ -129,6 +129,14 @@ tests/
   call_python_variants.hunt  integration: all CALL PYTHON variants (positional args, aliases, to/into capture)
 benchmarks/
   run_benchmarks.py        Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
+contracts/
+  MANUL_API_CONTRACT.md    Machine-readable contract: ManulSession Python API
+  MANUL_CLI_CONTRACT.md    Machine-readable contract: CLI interface
+  MANUL_CONFIG_CONTRACT.md Machine-readable contract: configuration surface
+  MANUL_DSL_CONTRACT.md    Machine-readable contract: .hunt DSL commands
+  MANUL_HOOKS_CONTRACT.md  Machine-readable contract: hooks & lifecycle
+  MANUL_REPORTING_CONTRACT.md Machine-readable contract: reporting pipeline
+  MANUL_SCORING_CONTRACT.md  Machine-readable contract: DOMScorer heuristics
 ```
 
 ## How the engine works

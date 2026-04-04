@@ -22,5 +22,6 @@
   ],
   "retries": 0,
   "screenshot": "on-fail",
-  "html_report": true
+  "html_report": true,
+  "verify_max_retries": 15
 }

@@ -17,6 +17,7 @@ drag-and-drop, click/type/select/hover via _execute_step).
 import asyncio
 import inspect
 import json
+import os
 from os import environ as _environ
 import re
 import time
@@ -205,8 +206,27 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                 format="json",
             )
             raw = resp["message"]["content"]
-            m = re.search(r'\{.*\}', raw, re.DOTALL)
-            return json.loads(m.group(0) if m else raw)
+            
+            # Strip markdown code blocks before searching for open brace
+            raw_clean = raw.strip()
+            if raw_clean.startswith("```json"):
+                raw_clean = raw_clean[7:]
+            elif raw_clean.startswith("```"):
+                raw_clean = raw_clean[3:]
+            if raw_clean.endswith("```"):
+                raw_clean = raw_clean[:-3]
+                
+            # Use json.JSONDecoder to find the first complete JSON object
+            # instead of greedy regex which fails on nested braces.
+            decoder = json.JSONDecoder()
+            start = raw_clean.find("{")
+            if start != -1:
+                try:
+                    obj, _ = decoder.raw_decode(raw_clean, start)
+                    return obj
+                except json.JSONDecodeError:
+                    pass
+            return json.loads(raw_clean)
         except Exception as e:
             print(f"    ⚠️  LLM error: {e}")
             return None
@@ -300,13 +320,14 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         try:
             if by_js_id:
                 ctx = frame or page
-                await ctx.evaluate(f"window.manulHighlight({target}, '{color}', '{bg}')")
+                await ctx.evaluate("([id, c, b]) => window.manulHighlight(id, c, b)", [target, color, bg])
             else:
-                await target.evaluate(f"""el => {{
+                await target.evaluate("""(el, args) => {
+                    const [color, bg] = args;
                     const oB=el.style.border, oBg=el.style.backgroundColor;
-                    el.style.border='4px solid {color}'; el.style.backgroundColor='{bg}';
-                    setTimeout(()=>{{el.style.border=oB;el.style.backgroundColor=oBg;}},2000);
-                }}""")
+                    el.style.border='4px solid '+color; el.style.backgroundColor=bg;
+                    setTimeout(()=>{el.style.border=oB;el.style.backgroundColor=oBg;},2000);
+                }""", [color, bg])
             await asyncio.sleep(0.4)
         except Exception:
             pass
@@ -559,9 +580,20 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         main frame so callers never get ``None``.
         """
         idx = el.get("frame_index", 0)
+        url = el.get("frame_url")
+        name = el.get("frame_name")
         frames = page.frames
+        
+        # 1. Try URL and name match (most robust across frame reloads)
+        if url is not None and name is not None:
+            for f in frames:
+                if f.url == url and f.name == name:
+                    return f
+                    
+        # 2. Try blind index fallback (assuming no frame shifting)
         if 0 <= idx < len(frames):
             return frames[idx]
+            
         return page  # main frame fallback
 
     async def _snapshot(self, page, mode: str, texts: list[str]) -> list[dict]:
@@ -581,10 +613,13 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                     frame_els = await frame.evaluate(SNAPSHOT_JS, args)
                     for el in frame_els:
                         el["frame_index"] = idx
+                        el["frame_url"] = frame.url
+                        el["frame_name"] = frame.name
                     all_elements.extend(frame_els)
                     break  # success — stop retry loop
                 except Exception as exc:
-                    if "closed" in str(exc).lower() and attempt < 2:
+                    err_msg = str(exc).lower()
+                    if ("closed" in err_msg or "execution context" in err_msg or "detached" in err_msg) and attempt < 2:
                         await asyncio.sleep(1.5)
                         continue
                     if idx == 0:
@@ -860,7 +895,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
             print(f"    🧠 AI AGENT: Ambiguity detected, analysing {len(top)} candidates…")
             try:
                 idx = await self._llm_select_element(step, mode, top, strategic_context)
-            except Exception:
+            except Exception as exc:
+                print(f"    ⚠️  LLM selection failed ({type(exc).__name__}: {exc}), falling back to top heuristic candidate")
                 idx = 0
             
         if idx is None:
@@ -978,7 +1014,11 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                     ctx = await browser.new_context()
                     page = await ctx.new_page()
             else:
-                _launch_args = ["--no-sandbox", "--start-maximized"] if self.browser == "chromium" else []
+                _launch_args: list[str] = ["--start-maximized"] if self.browser == "chromium" else []
+                # --no-sandbox: only when running as root or inside a container
+                _is_root = hasattr(os, "getuid") and os.getuid() == 0
+                if self.browser == "chromium" and (_is_root or os.path.exists("/.dockerenv")):
+                    _launch_args.insert(0, "--no-sandbox")
                 _launch_args = _launch_args + [a for a in self.browser_args if a not in _launch_args]
                 _launch_opts: dict = dict(headless=self.headless, args=_launch_args)
                 if self.channel:

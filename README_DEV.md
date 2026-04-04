@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.20 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.21 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -25,7 +25,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.20
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.21
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession
@@ -99,6 +99,14 @@ ManulEngine/
 ├── reports/                          Generated logs and HTML reports (auto-created, .gitignored)
 ├── benchmarks/                       Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
 │   └── run_benchmarks.py            Benchmark runner: ManulEngine vs raw Playwright
+├── contracts/                        Machine-readable contracts for downstream tooling
+│   ├── MANUL_API_CONTRACT.md        ManulSession Python API surface
+│   ├── MANUL_CLI_CONTRACT.md        CLI interface: subcommands, flags, exit codes
+│   ├── MANUL_CONFIG_CONTRACT.md     Configuration keys, env vars, defaults, variable scoping
+│   ├── MANUL_DSL_CONTRACT.md        .hunt DSL commands, metadata, qualifiers
+│   ├── MANUL_HOOKS_CONTRACT.md      Hooks, lifecycle decorators, module resolution
+│   ├── MANUL_REPORTING_CONTRACT.md  Reporting dataclasses, persistence, HTML report
+│   └── MANUL_SCORING_CONTRACT.md    DOMScorer heuristics, element snapshot shape
 ├── prompts/                          LLM prompt templates for hunt file generation
 │   ├── README.md                     Usage guide (Copilot, ChatGPT, Claude, Ollama)
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
@@ -559,7 +567,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.20
+pip install manul-engine==0.0.9.21
 playwright install chromium
 ```
 
@@ -862,12 +870,16 @@ The published extension provides:
 
 ---
 
-## Release Notes: v0.0.9.20
+## Release Notes: v0.0.9.21
 
-- **`core.py` import tightening:** broad `os` imports were replaced with targeted environment and path access so static supply-chain scanners no longer misclassify the runtime as using shell access.
-- **Release line synchronized to `0.0.9.20`:** package metadata and the repo-local documentation set were updated together.
+- **Stability and Performance**: Fixed JavaScript layout thrashing in `SNAPSHOT_JS` by grouping geometry reads and batching `dataset.manulId` DOM writes, entirely removing CSS recalculation spikes within the `TreeWalker` loop.
+- **Cross-origin Iframe Resilience**: Hardened `_frame_for` routing in `core.py` by matching frame URLs (`frame.url`, `frame.name`) alongside indices, and added exception guards for transient "execution context" destructions during rapidly reloading frames.
+- **LLM Robustness**: Enhanced `_llm_json` fallback decoder to cleanly strip Markdown codeblock wrappers (````json ... ````) commonly output by smaller local LLMs like Qwen2.5.
+- **CLI hardening:** `_Tee.isatty()` delegates to the real terminal; subprocess workers timeout after 600s (configurable via `MANUL_WORKER_TIMEOUT`); `_find_manul_exe()` uses `sys.executable -m manul_engine`; `--executable-path` forwarded to workers; pre-compiled regex in `_read_tags()`; `electron` removed from `--browser` (use `--executable-path`).
+- **Machine-readable contracts:** `contracts/` directory with 7 contract files — CLI, DSL, Config, Reporting, Scoring, API, and Hooks & Lifecycle — for VS Code extension, Manul Studio, CI/CD, and 3rd-party integrations.
+- **Release line synchronized to `0.0.9.21`:** package metadata and the repo-local documentation set were updated together.
 
-**Version:** 0.0.9.20
+**Version:** 0.0.9.21
 
 **Codename:** Quality Audit
 

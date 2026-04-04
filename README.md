@@ -273,7 +273,7 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.20
+pip install manul-engine==0.0.9.21
 playwright install
 ```
 
@@ -282,7 +282,7 @@ If you install standalone Python dependencies manually instead of using the pack
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.20"
+pip install "manul-engine[ai]==0.0.9.21"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -628,13 +628,17 @@ Representative coverage areas include:
 - visibility filtering and TreeWalker behavior
 - custom controls and lazy control loading
 
-## What's New in v0.0.9.20
+## What's New in v0.0.9.21
 
-- **Socket.dev false-positive cleanup in `core.py`:** broad `import os` usage was narrowed to targeted imports and `Path(...).name`, which removes a misleading `Shell access` supply-chain alert without changing runtime behavior.
-- **Release line synchronized to `0.0.9.20`:** package metadata and release-facing docs were updated alongside the runtime changes.
+- **Stability and Performance**: Fixed JavaScript layout thrashing in `SNAPSHOT_JS` by grouping geometry reads and batching `dataset.manulId` DOM writes, entirely removing CSS recalculation spikes within the `TreeWalker` loop.
+- **Cross-origin Iframe Resilience**: Hardened `_frame_for` routing in `core.py` by matching frame URLs (`frame.url`, `frame.name`) alongside indices, and added exception guards for transient "execution context" destructions during rapidly reloading frames.
+- **LLM Robustness**: Enhanced `_llm_json` fallback decoder to cleanly strip Markdown codeblock wrappers (````json ... ````) commonly output by smaller local LLMs like Qwen2.5.
+- **CLI hardening:** `_Tee.isatty()` now delegates to the underlying terminal; subprocess workers have a configurable timeout (`MANUL_WORKER_TIMEOUT`); `_find_manul_exe()` uses `sys.executable -m manul_engine` for cross-venv safety; `--executable-path` forwarded to parallel workers; pre-compiled regex in header scan; removed `electron` from `--browser` (use `--executable-path` instead).
+- **Machine-readable contracts:** `contracts/` directory with 7 contract files for downstream tooling integration — CLI, DSL, Config, Reporting, Scoring, API, and Hooks & Lifecycle.
+- **Release line synchronized to `0.0.9.21`:** package metadata and release-facing docs were updated alongside the runtime changes.
 
 ## License
 
-**Version:** 0.0.9.20
+**Version:** 0.0.9.21
 
 Apache-2.0.
