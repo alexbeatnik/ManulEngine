@@ -487,8 +487,10 @@ class _ActionsMixin:
                     await self._clear_debug_highlight(page)
                     _debug_paused = True
                 try: checked = await loc.is_checked(timeout=2000)
-                except Exception: checked = False
-                if is_negative:
+                except Exception: checked = None  # not a checkable element — retry
+                if checked is None:
+                    pass  # unresolved/invalid target — fall through to retry
+                elif is_negative:
                     ok = not checked
                     if ok:
                         print(f"    {'✅' if ok else '❌'} Checkbox not-checked={ok}")

@@ -872,7 +872,7 @@ The published extension provides:
 
 ## Release Notes: v0.0.9.21
 
-- **Stability and Performance**: Fixed Javascript layout thrashing in `SNAPSHOT_JS` by grouping geometry reads and batching `dataset.manulId` DOM writes, entirely removing CSS recalculation spikes within the `TreeWalker` loop.
+- **Stability and Performance**: Fixed JavaScript layout thrashing in `SNAPSHOT_JS` by grouping geometry reads and batching `dataset.manulId` DOM writes, entirely removing CSS recalculation spikes within the `TreeWalker` loop.
 - **Cross-origin Iframe Resilience**: Hardened `_frame_for` routing in `core.py` by matching frame URLs (`frame.url`, `frame.name`) alongside indices, and added exception guards for transient "execution context" destructions during rapidly reloading frames.
 - **LLM Robustness**: Enhanced `_llm_json` fallback decoder to cleanly strip Markdown codeblock wrappers (````json ... ````) commonly output by smaller local LLMs like Qwen2.5.
 - **CLI hardening:** `_Tee.isatty()` delegates to the real terminal; subprocess workers timeout after 600s (configurable via `MANUL_WORKER_TIMEOUT`); `_find_manul_exe()` uses `sys.executable -m manul_engine`; `--executable-path` forwarded to workers; pre-compiled regex in `_read_tags()`; `electron` removed from `--browser` (use `--executable-path`).
