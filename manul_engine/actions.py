@@ -456,6 +456,100 @@ class _ActionsMixin:
         print(f"    ✅ Strict value verified for {locator_text}")
         return True
 
+    # ── Verify retry helpers ────────────────────────────────────────────────
+
+    @property
+    def _VERIFY_MAX_RETRIES(self) -> int:
+        return getattr(prompts, "VERIFY_MAX_RETRIES", 15)
+
+    async def _verify_checked(self, page, step: str, expected: list[str],
+                               is_negative: bool, _in_debug: bool, step_idx: int) -> bool:
+        """Retry loop for VERIFY ... checked / NOT checked."""
+        _debug_paused = False
+        for retry in range(self._VERIFY_MAX_RETRIES):
+            raw_els = await self._snapshot(page, "clickable", [t.lower() for t in expected])
+            scored  = self._score_elements(raw_els, step, "clickable", expected, None, False)
+            if scored:
+                best   = scored[0]
+                xpath  = best["xpath"]
+                _cf    = self._frame_for(page, best)
+                loc    = _cf.locator(f"xpath={xpath}").first
+                if _in_debug and not _debug_paused:
+                    try:
+                        if not best.get("is_shadow"):
+                            await loc.scroll_into_view_if_needed(timeout=2000)
+                            await self._debug_highlight(page, loc)
+                        else:
+                            await self._debug_highlight(page, best["id"], by_js_id=True, frame=_cf)
+                    except Exception:
+                        pass
+                    await self._debug_prompt(page, step, step_idx)
+                    await self._clear_debug_highlight(page)
+                    _debug_paused = True
+                try: checked = await loc.is_checked(timeout=2000)
+                except Exception: checked = False
+                if is_negative:
+                    ok = not checked
+                    if ok:
+                        print(f"    {'✅' if ok else '❌'} Checkbox not-checked={ok}")
+                        return ok
+                else:
+                    if checked:
+                        print(f"    {'✅' if checked else '❌'} Checkbox checked={checked}")
+                        return checked
+            if retry < self._VERIFY_MAX_RETRIES - 1:
+                await asyncio.sleep(1)
+                continue
+            return False
+        return False
+
+    async def _verify_state(self, page, step: str, expected: list[str],
+                             state_check: str) -> bool:
+        """Retry loop for VERIFY ... ENABLED / DISABLED."""
+        search_text = expected[0] if expected else ""
+        for retry in range(self._VERIFY_MAX_RETRIES):
+            disabled_result = await page.evaluate(STATE_CHECK_JS, [search_text, state_check])
+            if disabled_result is not None:
+                icon = '✅' if disabled_result else '❌'
+                print(f"    {icon} Element {state_check}={disabled_result}")
+                return disabled_result
+            if retry < self._VERIFY_MAX_RETRIES - 1:
+                await asyncio.sleep(1)
+                continue
+            return False
+        return False
+
+    async def _verify_text_presence(self, page, expected: list[str],
+                                     is_negative: bool) -> bool:
+        """Retry loop for VERIFY that 'text' is present / is NOT present."""
+        for retry in range(self._VERIFY_MAX_RETRIES):
+            text = await page.evaluate(VISIBLE_TEXT_JS)
+            found = all(t.lower() in text for t in expected) if expected else bool(text)
+
+            if not found and not is_negative:
+                text2 = await page.evaluate(DEEP_TEXT_JS)
+                found = all(t.lower() in text2 for t in expected) if expected else bool(text2)
+
+            if is_negative:
+                if not found:
+                    print(f"    ✅ Verified ABSENT — OK")
+                    return True
+                if retry < self._VERIFY_MAX_RETRIES - 1:
+                    await asyncio.sleep(1)
+                    continue
+                print(f"    ❌ Text still present after retries")
+                return False
+            else:
+                if found:
+                    print(f"    ✅ Verified — OK")
+                    return True
+                if retry < self._VERIFY_MAX_RETRIES - 1:
+                    await asyncio.sleep(1.5)
+                    continue
+                print(f"    ❌ Not found after retries: {expected}")
+                return False
+        return False
+
     async def _handle_verify(self, page, step: str, step_idx: int = 0) -> bool:
         strict_verify = parse_verify_strict_assertion(step)
         if strict_verify is not None:
@@ -497,14 +591,9 @@ class _ActionsMixin:
         print(msg)
 
         # ── Debug pause before verify ─────────────────────────────────────
-        # For is_checked_verify the highlight fires after element resolution
-        # (inside the retry loop on first find). For all other VERIFY variants
-        # we try to resolve the target element for highlighting; if none is
-        # found we still pause — just without a highlight.
         if _in_debug and not is_checked_verify:
             if expected:
                 if state_check:
-                    # Disabled/enabled check — resolve via interactive element snapshot
                     raw_els = await self._snapshot(page, "clickable", [t.lower() for t in expected])
                     scored  = self._score_elements(raw_els, step, "clickable", expected, None, False)
                     if scored:
@@ -520,8 +609,6 @@ class _ActionsMixin:
                         except Exception:
                             pass
                 else:
-                    # Text presence verify — target is often a non-interactive element
-                    # (h1, p, span) that SNAPSHOT_JS skips. Use get_by_text() instead.
                     for t in expected:
                         try:
                             loc = page.get_by_text(t, exact=False).first
@@ -532,84 +619,13 @@ class _ActionsMixin:
                             pass
             await self._debug_prompt(page, step, step_idx)
             await self._clear_debug_highlight(page)
-        _debug_paused = not is_checked_verify  # is_checked pauses after element resolves
 
-        for retry in range(15):
-            if is_checked_verify:
-                raw_els = await self._snapshot(page, "clickable", [t.lower() for t in expected])
-                scored  = self._score_elements(raw_els, step, "clickable", expected, None, False)
-                if scored:
-                    best   = scored[0]
-                    xpath  = best["xpath"]
-                    _cf    = self._frame_for(page, best)
-                    loc    = _cf.locator(f"xpath={xpath}").first
-                    if _in_debug and not _debug_paused:
-                        try:
-                            if not best.get("is_shadow"):
-                                await loc.scroll_into_view_if_needed(timeout=2000)
-                                await self._debug_highlight(page, loc)
-                            else:
-                                await self._debug_highlight(page, best["id"], by_js_id=True, frame=_cf)
-                        except Exception:
-                            pass
-                        await self._debug_prompt(page, step, step_idx)
-                        await self._clear_debug_highlight(page)
-                        _debug_paused = True
-                    try: checked = await loc.is_checked(timeout=2000)
-                    except Exception: checked = False
-                    if is_negative:
-                        ok = not checked
-                        if ok:
-                            print(f"    {'✅' if ok else '❌'} Checkbox not-checked={ok}")
-                            return ok
-                    else:
-                        if checked:
-                            print(f"    {'✅' if checked else '❌'} Checkbox checked={checked}")
-                            return checked
-                if retry < 14:
-                    await asyncio.sleep(1)
-                    continue
-                return False
-
-            if state_check:
-                search_text = expected[0] if expected else ""
-                disabled_result = await page.evaluate(STATE_CHECK_JS, [search_text, state_check])
-                
-                if disabled_result is not None:
-                    icon = '✅' if disabled_result else '❌'
-                    print(f"    {icon} Element {state_check}={disabled_result}")
-                    return disabled_result
-                if retry < 14:
-                    await asyncio.sleep(1)
-                    continue
-                return False
-
-            text = await page.evaluate(VISIBLE_TEXT_JS)
-            found = all(t.lower() in text for t in expected) if expected else bool(text)
-            
-            if not found and not is_negative:
-                text2 = await page.evaluate(DEEP_TEXT_JS)
-                found = all(t.lower() in text2 for t in expected) if expected else bool(text2)
-                
-            if is_negative:
-                if not found:
-                    print(f"    ✅ Verified ABSENT — OK")
-                    return True
-                if retry < 14:
-                    await asyncio.sleep(1)
-                    continue
-                print(f"    ❌ Text still present after retries")
-                return False
-            else:
-                if found:
-                    print(f"    ✅ Verified — OK")
-                    return True
-                if retry < 14:
-                    await asyncio.sleep(1.5)
-                    continue
-                print(f"    ❌ Not found after retries: {expected}")
-                return False
-        return False
+        # ── Dispatch to specialised retry helpers ─────────────────────────
+        if is_checked_verify:
+            return await self._verify_checked(page, step, expected, is_negative, _in_debug, step_idx)
+        if state_check:
+            return await self._verify_state(page, step, expected, state_check)
+        return await self._verify_text_presence(page, expected, is_negative)
 
     async def _do_drag(self, page, step: str, expected: list[str], source_el: dict) -> bool:
         step_l = step.lower()
@@ -849,29 +865,18 @@ class _ActionsMixin:
             try:
                 if mode == "input":
                     print(f"    ⌨️  Typed '{txt_to_type}' → '{self._fmt_el_name(name)}'")
-                    if is_shad: await frame.evaluate(f"window.manulType({el_id}, '{txt_to_type}')")
+                    if is_shad: await frame.evaluate("(id, val) => window.manulType(id, val)", [el_id, txt_to_type])
                     else:
                         is_readonly = await loc.evaluate("el => el.readOnly || el.hasAttribute('readonly')")
                         if is_readonly:
-                            escaped = txt_to_type.replace("'", "\\'")
-                            await page.evaluate(f"el => {{ el.removeAttribute('readonly'); el.value = '{escaped}'; el.dispatchEvent(new Event('input', {{bubbles:true}})); el.dispatchEvent(new Event('change', {{bubbles:true}})); }}", await loc.element_handle())
+                            await loc.evaluate("(el, val) => { el.removeAttribute('readonly'); el.value = val; el.dispatchEvent(new Event('input', {bubbles:true})); el.dispatchEvent(new Event('change', {bubbles:true})); }", txt_to_type)
                         else:
                             await loc.fill("", timeout=3000)
                             await loc.type(txt_to_type, delay=50, timeout=3000)
                     if "enter" in step_l:
                         await page.keyboard.press("Enter")
                         await asyncio.sleep(4)
-                    self._remember_resolved_control(
-                        page=page,
-                        cache_key=cache_key,
-                        mode=mode,
-                        search_texts=search_texts,
-                        target_field=target_field,
-                        contextual_hint=ctx_hint,
-                        element=el,
-                    )
                     self.last_xpath = None
-                    return True
 
                 elif mode == "select":
                     if is_sel:
@@ -883,7 +888,7 @@ class _ActionsMixin:
                         try:
                             await loc.click(force=True, timeout=3000)
                         except Exception:
-                            await frame.evaluate(f"window.manulClick({el_id})")
+                            await frame.evaluate("id => window.manulClick(id)", el_id)
                         
                         if expected:
                             await asyncio.sleep(0.5) 
@@ -897,41 +902,19 @@ class _ActionsMixin:
                                     opt_loc = frame.locator(f"text='{option_text}'").last
                                     await opt_loc.click(timeout=3000)
                                 except Exception: pass
-                                
-                    self._remember_resolved_control(
-                        page=page,
-                        cache_key=cache_key,
-                        mode=mode,
-                        search_texts=search_texts,
-                        target_field=target_field,
-                        contextual_hint=ctx_hint,
-                        element=el,
-                    )
                     await asyncio.sleep(ACTION_WAIT)
-                    return True
 
                 elif mode == "hover":
                     print(f"    🚁  Hovered '{self._fmt_el_name(name)}'")
-                    if is_shad: await frame.evaluate(f"window.manulElements[{el_id}].dispatchEvent(new MouseEvent('mouseover',{{bubbles:true,cancelable:true,view:window}}))")
+                    if is_shad: await frame.evaluate("id => window.manulElements[id].dispatchEvent(new MouseEvent('mouseover',{bubbles:true,cancelable:true,view:window}))", el_id)
                     else: await loc.hover(force=True, timeout=3000)
-                    self._remember_resolved_control(
-                        page=page,
-                        cache_key=cache_key,
-                        mode=mode,
-                        search_texts=search_texts,
-                        target_field=target_field,
-                        contextual_hint=ctx_hint,
-                        element=el,
-                    )
                     await asyncio.sleep(ACTION_WAIT)
-                    return True
 
                 else:
                     print(f"    🖱️  Clicked '{self._fmt_el_name(name)}'")
                     if is_shad:
                         fn = "manulDoubleClick" if "double" in step_l else "manulClick"
-                        await frame.evaluate(f"window.{fn}({el_id})")
-                        await asyncio.sleep(ACTION_WAIT)
+                        await frame.evaluate(f"id => window.{fn}(id)", el_id)
                     else:
                         if "double" in step_l:
                             await loc.dblclick(force=True, timeout=3000)
@@ -942,17 +925,19 @@ class _ActionsMixin:
                             if itype == "submit" or (tag == "button" and itype in ("", "submit")):
                                 try: await page.wait_for_load_state("networkidle", timeout=10_000)
                                 except Exception: await asyncio.sleep(3.0)
-                        await asyncio.sleep(ACTION_WAIT)
-                    self._remember_resolved_control(
-                        page=page,
-                        cache_key=cache_key,
-                        mode=mode,
-                        search_texts=search_texts,
-                        target_field=target_field,
-                        contextual_hint=ctx_hint,
-                        element=el,
-                    )
-                    return True
+                    await asyncio.sleep(ACTION_WAIT)
+
+                # ── Common post-action: cache resolved control ────────────
+                self._remember_resolved_control(
+                    page=page,
+                    cache_key=cache_key,
+                    mode=mode,
+                    search_texts=search_texts,
+                    target_field=target_field,
+                    contextual_hint=ctx_hint,
+                    element=el,
+                )
+                return True
 
             except Exception as ex:
                 print(f"    ⚠️  Element not actionable (attempt {attempt+1}/3), trying next candidate...")

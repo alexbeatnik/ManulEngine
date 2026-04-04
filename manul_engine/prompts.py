@@ -54,6 +54,7 @@ _KEY_MAP: dict[str, str] = {
     "screenshot":             "MANUL_SCREENSHOT",
     "html_report":            "MANUL_HTML_REPORT",
     "explain_mode":           "MANUL_EXPLAIN",
+    "verify_max_retries":     "MANUL_VERIFY_MAX_RETRIES",
 }
 
 # browser_args is a list and cannot be round-tripped through a plain env string
@@ -183,6 +184,13 @@ _raw_screenshot = (os.getenv("MANUL_SCREENSHOT") or "on-fail").strip().lower()
 SCREENSHOT: str = _raw_screenshot if _raw_screenshot in _VALID_SCREENSHOT else "on-fail"
 HTML_REPORT: bool = env_bool("MANUL_HTML_REPORT")
 EXPLAIN_MODE: bool = env_bool("MANUL_EXPLAIN")
+
+# ── Verify retry limit ──────────────────────────────────────────────────────
+# Maximum number of polling retries for VERIFY steps (default 15 ≈ 15-22 seconds).
+try:
+    VERIFY_MAX_RETRIES: int = max(1, int(os.getenv("MANUL_VERIFY_MAX_RETRIES", "15")))
+except ValueError:
+    VERIFY_MAX_RETRIES = 15
 
 # ── Custom control directories ──────────────────────────────────────────────
 # custom_controls_dirs is the canonical config key. custom_modules_dirs remains
