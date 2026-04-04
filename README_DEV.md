@@ -99,6 +99,14 @@ ManulEngine/
 ├── reports/                          Generated logs and HTML reports (auto-created, .gitignored)
 ├── benchmarks/                       Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
 │   └── run_benchmarks.py            Benchmark runner: ManulEngine vs raw Playwright
+├── contracts/                        Machine-readable contracts for downstream tooling
+│   ├── MANUL_API_CONTRACT.md        ManulSession Python API surface
+│   ├── MANUL_CLI_CONTRACT.md        CLI interface: subcommands, flags, exit codes
+│   ├── MANUL_CONFIG_CONTRACT.md     Configuration keys, env vars, defaults, variable scoping
+│   ├── MANUL_DSL_CONTRACT.md        .hunt DSL commands, metadata, qualifiers
+│   ├── MANUL_HOOKS_CONTRACT.md      Hooks, lifecycle decorators, module resolution
+│   ├── MANUL_REPORTING_CONTRACT.md  Reporting dataclasses, persistence, HTML report
+│   └── MANUL_SCORING_CONTRACT.md    DOMScorer heuristics, element snapshot shape
 ├── prompts/                          LLM prompt templates for hunt file generation
 │   ├── README.md                     Usage guide (Copilot, ChatGPT, Claude, Ollama)
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
@@ -865,7 +873,7 @@ The published extension provides:
 ## Release Notes: v0.0.9.21
 
 - **CLI hardening:** `_Tee.isatty()` delegates to the real terminal; subprocess workers timeout after 600s (configurable via `MANUL_WORKER_TIMEOUT`); `_find_manul_exe()` uses `sys.executable -m manul_engine`; `--executable-path` forwarded to workers; pre-compiled regex in `_read_tags()`; `electron` removed from `--browser` (use `--executable-path`).
-- **CLI Contract:** new `MANUL_CLI_CONTRACT.md` machine-readable contract for downstream tooling.
+- **Machine-readable contracts:** `contracts/` directory with 7 contract files — CLI, DSL, Config, Reporting, Scoring, API, and Hooks & Lifecycle — for VS Code extension, Manul Studio, CI/CD, and 3rd-party integrations.
 - **Release line synchronized to `0.0.9.21`:** package metadata and the repo-local documentation set were updated together.
 
 **Version:** 0.0.9.21

@@ -631,7 +631,7 @@ Representative coverage areas include:
 ## What's New in v0.0.9.21
 
 - **CLI hardening:** `_Tee.isatty()` now delegates to the underlying terminal; subprocess workers have a configurable timeout (`MANUL_WORKER_TIMEOUT`); `_find_manul_exe()` uses `sys.executable -m manul_engine` for cross-venv safety; `--executable-path` forwarded to parallel workers; pre-compiled regex in header scan; removed `electron` from `--browser` (use `--executable-path` instead).
-- **CLI Contract:** new `MANUL_CLI_CONTRACT.md` machine-readable contract for downstream tooling integration.
+- **Machine-readable contracts:** `contracts/` directory with 7 contract files for downstream tooling integration — CLI, DSL, Config, Reporting, Scoring, API, and Hooks & Lifecycle.
 - **Release line synchronized to `0.0.9.21`:** package metadata and release-facing docs were updated alongside the runtime changes.
 
 ## License
