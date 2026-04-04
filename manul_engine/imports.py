@@ -360,6 +360,13 @@ def expand_use_directives(
     replaced by the corresponding imported actions.  File line numbers for
     expanded lines are set to 0 (synthetic/imported).
     """
+    if len(mission_lines) != len(step_file_lines):
+        raise HuntImportError(
+            "Mission lines and step file line mappings are out of sync: "
+            f"{len(mission_lines)} mission lines vs "
+            f"{len(step_file_lines)} step file lines."
+        )
+
     expanded: list[str] = []
     expanded_lines: list[int] = []
 

@@ -26,13 +26,18 @@ RUN playwright install --with-deps ${BROWSERS}
 # ===========================================================================
 FROM python:${PYTHON_VERSION}-slim-bookworm AS runtime
 
-ARG PYTHON_VERSION
 ARG BROWSERS
 
-# Copy installed Python packages from builder stage
-COPY --from=builder /usr/local/lib/python${PYTHON_VERSION}/site-packages /usr/local/lib/python${PYTHON_VERSION}/site-packages
+# Copy installed Python packages from builder stage.
+# Use a staging copy so the path is robust regardless of whether
+# PYTHON_VERSION is major.minor (3.12) or a patch version (3.12.3).
+COPY --from=builder /usr/local/lib/ /tmp/builder-lib/
 COPY --from=builder /usr/local/bin/manul /usr/local/bin/manul
 COPY --from=builder /usr/local/bin/playwright /usr/local/bin/playwright
+RUN PY_SITELIB="/usr/local/lib/python$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')/site-packages" \
+    && BUILDER_SITELIB=$(ls -d /tmp/builder-lib/python*/site-packages | head -1) \
+    && cp -a "${BUILDER_SITELIB}/." "${PY_SITELIB}/" \
+    && rm -rf /tmp/builder-lib
 
 # Install runtime system deps for Playwright browsers + fonts + PID 1
 RUN apt-get update && apt-get install -y --no-install-recommends \

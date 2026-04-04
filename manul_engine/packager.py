@@ -14,13 +14,11 @@ Layout after install:
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import shutil
 import tarfile
 import tempfile
-from pathlib import Path
 
 from .imports import HuntImportError, parse_huntlib_json
 
@@ -112,9 +110,20 @@ def install(
         with tarfile.open(source, "r:gz") as tar:
             # Security: prevent path traversal
             for member in tar.getmembers():
-                if member.name.startswith("/") or ".." in member.name:
+                if (
+                    member.name.startswith("/")
+                    or ".." in member.name
+                    or member.issym()
+                    or member.islnk()
+                ):
                     raise HuntImportError(
                         f"Unsafe path in archive: '{member.name}'"
+                    )
+                # Verify resolved path stays within destination
+                dest_path = os.path.realpath(os.path.join(tmp, member.name))
+                if not dest_path.startswith(os.path.realpath(tmp) + os.sep) and dest_path != os.path.realpath(tmp):
+                    raise HuntImportError(
+                        f"Path traversal in archive: '{member.name}'"
                     )
             tar.extractall(tmp)
 

@@ -371,8 +371,12 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
                         exports.append(_en)
         elif stripped.startswith("@import:"):
             directive = parse_import_directive(stripped)
-            if directive is not None:
-                import_directives.append(directive)
+            if directive is None:
+                raise HuntImportError(
+                    f"Invalid @import directive at {filepath}:{lineno}: {stripped!r}. "
+                    "Expected syntax: @import: <name>[, <name> ...] from <path>"
+                )
+            import_directives.append(directive)
         elif not stripped.startswith("#") and stripped:
             mission_lines.append(_rewrite_script_aliases_in_call_python(line, script_aliases))
             step_file_lines.append(lineno)
@@ -394,7 +398,7 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
                 mission_lines, step_file_lines, imported_blocks,
             )
     except HuntImportError:
-        raise  # Let callers (_run_hunt_file) handle with a controlled error path
+        raise  # Callers (_run_hunt_file, daemon_main) catch and return controlled error
 
     return ParsedHunt(
         mission="".join(mission_lines).strip(),
@@ -459,7 +463,11 @@ async def _run_hunt_file(
     print(f"📜 EXECUTING MANUL HUNT: {filename}")
     print(f"{'='*60}")
 
-    hunt = parse_hunt_file(path)
+    try:
+        hunt = parse_hunt_file(path)
+    except HuntImportError as exc:
+        print(f"\n💥 Import error in {filename}: {exc}")
+        return MissionResult(file=path, name=filename, status="broken", error=str(exc))
 
     # Map file line numbers (from editor gutter breakpoints) to action indices.
     # STEP headers now map to the first action inside their block.

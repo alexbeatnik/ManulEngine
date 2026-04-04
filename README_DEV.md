@@ -713,10 +713,9 @@ docker run --rm --shm-size=1g \
 * Build args: `MANUL_VERSION` (pip version), `PYTHON_VERSION` (base image), `BROWSERS` (space-separated, default `chromium`).
 * Volume mount pattern: `/workspace/tests` (ro), `/workspace/reports` (rw), `/workspace/cache` (rw), `/workspace/controls` (ro), `/workspace/scripts` (ro).
 
-**docker-compose.yml** defines three services:
+**docker-compose.yml** defines two services:
 * `manul` — test runner
 * `manul-daemon` — scheduled hunts (`restart: unless-stopped`)
-* `manul-serve` — HTTP API on port 8000
 
 **GitHub Actions workflows:**
 * `release.yml` — unified release pipeline: synthetic tests → PyPI publish (OIDC) → GHCR multi-arch image → GitHub Release.

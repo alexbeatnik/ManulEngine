@@ -508,10 +508,11 @@ Image characteristics:
 * Build args: `MANUL_VERSION` (pip version), `PYTHON_VERSION` (base image), `BROWSERS` (space-separated, default `chromium`).
 * Volume mount pattern: `/workspace/tests` (ro), `/workspace/reports` (rw), `/workspace/cache` (rw), `/workspace/controls` (ro), `/workspace/scripts` (ro).
 
-`docker-compose.yml` defines three services: `manul` (test runner), `manul-daemon` (scheduled hunts, `restart: unless-stopped`), `manul-serve` (HTTP API on port 8000).
+`docker-compose.yml` defines two services: `manul` (test runner) and `manul-daemon` (scheduled hunts, `restart: unless-stopped`).
 
 GitHub Actions workflows:
-* `docker-publish.yml` — builds multi-platform images (`linux/amd64`, `linux/arm64`), pushes to GHCR, tags: `latest`, semver, git SHA.
+* `release.yml` — unified release pipeline: synthetic tests → PyPI publish (OIDC) → GHCR multi-arch image → GitHub Release.
+* `docker-dev.yml` — dev Docker image on main push (amd64-only, built from source via `Dockerfile.dev`).
 * `manul-ci.yml` — reusable example workflow for downstream repos to run `.hunt` tests against the published image.
 
 ## Configuration (manul_engine_configuration.json)
