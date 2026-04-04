@@ -81,6 +81,8 @@ Usage:
   manul scan <URL>           — scan a URL and generate a draft .hunt file
   manul record <URL>         — record interactions in a browser and generate a .hunt file
   manul daemon <directory>    — run scheduled .hunt files as a long-running daemon
+  manul pack [dir]           — pack a .hunt library into a distributable .huntlib archive
+  manul install <source>     — install a .huntlib archive locally (or --global)
 
 Flags:
   --headless                 — run browser in headless mode
@@ -94,6 +96,10 @@ Flags:
   --html-report              — generate a self-contained manul_report.html after the run
   --explain                  — print detailed heuristic score breakdown for each element resolution
   --executable-path <path>   — absolute path to a custom browser or Electron app executable
+
+Pack/install flags:
+  --output <dir>             — output directory for `manul pack` (default: current dir)
+  --global                   — install .huntlib to global ~/.manul/hunt_libs/ (with `install`)
 
 Scan-specific flags (only with `manul scan`):
   --output <file>            — output file for the draft (default: draft.hunt)
