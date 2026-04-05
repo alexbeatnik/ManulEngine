@@ -13,11 +13,12 @@ demo/
   run_demo.py                    Runner script (sets CWD, calls manul CLI)
   manul_engine_configuration.json  Demo-specific config (heuristics-only)
   pages.json                     Page-name registry for demo sites
-  saucedemo.hunt                 E-commerce login + checkout flow (saucedemo.com)
-  demoqa.hunt                    Forms, checkboxes, radios, tables (demoqa.com)
-  mega.hunt                      All element types, drag-drop, shadow DOM
-  rahul.hunt                     Radios, autocomplete, hovers
-  call_python_variants.hunt      CALL PYTHON syntax showcase (hooks, aliases, args)
+  tests/                         Integration .hunt files
+    saucedemo.hunt               E-commerce login + checkout flow (saucedemo.com)
+    demoqa.hunt                  Forms, checkboxes, radios, tables (demoqa.com)
+    mega.hunt                    All element types, drag-drop, shadow DOM
+    rahul.hunt                   Radios, autocomplete, hovers
+    call_python_variants.hunt    CALL PYTHON syntax showcase (hooks, aliases, args)
   scripts/                       Python helpers used by call_python_variants.hunt
   controls/                      Educational @custom_control examples
   examples/                      Additional Python helpers for CALL PYTHON demos
@@ -40,7 +41,7 @@ playwright install chromium
 python demo/run_demo.py
 
 # Run a single hunt
-python demo/run_demo.py saucedemo.hunt
+python demo/run_demo.py tests/saucedemo.hunt
 
 # Headless mode
 python demo/run_demo.py --headless
@@ -55,8 +56,8 @@ python demo/run_demo.py --retries 2 --screenshot on-fail --html-report
 python demo/run_demo.py --browser firefox
 
 # Or use the installed `manul` CLI directly (set CWD to demo/)
-cd demo && manul .
-cd demo && manul saucedemo.hunt --headless
+cd demo && manul tests/
+cd demo && manul tests/saucedemo.hunt --headless
 ```
 
 ## Running benchmarks

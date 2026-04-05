@@ -14,7 +14,7 @@
   "semantic_cache_enabled": true,
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,
-  "tests_home": ".",
+  "tests_home": "tests",
   "auto_annotate": false,
   "custom_controls_dirs": [
     "controls"

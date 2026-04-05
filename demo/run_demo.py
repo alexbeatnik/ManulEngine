@@ -31,10 +31,10 @@ os.chdir(_DEMO_DIR)
 from manul_engine.cli import sync_main  # noqa: E402
 
 if __name__ == "__main__":
-    # If no target was given, default to current dir (all .hunt files in demo/).
+    # If no target was given, default to tests/ subdir (all .hunt files).
     args = sys.argv[1:]
     if not any(a.endswith(".hunt") or os.path.isdir(a) or a == "." for a in args):
-        args.append(".")
+        args.append("tests")
 
     sys.argv = ["manul"] + args
     sync_main()
