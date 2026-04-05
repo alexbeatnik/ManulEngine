@@ -31,6 +31,7 @@ from .actions import _ActionsMixin
 from .cache import _ControlsCacheMixin
 from .config import EngineConfig
 from .debug import _DebugMixin
+from .exceptions import ConfigurationError
 from .helpers import (
     RE_SYSTEM_STEP,
     ContextualHint,
@@ -105,7 +106,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         _ep = _kwargs.pop("executable_path", None)
         self.executable_path: str | None = str(_ep) if _ep is not None else (_cfg.executable_path if _cfg else prompts.EXECUTABLE_PATH)
         if self.channel is not None and self.browser != "chromium":
-            raise ValueError(
+            raise ConfigurationError(
                 f"Playwright 'channel' is only supported for Chromium, "
                 f"but got browser={self.browser!r} with channel={self.channel!r}."
             )
@@ -773,7 +774,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         _launch_opts: dict = dict(headless=self.headless, args=_launch_args)
         if self.channel:
             if self.browser != "chromium":
-                raise ValueError(
+                raise ConfigurationError(
                     f"'channel' is only supported for Chromium; "
                     f"got browser={self.browser!r}, channel={self.channel!r}"
                 )
