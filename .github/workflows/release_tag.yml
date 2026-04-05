@@ -55,10 +55,10 @@ jobs:
 
       - name: Create GitHub Release
         if: steps.check.outputs.exists == 'false'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: ManulEngine ${{ steps.version.outputs.tag }}
-          generate_release_notes: true
-          draft: false
-          prerelease: false
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --title "ManulEngine ${{ steps.version.outputs.tag }}" \
+            --generate-notes
+          echo "🚀 Created GitHub Release for ${{ steps.version.outputs.tag }}"
