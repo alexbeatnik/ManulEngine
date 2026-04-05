@@ -131,7 +131,7 @@ jobs:
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             echo "manul_version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
           else
-            echo "manul_version=0.0.9.25" >> "$GITHUB_OUTPUT"
+            echo "manul_version=0.0.9.26" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Extract metadata
