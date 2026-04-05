@@ -847,7 +847,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                         ) or prompts.AUTO_ANNOTATE
                         try:
                             url_before = page.url
-                        except (AttributeError, RuntimeError):
+                        except Exception:
                             url_before = ""
 
                         _step_ok = True
@@ -1047,7 +1047,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                     import base64 as _b64
                                     _ss_bytes = await page.screenshot(type="png")
                                     _ss_b64 = _b64.b64encode(_ss_bytes).decode("ascii")
-                                except (OSError, RuntimeError) as exc:
+                                except Exception as exc:
                                     _log.debug("Screenshot capture failed: %s", exc)
                             if _step_ok:
                                 _sr_status = "pass"
@@ -1092,7 +1092,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                         await self._auto_annotate_navigate(
                                             page, hunt_file, _action_file_lines, action_index + 1
                                         )
-                                except (AttributeError, RuntimeError) as exc:
+                                except Exception as exc:
                                     _log.debug("Auto-annotate URL check failed: %s", exc)
 
                         if block_status == "fail" or done:

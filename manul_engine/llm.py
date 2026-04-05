@@ -43,7 +43,8 @@ class OllamaProvider:
 
     async def call_json(self, system: str, user: str) -> dict | None:
         if _ollama_mod is None:
-            print("    ⚠️  LLM unavailable: Python package 'ollama' is not installed.")
+            import sys
+            print("    ⚠️  LLM unavailable: Python package 'ollama' is not installed.", file=sys.stderr)
             return None
         try:
             resp = await asyncio.to_thread(
@@ -59,7 +60,6 @@ class OllamaProvider:
             return _parse_llm_json(raw)
         except Exception as e:
             _log.warning("LLM call failed: %s", e)
-            print(f"    ⚠️  LLM error: {e}")
             return None
 
 

@@ -446,7 +446,7 @@ class _ActionsMixin:
         loc, locator_text = await self._resolve_strict_verify_locator(page, step, target, element_type, "value")
         try:
             actual_value = await loc.input_value(timeout=2000)
-        except (PlaywrightTimeoutError, Exception) as exc:
+        except Exception as exc:
             _log.debug("input_value() failed, falling back to get_attribute: %s", exc)
             actual_value = await loc.get_attribute("value", timeout=2000)
         if actual_value is None:
