@@ -41,6 +41,8 @@ dev = [
     "build",
     "twine",
     "ollama>=0.6.1",
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
 ]
 
 [project.scripts]
@@ -58,3 +60,46 @@ exclude = ["manul_engine.test*"]
 
 [tool.setuptools.package-data]
 manul_engine = ["py.typed"]
+
+# ── Ruff ──────────────────────────────────────────────────────────────────────
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+src = ["manul_engine"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "S", "RUF"]
+ignore = [
+    "E501",   # line too long — JS string literals in js_scripts.py exceed 120
+    "E701",   # multiple statements on one line (colon) — existing compact style
+    "E702",   # multiple statements on one line (semicolon)
+    "S101",   # assert — used extensively in the custom test suite
+    "S108",   # hardcoded-temp-file — /tmp paths in test HTML fixtures
+    "S110",   # try-except-pass — intentional silent error handling in engine
+    "S603",   # subprocess call: check for execution of untrusted input
+    "S607",   # start process with a partial executable path
+    "B905",   # zip() without strict= — backward compat with Python <3.10 idioms
+    "RUF001", # ambiguous unicode char in string — intentional emoji in log messages
+    "RUF002", # ambiguous unicode char in docstring — intentional unicode
+    "RUF003", # ambiguous unicode char in comment — intentional unicode/emoji
+]
+fixable = ["ALL"]
+
+[tool.ruff.lint.per-file-ignores]
+"manul_engine/test/*" = ["S101", "S603", "S607"]
+"manul_engine/js_scripts.py" = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["manul_engine"]
+
+# ── mypy ──────────────────────────────────────────────────────────────────────
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+ignore_missing_imports = true
+exclude = ["manul_engine/test/", "demo/", "custom-instructions/"]
