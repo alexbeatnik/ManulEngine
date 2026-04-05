@@ -25,18 +25,18 @@ import traceback
 from pathlib import Path
 from playwright.async_api import async_playwright
 
-try:
-    import ollama  # type: ignore
-except Exception:  # pragma: no cover
-    ollama = None
-
 from . import prompts
 from .helpers import substitute_memory, compact_log_field, extract_quoted, detect_mode, classify_step, RE_SYSTEM_STEP, parse_hunt_blocks, parse_explicit_wait, ContextualHint
 from .hooks import execute_hook_line, bind_hook_result
-from .js_scripts import SNAPSHOT_JS, DEBUG_MODAL_JS, DEBUG_REMOVE_MODAL_JS
+from .js_scripts import SNAPSHOT_JS
 from .scoring import score_elements, SCALE
 from .actions import _ActionsMixin
 from .cache import _ControlsCacheMixin
+from .debug import _DebugMixin
+from .llm import create_provider
+from .logging_config import logger
+
+_log = logger.getChild("core")
 from .controls import load_custom_controls, get_custom_control
 from . import prompts as _prompts_mod  # for CUSTOM_CONTROLS_DIRS access
 from .reporting import StepResult, MissionResult, BlockResult
@@ -58,7 +58,7 @@ def _confidence(score: int) -> float:
     return score / SCALE
 
 
-class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
+class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
     def __init__(
         self,
         model:          "str | None"  = None,
@@ -131,6 +131,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         self._last_step_healed: bool = False
         # Deferred @custom_control loading: stored here, applied on first run_mission().
         self._required_controls: set[str] | None = required_controls
+        # LLM provider (delegates to Ollama or no-op for heuristics-only mode).
+        self._llm = create_provider(self.model)
         if self.model is None:
             print("    ℹ️  No model configured — running in heuristics-only mode (AI disabled).")
         if self.debug_mode:
@@ -189,47 +191,11 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         return False
 
     async def _llm_json(self, system: str, user: str) -> dict | None:
-        """Send a system+user prompt to the local LLM and parse JSON response."""
-        if self.model is None:
-            return None  # heuristics-only mode
-        if ollama is None:
-            print("    ⚠️  LLM unavailable: Python package 'ollama' is not installed.")
-            return None
-        try:
-            resp = await asyncio.to_thread(
-                ollama.chat,
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user",   "content": user},
-                ],
-                format="json",
-            )
-            raw = resp["message"]["content"]
-            
-            # Strip markdown code blocks before searching for open brace
-            raw_clean = raw.strip()
-            if raw_clean.startswith("```json"):
-                raw_clean = raw_clean[7:]
-            elif raw_clean.startswith("```"):
-                raw_clean = raw_clean[3:]
-            if raw_clean.endswith("```"):
-                raw_clean = raw_clean[:-3]
-                
-            # Use json.JSONDecoder to find the first complete JSON object
-            # instead of greedy regex which fails on nested braces.
-            decoder = json.JSONDecoder()
-            start = raw_clean.find("{")
-            if start != -1:
-                try:
-                    obj, _ = decoder.raw_decode(raw_clean, start)
-                    return obj
-                except json.JSONDecodeError:
-                    pass
-            return json.loads(raw_clean)
-        except Exception as e:
-            print(f"    ⚠️  LLM error: {e}")
-            return None
+        """Send a system+user prompt to the local LLM and parse JSON response.
+
+        Delegates to the configured LLMProvider (Ollama or NullProvider).
+        """
+        return await self._llm.call_json(system, user)
 
     async def _llm_plan(self, task: str) -> list[str]:
         """Ask the LLM to decompose a free-text task into numbered steps."""
@@ -313,261 +279,10 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
         print(f"    🎯 AI DECISION: '{compact_name}' — {compact_thought}")
         return idx
 
-    # ── Visual feedback ───────────────────────
-
-    async def _highlight(self, page, target, color="red", bg="#ffeb3b", *, by_js_id=False, frame=None):
-        """Flash a coloured border around an element for visual debugging."""
-        try:
-            if by_js_id:
-                ctx = frame or page
-                await ctx.evaluate("([id, c, b]) => window.manulHighlight(id, c, b)", [target, color, bg])
-            else:
-                await target.evaluate("""(el, args) => {
-                    const [color, bg] = args;
-                    const oB=el.style.border, oBg=el.style.backgroundColor;
-                    el.style.border='4px solid '+color; el.style.backgroundColor=bg;
-                    setTimeout(()=>{el.style.border=oB;el.style.backgroundColor=oBg;},2000);
-                }""", [color, bg])
-            await asyncio.sleep(0.4)
-        except Exception:
-            pass
-
-    async def _debug_highlight(self, page, loc_or_id, *, by_js_id: bool = False, frame=None) -> None:
-        """Apply a persistent magenta highlight on the target element.
-        The highlight stays until _clear_debug_highlight() is called.
-        Uses a <style id="manul-debug-style"> tag + data-manul-debug-highlight attribute
-        so it is safely removable without disturbing any inline styles.
-        """
-        _STYLE_ID  = "manul-debug-style"
-        _STYLE_CSS = ("[data-manul-debug-highlight='true']{"
-                      "outline:4px solid #ff00ff !important;"
-                      "box-shadow:0 0 15px #ff00ff !important;"
-                      "background:rgba(255,0,255,.12) !important;"
-                      "z-index:999999 !important;}")
-        try:
-            if by_js_id:
-                ctx = frame or page
-                await ctx.evaluate(
-                    f"""
-                    (id) => {{
-                        const el = window.manulElements && window.manulElements[id];
-                        if (!el) return;
-                        if (!document.getElementById('{_STYLE_ID}')) {{
-                            const s = document.createElement('style');
-                            s.id = '{_STYLE_ID}';
-                            s.textContent = `{_STYLE_CSS}`;
-                            document.head.appendChild(s);
-                        }}
-                        el.setAttribute('data-manul-debug-highlight', 'true');
-                        el.scrollIntoView({{behavior:'smooth',block:'center'}});
-                    }}
-                    """,
-                    loc_or_id,
-                )
-            else:
-                await loc_or_id.evaluate(
-                    f"""
-                    el => {{
-                        if (!document.getElementById('{_STYLE_ID}')) {{
-                            const s = document.createElement('style');
-                            s.id = '{_STYLE_ID}';
-                            s.textContent = `{_STYLE_CSS}`;
-                            document.head.appendChild(s);
-                        }}
-                        el.setAttribute('data-manul-debug-highlight', 'true');
-                        el.scrollIntoView({{behavior:'smooth',block:'center'}});
-                    }}
-                    """
-                )
-        except Exception:
-            pass
-
-    async def _clear_debug_highlight(self, page) -> None:
-        """Remove the persistent debug highlight from all elements and remove the <style> tag."""
-        try:
-            await page.evaluate("""
-                () => {
-                    document.querySelectorAll('[data-manul-debug-highlight]').forEach(
-                        el => el.removeAttribute('data-manul-debug-highlight')
-                    );
-                    const s = document.getElementById('manul-debug-style');
-                    if (s) s.remove();
-                }
-            """)
-        except Exception:
-            pass
-
-    _DEBUG_PAUSE_MARKER = "\x00MANUL_DEBUG_PAUSE\x00"
-
-    async def _inject_debug_modal(self, page, step: str) -> None:
-        """Inject the floating debug panel with an Abort button into the browser."""
-        try:
-            await page.evaluate(DEBUG_MODAL_JS, step)
-        except Exception:
-            pass
-
-    async def _remove_debug_modal(self, page) -> None:
-        """Remove the debug modal and reset the abort signal."""
-        try:
-            await page.evaluate(DEBUG_REMOVE_MODAL_JS)
-        except Exception:
-            pass
-
-    async def _poll_for_abort(self, page, abort_event: asyncio.Event) -> None:
-        """Poll window.__manul_debug_action every 200 ms; set abort_event on ABORT."""
-        while not abort_event.is_set():
-            try:
-                action = await page.evaluate("() => window.__manul_debug_action || null")
-                if action == "ABORT":
-                    abort_event.set()
-                    return
-            except Exception:
-                pass
-            await asyncio.sleep(0.2)
-
-    async def _debug_prompt(self, page, step: str, idx: int) -> None:
-        """Interactive prompt used in debug mode.
-
-        Two operating modes, detected automatically:
-
-        1. **Extension protocol mode** (stdin is not a TTY, i.e. piped by the
-           VS Code extension): writes a JSON pause marker to stdout, then reads
-           tokens from stdin in a loop.  Accepted tokens:
-             - 'highlight' : re-scroll to the currently highlighted element, re-emit marker
-             - 'continue'  : reset to original gutter breakpoints, proceed
-             - 'next'      : also pause at the immediately following step
-             - 'abort'     : abort the test immediately
-
-        2. **Terminal mode** (stdin is a TTY): prints a human-readable prompt and
-           waits for input.  Typing 'h' re-scrolls to the highlighted element;
-           'pause' opens the Playwright Inspector; 'c' / 'continue' disables
-           future pauses for this session.
-
-        In both modes the in-browser debug modal (with an ✕ Abort button) is
-        injected before waiting and removed afterwards.  Clicking ✕ raises an
-        exception that aborts the test immediately.
-
-        If _debug_continue is already True the method returns immediately.
-        """
-        import sys
-        if self._debug_continue:
-            return
-
-        await self._inject_debug_modal(page, step)
-
-        abort_event: asyncio.Event = asyncio.Event()
-        abort_poll_task = asyncio.create_task(self._poll_for_abort(page, abort_event))
-
-        try:
-            if not sys.stdin.isatty():
-                # ── Extension protocol mode ───────────────────────────────
-                marker = json.dumps({"step": step, "idx": idx})
-                while True:
-                    sys.stdout.write(f"{self._DEBUG_PAUSE_MARKER}{marker}\n")
-                    sys.stdout.flush()
-                    try:
-                        read_task = asyncio.create_task(asyncio.to_thread(sys.stdin.readline))
-                        abort_wait = asyncio.create_task(abort_event.wait())
-                        done, pending = await asyncio.wait(
-                            [read_task, abort_wait], return_when=asyncio.FIRST_COMPLETED
-                        )
-                        for t in pending:
-                            t.cancel()
-                        if abort_event.is_set():
-                            raise Exception("Test intentionally aborted by user via debug modal")
-                        resp = read_task.result().strip().lower()
-                    except (EOFError, KeyboardInterrupt):
-                        return
-                    if resp == "abort":
-                        raise Exception("Test intentionally aborted by user via debug modal")
-                    elif resp == "highlight":
-                        # Re-scroll to the persistently highlighted element, then
-                        # re-emit the pause marker so the QuickPick shows again.
-                        try:
-                            await page.evaluate("""
-                                () => {
-                                    const el = document.querySelector('[data-manul-debug-highlight="true"]');
-                                    if (el) el.scrollIntoView({behavior:'smooth',block:'center'});
-                                }
-                            """)
-                        except Exception:
-                            pass
-                        continue  # loop: re-emit the marker
-                    elif resp == "explain":
-                        # Print the heuristic score breakdown for the last resolved
-                        # element, then re-emit the pause marker so the user stays
-                        # paused and can pick another action.
-                        if self._last_explain_data:
-                            _es, _et, _etop = self._last_explain_data
-                            self._print_explain(_es, _et, _etop)
-                        else:
-                            print("    ℹ️  No element resolution data for this step.")
-                        continue  # loop: re-emit the marker
-                    elif resp == "debug-stop":
-                        # Clear ALL breakpoints (including user-defined gutter ones)
-                        # so execution runs to the end without further pauses.
-                        self._user_break_steps = set()
-                        self.break_steps = set()
-                        break
-                    elif resp == "continue":
-                        # Restore only the user-set breakpoints so execution resumes
-                        # until the next gutter breakpoint (or end if none remain).
-                        self.break_steps = set(self._user_break_steps)
-                        break
-                    else:  # "next" (or any unrecognised token)
-                        # Pause again at the immediately following step.
-                        self.break_steps.add(idx + 1)
-                        break
-                return
-
-            # ── Terminal mode ─────────────────────────────────────────────
-            sys.stdout.flush()
-            prompt_text = (
-                f"\n[DEBUG] Next step: {step}\n"
-                f"        ENTER/n = execute · h = re-highlight · pause = Inspector · c = continue all… "
-            )
-            while True:
-                try:
-                    read_task   = asyncio.create_task(asyncio.to_thread(input, prompt_text))
-                    abort_wait  = asyncio.create_task(abort_event.wait())
-                    done, pending = await asyncio.wait(
-                        [read_task, abort_wait], return_when=asyncio.FIRST_COMPLETED
-                    )
-                    for t in pending:
-                        t.cancel()
-                    if abort_event.is_set():
-                        print()
-                        raise Exception("Test intentionally aborted by user via debug modal")
-                    user_in = read_task.result().strip().lower()
-                    if user_in == "h":
-                        try:
-                            await page.evaluate("""
-                                () => {
-                                    const el = document.querySelector('[data-manul-debug-highlight="true"]');
-                                    if (el) el.scrollIntoView({behavior:'smooth',block:'center'});
-                                }
-                            """)
-                            print("    👁️  Scrolled to highlighted element.")
-                        except Exception:
-                            pass
-                        continue  # re-show the prompt without advancing
-                    elif user_in == "pause":
-                        print("    🔎 Opening Playwright Inspector…")
-                        await page.pause()
-                        continue  # re-show the prompt after closing Inspector
-                    elif user_in in ("c", "continue"):
-                        self._debug_continue = True
-                        print("    ▶ Continuing all steps without further pauses…")
-                        break
-                    else:  # ENTER / n / anything else → execute the step
-                        break
-                except (EOFError, KeyboardInterrupt):
-                    print()
-                    break
-        finally:
-            abort_event.set()   # stop the poll task whether we return, break, or raise
-            abort_poll_task.cancel()
-            await self._remove_debug_modal(page)
+    # ── Visual feedback & debug prompt ────────
+    # All debug methods (_highlight, _debug_highlight, _clear_debug_highlight,
+    # _inject_debug_modal, _remove_debug_modal, _poll_for_abort, _debug_prompt)
+    # are provided by _DebugMixin from debug.py.
 
     # ── DOM snapshot ──────────────────────────
 
@@ -1132,7 +847,7 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                         ) or prompts.AUTO_ANNOTATE
                         try:
                             url_before = page.url
-                        except Exception:
+                        except (AttributeError, RuntimeError):
                             url_before = ""
 
                         _step_ok = True
@@ -1311,16 +1026,18 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                         _cc_result = _cc_handler(page, _cc_mode, _cc_value)
                                         if inspect.isawaitable(_cc_result):
                                             await _cc_result
-                                    except Exception:
-                                        _step_error = f"Custom control error on '{_cc_target}'"
+                                    except Exception as exc:
+                                        _step_error = f"Custom control error on '{_cc_target}': {exc}"
+                                        _log.warning("Custom control '%s' failed: %s", _cc_target, exc)
                                         print(traceback.format_exc())
                                         _step_ok = False
                                 elif not await self._execute_step(page, step, strategic_context, step_idx=action_index):
                                     _step_error = "Action failed"
                                     _step_ok = False
-                        except Exception:
+                        except Exception as exc:
                             _step_ok = False
                             _step_error = traceback.format_exc()
+                            _log.debug("Step execution failed: %s", exc)
                         finally:
                             duration_s = time.perf_counter() - started_perf
                             duration_ms = duration_s * 1000
@@ -1330,8 +1047,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                     import base64 as _b64
                                     _ss_bytes = await page.screenshot(type="png")
                                     _ss_b64 = _b64.b64encode(_ss_bytes).decode("ascii")
-                                except Exception:
-                                    pass
+                                except (OSError, RuntimeError) as exc:
+                                    _log.debug("Screenshot capture failed: %s", exc)
                             if _step_ok:
                                 _sr_status = "pass"
                             elif step_kind == "verify_softly":
@@ -1375,8 +1092,8 @@ class ManulEngine(_ControlsCacheMixin, _ActionsMixin):
                                         await self._auto_annotate_navigate(
                                             page, hunt_file, _action_file_lines, action_index + 1
                                         )
-                                except Exception:
-                                    pass
+                                except (AttributeError, RuntimeError) as exc:
+                                    _log.debug("Auto-annotate URL check failed: %s", exc)
 
                         if block_status == "fail" or done:
                             break

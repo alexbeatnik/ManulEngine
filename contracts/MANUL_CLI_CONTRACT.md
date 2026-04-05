@@ -5,7 +5,7 @@
 
 ```json
 {
-  "version": "0.0.9.22",
+  "version": "0.0.9.23",
   "generatedFrom": "manul_engine/cli.py :: main(), _run_hunt_file(), parse_hunt_file(), sync_main(); manul_engine/prompts.py :: _KEY_MAP, global config constants; manul_engine/scanner.py :: scan_main(); manul_engine/recorder.py :: record_main(); manul_engine/scheduler.py :: daemon_main(); manul_engine/packager.py :: pack(), install()",
   "entryPoints": {
     "console_script": "manul",

@@ -16,6 +16,9 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from .helpers import ContextualHint
+from .logging_config import logger
+
+_log = logger.getChild("cache")
 
 
 class _ControlsCacheMixin:
@@ -62,7 +65,7 @@ class _ControlsCacheMixin:
     def _page_site_key(self, page) -> str | None:
         try:
             parsed = urlparse(str(getattr(page, "url", "") or ""))
-        except Exception:
+        except (ValueError, AttributeError):
             return None
         hostname = (parsed.hostname or "").strip().lower()
         if not hostname:
@@ -121,7 +124,8 @@ class _ControlsCacheMixin:
                 controls = raw.get("controls", {}) if isinstance(raw, dict) else {}
                 if isinstance(controls, dict):
                     cache_data = {str(k): v for k, v in controls.items() if isinstance(v, dict)}
-            except Exception:
+            except (json.JSONDecodeError, OSError, UnicodeDecodeError) as exc:
+                _log.warning("Controls cache corrupted at %s: %s", cache_path, exc)
                 cache_data = {}
 
         self._controls_cache_site = site_key

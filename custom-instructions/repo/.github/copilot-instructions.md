@@ -61,12 +61,15 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (intercepts `test` subcommand)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.22
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.23
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession
   api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)
-  core.py                  ManulEngine class (LLM, resolution, run_mission, self-healing)
+  core.py                  ManulEngine class (resolution, run_mission, self-healing)
   cache.py                 _ControlsCacheMixin (persistent per-site controls cache)
+  debug.py                 _DebugMixin (element highlighting, debug prompt, breakpoint protocol)
+  llm.py                   LLMProvider protocol + OllamaProvider / NullProvider (JSON fence-stripping)
+  logging_config.py        Centralized logging under ``manul_engine`` hierarchy (stderr, MANUL_LOG_LEVEL)
   actions.py               _ActionsMixin (navigate, scroll, explicit waits, extract, verify, drag, press, right_click, upload, _execute_step, scan_page)
   reporting.py             StepResult, BlockResult, MissionResult, RunSummary dataclasses; append_run_history() + report-session persistence (reports/run_history.json, reports/manul_report_state.json)
   reporter.py              Self-contained HTML report generator (dark theme, native <details>/<summary> accordions, Flexbox step layout, base64 screenshots, control panel with Show Only Failed toggle, tag filter chips, Run Session banner)
@@ -424,7 +427,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * `actions.py` is a **mixin** (`_ActionsMixin`) inherited by `ManulEngine` in `core.py`. Explicit waits live here as `_handle_wait_for_element()` and are executed as parser-level system steps rather than generic heuristic actions.
 * **Input phrasing in `actions.py`:** steps containing `into` are parsed as value-first (`Type 'VALUE' into 'TARGET'`); `Fill ... with ...` and generic enter/fill phrasing remain value-last. Do not invert these forms when generating DSL.
 * `cache.py` is a **mixin** (`_ControlsCacheMixin`) inherited by `ManulEngine` in `core.py`. It owns all persistent per-site controls-cache logic.
-* `ManulEngine` MRO: `class ManulEngine(_ControlsCacheMixin, _ActionsMixin)` in `core.py`.
+* `ManulEngine` MRO: `class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin)` in `core.py`.
 * `prompts.py` loads config from `manul_engine_configuration.json` (CWD first, then package root fallback). No dotenv dependency.
 * `js_scripts.py` owns **all** JavaScript constants injected into the browser — no inline JS in Python files. This includes `SCAN_JS` (Smart Page Scanner).
 * `scanner.py` owns the standalone scan logic: `SCAN_JS` is imported from `js_scripts.py`; `build_hunt()` maps raw element dicts to hunt steps; `scan_page()` is the async Playwright runner; `scan_main()` is the async CLI entry called by `cli.py`. `_default_output()` reads `tests_home` from the config to derive the default output path. `SCAN_JS.bestLabel()` should prefer associated checkbox/radio labels, and scan entries may include `manul_id` plus current non-empty values for fillable controls.
@@ -496,7 +499,7 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 docker run --rm --shm-size=1g \
   -v $(pwd)/tests:/workspace/tests:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.22 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.23 \
   --html-report --screenshot on-fail tests/
 ```
 

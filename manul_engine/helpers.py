@@ -328,6 +328,26 @@ class ContextualHint(NamedTuple):
     row_text: "str | None"
 
 
+@dataclass(slots=True)
+class ResolutionContext:
+    """Bundles the parameters needed for element resolution.
+
+    Replaces the 11-parameter signature on ``_resolve_element`` with a
+    single context object, making callers easier to read and extend.
+    """
+
+    step: str
+    mode: str
+    search_texts: list[str]
+    target_field: str | None = None
+    strategic_context: str = ""
+    failed_ids: set | None = None
+    contextual_hint: ContextualHint | None = None
+    anchor_rect: dict | None = None
+    container_elements: list[dict] | None = None
+    viewport_height: int = 0
+
+
 # Regex patterns for contextual hints.
 # Order matters — longer / more specific patterns first.
 _RE_INSIDE = re.compile(

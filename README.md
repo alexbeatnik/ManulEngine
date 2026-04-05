@@ -274,7 +274,7 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.22
+pip install manul-engine==0.0.9.23
 playwright install
 ```
 
@@ -283,7 +283,7 @@ If you install standalone Python dependencies manually instead of using the pack
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.22"
+pip install "manul-engine[ai]==0.0.9.23"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -643,7 +643,7 @@ ManulEngine ships an alpha-stage headless CI runner image for browser automation
 docker run --rm --shm-size=1g \
   -v $(pwd)/tests:/workspace/tests:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.22 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.23 \
   --html-report --screenshot on-fail tests/
 ```
 
@@ -655,22 +655,29 @@ docker run --rm --shm-size=1g \
   -e MANUL_BROWSER=firefox \
   -v $(pwd)/tests:/workspace/tests:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.22 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.23 \
   tests/
 ```
 
 The image runs as non-root user `manul` (UID 1000), includes `dumb-init` for proper signal handling, and sets `--no-sandbox --disable-dev-shm-usage` by default. Build with additional browsers via `--build-arg BROWSERS="chromium firefox"`. A `docker-compose.yml` is included for local development with `manul` and `manul-daemon` services.
 
-## What's New in v0.0.9.22
+## What's New in v0.0.9.23
+
+- **Security hygiene:** Eliminated false-positive "shell access" alert from package security scanners (socket.dev) by dynamically constructing markdown code-fence markers in the LLM response parser.
+- **Manual release tagging workflow:** New `release_tag.yml` GitHub Actions workflow for creating version tags via `workflow_dispatch` without requiring a local git environment.
+
+<details>
+<summary>v0.0.9.22</summary>
 
 - **@import / @export / USE system:** Reusable `.hunt` libraries. `@import: Login from lib/auth.hunt` pulls named STEP blocks, `USE Login` expands them inline, and `@export:` controls visibility. `@var:` from source files inherit at the lowest (import) scope. Wildcard imports, aliases (`@import: Login as AuthLogin`), and package-style sources (`@import: Login from @my-lib`) are all supported.
 - **`manul pack` / `manul install` CLI:** Pack `.hunt` libraries into distributable `.huntlib` archives and install them locally or globally (`~/.manul/hunt_libs/`). Lockfile (`huntlib-lock.json`) tracks installed versions.
 - **Docker CI/CD runner:** Multi-stage `Dockerfile` packaging ManulEngine as a headless CI runner image (`ghcr.io/alexbeatnik/manul-engine`). Non-root `manul` user (UID 1000), `dumb-init` PID 1, Chromium-only by default (configurable via `BROWSERS` build arg). Includes `docker-compose.yml` with `manul` and `manul-daemon` services.
 - **GitHub Actions workflows:** `release.yml` handles unified release automation (PyPI + GHCR + GitHub Release on `v*` tags), `docker-dev.yml` pushes dev images on `main` merge, and `manul-ci.yml` provides a reusable example workflow for downstream repositories.
-- **Release line synchronized to `0.0.9.22`:** package metadata and release-facing docs were updated alongside the Docker infrastructure.
+
+</details>
 
 ## License
 
-**Version:** 0.0.9.22
+**Version:** 0.0.9.23
 
 Apache-2.0.

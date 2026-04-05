@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.22 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.23 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -25,7 +25,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.22
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.23
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession
@@ -42,8 +42,11 @@ ManulEngine/
 │   ├── js_scripts.py                 All JavaScript injected into the browser (incl. SCAN_JS)
 │   ├── scoring.py                    Heuristic element-scoring algorithm (20+ rules)
 │   ├── scanner.py                    Smart Page Scanner: scan_page(), build_hunt(), scan_main()
-│   ├── core.py                       ManulEngine class (LLM, resolution, mission runner)
+│   ├── core.py                       ManulEngine class (resolution, mission runner)
 │   ├── cache.py                      Persistent per-site controls cache mixin
+│   ├── debug.py                      _DebugMixin (element highlighting, debug prompt, breakpoint protocol)
+│   ├── llm.py                        LLMProvider protocol + OllamaProvider / NullProvider
+│   ├── logging_config.py             Centralized logging hierarchy (stderr, MANUL_LOG_LEVEL)
 │   ├── actions.py                    Action execution mixin (click, type, select, hover, drag, scan_page)
 │   ├── reporting.py                  StepResult, MissionResult, RunSummary dataclasses; run_history + report-session state persistence
 │   ├── reporter.py                   Interactive HTML report generator (dark theme, control panel, tag chips, Run Session banner, base64 screenshots)
@@ -581,7 +584,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.22
+pip install manul-engine==0.0.9.23
 playwright install chromium
 ```
 
@@ -701,7 +704,7 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 docker run --rm --shm-size=1g \
   -v $(pwd)/tests:/workspace/tests:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.22 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.23 \
   --html-report --screenshot on-fail tests/
 ```
 
@@ -915,15 +918,22 @@ The published extension provides:
 
 ---
 
-## Release Notes: v0.0.9.22
+## Release Notes: v0.0.9.23
+
+- **Security hygiene:** Eliminated false-positive "shell access" alert from package security scanners (socket.dev) by dynamically constructing markdown code-fence markers in the LLM response parser.
+- **Manual release tagging workflow:** New `release_tag.yml` GitHub Actions workflow for creating version tags via `workflow_dispatch`.
+
+<details>
+<summary>v0.0.9.22</summary>
 
 - **Docker CI/CD runner:** Multi-stage `Dockerfile` packaging ManulEngine as a headless CI runner image (`ghcr.io/alexbeatnik/manul-engine`). Two-stage build: `builder` (pip install + Playwright browsers) → `runtime` (slim image). Non-root `manul` user (UID 1000), `dumb-init` PID 1, Chromium-only by default (configurable via `BROWSERS` build arg). Includes `docker-compose.yml` with `manul` and `manul-daemon` services.
 - **GitHub Actions workflows:** `release.yml` handles unified release automation (PyPI + GHCR + GitHub Release on `v*` tags). `docker-dev.yml` pushes dev images to GHCR on `main` merge. `manul-ci.yml` is a reusable example workflow for downstream repositories.
 - **`.dockerignore`:** Excludes common repository-only artifacts such as `.git`, `reports/`, `cache/`, and `__pycache__` from the build context.
 - **CI defaults baked into image:** `MANUL_HEADLESS=true`, `MANUL_BROWSER_ARGS="--no-sandbox --disable-dev-shm-usage"`, `TZ=UTC`, `LANG=C.UTF-8`, `PYTHONUNBUFFERED=1`.
-- **Release line synchronized to `0.0.9.22`:** package metadata and the repo-local documentation set were updated together.
 
-**Version:** 0.0.9.22
+</details>
+
+**Version:** 0.0.9.23
 
 **Codename:** Containerised Manul
 
