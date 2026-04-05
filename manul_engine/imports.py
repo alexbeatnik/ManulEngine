@@ -156,7 +156,7 @@ def resolve_source_path(
 
 def parse_huntlib_json(path: str) -> dict:
     """Parse and validate a huntlib.json manifest file."""
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         data = json.load(f)
     if not isinstance(data, dict):
         raise HuntImportError(f"huntlib.json must be a JSON object: {path}")
@@ -195,7 +195,7 @@ def _extract_exported_blocks(
     _re_teardown = re.compile(r"^\s*\[TEARDOWN\]", re.IGNORECASE)
     _re_end_teardown = re.compile(r"^\s*\[END\s+TEARDOWN\]", re.IGNORECASE)
 
-    with open(hunt_path, "r", encoding="utf-8") as fh:
+    with open(hunt_path, encoding="utf-8") as fh:
         for line in fh:
             stripped = line.strip()
 

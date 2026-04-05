@@ -18,7 +18,6 @@ import os
 import re
 import sys
 
-
 # Directory that holds synthetic test_*.py suites (available when running from
 # a source checkout; these tests are not packaged into the installed wheel).
 _PKG_DIR = os.path.dirname(os.path.abspath(__file__))

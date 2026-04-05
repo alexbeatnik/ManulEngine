@@ -16,7 +16,6 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from datetime import datetime
 from urllib.parse import urlparse
 
 # ── Injected JavaScript ──────────────────────────────────────────────────────

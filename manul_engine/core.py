@@ -18,29 +18,40 @@ import asyncio
 import inspect
 import json
 import os
-from os import environ as _environ
 import re
 import time
 import traceback
+from os import environ as _environ
 from pathlib import Path
+
 from playwright.async_api import async_playwright
 
 from . import prompts
-from .config import EngineConfig
-from .helpers import substitute_memory, compact_log_field, extract_quoted, detect_mode, classify_step, RE_SYSTEM_STEP, parse_hunt_blocks, parse_explicit_wait, ContextualHint
-from .hooks import execute_hook_line, bind_hook_result
-from .js_scripts import SNAPSHOT_JS
-from .scoring import score_elements, SCALE
 from .actions import _ActionsMixin
 from .cache import _ControlsCacheMixin
+from .config import EngineConfig
 from .debug import _DebugMixin
+from .helpers import (
+    RE_SYSTEM_STEP,
+    ContextualHint,
+    classify_step,
+    compact_log_field,
+    detect_mode,
+    extract_quoted,
+    parse_explicit_wait,
+    parse_hunt_blocks,
+    substitute_memory,
+)
+from .hooks import bind_hook_result, execute_hook_line
+from .js_scripts import SNAPSHOT_JS
 from .llm import create_provider
 from .logging_config import logger
+from .scoring import SCALE, score_elements
 
 _log = logger.getChild("core")
-from .controls import load_custom_controls, get_custom_control
 from . import prompts as _prompts_mod  # for CUSTOM_CONTROLS_DIRS access
-from .reporting import StepResult, MissionResult, BlockResult
+from .controls import get_custom_control, load_custom_controls
+from .reporting import BlockResult, MissionResult, StepResult
 from .variables import ScopedVariables
 
 # ── Pre-compiled patterns ─────────────────────────────────────────────────────
@@ -99,9 +110,9 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                 f"but got browser={self.browser!r} with channel={self.channel!r}."
             )
         self.memory:          ScopedVariables = ScopedVariables()
-        self.last_xpath:      "str | None" = None
+        self.last_xpath:      str | None = None
         self.learned_elements: dict = {}        # semantic cache: cache_key → {name, tag}
-        
+
         if disable_cache:
             self._controls_cache_enabled = False
         elif _cfg:
@@ -341,17 +352,17 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         url = el.get("frame_url")
         name = el.get("frame_name")
         frames = page.frames
-        
+
         # 1. Try URL and name match (most robust across frame reloads)
         if url is not None and name is not None:
             for f in frames:
                 if f.url == url and f.name == name:
                     return f
-                    
+
         # 2. Try blind index fallback (assuming no frame shifting)
         if 0 <= idx < len(frames):
             return frames[idx]
-            
+
         return page  # main frame fallback
 
     async def _snapshot(self, page, mode: str, texts: list[str]) -> list[dict]:
@@ -401,7 +412,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             score = el.get("score", 0)
             expl = el.get("_explain")
             if expl:
-                print(f"    │")
+                print("    │")
                 print(f"    │  #{rank}  <{tag}> \"{name}\"  → Total: {expl['total']:.3f}")
                 print(f"    │       Text:       {expl['text']:>+.3f}")
                 print(f"    │       Attributes: {expl['attributes']:>+.3f}")
@@ -425,7 +436,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             rect_top = winner.get("rect_top", 0)
             rect_left = winner.get("rect_left", 0)
             ctx_summary = f" [{winner_expl['ctx_kind'].upper().replace('_', ' ')} at ({rect_left},{rect_top})]"
-        print(f"    │")
+        print("    │")
         print(f"    └─ ✅ Decision: Selected \"{winner_name}\" with score {winner_display}{ctx_summary}")
         print()
 
@@ -596,7 +607,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             else:
                 print(f"    🧠 AI AGENT: Always-AI enabled, analysing {len(top)} candidates…")
                 idx = await self._llm_select_element(step, mode, top, strategic_context)
-                
+
             if idx is None:
                 self._last_step_healed = False
                 if failed_ids is not None:
@@ -656,7 +667,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             except Exception as exc:
                 print(f"    ⚠️  LLM selection failed ({type(exc).__name__}: {exc}), falling back to top heuristic candidate")
                 idx = 0
-            
+
         if idx is None:
             self._last_step_healed = False
             if failed_ids is not None:
@@ -705,7 +716,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             nav_line_no = step_file_lines[step_idx - 1] + self._annotate_line_offset
 
             try:
-                with open(hunt_file, 'r', encoding='utf-8') as _hf:
+                with open(hunt_file, encoding='utf-8') as _hf:
                     lines = _hf.readlines()
 
                 above_idx = nav_line_no - 2  # 0-based index of the line above the step

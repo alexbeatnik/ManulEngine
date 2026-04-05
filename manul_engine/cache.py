@@ -12,7 +12,6 @@ import hashlib
 import json
 import re
 import time
-from pathlib import Path
 from urllib.parse import urlparse
 
 from .helpers import ContextualHint

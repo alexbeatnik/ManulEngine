@@ -20,12 +20,10 @@ Usage::
 from __future__ import annotations
 
 import html
-import os
 import re
 from pathlib import Path
 
-from .reporting import RunSummary, MissionResult, StepResult
-
+from .reporting import MissionResult, RunSummary, StepResult
 
 # ── CSS ───────────────────────────────────────────────────────────────────────
 

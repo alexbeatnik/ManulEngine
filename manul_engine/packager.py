@@ -150,7 +150,7 @@ def _update_lockfile(hunt_libs_dir: str, manifest: dict) -> None:
     lockfile_path = os.path.join(hunt_libs_dir, "huntlib-lock.json")
     lock: dict = {}
     if os.path.isfile(lockfile_path):
-        with open(lockfile_path, "r", encoding="utf-8") as f:
+        with open(lockfile_path, encoding="utf-8") as f:
             try:
                 lock = json.load(f)
             except json.JSONDecodeError:
@@ -176,7 +176,7 @@ def resolve_lockfile(hunt_libs_dir: str) -> dict:
     lockfile_path = os.path.join(hunt_libs_dir, "huntlib-lock.json")
     if not os.path.isfile(lockfile_path):
         return {}
-    with open(lockfile_path, "r", encoding="utf-8") as f:
+    with open(lockfile_path, encoding="utf-8") as f:
         try:
             data = json.load(f)
         except json.JSONDecodeError:

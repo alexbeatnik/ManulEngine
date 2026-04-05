@@ -20,17 +20,16 @@ import sys
 import time
 from typing import NamedTuple
 
-from .reporting import StepResult, MissionResult, RunSummary, append_run_history
-from .hooks import RE_SETUP, RE_END_SETUP, RE_TEARDOWN, RE_END_TEARDOWN
 from .helpers import parse_hunt_blocks
+from .hooks import RE_END_SETUP, RE_END_TEARDOWN, RE_SETUP, RE_TEARDOWN
 from .imports import (
-    ImportDirective,
     HuntImportError,
+    ImportDirective,
+    expand_use_directives,
     parse_import_directive,
     resolve_imports,
-    expand_use_directives,
 )
-
+from .reporting import MissionResult, RunSummary, StepResult, append_run_history
 
 # ── Pre-compiled regex for _read_tags fast header scan ────────────────────────
 _RE_NUMBERED_LINE = re.compile(r"^\d+\.")
@@ -292,7 +291,7 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
     in_setup    = False
     in_teardown = False
 
-    with open(filepath, "r", encoding="utf-8") as fh:
+    with open(filepath, encoding="utf-8") as fh:
         file_lines = list(enumerate(fh, 1))
 
     idx = 0
@@ -424,7 +423,7 @@ def _read_tags(path: str) -> list[str]:
     reading the whole file.
     Returns an empty list when no ``@tags:`` header is found.
     """
-    with open(path, "r", encoding="utf-8") as fh:
+    with open(path, encoding="utf-8") as fh:
         for line in fh:
             stripped = line.strip()
             if stripped.startswith("@tags:"):
@@ -543,7 +542,7 @@ async def _run_hunt_file(
             print(f"📊 Data-Driven: {len(data_rows)} rows loaded from '{hunt.data_file}'")
 
     try:
-        all_step_results: list["StepResult"] = []
+        all_step_results: list[StepResult] = []
         all_soft_errors: list[str] = []
         overall_ok = True
         first_fail_error: str | None = None
@@ -624,14 +623,14 @@ def _load_data_file(data_path: str, hunt_dir: str) -> list[dict[str, str]]:
 
     try:
         if resolved.endswith(".json"):
-            with open(resolved, "r", encoding="utf-8") as f:
+            with open(resolved, encoding="utf-8") as f:
                 raw = json.load(f)
             if isinstance(raw, list):
                 return [{str(k): str(v) for k, v in item.items()} for item in raw if isinstance(item, dict)]
             print(f"    ⚠️  @data: expected a JSON array of objects in {data_path}, got {type(raw).__name__}")
             return []
         elif resolved.endswith(".csv"):
-            with open(resolved, "r", encoding="utf-8", newline="") as f:
+            with open(resolved, encoding="utf-8", newline="") as f:
                 reader = csv.DictReader(f)
                 return [{str(k): str(v) for k, v in row.items()} for row in reader]
         else:
@@ -779,7 +778,8 @@ async def main() -> "int | None":
     # Extract --workers <n> flag
     # prompts.py (which maps JSON → env vars) hasn't been imported yet at this
     # point, so read 'workers' from the JSON config file directly.
-    import json as _json, pathlib as _pathlib
+    import json as _json
+    import pathlib as _pathlib
     _cfg_path = _pathlib.Path.cwd() / "manul_engine_configuration.json"
     if not _cfg_path.exists():
         _cfg_path = _pathlib.Path(__file__).resolve().parents[1] / "manul_engine_configuration.json"
@@ -884,10 +884,11 @@ async def main() -> "int | None":
         if screenshot_mode != "none":
             print(f"📸 Screenshot mode: {screenshot_mode}")
         if html_report:
-            print(f"📊 HTML report: enabled")
+            print("📊 HTML report: enabled")
 
         # ── Global lifecycle hooks ─────────────────────────────────────────────
-        from .lifecycle import registry as _lc_registry, GlobalContext, load_hooks_file, serialize_global_vars, deserialize_global_vars
+        from .lifecycle import GlobalContext, deserialize_global_vars, load_hooks_file, serialize_global_vars
+        from .lifecycle import registry as _lc_registry
         _lc_registry.clear()          # reset any stale registrations from a previous run
         _lc_ctx = GlobalContext()
         # Inherit variables serialised by the orchestrator for parallel workers.
@@ -982,7 +983,7 @@ async def main() -> "int | None":
             print(f"\u2699\ufe0f  Running with up to {workers} parallel worker(s)\n")
             if _hooks_loaded and not _lc_registry.is_empty:
                 print("⚠️  WARNING: When --workers > 1, lifecycle hooks (@before_all, @before_group) are run independently by each worker for every file. They are not evaluated 'once per suite'.\n")
-            
+
             sem = asyncio.Semaphore(workers)
             manul_exe = _find_manul_exe()
             _worker_timeout = float(os.getenv("MANUL_WORKER_TIMEOUT", "600"))
@@ -1027,7 +1028,7 @@ async def main() -> "int | None":
                         raw, _ = await asyncio.wait_for(
                             proc.communicate(), timeout=_worker_timeout,
                         )
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         proc.kill()
                         await proc.wait()
                         elapsed = time.perf_counter() - t0
@@ -1121,13 +1122,13 @@ async def main() -> "int | None":
                 run_summary.warning = sum(1 for _, s, _ in results if s == "WARNING")
             try:
                 from .reporter import generate_report
-                from .reporting import load_report_state, save_report_state, merge_report_summaries
+                from .reporting import load_report_state, merge_report_summaries, save_report_state
                 report_path = os.path.join(_reports_dir, "manul_report.html")
                 abs_report = _pathlib.Path(report_path).resolve().as_uri()
                 report_summary = merge_report_summaries(load_report_state(), run_summary)
                 save_report_state(report_summary)
                 generate_report(report_summary, report_path)
-                print(f"\n📊 HTML Report successfully generated!")
+                print("\n📊 HTML Report successfully generated!")
                 print(f"👉 {abs_report}")
             except Exception as _rpt_err:
                 print(f"\n⚠️  HTML report generation failed: {_rpt_err}")
