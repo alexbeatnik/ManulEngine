@@ -7,7 +7,7 @@
 # Build args
 # ---------------------------------------------------------------------------
 ARG PYTHON_VERSION=3.12
-ARG MANUL_VERSION=0.0.9.23
+ARG MANUL_VERSION=0.0.9.24
 ARG BROWSERS=chromium
 
 # ===========================================================================
@@ -93,7 +93,7 @@ ENV MANUL_HEADLESS=true \
 LABEL org.opencontainers.image.source="https://github.com/alexbeatnik/ManulEngine" \
       org.opencontainers.image.description="ManulEngine — deterministic DSL-first browser automation CI runner" \
       org.opencontainers.image.licenses="Apache-2.0" \
-      org.opencontainers.image.version="0.0.9.23" \
+      org.opencontainers.image.version="0.0.9.24" \
       org.opencontainers.image.vendor="alexbeatnik"
 
 # ---------------------------------------------------------------------------

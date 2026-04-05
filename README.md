@@ -274,7 +274,7 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.23
+pip install manul-engine==0.0.9.24
 playwright install
 ```
 
@@ -283,7 +283,7 @@ If you install standalone Python dependencies manually instead of using the pack
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.23"
+pip install "manul-engine[ai]==0.0.9.24"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -643,7 +643,7 @@ ManulEngine ships an alpha-stage headless CI runner image for browser automation
 docker run --rm --shm-size=1g \
   -v $(pwd)/tests:/workspace/tests:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.23 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.24 \
   --html-report --screenshot on-fail tests/
 ```
 
@@ -655,13 +655,13 @@ docker run --rm --shm-size=1g \
   -e MANUL_BROWSER=firefox \
   -v $(pwd)/tests:/workspace/tests:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.23 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.24 \
   tests/
 ```
 
 The image runs as non-root user `manul` (UID 1000), includes `dumb-init` for proper signal handling, and sets `--no-sandbox --disable-dev-shm-usage` by default. Build with additional browsers via `--build-arg BROWSERS="chromium firefox"`. A `docker-compose.yml` is included for local development with `manul` and `manul-daemon` services.
 
-## What's New in v0.0.9.23
+## What's New in v0.0.9.24
 
 - **Security hygiene:** Eliminated false-positive "shell access" alert from package security scanners (socket.dev) by dynamically constructing markdown code-fence markers in the LLM response parser.
 - **Manual release tagging workflow:** New `release_tag.yml` GitHub Actions workflow for creating version tags via `workflow_dispatch` without requiring a local git environment.
@@ -678,6 +678,6 @@ The image runs as non-root user `manul` (UID 1000), includes `dumb-init` for pro
 
 ## License
 
-**Version:** 0.0.9.23
+**Version:** 0.0.9.24
 
 Apache-2.0.

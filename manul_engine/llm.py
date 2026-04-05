@@ -56,7 +56,11 @@ class OllamaProvider:
                 ],
                 format="json",
             )
-            raw = resp["message"]["content"]
+            msg = resp.get("message") if isinstance(resp, dict) else None
+            raw = msg.get("content", "") if isinstance(msg, dict) else ""
+            if not isinstance(raw, str) or not raw:
+                _log.warning("LLM returned unexpected response structure")
+                return None
             return _parse_llm_json(raw)
         except Exception as e:
             _log.warning("LLM call failed: %s", e)

@@ -6,7 +6,7 @@
 
 ```json
 {
-  "version": "0.0.9.23",
+  "version": "0.0.9.24",
   "generatedFrom": "manul_engine/helpers.py :: classify_step(), detect_mode(), parse_contextual_hint(); manul_engine/core.py :: run_mission(); manul_engine/cli.py :: parse_hunt_file(); manul_engine/actions.py :: _ActionsMixin; manul_engine/scoring.py :: DOMScorer contextual proximity rules; manul_engine/js_scripts.py :: SNAPSHOT_JS geometry export; manul_engine/imports.py :: parse_import_directive(), resolve_imports(), expand_use_directives()",
   "commands": [
     {
