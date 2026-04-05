@@ -23,8 +23,14 @@ import time
 import traceback
 from os import environ as _environ
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from playwright.async_api import async_playwright
+
+if TYPE_CHECKING:
+    from playwright.async_api import BrowserContext, Frame, Page  # noqa: F401
+
+    from ._types import ElementSnapshot  # noqa: F401
 
 from . import prompts
 from .actions import _ActionsMixin
