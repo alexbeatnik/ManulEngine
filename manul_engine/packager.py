@@ -125,7 +125,7 @@ def install(
                     raise HuntImportError(
                         f"Path traversal in archive: '{member.name}'"
                     )
-            tar.extractall(tmp)
+            tar.extractall(tmp)  # noqa: S202 — path traversal checked above
 
         manifest_path = os.path.join(tmp, "huntlib.json")
         if not os.path.isfile(manifest_path):

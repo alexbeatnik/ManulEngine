@@ -772,7 +772,7 @@ class DOMScorer:
 
             if self._explain:
                 _max = MAX_THEORETICAL_SCORE
-                def _norm(weighted_channel: float) -> float:
+                def _norm(weighted_channel: float, _max: float = _max) -> float:
                     return round(min(weighted_channel * scale / _max, 1.0), 3)
 
                 explain_dict: dict = {
