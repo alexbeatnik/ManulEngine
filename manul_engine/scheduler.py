@@ -21,6 +21,8 @@ import traceback
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+from .exceptions import ScheduleError
+
 # ── Schedule representation ──────────────────────────────────────────────────
 
 _WEEKDAYS = {
@@ -74,18 +76,18 @@ def parse_schedule(expr: str) -> Schedule:
     * ``every monday`` (defaults to 00:00)
     * ``every friday at 14:30``
 
-    Raises ``ValueError`` on unrecognised expressions.
+    Raises ``ScheduleError`` on unrecognised expressions.
     """
     s = expr.strip()
     if not s:
-        raise ValueError("Empty schedule expression")
+        raise ScheduleError("Empty schedule expression")
 
     # every N <unit>
     m = _RE_EVERY_N.match(s)
     if m:
         n = int(m.group(1))
         if n < 1:
-            raise ValueError(f"Interval must be at least 1: {s!r}")
+            raise ScheduleError(f"Interval must be at least 1: {s!r}")
         unit = m.group(2).lower().rstrip("s")  # "minutes" → "minute"
         multiplier = {"second": 1, "minute": 60, "hour": 3600}[unit]
         return Schedule(raw=s, interval_seconds=n * multiplier)
@@ -102,7 +104,7 @@ def parse_schedule(expr: str) -> Schedule:
     if m:
         hh, mm = int(m.group(1)), int(m.group(2))
         if not (0 <= hh <= 23 and 0 <= mm <= 59):
-            raise ValueError(f"Invalid time in schedule: {s!r}")
+            raise ScheduleError(f"Invalid time in schedule: {s!r}")
         return Schedule(raw=s, daily_at=(hh, mm))
 
     # every <weekday> at HH:MM
@@ -111,7 +113,7 @@ def parse_schedule(expr: str) -> Schedule:
         day = _WEEKDAYS[m.group(1).lower()]
         hh, mm = int(m.group(2)), int(m.group(3))
         if not (0 <= hh <= 23 and 0 <= mm <= 59):
-            raise ValueError(f"Invalid time in schedule: {s!r}")
+            raise ScheduleError(f"Invalid time in schedule: {s!r}")
         return Schedule(raw=s, weekly=(day, hh, mm))
 
     # every <weekday>  (defaults to 00:00)
@@ -120,7 +122,7 @@ def parse_schedule(expr: str) -> Schedule:
         day = _WEEKDAYS[m.group(1).lower()]
         return Schedule(raw=s, weekly=(day, 0, 0))
 
-    raise ValueError(f"Unrecognised @schedule expression: {s!r}")
+    raise ScheduleError(f"Unrecognised @schedule expression: {s!r}")
 
 
 # ── Time helpers ─────────────────────────────────────────────────────────────
@@ -153,7 +155,7 @@ def next_run_delay(sched: Schedule, now: datetime | None = None) -> float:
         return _seconds_until_time(*sched.daily_at, now=now)
     if sched.weekly is not None:
         return _seconds_until_weekday(*sched.weekly, now=now)
-    raise ValueError(f"Schedule has no timing data: {sched!r}")
+    raise ScheduleError(f"Schedule has no timing data: {sched!r}")
 
 
 # ── Per-job async loop ───────────────────────────────────────────────────────

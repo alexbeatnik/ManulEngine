@@ -30,6 +30,7 @@ from typing import Any
 from playwright.async_api import Browser, BrowserContext, Page, Playwright, async_playwright
 
 from .core import ManulEngine
+from .exceptions import ConfigurationError, SessionError
 from .helpers import classify_step, substitute_memory
 from .reporting import MissionResult, StepResult
 from .variables import ScopedVariables
@@ -103,7 +104,7 @@ class ManulSession:
 
         # Playwright 'channel' is only supported for Chromium.
         if eng.channel and eng.browser != "chromium":
-            raise ValueError(
+            raise ConfigurationError(
                 f"Playwright 'channel' is only supported for browser='chromium'; "
                 f"got browser={eng.browser!r}"
             )
@@ -114,7 +115,7 @@ class ManulSession:
             try:
                 self._browser = await p.chromium.connect_over_cdp(_cdp_url)
             except Exception as exc:
-                raise RuntimeError(
+                raise SessionError(
                     f"Failed to connect to Electron app over CDP at {_cdp_url}. "
                     f"Ensure the target app is running with "
                     f"'--remote-debugging-port={_cdp_port}' enabled and that "
@@ -186,7 +187,7 @@ class ManulSession:
     def page(self) -> Page:
         """The active Playwright ``Page``.  Useful for advanced one-offs."""
         if self._page is None:
-            raise RuntimeError(
+            raise SessionError(
                 "ManulSession has no active page.  "
                 "Use 'async with ManulSession() as s:' or call start() first."
             )
