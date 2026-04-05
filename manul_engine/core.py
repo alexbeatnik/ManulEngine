@@ -76,8 +76,9 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         config:         "EngineConfig | None" = None,  # injectable config (takes priority)
         **_kwargs,
     ):
-        # When an EngineConfig is provided, it takes priority over both
-        # individual keyword arguments and prompts.* module globals.
+        # When an EngineConfig is provided, it serves as the default layer
+        # between explicit keyword arguments and prompts.* module globals.
+        # Priority: explicit kwargs > EngineConfig > prompts module globals.
         _cfg = config
 
         # None model → heuristics-only mode (AI fully disabled)
@@ -145,7 +146,8 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
 
         # Resolve model-specific settings once at construction time.
         # get_threshold returns 0 when self.model is None → AI is disabled.
-        self._threshold       = prompts.get_threshold(self.model, ai_threshold)
+        _ai_thr = ai_threshold if ai_threshold is not None else (_cfg.ai_threshold if _cfg else None)
+        self._threshold       = prompts.get_threshold(self.model, _ai_thr)
         self._executor_prompt = prompts.get_executor_prompt(self.model)
         self._planner_prompt  = prompts.PLANNER_SYSTEM_PROMPT
         self.debug_mode = debug_mode

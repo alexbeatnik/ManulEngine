@@ -30,11 +30,20 @@ def _extract_response_text(resp: object) -> str:
     """Safely extract the content string from an Ollama ChatResponse.
 
     The Ollama SDK (0.6+) returns ChatResponse objects with attribute
-    access (``resp.message.content``).  We use ``getattr`` chains to
-    stay resilient against version drift or unexpected return shapes.
+    access (``resp.message.content``).  We also handle dict-shaped
+    responses for older SDK versions and test mocks.
     """
+    # Attribute-style (ChatResponse object)
     msg = getattr(resp, "message", None)
-    text = getattr(msg, "content", None) if msg is not None else None
+    if msg is None and isinstance(resp, dict):
+        # Dict-style fallback (older SDK / mocks)
+        msg = resp.get("message")
+    if msg is None:
+        return ""
+    if isinstance(msg, dict):
+        text = msg.get("content")
+    else:
+        text = getattr(msg, "content", None)
     return text if isinstance(text, str) else ""
 
 
