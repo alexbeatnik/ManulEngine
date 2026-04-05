@@ -32,6 +32,7 @@ import importlib.util
 import os
 import re
 import shlex
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
@@ -41,6 +42,7 @@ from types import ModuleType
 # repeated CALL PYTHON invocations within a run reuse the same module object
 # instead of re-executing the file every time.
 _module_cache: dict[str, ModuleType] = {}
+_CACHE_LOCK = threading.Lock()
 
 # ── Block-marker patterns (also imported by cli.parse_hunt_file) ──────────────
 RE_SETUP        = re.compile(r"^\[SETUP\]$",          re.IGNORECASE)
@@ -202,7 +204,8 @@ def _resolve_module(module_path: str, hunt_dir: str | None) -> tuple[ModuleType,
         if not candidate.is_file():
             continue
         cache_key = str(candidate.resolve())
-        cached = _module_cache.get(cache_key)
+        with _CACHE_LOCK:
+            cached = _module_cache.get(cache_key)
         if cached is not None:
             return cached, True
         spec = importlib.util.spec_from_file_location(module_path, candidate)
@@ -210,23 +213,27 @@ def _resolve_module(module_path: str, hunt_dir: str | None) -> tuple[ModuleType,
             mod = importlib.util.module_from_spec(spec)
             # Execute in isolation — does NOT touch sys.modules.
             spec.loader.exec_module(mod)  # type: ignore[union-attr]
-            _module_cache[cache_key] = mod
+            with _CACHE_LOCK:
+                _module_cache[cache_key] = mod
             return mod, False
 
     # Fallback: standard import (PYTHONPATH / installed packages).
     # Check cache for stdlib/installed modules too.
-    cached = _module_cache.get(module_path)
+    with _CACHE_LOCK:
+        cached = _module_cache.get(module_path)
     if cached is not None:
         return cached, True
     mod = importlib.import_module(module_path)
-    _module_cache[module_path] = mod
+    with _CACHE_LOCK:
+        _module_cache[module_path] = mod
     return mod, False
 
 
 def clear_module_cache() -> None:
     """Reset the JIT module cache.  Used between test runs or by the
     synthetic test suite to ensure isolation."""
-    _module_cache.clear()
+    with _CACHE_LOCK:
+        _module_cache.clear()
 
 
 # ── Single-line executor ──────────────────────────────────────────────────────
