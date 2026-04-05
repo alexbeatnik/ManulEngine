@@ -16,6 +16,9 @@ from .js_scripts import (
     FILTER_CONTAINER_DESCENDANT_XPATHS_JS,
 )
 from . import prompts
+from .logging_config import logger
+
+_log = logger.getChild("actions")
 
 class _ActionsMixin:
     _EXPLICIT_WAIT_TIMEOUT_MS = 15_000
@@ -234,8 +237,8 @@ class _ActionsMixin:
                 await self._highlight(page, loc)
             else:
                 await self._highlight(page, el["id"], by_js_id=True, frame=frame)
-        except Exception:
-            pass
+        except Exception as exc:
+            _log.debug("Right-click scroll/highlight failed: %s", exc)
         if is_shad:
             await frame.evaluate(
                 f"window.manulElements[{el['id']}].dispatchEvent("
@@ -296,8 +299,8 @@ class _ActionsMixin:
                 await self._highlight(page, loc)
             else:
                 await self._highlight(page, el["id"], by_js_id=True, frame=frame)
-        except Exception:
-            pass
+        except Exception as exc:
+            _log.debug("Upload scroll/highlight failed: %s", exc)
         tag = str(el.get("tag_name", "")).lower()
         itype = str(el.get("input_type", "")).lower()
         if tag == "label":
@@ -307,7 +310,8 @@ class _ActionsMixin:
                 try:
                     linked_tag = await linked_loc.evaluate("e => e.tagName.toLowerCase()")
                     linked_type = await linked_loc.evaluate("e => (e.type || '').toLowerCase()")
-                except Exception:
+                except Exception as exc:
+                    _log.debug("Upload label introspection failed: %s", exc)
                     linked_tag, linked_type = "", ""
                 if linked_tag == "input" and linked_type == "file":
                     loc = linked_loc
@@ -442,7 +446,8 @@ class _ActionsMixin:
         loc, locator_text = await self._resolve_strict_verify_locator(page, step, target, element_type, "value")
         try:
             actual_value = await loc.input_value(timeout=2000)
-        except Exception:
+        except Exception as exc:
+            _log.debug("input_value() failed, falling back to get_attribute: %s", exc)
             actual_value = await loc.get_attribute("value", timeout=2000)
         if actual_value is None:
             actual_value = ""
@@ -481,13 +486,15 @@ class _ActionsMixin:
                             await self._debug_highlight(page, loc)
                         else:
                             await self._debug_highlight(page, best["id"], by_js_id=True, frame=_cf)
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        _log.debug("Verify-checked scroll/highlight failed: %s", exc)
                     await self._debug_prompt(page, step, step_idx)
                     await self._clear_debug_highlight(page)
                     _debug_paused = True
                 try: checked = await loc.is_checked(timeout=2000)
-                except Exception: checked = None  # not a checkable element — retry
+                except Exception as exc:
+                    _log.debug("is_checked() not supported on element: %s", exc)
+                    checked = None  # not a checkable element — retry
                 if checked is None:
                     pass  # unresolved/invalid target — fall through to retry
                 elif is_negative:
@@ -609,8 +616,8 @@ class _ActionsMixin:
                                 await self._debug_highlight(page, loc)
                             else:
                                 await self._debug_highlight(page, best["id"], by_js_id=True, frame=_vf)
-                        except Exception:
-                            pass
+                        except Exception as exc:
+                            _log.debug("Verify state scroll/highlight failed: %s", exc)
                 else:
                     for t in expected:
                         try:
@@ -618,8 +625,8 @@ class _ActionsMixin:
                             await loc.scroll_into_view_if_needed(timeout=2000)
                             await self._debug_highlight(page, loc)
                             break
-                        except Exception:
-                            pass
+                        except Exception as exc:
+                            _log.debug("Verify text scroll/highlight failed for '%s': %s", t, exc)
             await self._debug_prompt(page, step, step_idx)
             await self._clear_debug_highlight(page)
 
@@ -650,7 +657,8 @@ class _ActionsMixin:
 
         try:
             await src_loc.drag_to(dest_loc, timeout=5000)
-        except Exception:
+        except Exception as exc:
+            _log.debug("drag_to() failed, falling back to mouse move: %s", exc)
             sb = await src_loc.bounding_box()
             db = await dest_loc.bounding_box()
             if sb and db:
@@ -769,7 +777,8 @@ class _ActionsMixin:
                             e for e in frame_candidates
                             if e.get("xpath", "") in contained_xpath_set
                         ]
-                    except Exception:
+                    except Exception as exc:
+                        _log.debug("INSIDE JS containment check failed, using prefix fallback: %s", exc)
                         container_elements = [
                             e for e in frame_candidates
                             if e.get("xpath", "").startswith(container_xpath)
@@ -779,7 +788,8 @@ class _ActionsMixin:
         if ctx_hint.kind in ("on_header", "on_footer"):
             try:
                 viewport_height = await page.evaluate("() => window.innerHeight || document.documentElement.clientHeight || 900")
-            except Exception:
+            except Exception as exc:
+                _log.debug("Viewport height query failed, using default: %s", exc)
                 viewport_height = 900
             print(f"    🏷️  {ctx_hint.kind.upper().replace('_', ' ')}: viewport height = {viewport_height}px")
 
@@ -804,7 +814,8 @@ class _ActionsMixin:
                     container_elements=container_elements,
                     viewport_height=viewport_height,
                 )
-            except Exception:
+            except Exception as exc:
+                _log.debug("_resolve_element failed for optional step: %s", exc)
                 if is_optional: return True
                 raise
 
@@ -840,7 +851,8 @@ class _ActionsMixin:
                         await self._highlight(page, loc)
                     else:
                         await self._highlight(page, el_id, by_js_id=True, frame=frame)
-                except Exception: pass
+                except Exception as exc:
+                    _log.debug("Locate scroll/highlight failed: %s", exc)
                 print(f"    🔍 Located '{self._fmt_el_name(name)}'")
                 return True
 
@@ -859,7 +871,8 @@ class _ActionsMixin:
                         await self._debug_highlight(page, loc)
                     else:
                         await self._debug_highlight(page, el_id, by_js_id=True, frame=frame)
-            except Exception: pass
+            except Exception as exc:
+                _log.debug("Scroll/highlight/debug-highlight failed: %s", exc)
 
             if _in_debug:
                 await self._debug_prompt(page, step, step_idx)
@@ -885,12 +898,15 @@ class _ActionsMixin:
                     if is_sel:
                         opts = [expected[0]] if expected else [list(set(re.findall(r'\b[a-z0-9]{3,}\b', step_l)))[0]]
                         try: await loc.select_option(label=opts, timeout=3000)
-                        except Exception: await loc.select_option(value=[o.lower() for o in opts], timeout=3000)
+                        except Exception as exc:
+                            _log.debug("select_option(label=) failed, trying value: %s", exc)
+                            await loc.select_option(value=[o.lower() for o in opts], timeout=3000)
                     else: 
                         print(f"    🖱️  Clicked (Custom Select) '{self._fmt_el_name(name)}'")
                         try:
                             await loc.click(force=True, timeout=3000)
-                        except Exception:
+                        except Exception as exc:
+                            _log.debug("Custom select click failed, using JS fallback: %s", exc)
                             await frame.evaluate("id => window.manulClick(id)", el_id)
                         
                         if expected:
@@ -900,11 +916,12 @@ class _ActionsMixin:
                             try:
                                 opt_loc = frame.locator(f"[role='option']:has-text('{option_text}'), [role='menuitem']:has-text('{option_text}')").first
                                 await opt_loc.click(timeout=3000)
-                            except Exception:
+                            except Exception as exc:
                                 try:
                                     opt_loc = frame.locator(f"text='{option_text}'").last
                                     await opt_loc.click(timeout=3000)
-                                except Exception: pass
+                                except Exception as exc2:
+                                    _log.debug("Option click fallback also failed: %s", exc2)
                     await asyncio.sleep(ACTION_WAIT)
 
                 elif mode == "hover":
@@ -927,7 +944,7 @@ class _ActionsMixin:
                             await loc.click(force=True, timeout=3000)
                             if itype == "submit" or (tag == "button" and itype in ("", "submit")):
                                 try: await page.wait_for_load_state("networkidle", timeout=10_000)
-                                except Exception: await asyncio.sleep(3.0)
+                                except PlaywrightTimeoutError: await asyncio.sleep(3.0)
                     await asyncio.sleep(ACTION_WAIT)
 
                 # ── Common post-action: cache resolved control ────────────

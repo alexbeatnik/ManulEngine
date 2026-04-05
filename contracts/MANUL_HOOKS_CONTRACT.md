@@ -5,7 +5,7 @@
 
 ```json
 {
-  "version": "0.0.9.22",
+  "version": "0.0.9.23",
   "generatedFrom": "manul_engine/hooks.py :: HookResult, extract_hook_blocks(), execute_hook_line(), run_hooks(); manul_engine/lifecycle.py :: GlobalContext, @before_all, @after_all, @before_group, @after_group, _HookRegistry, load_hooks_file(); manul_engine/variables.py :: ScopedVariables",
 
   "fileHooks": {
