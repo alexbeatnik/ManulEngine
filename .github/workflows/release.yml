@@ -80,14 +80,29 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist/
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
-          generate_release_notes: true
+      - name: Resolve tag name
+        id: tag
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            VERSION=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+            echo "name=v${VERSION}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.tag.outputs.name }}" dist/* \
+            --title "ManulEngine ${{ steps.tag.outputs.name }}" \
+            --generate-notes \
+          || echo "⚠️ Release may already exist — uploading assets to existing release"
+          gh release upload "${{ steps.tag.outputs.name }}" dist/* --clobber 2>/dev/null || true
 
   # ── 5. Build & push Docker image to GHCR ───────────────────────────
   build-docker:
