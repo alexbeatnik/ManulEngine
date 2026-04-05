@@ -89,7 +89,7 @@ ignore = [
 fixable = ["ALL"]
 
 [tool.ruff.lint.per-file-ignores]
-"manul_engine/test/*" = ["S", "F601", "F811", "F841", "B"]
+"manul_engine/test/*" = ["S", "F601", "F811", "F841", "B", "I001", "F401", "W", "E401", "F541", "UP015", "RUF059", "E741"]
 "manul_engine/js_scripts.py" = ["E501", "W293"]
 "manul_engine/core.py" = ["E402"]
 

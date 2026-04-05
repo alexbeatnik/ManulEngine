@@ -383,7 +383,6 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
 
     # ── Resolve @import: directives and expand USE commands ──────────────────
     imported_blocks: dict[str, list[str]] = {}
-    import_vars: dict[str, str] = {}
     try:
         if import_directives:
             hunt_dir = os.path.dirname(os.path.abspath(filepath))
