@@ -20,8 +20,7 @@ import re
 from typing import NamedTuple
 
 
-class HuntImportError(Exception):
-    """Raised when an @import: directive cannot be resolved."""
+from manul_engine.exceptions import HuntImportError as HuntImportError  # noqa: F401 — backward compat re-export
 
 
 class ImportDirective(NamedTuple):

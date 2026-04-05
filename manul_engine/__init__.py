@@ -43,7 +43,16 @@ from .api import ManulSession
 from .config import EngineConfig
 from .controls import custom_control
 from .core import ManulEngine
-from .imports import HuntImportError
+from .exceptions import (
+    ConfigurationError,
+    ElementResolutionError,
+    HookExecutionError,
+    HuntImportError,
+    ManulEngineError,
+    ScheduleError,
+    SessionError,
+    VerificationError,
+)
 from .lifecycle import (
     GlobalContext,
     after_all,
@@ -54,12 +63,19 @@ from .lifecycle import (
 from .variables import ScopedVariables
 
 __all__ = [
+    "ConfigurationError",
+    "ElementResolutionError",
     "EngineConfig",
     "GlobalContext",
+    "HookExecutionError",
     "HuntImportError",
     "ManulEngine",
+    "ManulEngineError",
     "ManulSession",
+    "ScheduleError",
     "ScopedVariables",
+    "SessionError",
+    "VerificationError",
     "after_all",
     "after_group",
     "before_all",
