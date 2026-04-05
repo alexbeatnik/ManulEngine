@@ -20,6 +20,11 @@ jobs:
         with:
           ref: ${{ github.event.inputs.branch }}
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Read version from pyproject.toml
         id: version
         run: |

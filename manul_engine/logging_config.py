@@ -34,6 +34,7 @@ _level = _LOG_LEVEL_MAP.get(_env_level, logging.WARNING)
 
 logger = logging.getLogger("manul_engine")
 logger.setLevel(_level)
+logger.propagate = False
 
 if not logger.handlers:
     _handler = logging.StreamHandler()          # stderr by default
@@ -44,4 +45,3 @@ if not logger.handlers:
     )
     _handler.setFormatter(_formatter)
     logger.addHandler(_handler)
-    logger.propagate = False
