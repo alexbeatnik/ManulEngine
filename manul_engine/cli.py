@@ -387,7 +387,7 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
     try:
         if import_directives:
             hunt_dir = os.path.dirname(os.path.abspath(filepath))
-            imported_blocks, import_vars = resolve_imports(
+            imported_blocks, _import_vars = resolve_imports(
                 import_directives, hunt_dir, filepath,
             )
 

@@ -181,7 +181,7 @@ class _DebugMixin:
                     try:
                         read_task = asyncio.create_task(asyncio.to_thread(sys.stdin.readline))
                         abort_wait = asyncio.create_task(abort_event.wait())
-                        done, pending = await asyncio.wait(
+                        _done, pending = await asyncio.wait(
                             [read_task, abort_wait], return_when=asyncio.FIRST_COMPLETED
                         )
                         for t in pending:
@@ -233,7 +233,7 @@ class _DebugMixin:
                 try:
                     read_task   = asyncio.create_task(asyncio.to_thread(input, prompt_text))
                     abort_wait  = asyncio.create_task(abort_event.wait())
-                    done, pending = await asyncio.wait(
+                    _done, pending = await asyncio.wait(
                         [read_task, abort_wait], return_when=asyncio.FIRST_COMPLETED
                     )
                     for t in pending:
