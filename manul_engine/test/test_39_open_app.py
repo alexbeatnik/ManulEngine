@@ -122,6 +122,8 @@ async def _test_handle_open_app_existing_page() -> None:
     class FakeEngine(_ActionsMixin):
         def __init__(self):
             self.last_xpath = "some/xpath"
+            self.nav_timeout = 30000
+            self.timeout = 5000
 
     engine = FakeEngine()
 
@@ -161,6 +163,8 @@ async def _test_handle_open_app_wait_for_page() -> None:
     class FakeEngine(_ActionsMixin):
         def __init__(self):
             self.last_xpath = "stale"
+            self.nav_timeout = 30000
+            self.timeout = 5000
 
     engine = FakeEngine()
 
@@ -196,6 +200,8 @@ async def _test_handle_open_app_failure() -> None:
     class FakeEngine(_ActionsMixin):
         def __init__(self):
             self.last_xpath = None
+            self.nav_timeout = 30000
+            self.timeout = 5000
 
     engine = FakeEngine()
 
@@ -224,6 +230,8 @@ async def _test_handle_open_app_skips_blank() -> None:
     class FakeEngine(_ActionsMixin):
         def __init__(self):
             self.last_xpath = None
+            self.nav_timeout = 30000
+            self.timeout = 5000
 
     engine = FakeEngine()
 
