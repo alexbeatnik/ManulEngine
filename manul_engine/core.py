@@ -26,6 +26,7 @@ from pathlib import Path
 from playwright.async_api import async_playwright
 
 from . import prompts
+from .config import EngineConfig
 from .helpers import substitute_memory, compact_log_field, extract_quoted, detect_mode, classify_step, RE_SYSTEM_STEP, parse_hunt_blocks, parse_explicit_wait, ContextualHint
 from .hooks import execute_hook_line, bind_hook_result
 from .js_scripts import SNAPSHOT_JS
@@ -72,20 +73,25 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         semantic_cache: "bool | None" = None,     # None → read from config/env
         explain_mode:   bool          = False,
         required_controls: "set[str] | None" = None,  # lazy-load: filenames from extract_required_controls
+        config:         "EngineConfig | None" = None,  # injectable config (takes priority)
         **_kwargs,
     ):
+        # When an EngineConfig is provided, it takes priority over both
+        # individual keyword arguments and prompts.* module globals.
+        _cfg = config
+
         # None model → heuristics-only mode (AI fully disabled)
-        self.model    = model    if model    is not None else prompts.DEFAULT_MODEL
-        self.headless = headless if headless is not None else prompts.HEADLESS_MODE
+        self.model    = model    if model    is not None else (_cfg.model if _cfg else prompts.DEFAULT_MODEL)
+        self.headless = headless if headless is not None else (_cfg.headless if _cfg else prompts.HEADLESS_MODE)
         _VALID_BROWSERS = ("chromium", "firefox", "webkit", "electron")
-        _b = (browser or prompts.BROWSER).strip().lower()
+        _b = (browser or (_cfg.browser if _cfg else prompts.BROWSER)).strip().lower()
         self.browser: str = _b if _b in _VALID_BROWSERS else "chromium"
-        self.browser_args: list[str] = list(browser_args) if browser_args is not None else list(prompts.BROWSER_ARGS)
-        # channel / executable_path: accept via **_kwargs with fallback to config/env.
+        self.browser_args: list[str] = list(browser_args) if browser_args is not None else (list(_cfg.browser_args) if _cfg else list(prompts.BROWSER_ARGS))
+        # channel / executable_path: accept via **_kwargs or EngineConfig with fallback to config/env.
         _ch = _kwargs.pop("channel", None)
-        self.channel: str | None = (str(_ch).strip() or None) if _ch is not None else prompts.CHANNEL
+        self.channel: str | None = (str(_ch).strip() or None) if _ch is not None else (_cfg.channel if _cfg else prompts.CHANNEL)
         _ep = _kwargs.pop("executable_path", None)
-        self.executable_path: str | None = str(_ep) if _ep is not None else prompts.EXECUTABLE_PATH
+        self.executable_path: str | None = str(_ep) if _ep is not None else (_cfg.executable_path if _cfg else prompts.EXECUTABLE_PATH)
         if self.channel is not None and self.browser != "chromium":
             raise ValueError(
                 f"Playwright 'channel' is only supported for Chromium, "
@@ -97,6 +103,8 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         
         if disable_cache:
             self._controls_cache_enabled = False
+        elif _cfg:
+            self._controls_cache_enabled = _cfg.controls_cache_enabled
         else:
             self._controls_cache_enabled = bool(getattr(prompts, "CONTROLS_CACHE_ENABLED", True))
 
@@ -104,20 +112,44 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             self._semantic_cache_enabled = semantic_cache
         elif disable_cache:
             self._semantic_cache_enabled = False
+        elif _cfg:
+            self._semantic_cache_enabled = _cfg.semantic_cache_enabled
         else:
             self._semantic_cache_enabled = bool(getattr(prompts, "SEMANTIC_CACHE_ENABLED", True))
-            
-        self._controls_cache_root = Path(str(getattr(prompts, "CONTROLS_CACHE_DIR", str(Path(__file__).resolve().parents[1] / "cache"))))
+
+        _default_cache_dir = str(Path(__file__).resolve().parents[1] / "cache")
+        if _cfg:
+            _cache_dir = _cfg.controls_cache_dir
+        else:
+            _cache_dir = str(getattr(prompts, "CONTROLS_CACHE_DIR", _default_cache_dir))
+        self._controls_cache_root = Path(_cache_dir)
         self._controls_cache_site: str | None = None
         self._controls_cache_url: str | None = None
         self._controls_cache_path: Path | None = None
         self._controls_cache_data: dict[str, dict] = {}
+
+        # ── Timeouts ──────────────────────────────────────────────────────
+        self.timeout: int = _cfg.timeout if _cfg else prompts.TIMEOUT
+        self.nav_timeout: int = _cfg.nav_timeout if _cfg else prompts.NAV_TIMEOUT
+        self._verify_max_retries: int = _cfg.verify_max_retries if _cfg else int(getattr(prompts, "VERIFY_MAX_RETRIES", 15))
+
+        # ── AI settings (stored per-instance, not read from module globals at runtime) ──
+        _ai_always_default = _cfg.ai_always if _cfg else bool(getattr(prompts, "AI_ALWAYS", False))
+        self._ai_always: bool = _kwargs.pop("ai_always", _ai_always_default)
+        _ai_policy_default = _cfg.ai_policy if _cfg else str(getattr(prompts, "AI_POLICY", "prior"))
+        self._ai_policy: str = _kwargs.pop("ai_policy", _ai_policy_default)
+
+        # ── Auto-annotate ─────────────────────────────────────────────────
+        _auto_annotate_default = _cfg.auto_annotate if _cfg else prompts.AUTO_ANNOTATE
+        self._auto_annotate: bool = _kwargs.pop("auto_annotate", _auto_annotate_default)
+
         # Resolve model-specific settings once at construction time.
         # get_threshold returns 0 when self.model is None → AI is disabled.
         self._threshold       = prompts.get_threshold(self.model, ai_threshold)
         self._executor_prompt = prompts.get_executor_prompt(self.model)
+        self._planner_prompt  = prompts.PLANNER_SYSTEM_PROMPT
         self.debug_mode = debug_mode
-        self.explain_mode = explain_mode
+        self.explain_mode = _cfg.explain_mode if _cfg and not explain_mode else explain_mode
         self._debug_continue = False   # set to True by 'Continue All' in debug session
         self._user_break_steps: set[int] = set(break_steps) if break_steps else set()
         self.break_steps: set[int] = set(self._user_break_steps)
@@ -131,6 +163,10 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         self._last_step_healed: bool = False
         # Deferred @custom_control loading: stored here, applied on first run_mission().
         self._required_controls: set[str] | None = required_controls
+        # Custom controls directories (prefer EngineConfig, fallback to prompts).
+        self._custom_controls_dirs: list[str] = (
+            list(_cfg.custom_controls_dirs) if _cfg else list(getattr(_prompts_mod, "CUSTOM_CONTROLS_DIRS", ["controls"]))
+        )
         # LLM provider (delegates to Ollama or no-op for heuristics-only mode).
         self._llm = create_provider(self.model)
         if self.model is None:
@@ -200,7 +236,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
     async def _llm_plan(self, task: str) -> list[str]:
         """Ask the LLM to decompose a free-text task into numbered steps."""
         print("    🧠 AI PLANNER: Generating mission steps...")
-        obj = await self._llm_json(prompts.PLANNER_SYSTEM_PROMPT, task)
+        obj = await self._llm_json(self._planner_prompt, task)
         return obj.get("steps", []) if obj else []
 
     async def _llm_select_element(
@@ -238,7 +274,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         obj = await self._llm_json(system, prompt)
         if not obj or not isinstance(obj, dict):
             # In pure-AI mode we must not silently fall back to heuristics.
-            return None if getattr(prompts, "AI_ALWAYS", False) else 0
+            return None if self._ai_always else 0
 
         raw_id = obj.get("id", None)
         if raw_id is None: # fallback for generic keys
@@ -265,7 +301,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
 
         # Optional deterministic guard for id-strict synthetic tests.
         # When MANUL_AI_POLICY=strict, enforce best score even if the LLM picked a neighbor.
-        if getattr(prompts, "AI_ALWAYS", False) and getattr(prompts, "AI_POLICY", "prior") == "strict" and candidates:
+        if self._ai_always and self._ai_policy == "strict" and candidates:
             best_idx = max(range(len(candidates)), key=lambda i: int(candidates[i].get("score", 0)))
             if int(candidates[idx].get("score", 0)) < int(candidates[best_idx].get("score", 0)):
                 print(
@@ -546,7 +582,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
 
         # Pure-AI mode: usually asks the LLM, but fast-tracks if there is only 1 candidate.
         # Guard: ai_always has no effect without a model — fall through to heuristics.
-        if getattr(prompts, "AI_ALWAYS", False) and self.model is not None:
+        if self._ai_always and self.model is not None:
             if len(scored) == 1:
                 print("    ⚡ FAST-TRACK: Found exactly 1 candidate, bypassing AI.")
                 idx = 0
@@ -683,6 +719,78 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         except Exception as _ann_exc:
             print(f"    ⚠️  Auto-Nav: {_ann_exc}")
 
+    async def _launch_browser(self, p, hunt_file: str | None = None):
+        """Launch browser via Playwright and return ``(browser, ctx, page)``.
+
+        Handles Electron CDP connections, per-OS sandbox flags, ``channel``
+        and ``executable_path`` options.  On Electron failure a
+        ``MissionResult`` with status ``"fail"`` is returned instead.
+        """
+        if self.browser == "electron":
+            _cdp_port = _environ.get("MANUL_CDP_PORT", "9222")
+            _cdp_url = f"http://localhost:{_cdp_port}"
+            try:
+                browser = await p.chromium.connect_over_cdp(_cdp_url)
+            except Exception as _cdp_exc:
+                print(
+                    f"    ❌ Failed to connect to Electron via CDP at {_cdp_url}: {_cdp_exc}\n"
+                    f"    💡 Ensure the Electron app is running with "
+                    f"--remote-debugging-port={_cdp_port}"
+                )
+                _fail = MissionResult(file=hunt_file or "", name=Path(hunt_file).name if hunt_file else "", status="fail")
+                return _fail, None, None
+            if browser.contexts:
+                ctx = browser.contexts[0]
+                page = ctx.pages[0] if ctx.pages else await ctx.new_page()
+            else:
+                ctx = await browser.new_context()
+                page = await ctx.new_page()
+            return browser, ctx, page
+
+        _launch_args: list[str] = ["--start-maximized"] if self.browser == "chromium" else []
+        _is_root = hasattr(os, "getuid") and os.getuid() == 0
+        if self.browser == "chromium" and (_is_root or os.path.exists("/.dockerenv")):
+            _launch_args.insert(0, "--no-sandbox")
+        _launch_args = _launch_args + [a for a in self.browser_args if a not in _launch_args]
+        _launch_opts: dict = dict(headless=self.headless, args=_launch_args)
+        if self.channel:
+            if self.browser != "chromium":
+                raise ValueError(
+                    f"'channel' is only supported for Chromium; "
+                    f"got browser={self.browser!r}, channel={self.channel!r}"
+                )
+            _launch_opts["channel"] = self.channel
+        if self.executable_path:
+            _launch_opts["executable_path"] = self.executable_path
+        browser = await getattr(p, self.browser).launch(**_launch_opts)
+        ctx = await browser.new_context(
+            no_viewport=True
+        ) if not self.headless else await browser.new_context(
+            viewport={"width": 1920, "height": 1080}
+        )
+        page = await ctx.new_page()
+        return browser, ctx, page
+
+    async def _parse_task(self, task: str) -> str:
+        """Detect task format and produce executable step text.
+
+        Handles STEP-grouped, numbered, and free-text formats.
+        Free-text tasks are decomposed by the LLM planner.
+        """
+        _has_step_markers = bool(re.search(r'^\s*STEP\s*\d*\s*:', task, re.MULTILINE | re.IGNORECASE))
+        _is_numbered = bool(re.match(r'^\s*\d+\.', task))
+        _has_action_keywords = bool(RE_SYSTEM_STEP.search(task))
+        if _has_step_markers or (_has_action_keywords and not _is_numbered):
+            return task
+        if _is_numbered:
+            return "\n".join(
+                s.strip() for s in re.split(r'(?=\b\d+\.\s)', task) if s.strip()
+            )
+        parsed_task = "\n".join(await self._llm_plan(task))
+        if not parsed_task:
+            print("    ❌ No plan produced. If you're running without Ollama, provide a numbered or unnumbered step list.")
+        return parsed_task
+
     async def run_mission(self, task: str, strategic_context: str = "", hunt_dir: str | None = None,
                           hunt_file: str | None = None, step_file_lines: "list[int] | None" = None,
                           initial_vars: "dict | None" = None,
@@ -705,69 +813,16 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         load_custom_controls(
             str(Path.cwd()),
             required_modules=self._required_controls,
-            custom_modules_dirs=_prompts_mod.CUSTOM_CONTROLS_DIRS,
+            custom_modules_dirs=self._custom_controls_dirs,
         )
 
         async with async_playwright() as p:
-            if self.browser == "electron":
-                # Electron: connect to a running Chromium instance via CDP.
-                _cdp_port = _environ.get("MANUL_CDP_PORT", "9222")
-                _cdp_url = f"http://localhost:{_cdp_port}"
-                try:
-                    browser = await p.chromium.connect_over_cdp(_cdp_url)
-                except Exception as _cdp_exc:
-                    print(
-                        f"    ❌ Failed to connect to Electron via CDP at {_cdp_url}: {_cdp_exc}\n"
-                        f"    💡 Ensure the Electron app is running with "
-                        f"--remote-debugging-port={_cdp_port}"
-                    )
-                    return MissionResult(file=hunt_file or "", name=Path(hunt_file).name if hunt_file else "", status="fail")
-                # Reuse existing context/page from the Electron app.
-                if browser.contexts:
-                    ctx = browser.contexts[0]
-                    page = ctx.pages[0] if ctx.pages else await ctx.new_page()
-                else:
-                    ctx = await browser.new_context()
-                    page = await ctx.new_page()
-            else:
-                _launch_args: list[str] = ["--start-maximized"] if self.browser == "chromium" else []
-                # --no-sandbox: only when running as root or inside a container
-                _is_root = hasattr(os, "getuid") and os.getuid() == 0
-                if self.browser == "chromium" and (_is_root or os.path.exists("/.dockerenv")):
-                    _launch_args.insert(0, "--no-sandbox")
-                _launch_args = _launch_args + [a for a in self.browser_args if a not in _launch_args]
-                _launch_opts: dict = dict(headless=self.headless, args=_launch_args)
-                if self.channel:
-                    if self.browser != "chromium":
-                        raise ValueError(
-                            f"'channel' is only supported for Chromium; "
-                            f"got browser={self.browser!r}, channel={self.channel!r}"
-                        )
-                    _launch_opts["channel"] = self.channel
-                if self.executable_path:
-                    _launch_opts["executable_path"] = self.executable_path
-                browser = await getattr(p, self.browser).launch(**_launch_opts)
-                ctx  = await browser.new_context(
-                    no_viewport=True
-                ) if not self.headless else await browser.new_context(
-                    viewport={"width": 1920, "height": 1080}
-                )
-                page = await ctx.new_page()
+            browser, ctx, page = await self._launch_browser(p, hunt_file)
+            # Electron CDP failure returns (MissionResult, None, None).
+            if ctx is None or page is None:
+                return browser  # it's actually the MissionResult
 
-            _has_step_markers = bool(re.search(r'^\s*STEP\s*\d*\s*:', task, re.MULTILINE | re.IGNORECASE))
-            _is_numbered = bool(re.match(r'^\s*\d+\.', task))
-            _has_action_keywords = bool(RE_SYSTEM_STEP.search(task))
-            if _has_step_markers or (_has_action_keywords and not _is_numbered):
-                parsed_task = task
-            elif _is_numbered:
-                parsed_task = "\n".join(
-                    s.strip() for s in re.split(r'(?=\b\d+\.\s)', task) if s.strip()
-                )
-            else:
-                parsed_task = "\n".join(await self._llm_plan(task))
-
-            if not parsed_task and not _is_numbered and not _has_step_markers and not _has_action_keywords:
-                print("    ❌ No plan produced. If you're running without Ollama, provide a numbered or unnumbered step list.")
+            parsed_task = await self._parse_task(task)
 
             blocks = parse_hunt_blocks(parsed_task, step_file_lines)
             if not blocks:
@@ -844,7 +899,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                         _auto_annotate_live = (
                             _environ.get("MANUL_AUTO_ANNOTATE", "").strip().lower()
                             in ("1", "true", "yes")
-                        ) or prompts.AUTO_ANNOTATE
+                        ) or self._auto_annotate
                         try:
                             url_before = page.url
                         except Exception:

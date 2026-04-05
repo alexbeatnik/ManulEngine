@@ -6,7 +6,6 @@ import asyncio
 from playwright.async_api import async_playwright
 
 from manul_engine import ManulEngine
-from manul_engine import prompts
 
 
 AI_MODES_DOM = """
@@ -23,9 +22,6 @@ AI_MODES_DOM = """
 
 async def run_suite() -> bool:
     print("\n🧪 AI MODES — Always-AI / Strict / Rejection")
-
-    saved_ai_always = getattr(prompts, "AI_ALWAYS", False)
-    saved_ai_policy = getattr(prompts, "AI_POLICY", "prior")
 
     passed = 0
     total = 3
@@ -45,12 +41,12 @@ async def run_suite() -> bool:
             {"id": 2, "name": "Worse", "score": 50, "tag_name": "button"},
         ]
 
-        prompts.AI_ALWAYS = True
+        manul._ai_always = True
 
-        prompts.AI_POLICY = "prior"
+        manul._ai_policy = "prior"
         idx_prior = await manul._llm_select_element("Click 'X'", "clickable", candidates, "")
 
-        prompts.AI_POLICY = "strict"
+        manul._ai_policy = "strict"
         idx_strict = await manul._llm_select_element("Click 'X'", "clickable", candidates, "")
 
         if idx_prior == 1 and idx_strict == 0:
@@ -66,7 +62,7 @@ async def run_suite() -> bool:
             return {"id": None, "thought": "no suitable element"}
 
         manul._llm_json = _fake_llm_json_reject  # type: ignore[method-assign]
-        prompts.AI_POLICY = "prior"
+        manul._ai_policy = "prior"
         idx_reject = await manul._llm_select_element("Click 'X'", "clickable", candidates, "")
 
         if idx_reject is None:
@@ -99,7 +95,7 @@ async def run_suite() -> bool:
             manul2._llm_select_element = _fake_select  # type: ignore[method-assign]
 
             # When Always-AI is enabled, the picker choice should be used.
-            prompts.AI_ALWAYS = True
+            manul2._ai_always = True
             el_ai = await manul2._resolve_element(
                 page,
                 "Click 'Primary'",
@@ -111,7 +107,7 @@ async def run_suite() -> bool:
             )
 
             # When Always-AI is disabled, heuristics should win (and picker should not be called).
-            prompts.AI_ALWAYS = False
+            manul2._ai_always = False
             called_before = called["n"]
             el_heur = await manul2._resolve_element(
                 page,
@@ -138,8 +134,7 @@ async def run_suite() -> bool:
             failures.append(msg)
 
     finally:
-        prompts.AI_ALWAYS = saved_ai_always
-        prompts.AI_POLICY = saved_ai_policy
+        pass  # no module-level globals to restore — all settings are on the engine instance
 
     print(f"\n{'=' * 70}")
     print(f"📊 SCORE: {passed}/{total} passed")

@@ -15,7 +15,6 @@ from .js_scripts import (
     FIND_CONTAINER_XPATH_JS,
     FILTER_CONTAINER_DESCENDANT_XPATHS_JS,
 )
-from . import prompts
 from .logging_config import logger
 
 _log = logger.getChild("actions")
@@ -100,7 +99,7 @@ class _ActionsMixin:
     async def _handle_navigate(self, page, step: str) -> bool:
         url = re.search(r'(https?://[^\s\'"<>]+)', step)
         if not url: return False
-        await page.goto(url.group(1), wait_until="domcontentloaded", timeout=prompts.NAV_TIMEOUT)
+        await page.goto(url.group(1), wait_until="domcontentloaded", timeout=self.nav_timeout)
         self.last_xpath = None
         await asyncio.sleep(NAV_WAIT)
         return True
@@ -119,12 +118,12 @@ class _ActionsMixin:
                 if real:
                     page = real[-1]
                 elif len(ctx.pages) == 1:
-                    page = await ctx.wait_for_event("page", timeout=prompts.NAV_TIMEOUT)
+                    page = await ctx.wait_for_event("page", timeout=self.nav_timeout)
                 else:
                     page = ctx.pages[-1]
             else:
-                page = await ctx.wait_for_event("page", timeout=prompts.NAV_TIMEOUT)
-            await page.wait_for_load_state("domcontentloaded", timeout=prompts.NAV_TIMEOUT)
+                page = await ctx.wait_for_event("page", timeout=self.nav_timeout)
+            await page.wait_for_load_state("domcontentloaded", timeout=self.nav_timeout)
             self.last_xpath = None
             await asyncio.sleep(NAV_WAIT)
             print(f"    \U0001f4e6 Attached to app window: {page.url or '(no URL)'}")
@@ -204,7 +203,7 @@ class _ActionsMixin:
                 return False
             frame = self._frame_for(page, el)
             loc = frame.locator(f"xpath={el['xpath']}").first
-            await loc.press(key_combo, timeout=prompts.TIMEOUT)
+            await loc.press(key_combo, timeout=self.timeout)
             print(f"    ⌨️  Pressed '{key_combo}' on '{self._fmt_el_name(el['name'])}'")
         else:
             key_combo = after_press
@@ -245,7 +244,7 @@ class _ActionsMixin:
                 f"new MouseEvent('contextmenu',{{bubbles:true,cancelable:true,button:2,view:window}}))"
             )
         else:
-            await loc.click(button="right", force=True, timeout=prompts.TIMEOUT)
+            await loc.click(button="right", force=True, timeout=self.timeout)
         print(f"    🖱️  Right-clicked '{self._fmt_el_name(el['name'])}'")
         await asyncio.sleep(ACTION_WAIT)
         return True
@@ -320,7 +319,7 @@ class _ActionsMixin:
         if tag != "input" or itype != "file":
             print(f"    ❌ UPLOAD: resolved element is <{tag} type='{itype}'>, expected <input type='file'>")
             return False
-        await loc.set_input_files(file_path, timeout=prompts.TIMEOUT)
+        await loc.set_input_files(file_path, timeout=self.timeout)
         print(f"    📎 Uploaded '{file_path_raw}' → '{self._fmt_el_name(el['name'])}'")
         await asyncio.sleep(ACTION_WAIT)
         return True
@@ -465,7 +464,7 @@ class _ActionsMixin:
 
     @property
     def _VERIFY_MAX_RETRIES(self) -> int:
-        return getattr(prompts, "VERIFY_MAX_RETRIES", 15)
+        return self._verify_max_retries
 
     async def _verify_checked(self, page, step: str, expected: list[str],
                                is_negative: bool, _in_debug: bool, step_idx: int) -> bool:
@@ -1096,7 +1095,7 @@ class _ActionsMixin:
             return False
 
         url_pattern = m.group(1)
-        timeout_ms = prompts.NAV_TIMEOUT  # reuse navigation timeout
+        timeout_ms = self.nav_timeout  # reuse navigation timeout
 
         print(f"    ⏳ Waiting for response matching *{url_pattern}...")
         try:

@@ -29,7 +29,6 @@ from typing import Any
 
 from playwright.async_api import async_playwright, Playwright, Browser, BrowserContext, Page
 
-from . import prompts
 from .core import ManulEngine
 from .helpers import classify_step, substitute_memory
 from .variables import ScopedVariables
@@ -208,7 +207,7 @@ class ManulSession:
     async def navigate(self, url: str) -> None:
         """Navigate to *url* and wait for DOM settlement."""
         page = self.page
-        await page.goto(url, wait_until="domcontentloaded", timeout=prompts.NAV_TIMEOUT)
+        await page.goto(url, wait_until="domcontentloaded", timeout=self._engine.nav_timeout)
         self._engine.last_xpath = None
         await asyncio.sleep(2.0)
 

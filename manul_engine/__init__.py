@@ -41,6 +41,7 @@ Custom controls:
 
 from .core import ManulEngine
 from .api import ManulSession
+from .config import EngineConfig
 from .controls import custom_control
 from .lifecycle import (
     GlobalContext,
@@ -55,6 +56,7 @@ from .imports import HuntImportError
 __all__ = [
     "ManulEngine",
     "ManulSession",
+    "EngineConfig",
     "custom_control",
     "GlobalContext",
     "before_all",
