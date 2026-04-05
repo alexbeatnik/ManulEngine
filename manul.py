@@ -7,13 +7,13 @@ without installing the package.
 
 All public hunt-runner logic lives in manul_engine/cli.py.
 The internal test suite lives in manul_engine/_test_runner.py.
+Demo integration hunts live in demo/ — use demo/run_demo.py to run them.
 
 Usage:
-  python manul.py .                        run all *.hunt files in CWD
-  python manul.py tests/                   run all *.hunt files in tests/
-  python manul.py tests/hunt_foo.hunt      run a single hunt file
-  python manul.py --headless tests/        headless mode
   python manul.py test                     run internal synthetic DOM test suite (dev only)
+  python manul.py .                        run all *.hunt files in CWD
+  python manul.py path/to/file.hunt        run a single hunt file
+  python manul.py --headless path/         headless mode
 """
 
 import asyncio
