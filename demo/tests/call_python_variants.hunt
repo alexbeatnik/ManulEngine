@@ -2,9 +2,9 @@
 @title: call_python_variants_showcase
 @var: {prefix} = alpha
 @var: {subject} = manul
-@script: {showcase} = scripts.call_python_showcase
-@script: {echo_value} = examples.python.demo_echo.echo_value
-@script: {callable_alias_demo} = playground.nested.demo_tags.callable_alias_demo
+@script: {showcase} = demo.scripts.call_python_showcase
+@script: {echo_value} = demo.examples.python.demo_echo.echo_value
+@script: {callable_alias_demo} = demo.playground.nested.demo_tags.callable_alias_demo
 
 # SETUP shows that CALL PYTHON works before the browser mission too.
 # This block demonstrates:
@@ -13,22 +13,22 @@
 # - direct positional args + into {var}
 [SETUP]
     PRINT "Setup started for {subject}"
-    CALL PYTHON scripts.call_python_showcase.print_setup_banner
+    CALL PYTHON demo.scripts.call_python_showcase.print_setup_banner
     CALL PYTHON {showcase}.build_token with args: "setup" into {setup_token}
-    CALL PYTHON examples.python.demo_echo.echo_value "{setup_token}" into {echoed_setup_token}
+    CALL PYTHON demo.examples.python.demo_echo.echo_value "{setup_token}" into {echoed_setup_token}
 [END SETUP]
 
 STEP 1: Direct module path variants
     # Plain direct call with a full dotted Python path.
-    CALL PYTHON scripts.call_python_showcase.print_setup_banner
+    CALL PYTHON demo.scripts.call_python_showcase.print_setup_banner
     # Direct call with no explicit args, capturing the return value.
-    CALL PYTHON scripts.call_python_showcase.build_token into {direct_token}
+    CALL PYTHON demo.scripts.call_python_showcase.build_token into {direct_token}
     # Direct call with positional args written inline after the function name.
-    CALL PYTHON examples.python.demo_echo.echo_value with args: "plain-arg" into {plain_arg_result}
+    CALL PYTHON demo.examples.python.demo_echo.echo_value with args: "plain-arg" into {plain_arg_result}
     # Direct call using the optional 'with args:' syntax sugar.
-    CALL PYTHON examples.python.demo_echo.join_values with args: "left" "right" into {joined_with_args}
+    CALL PYTHON demo.examples.python.demo_echo.join_values with args: "left" "right" into {joined_with_args}
     # 'to {var}' is accepted as an alias for 'into {var}'.
-    CALL PYTHON playground.nested.demo_tags.make_pair with args: "{prefix}" "{subject}" into {pair_value}
+    CALL PYTHON demo.playground.nested.demo_tags.make_pair with args: "{prefix}" "{subject}" into {pair_value}
 
 STEP 2: Module alias variants
     # {showcase} points to the module scripts.call_python_showcase.

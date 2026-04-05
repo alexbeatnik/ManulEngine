@@ -22,7 +22,7 @@ Tests:
   12. __init__.py re-exports — public API accessible from manul_engine top level.
 
 Entry point ``run_suite()`` is picked up by the dev test runner
-(``python manul.py test``) and must remain async.
+(``python run_tests.py``) and must remain async.
 """
 
 from __future__ import annotations

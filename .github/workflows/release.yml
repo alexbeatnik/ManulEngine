@@ -27,7 +27,7 @@ jobs:
           pip install -e .
           playwright install chromium --with-deps
       - name: Run synthetic tests
-        run: python manul.py test
+        run: python run_tests.py
 
   # ── 2. Build Python package ────────────────────────────────────────
   build-python:
@@ -131,7 +131,7 @@ jobs:
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             echo "manul_version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
           else
-            echo "manul_version=0.0.9.24" >> "$GITHUB_OUTPUT"
+            echo "manul_version=0.0.9.25" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Extract metadata

@@ -6,17 +6,15 @@ Convenience wrapper for running Manul directly from the repository root
 without installing the package.
 
 All public hunt-runner logic lives in manul_engine/cli.py.
-The internal test suite lives in manul_engine/_test_runner.py.
+Synthetic test suite: python run_tests.py
+Demo integration hunts: python demo/run_demo.py
 
 Usage:
   python manul.py .                        run all *.hunt files in CWD
-  python manul.py tests/                   run all *.hunt files in tests/
-  python manul.py tests/hunt_foo.hunt      run a single hunt file
-  python manul.py --headless tests/        headless mode
-  python manul.py test                     run internal synthetic DOM test suite (dev only)
+  python manul.py path/to/file.hunt        run a single hunt file
+  python manul.py --headless path/         headless mode
 """
 
-import asyncio
 import os
 import sys
 
@@ -25,18 +23,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 
 def main() -> None:
-    # Intercept `test` before passing control to the public CLI so that the
-    # test command is only available through this dev launcher.
-    args = [a for a in sys.argv[1:] if a != "--headless"]
-    if args and args[0] == "test":
-        from manul_engine._test_runner import run_tests
-        _reports_dir = os.path.join(os.getcwd(), "reports")
-        os.makedirs(_reports_dir, exist_ok=True)
-        log_path = os.path.join(_reports_dir, "last_test_run.log")
-        all_ok = asyncio.run(run_tests(log_path))
-        print(f"\n📄 Full test log saved to: {log_path}")
-        sys.exit(0 if all_ok else 1)
-
     from manul_engine.cli import sync_main
     sync_main()
 

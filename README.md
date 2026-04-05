@@ -114,8 +114,8 @@ The runtime and companion Manul Engine Extension for VS Code expose multiple exp
 **CLI: `--explain`**
 
 ```bash
-manul --explain tests/saucedemo.hunt
-manul --explain --headless tests/ --html-report
+manul --explain path/to/file.hunt
+manul --explain --headless path/to/hunts/ --html-report
 ```
 
 That mode prints candidate rankings and per-channel scoring breakdowns for each resolved step.
@@ -251,7 +251,7 @@ The runtime also supports selective execution and data-driven loops without chan
 ```
 
 ```bash
-manul tests/ --tags smoke
+manul path/to/hunts/ --tags smoke
 ```
 
 ### Lifecycle orchestration and hooks
@@ -265,16 +265,16 @@ There are two levels of Python orchestration:
 
 The repo ships with both synthetic tests and adversarial fixtures. The point is not to claim maturity. The point is to show that the scoring model, parser, hooks, recorder, scheduler, and reporter are exercised against concrete failure modes.
 
-- `python manul.py test` runs the synthetic and unit suite.
-- `benchmarks/run_benchmarks.py` exercises dynamic IDs, overlapping traps, nested tables, and custom dropdown fixtures.
-- `tests/*.hunt` holds integration-style hunts for real browser flows.
+- `python run_tests.py` runs the synthetic and unit suite.
+- `demo/benchmarks/run_benchmarks.py` exercises dynamic IDs, overlapping traps, nested tables, and custom dropdown fixtures.
+- `demo/tests/*.hunt` holds integration-style hunts for real browser flows — run them with `python demo/run_demo.py`.
 
 ## Getting Started
 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.24
+pip install manul-engine==0.0.9.25
 playwright install
 ```
 
@@ -283,7 +283,7 @@ If you install standalone Python dependencies manually instead of using the pack
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.24"
+pip install "manul-engine[ai]==0.0.9.25"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -447,17 +447,17 @@ DONE.
 ### Run it
 
 ```bash
-manul tests/login.hunt
+manul path/to/login.hunt
 ```
 
 Useful commands:
 
 ```bash
-python manul.py test
-manul tests/
-manul --headless tests/saucedemo.hunt
-manul --html-report --screenshot on-fail tests/
-manul --explain tests/saucedemo.hunt
+python run_tests.py
+manul path/to/hunts/
+manul --headless path/to/file.hunt
+manul --html-report --screenshot on-fail path/to/hunts/
+manul --explain path/to/file.hunt
 ```
 
 When `--html-report` is enabled, repeated runs from VS Code Test Explorer no longer leave only the final hunt in the HTML output. The runtime merges recent invocations into the same report session and labels the report header accordingly.
@@ -593,8 +593,8 @@ Alias examples:
 ```
 
 ```bash
-manul tests/ --tags smoke
-manul daemon tests/ --headless
+manul path/to/hunts/ --tags smoke
+manul daemon path/to/hunts/ --headless
 manul pack lib/auth --output dist/
 manul install dist/auth-1.0.0.huntlib
 ```
@@ -619,9 +619,9 @@ def teardown(ctx: GlobalContext) -> None:
 
 The project is alpha, but it is not undocumented or untested.
 
-- `python manul.py test` runs the synthetic and unit suite
-- `tests/*.hunt` holds integration-style hunts
-- `benchmarks/run_benchmarks.py` exercises adversarial fixtures such as dynamic IDs, overlays, nested tables, and custom dropdowns
+- `python run_tests.py` runs the synthetic and unit suite
+- `demo/tests/*.hunt` holds integration-style hunts — run with `python demo/run_demo.py`
+- `demo/benchmarks/run_benchmarks.py` exercises adversarial fixtures such as dynamic IDs, overlays, nested tables, and custom dropdowns
 
 Representative coverage areas include:
 
@@ -641,10 +641,10 @@ ManulEngine ships an alpha-stage headless CI runner image for browser automation
 
 ```bash
 docker run --rm --shm-size=1g \
-  -v $(pwd)/tests:/workspace/tests:ro \
+  -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.24 \
-  --html-report --screenshot on-fail tests/
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.25 \
+  --html-report --screenshot on-fail hunts/
 ```
 
 All `MANUL_*` environment variables work as overrides:
@@ -653,18 +653,20 @@ All `MANUL_*` environment variables work as overrides:
 docker run --rm --shm-size=1g \
   -e MANUL_WORKERS=4 \
   -e MANUL_BROWSER=firefox \
-  -v $(pwd)/tests:/workspace/tests:ro \
+  -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.24 \
-  tests/
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.25 \
+  hunts/
 ```
 
 The image runs as non-root user `manul` (UID 1000), includes `dumb-init` for proper signal handling, and sets `--no-sandbox --disable-dev-shm-usage` by default. Build with additional browsers via `--build-arg BROWSERS="chromium firefox"`. A `docker-compose.yml` is included for local development with `manul` and `manul-daemon` services.
 
-## What's New in v0.0.9.24
+## What's New in v0.0.9.25
 
-- **Security hygiene:** Eliminated false-positive "shell access" alert from package security scanners (socket.dev) by dynamically constructing markdown code-fence markers in the LLM response parser.
-- **Manual release tagging workflow:** New `release_tag.yml` GitHub Actions workflow for creating version tags via `workflow_dispatch` without requiring a local git environment.
+- **`EngineConfig` frozen dataclass:** New `config.py` module with injectable `EngineConfig` replacing module-level globals. `ManulEngine.__init__` accepts an optional `config` parameter; all runtime settings (timeouts, AI, auto-annotate) are stored as instance attributes.
+- **`run_mission()` decomposition:** Extracted `_launch_browser()` and `_parse_task()` from the 400-line `run_mission()` method for testability and readability.
+- **Demo directory restructure:** All integration hunts, scripts, controls, benchmarks, and pages.json moved to `demo/`. New `demo/run_demo.py` runner script. Synthetic test suite extracted to standalone `run_tests.py`.
+- **Security hygiene:** Eliminated false-positive "shell access" alert from package security scanners (socket.dev).
 
 <details>
 <summary>v0.0.9.22</summary>
@@ -678,6 +680,6 @@ The image runs as non-root user `manul` (UID 1000), includes `dumb-init` for pro
 
 ## License
 
-**Version:** 0.0.9.24
+**Version:** 0.0.9.25
 
 Apache-2.0.

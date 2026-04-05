@@ -58,13 +58,14 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 ## Repository layout
 
 ```text
-manul.py                   Dev CLI entry point (intercepts `test` subcommand)
+manul.py                   Dev CLI entry point (run hunts from repo root without install)
+run_tests.py               Synthetic DOM test suite runner (dev only)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
-pages.json                 Page name registry for Auto-Nav annotations (nested per-site format)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.24
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.25
 manul_engine/
-  __init__.py              public API — re-exports ManulEngine, ManulSession
+  __init__.py              public API — re-exports ManulEngine, ManulSession, EngineConfig
   api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)
+  config.py                EngineConfig frozen dataclass — injectable configuration (replaces module-global reads)
   core.py                  ManulEngine class (resolution, run_mission, self-healing)
   cache.py                 _ControlsCacheMixin (persistent per-site controls cache)
   debug.py                 _DebugMixin (element highlighting, debug prompt, breakpoint protocol)
@@ -129,14 +130,21 @@ manul_engine/
     test_50_imports.py         @import/@export/USE directive system (84 assertions, no browser)
     test_51_packager.py        Pack/install .huntlib archives and lockfile (21 assertions, no browser)
     test_52_exports.py         @export validation, wildcard exports, access control (19 assertions, no browser)
-tests/
-  demoqa.hunt             integration: forms, checkboxes, radios, tables
-  mega.hunt               integration: all element types, drag-drop, shadow DOM, custom dropdowns
-  rahul.hunt              integration: radios, autocomplete, hover
-  saucedemo.hunt          integration: login, inventory, cart
-  call_python_variants.hunt  integration: all CALL PYTHON variants (positional args, aliases, to/into capture)
-benchmarks/
-  run_benchmarks.py        Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
+demo/
+  run_demo.py              Runner script for integration hunts (sets CWD, calls manul CLI)
+  manul_engine_configuration.json  Demo-specific config (heuristics-only)
+  pages.json               Page-name registry for demo sites
+  tests/
+    saucedemo.hunt         integration: login, inventory, cart (saucedemo.com)
+    demoqa.hunt            integration: forms, checkboxes, radios, tables (demoqa.com)
+    mega.hunt              integration: all element types, drag-drop, shadow DOM
+    rahul.hunt             integration: radios, autocomplete, hover
+    call_python_variants.hunt  integration: all CALL PYTHON variants (hooks, aliases, args)
+  scripts/                 Python helpers used by call_python_variants.hunt
+  controls/                Educational @custom_control examples
+  examples/                Additional Python helpers for CALL PYTHON demos
+  playground/              Experimental nested-module demos
+  benchmarks/              Adversarial benchmark suite (12 tasks, 5 HTML fixtures)
 contracts/
   MANUL_API_CONTRACT.md    Machine-readable contract: ManulSession Python API
   MANUL_CLI_CONTRACT.md    Machine-readable contract: CLI interface
@@ -260,7 +268,7 @@ Optional steps contain "if exists" / "optional" **outside** the quoted target (e
 Hunt files are plain-text test scenarios parsed by `parse_hunt_file()` (extracts `@context` / `@title` / `@tags`, strips `#` comments, collects hook blocks) then executed by `run_mission()`. **The STEP-grouped unnumbered format is the mandatory standard for all new hunt files.** The legacy numbered format is still supported but must not be used in new files.
 
 ### 1. File Naming & Location
-* For this repo's default auto-discovery (`python manul.py` with no target), hunt files are discovered under the `tests/` directory.
+* Hunt files can live in any directory. Pass a `.hunt` file or a directory path to `manul` to run them.
 * You can also pass a specific `.hunt` file or a directory path to `manul.py` to run hunts from any location.
 * Must use the `.hunt` extension. The filename can be anything — no prefix is required or enforced.
 
@@ -269,7 +277,7 @@ Placed at the top of the file. Used by the engine for logging and LLM context.
 * `@context: [description]` — Strategic context passed to the engine.
 * `@title: [short_title]` — Short title representing the test suite. `@blueprint:` is also accepted for backward compatibility.
 * `@script: {alias} = package.module` or `@script: {callable_alias} = package.module.function` — File-local alias for later `CALL PYTHON {alias}.function` or `CALL PYTHON {callable_alias}` usage. The parser accepts dotted Python import paths only and rejects slash paths or `.py` suffixes.
-* `@tags: tag1, tag2` — Arbitrary comma-separated run tags. Used with `manul --tags smoke tests/` to filter which files execute.
+* `@tags: tag1, tag2` — Arbitrary comma-separated run tags. Used with `manul --tags smoke path/` to filter which files execute.
 * `@data: path/to/file.json` — Data-driven testing. Points to a JSON (array-of-objects) or CSV file. The engine loads each row and reruns the entire mission with row values injected as `{placeholders}`. Path resolved relative to hunt file directory, then CWD.
 * `@schedule: <expression>` — Built-in scheduler header. Declares a schedule for the daemon mode (`manul daemon`). Supported expressions: `every N seconds/minutes/hours`, `every minute/hour`, `daily at HH:MM`, `every <weekday>`, `every <weekday> at HH:MM`. Parsed by `parse_schedule()` in `scheduler.py`. Files without `@schedule:` are ignored by the daemon.
 * `@import: Block1, Block2 from source.hunt` — Imports named STEP blocks from another `.hunt` file. Supports named imports (`@import: Login, Logout from lib/auth.hunt`), wildcard (`@import: * from lib.hunt`), aliases (`@import: Login as AuthLogin from lib.hunt`), and package-style sources (`@import: Login from @my-lib`). Imported blocks are expanded inline via `USE` directives. `@var:` declarations from the source file are inherited at `LEVEL_IMPORT` (lowest priority).
@@ -313,7 +321,7 @@ These keywords are detected via word-boundary regex, bypass heuristics, and are 
 * `MOCK METHOD "url_pattern" with 'mock_file'` — Intercepts matching network requests via `page.route()` and fulfills from a local file. METHOD: GET, POST, PUT, PATCH, DELETE. Mock file resolved relative to hunt dir → CWD.
 * `WAIT FOR RESPONSE "url_pattern"` — Blocks until a network response matching the URL pattern arrives (substring match via `page.wait_for_response()`). Uses `nav_timeout`.
 * `SCAN PAGE` — Runs `SCAN_JS` on the current page, maps results to hunt steps, prints a draft to console.
-* `SCAN PAGE into {filename}` — Same, but also writes the draft to `{filename}`. Output defaults to `{tests_home}/draft.hunt` (reads `tests_home` from `manul_engine_configuration.json`, defaults to `tests/`).
+* `SCAN PAGE into {filename}` — Same, but also writes the draft to `{filename}`. Output defaults to `{tests_home}/draft.hunt` (reads `tests_home` from `manul_engine_configuration.json`).
 * `SET {variable_name} = value` — Sets a runtime variable mid-flight. Both `{braced}` and bare key forms accepted. Quoted values are auto-unquoted. Available for `{placeholder}` substitution in subsequent steps.
 * `USE BlockName` — Expands an imported STEP block inline at parse time. The block must have been imported via `@import:`. Aliased names (from `as` clause) are supported. Case-insensitive matching. Expanded actions replace the `USE` line in the mission body with synthetic line numbers (0).
 * `DONE.` — Explicitly ends the mission.
@@ -419,7 +427,8 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 
 ## Code patterns to follow
 
-* Import: `from manul_engine import ManulEngine` (never `engine` or `framework`). For the programmatic API: `from manul_engine import ManulSession`.
+* Import: `from manul_engine import ManulEngine` (never `engine` or `framework`). For the programmatic API: `from manul_engine import ManulSession`. For injectable configuration: `from manul_engine import EngineConfig`.
+* `config.py` owns `EngineConfig` — a frozen dataclass with 24 fields mirroring the JSON config surface. `EngineConfig.from_file(path)` loads JSON + env overlay. `ManulEngine.__init__` accepts an optional `config: EngineConfig` parameter; when provided, all settings are read from the config object instead of module-level globals. All runtime configuration (timeouts, AI settings, auto-annotate, etc.) is stored as instance attributes on `ManulEngine` — never read from `prompts.*` at call time.
 * `scoring.py` owns `DOMScorer` class — normalised `0.0–1.0` float scoring with five weighted channels (`WEIGHTS` dict: cache=2.0, text=0.45, attributes=0.25, semantics=0.60, proximity=0.10). `SCALE=177,778` maps the weighted float to integer thresholds expected by `core.py`. `score_elements()` is the backward-compatible entry point that delegates to `DOMScorer.score_all()`. Receives `learned_elements` and `last_xpath` as kwargs. Pre-compiled regex loaded at module import; per-element strings normalised in `_preprocess()`.
 * **Safety first in `scoring.py`:** Always cast fetched attributes using `str(el.get("...", ""))`. JavaScript can pass objects (like `SVGAnimatedString` for SVG icons) instead of strings, which will crash Python's `.lower()`.
 * **iframe routing in `core.py`:** `_snapshot()` iterates `page.frames`, evaluates `SNAPSHOT_JS` per frame, tags elements with `frame_index`. `_frame_for(page, el)` resolves the correct Playwright `Frame` by index with stale fallback to main frame. All 12+ locator call-sites in `actions.py` route through the resolved frame. Cross-origin frames are silently skipped (3-retry, 1.5s backoff on `closed` errors).
@@ -452,33 +461,38 @@ source venv/bin/activate        # Linux/Mac (venv)
 .venv\Scripts\activate          # Windows
 
 # Synthetic DOM laboratory tests (local HTML via Playwright; no real websites)
-python manul.py test
+python run_tests.py
 
-# Integration tests (needs Playwright browsers; Ollama optional)
-manul tests/                     # run all *.hunt files in tests/
-manul tests/saucedemo.hunt       # single hunt
-manul --headless tests/          # headless mode
-manul --browser firefox tests/   # run in Firefox instead of Chromium
-manul --tags smoke tests/        # run only files tagged 'smoke'
-manul --tags smoke,regression tests/  # files tagged smoke OR regression
+# Integration demo hunts (needs network + Playwright browsers; Ollama optional)
+python demo/run_demo.py                              # run all demo hunts (headed)
+python demo/run_demo.py tests/saucedemo.hunt         # single hunt
+python demo/run_demo.py --headless                   # headless mode
+
+# General hunt execution (installed manul CLI or dev launcher)
+manul path/to/hunts/                     # run all *.hunt files in a dir
+manul path/to/file.hunt                  # single hunt
+manul --headless path/to/hunts/          # headless mode
+manul --browser firefox path/to/hunts/   # run in Firefox instead of Chromium
+manul --tags smoke path/to/hunts/        # run only files tagged 'smoke'
+manul --tags smoke,regression path/      # files tagged smoke OR regression
 
 # Interactive debug mode (terminal) — pauses before every step, prompts ENTER
-manul --debug tests/saucedemo.hunt
+manul --debug path/to/file.hunt
 
 # Gutter breakpoint mode (used by VS Code extension debug runner)
 # Pause at steps whose file line numbers match; emits stdin/stdout debug protocol
-manul --break-lines 5,10,15 tests/saucedemo.hunt
+manul --break-lines 5,10,15 path/to/file.hunt
 
 # Smart Page Scanner
-manul scan https://example.com                   # scan → tests/draft.hunt (tests_home default)
-manul scan https://example.com tests/my.hunt     # scan → explicit output file
+manul scan https://example.com                   # scan → draft.hunt (tests_home default)
+manul scan https://example.com output.hunt       # scan → explicit output file
 manul scan https://example.com --headless        # headless scan
 
 # Retries, screenshots, HTML reports
-manul tests/ --retries 2                          # retry failed hunts up to 2 times
-manul tests/ --html-report                        # generate reports/manul_report.html
-manul tests/ --retries 2 --screenshot on-fail --html-report  # full CI combo
-manul tests/ --screenshot always --html-report    # every-step forensic report
+manul path/ --retries 2                          # retry failed hunts up to 2 times
+manul path/ --html-report                        # generate reports/manul_report.html
+manul path/ --retries 2 --screenshot on-fail --html-report  # full CI combo
+manul path/ --screenshot always --html-report    # every-step forensic report
 ```
 
 Ollama is optional — only needed as a last-resort self-healing fallback:
@@ -487,9 +501,9 @@ Ollama is optional — only needed as a last-resort self-healing fallback:
 
 To use Ollama: install the [Ollama app](https://ollama.com), run `pip install ollama==0.6.1` (Python client), pull a model (`ollama pull qwen2.5:0.5b`), and start the server (`ollama serve`).
 
-**Rule:** after any engine change, `python manul.py test` must exit with code **0**.
+**Rule:** after any engine change, `python run_tests.py` must exit with code **0**.
 Tip: `"model": null` (the default) forces heuristics-only mode. This is the recommended configuration for deterministic tests and CI pipelines.
-Note: `python manul.py test` disables persistent controls cache by default for deterministic synthetic suites. `test_13_controls_cache.py` explicitly enables cache in a temporary `cache/run_<datetime>` folder and removes it after the test.
+Note: `python run_tests.py` disables persistent controls cache by default for deterministic synthetic suites. `test_13_controls_cache.py` explicitly enables cache in a temporary `cache/run_<datetime>` folder and removes it after the test.
 
 ## Docker CI/CD Runner
 
@@ -497,10 +511,10 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 
 ```bash
 docker run --rm --shm-size=1g \
-  -v $(pwd)/tests:/workspace/tests:ro \
+  -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.24 \
-  --html-report --screenshot on-fail tests/
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.25 \
+  --html-report --screenshot on-fail hunts/
 ```
 
 Image characteristics:
@@ -509,7 +523,7 @@ Image characteristics:
 * `dumb-init` as PID 1 for proper signal handling and exit-code propagation.
 * CI defaults baked in: `MANUL_HEADLESS=true`, `MANUL_BROWSER_ARGS="--no-sandbox --disable-dev-shm-usage"`, `TZ=UTC`, `LANG=C.UTF-8`.
 * Build args: `MANUL_VERSION` (pip version), `PYTHON_VERSION` (base image), `BROWSERS` (space-separated, default `chromium`).
-* Volume mount pattern: `/workspace/tests` (ro), `/workspace/reports` (rw), `/workspace/cache` (rw), `/workspace/controls` (ro), `/workspace/scripts` (ro).
+* Volume mount pattern: `/workspace/hunts` (ro), `/workspace/reports` (rw), `/workspace/cache` (rw), `/workspace/controls` (ro), `/workspace/scripts` (ro).
 
 `docker-compose.yml` defines two services: `manul` (test runner) and `manul-daemon` (scheduled hunts, `restart: unless-stopped`).
 

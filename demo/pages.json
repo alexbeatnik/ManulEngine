@@ -1,0 +1,43 @@
+{
+    "https://www.saucedemo.com/": {
+        "Domain": "Swag Labs",
+        ".*/inventory": "Products Catalog",
+        ".*/cart": "Shopping Cart",
+        ".*/checkout-step-one": "Checkout: Your Info",
+        ".*/checkout-step-two": "Checkout: Overview",
+        ".*/checkout-complete": "Checkout: Complete"
+    },
+    "https://demoqa.com/": {
+        "Domain": "DemoQA",
+        ".*/text-box": "DemoQA: Text Box",
+        ".*/checkbox": "DemoQA: Checkbox",
+        ".*/radio-button": "DemoQA: Radio Button",
+        ".*/webtables": "DemoQA: Web Tables",
+        ".*/buttons": "DemoQA: Buttons",
+        ".*/select-menu": "DemoQA: Select Menu",
+        ".*/date-picker": "DemoQA: Date Picker",
+        ".*/slider": "DemoQA: Slider",
+        ".*/links": "DemoQA: Links"
+    },
+    "https://testautomationpractice.blogspot.com/": {
+        "Domain": "Automation Practice Playground",
+        "https://testautomationpractice.blogspot.com/": "Automation Practice Playground"
+    },
+    "https://en.wikipedia.org/": {
+        "Domain": "Wikipedia",
+        "https://en.wikipedia.org/wiki/Main_Page": "Wikipedia: Main Page",
+        ".*/wiki/Pallas's_cat": "Wikipedia: Pallas's cat",
+        ".*/wiki/Software_testing": "Wikipedia: Software testing",
+        ".*/wiki/Selenium_\\(software\\)": "Wikipedia: Selenium",
+        ".*/wiki/Playwright_\\(software\\)": "Wikipedia: Playwright",
+        ".*/wiki/Microsoft": "Wikipedia: Microsoft"
+    },
+    "https://rahulshettyacademy.com/": {
+        "Domain": "Rahul Shetty Academy",
+        "https://rahulshettyacademy.com/AutomationPractice/": "Rahul Shetty: Automation Practice"
+    },
+    "https://example.com/": {
+        "Domain": "Auto: example.com/login",
+        "https://example.com/login": "Auto: example.com/login"
+    }
+}

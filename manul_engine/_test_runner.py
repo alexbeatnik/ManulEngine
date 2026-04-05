@@ -4,7 +4,7 @@ Internal synthetic DOM test runner (developer tool — not part of the public CL
 
 Invoked from the repository dev launcher::
 
-    python manul.py test
+    python run_tests.py
 
 Runs all test_*.py suites inside manul_engine/test/ against locally rendered
 HTML pages (no real websites, no internet required).

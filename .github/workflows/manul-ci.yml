@@ -22,7 +22,7 @@ jobs:
         run: |
           docker run --rm \
             --shm-size=1g \
-            -v ${{ github.workspace }}/tests:/workspace/tests:ro \
+            -v ${{ github.workspace }}/hunts:/workspace/hunts:ro \
             -v ${{ github.workspace }}/reports:/workspace/reports \
             -v ${{ github.workspace }}/controls:/workspace/controls:ro \
             -v ${{ github.workspace }}/scripts:/workspace/scripts:ro \
@@ -30,8 +30,8 @@ jobs:
             -e MANUL_HTML_REPORT=true \
             -e MANUL_SCREENSHOT=on-fail \
             -e MANUL_WORKERS=2 \
-            ghcr.io/alexbeatnik/manul-engine:0.0.9.24 \
-            --html-report --screenshot on-fail --workers 2 tests/
+            ghcr.io/alexbeatnik/manul-engine:0.0.9.25 \
+            --html-report --screenshot on-fail --workers 2 hunts/
 
       - name: Upload test report
         if: always()

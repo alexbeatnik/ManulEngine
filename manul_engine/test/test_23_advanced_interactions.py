@@ -11,7 +11,7 @@ No live browser required — tests exercise:
   3. Handler methods via mocked Playwright page objects
 
 Entry point ``run_suite()`` is picked up by the dev test runner
-(``python manul.py test``) and must remain async.
+(``python run_tests.py``) and must remain async.
 """
 
 from __future__ import annotations
@@ -215,7 +215,7 @@ async def _test_handle_press_targeted() -> None:
     with patch.object(engine, "_resolve_element", new=AsyncMock(return_value=el)):
         ok = await engine._handle_press(page, "3. PRESS ArrowDown on 'Search Input'")
         _assert(ok, "PRESS ArrowDown on 'Target' returns True")
-        page._mock_locator.press.assert_awaited_once_with("ArrowDown", timeout=prompts.TIMEOUT)
+        page._mock_locator.press.assert_awaited_once_with("ArrowDown", timeout=engine.timeout)
         _assert(True, "locator.press called with 'ArrowDown'")
 
 

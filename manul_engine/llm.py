@@ -25,6 +25,28 @@ except (ImportError, ModuleNotFoundError):
 
 # ── Protocol for future provider swaps ────────────────────────────────────────
 
+
+def _extract_response_text(resp: object) -> str:
+    """Safely extract the content string from an Ollama ChatResponse.
+
+    The Ollama SDK (0.6+) returns ChatResponse objects with attribute
+    access (``resp.message.content``).  We also handle dict-shaped
+    responses for older SDK versions and test mocks.
+    """
+    # Attribute-style (ChatResponse object)
+    msg = getattr(resp, "message", None)
+    if msg is None and isinstance(resp, dict):
+        # Dict-style fallback (older SDK / mocks)
+        msg = resp.get("message")
+    if msg is None:
+        return ""
+    if isinstance(msg, dict):
+        text = msg.get("content")
+    else:
+        text = getattr(msg, "content", None)
+    return text if isinstance(text, str) else ""
+
+
 class LLMProvider(Protocol):
     """Minimal contract for an LLM JSON provider."""
 
@@ -56,9 +78,8 @@ class OllamaProvider:
                 ],
                 format="json",
             )
-            msg = resp.get("message") if isinstance(resp, dict) else None
-            raw = msg.get("content", "") if isinstance(msg, dict) else ""
-            if not isinstance(raw, str) or not raw:
+            raw = _extract_response_text(resp)
+            if not raw:
                 _log.warning("LLM returned unexpected response structure")
                 return None
             return _parse_llm_json(raw)

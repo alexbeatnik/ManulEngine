@@ -8,7 +8,6 @@ from playwright.async_api import async_playwright
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from manul_engine import ManulEngine
-from manul_engine import prompts
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DOM: Facebook Comet UI (Real patterns extracted from provided HTML)
@@ -105,7 +104,7 @@ async def run_suite() -> bool:
 
             manul = ManulEngine(headless=True, disable_cache=True)
             manul.model = "mock"  # satisfy AI_ALWAYS guard; real LLM is mocked below
-            prompts.AI_ALWAYS = True 
+            manul._ai_always = True
 
             # Mock LLM for CI environment where Ollama is not present
             async def _mock_llm_select_element(step, mode, candidates, strategic_context):

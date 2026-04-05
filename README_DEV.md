@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.24 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.25 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -23,13 +23,15 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 
 ```text
 ManulEngine/
-├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
+├── manul.py                          Dev CLI entry point (run hunts from repo root without install)
+├── run_tests.py                      Synthetic DOM test suite runner (dev only)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.24
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.25
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
-│   ├── __init__.py                   Public API — exports ManulEngine, ManulSession
+│   ├── __init__.py                   Public API — exports ManulEngine, ManulSession, EngineConfig
 │   ├── api.py                        ManulSession — public Python API facade (async context manager, Playwright lifecycle)
+│   ├── config.py                     EngineConfig frozen dataclass — injectable configuration (replaces module-global reads)
 │   ├── cli.py                        Installed CLI entry point (`manul` command + `manul scan` + `manul record` + `manul daemon` subcommands)
 │   ├── lifecycle.py                  Global Lifecycle Hook Registry (@before_all, @after_all, @before_group, @after_group)
 │   ├── hooks.py                      [SETUP] / [TEARDOWN] hook parser and executor
@@ -97,17 +99,22 @@ ManulEngine/
 │       ├── test_50_imports.py         Unit: @import/@export/USE directive system (84 assertions, no browser)
 │       ├── test_51_packager.py        Unit: Pack/install .huntlib archives and lockfile (21 assertions, no browser)
 │       └── test_52_exports.py         Unit: @export validation, wildcard exports, access control (19 assertions, no browser)
-├── controls/                         User-owned custom Python handlers (loaded from directories listed in `custom_controls_dirs` config)
-│   └── demo_custom.py                Reference implementation: React Datepicker handler with month navigation
-├── tests/                            Integration hunt tests (real websites)
-│   ├── demoqa.hunt                   DemoQA form, checkbox, radio, and table coverage
-│   ├── mega.hunt                     Large UI gauntlet; includes commented custom-control and hook examples
-│   ├── rahul.hunt                    Rahul Shetty practice flow: radio, autocomplete, hover
-│   ├── saucedemo.hunt                SauceDemo checkout flow with commented lifecycle-hook examples
-│   └── call_python_variants.hunt     All CALL PYTHON variants: positional args, aliases, to/into capture
+├── demo/                             Integration demo hunts and supporting assets
+│   ├── run_demo.py                   Runner script (sets CWD, calls manul CLI)
+│   ├── manul_engine_configuration.json Demo-specific config (heuristics-only)
+│   ├── pages.json                    Page-name registry for demo sites
+│   ├── tests/                        Integration .hunt files
+│   │   ├── saucedemo.hunt            SauceDemo checkout flow with @var and NEAR qualifier
+│   │   ├── demoqa.hunt               DemoQA form, checkbox, radio, and table coverage
+│   │   ├── mega.hunt                 Large UI gauntlet: drag-drop, shadow DOM, scroll
+│   │   ├── rahul.hunt                Rahul Shetty practice flow: radio, autocomplete, hover
+│   │   └── call_python_variants.hunt All CALL PYTHON variants: positional args, aliases, to/into capture
+│   ├── scripts/                      Python helpers used by call_python_variants.hunt
+│   ├── controls/                     Educational @custom_control examples
+│   ├── examples/                     Additional Python helpers for CALL PYTHON demos
+│   ├── playground/                   Experimental nested-module demos
+│   └── benchmarks/                   Adversarial benchmark suite (12 tasks, 5 HTML fixtures)
 ├── reports/                          Generated logs and HTML reports (auto-created, .gitignored)
-├── benchmarks/                       Adversarial benchmark suite (12 tasks, 4 HTML fixtures)
-│   └── run_benchmarks.py            Benchmark runner: ManulEngine vs raw Playwright
 ├── contracts/                        Machine-readable contracts for downstream tooling
 │   ├── MANUL_API_CONTRACT.md        ManulSession Python API surface
 │   ├── MANUL_CLI_CONTRACT.md        CLI interface: subcommands, flags, exit codes
@@ -437,8 +444,8 @@ DONE.
 **CLI usage:**
 
 ```bash
-manul tests/ --tags smoke               # run only files tagged 'smoke'
-manul tests/ --tags smoke,critical      # OR logic — run files with either tag
+manul path/to/hunts/ --tags smoke               # run only files tagged 'smoke'
+manul path/to/hunts/ --tags smoke,critical      # OR logic — run files with either tag
 ```
 
 **Intersection rule:** A file is included in the run if its `@tags:` list shares at least one tag with the `--tags` argument. Files with no `@tags:` header are **always excluded** when `--tags` is active.
@@ -584,7 +591,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.24
+pip install manul-engine==0.0.9.25
 playwright install chromium
 ```
 
@@ -646,7 +653,7 @@ cache/
 
 Relative `controls_cache_dir` is resolved against CWD (the directory where you invoke `manul`), not the package installation path.
 
-Synthetic tests (`python manul.py test`) disable cache by default for deterministic, side-effect-free results.
+Synthetic tests (`python run_tests.py`) disable cache by default for deterministic, side-effect-free results.
 
 ---
 
@@ -654,44 +661,47 @@ Synthetic tests (`python manul.py test`) disable cache by default for determinis
 
 ```bash
 # Installed CLI (after pip install manul-engine)
-manul tests/                       # run all *.hunt files
-manul tests/saucedemo.hunt         # single hunt
-manul --headless tests/            # headless mode
-manul --browser firefox tests/     # run in Firefox
-manul tests/ --workers 4           # run 4 hunt files in parallel
-manul .                            # all *.hunt in current directory
+manul path/to/hunts/                   # run all *.hunt files
+manul path/to/file.hunt                # single hunt
+manul --headless path/to/hunts/        # headless mode
+manul --browser firefox path/to/hunts/ # run in Firefox
+manul path/to/hunts/ --workers 4       # run 4 hunt files in parallel
+manul .                                # all *.hunt in current directory
 
 # Interactive debug mode (terminal) — pauses before every step, prompts ENTER
-manul --debug tests/saucedemo.hunt
+manul --debug path/to/file.hunt
 
 # Gutter breakpoint mode (VS Code extension debug runner)
-manul --break-lines 5,10,15 tests/saucedemo.hunt
+manul --break-lines 5,10,15 path/to/file.hunt
 
 # Smart Page Scanner
 manul scan https://example.com
-manul scan https://example.com tests/my.hunt
+manul scan https://example.com output.hunt
 manul scan https://example.com --headless
 manul scan https://example.com --browser firefox
 
 # Retry failed hunts up to 2 times
-manul tests/ --retries 2
+manul path/to/hunts/ --retries 2
 
 # Generate a standalone HTML report
-manul tests/ --html-report
+manul path/to/hunts/ --html-report
 
 # Report header shows Run Session and Merged invocations when recent
 # CLI/Test Explorer runs are aggregated into the same HTML report.
 
 # Screenshots on failure + HTML report + retries
-manul tests/ --retries 2 --screenshot on-fail --html-report
+manul path/to/hunts/ --retries 2 --screenshot on-fail --html-report
 
 # Screenshots for every step
-manul tests/ --screenshot always --html-report
+manul path/to/hunts/ --screenshot always --html-report
 
-# Dev launcher (from repo root, no install needed)
-python manul.py test
-python manul.py tests/
-python manul.py --headless tests/
+# Synthetic DOM test suite (dev only, no install needed)
+python run_tests.py
+
+# Integration demo hunts (needs network + Playwright browsers)
+python demo/run_demo.py
+python demo/run_demo.py tests/saucedemo.hunt
+python demo/run_demo.py --headless
 ```
 
 ---
@@ -702,10 +712,10 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 
 ```bash
 docker run --rm --shm-size=1g \
-  -v $(pwd)/tests:/workspace/tests:ro \
+  -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.24 \
-  --html-report --screenshot on-fail tests/
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.25 \
+  --html-report --screenshot on-fail hunts/
 ```
 
 **Image characteristics:**
@@ -729,7 +739,7 @@ docker run --rm --shm-size=1g \
 
 ## 🚀 Quick Start
 
-Create a hunt file: `tests/mission.hunt`
+Create a hunt file: `my_mission.hunt`
 
 ```text
 @context: Demo flow
@@ -746,7 +756,7 @@ DONE.
 Run it:
 
 ```bash
-manul tests/mission.hunt
+manul my_mission.hunt
 ```
 
 ---
@@ -832,17 +842,17 @@ The engine is battle-tested with **2731** synthetic DOM/unit tests across 49 tes
 * **Attribute-semantic heuristic suite:** `manul_engine/test/test_46_attribute_semantic.py`.
 * **Contextual navigator unit suite:** `manul_engine/test/test_47_contextual_proximity.py`.
 * **Prompts & Config unit suite:** `manul_engine/test/test_48_prompts_config.py`.
-* **Integration hunts:** Real-site E2E flows under `tests/*.hunt` (requires Playwright).
+* **Integration hunts:** Real-site E2E flows under `demo/tests/*.hunt` — run with `python demo/run_demo.py` (requires Playwright + network).
 
 Run the synthetic suite:
 
 ```bash
 # From repo root (dev mode)
-python manul.py test
+python run_tests.py
 
 # Heuristics-only (no Ollama), deterministic:
 # Set "model": null in manul_engine_configuration.json
-python manul.py test
+python run_tests.py
 ```
 
 ---
@@ -918,10 +928,12 @@ The published extension provides:
 
 ---
 
-## Release Notes: v0.0.9.24
+## Release Notes: v0.0.9.25
 
-- **Security hygiene:** Eliminated false-positive "shell access" alert from package security scanners (socket.dev) by dynamically constructing markdown code-fence markers in the LLM response parser.
-- **Manual release tagging workflow:** New `release_tag.yml` GitHub Actions workflow for creating version tags via `workflow_dispatch`.
+- **`EngineConfig` frozen dataclass:** New `config.py` module with injectable `EngineConfig` replacing module-level globals. `ManulEngine.__init__` accepts an optional `config` parameter; all runtime settings are stored as instance attributes.
+- **`run_mission()` decomposition:** Extracted `_launch_browser()` and `_parse_task()` from the 400-line `run_mission()` method.
+- **Demo directory restructure:** All integration hunts, scripts, controls, benchmarks, and pages.json moved to `demo/`. New `demo/run_demo.py` runner. Synthetic test suite extracted to standalone `run_tests.py`.
+- **Security hygiene:** Eliminated false-positive "shell access" alert from package security scanners (socket.dev).
 
 <details>
 <summary>v0.0.9.22</summary>
@@ -933,7 +945,7 @@ The published extension provides:
 
 </details>
 
-**Version:** 0.0.9.24
+**Version:** 0.0.9.25
 
 **Codename:** Containerised Manul
 

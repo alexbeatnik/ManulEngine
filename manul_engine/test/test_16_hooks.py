@@ -8,7 +8,7 @@ Validates:
   • run_hooks            — sequential execution, stop-on-failure, early-exit
 
 Entry point ``run_suite()`` is picked up by the dev test runner
-(``python manul.py test``) and must remain async even though no Playwright
+(``python run_tests.py``) and must remain async even though no Playwright
 page is created.
 """
 
