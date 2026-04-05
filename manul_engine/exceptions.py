@@ -10,7 +10,7 @@ class ManulEngineError(Exception):
     """Base exception for all ManulEngine errors."""
 
 
-class ConfigurationError(ManulEngineError):
+class ConfigurationError(ManulEngineError, ValueError):
     """Invalid or inconsistent engine configuration."""
 
 
@@ -30,9 +30,9 @@ class VerificationError(ManulEngineError):
     """A VERIFY step assertion failed."""
 
 
-class SessionError(ManulEngineError):
+class SessionError(ManulEngineError, RuntimeError):
     """ManulSession lifecycle error (start/close/page access)."""
 
 
-class ScheduleError(ManulEngineError):
+class ScheduleError(ManulEngineError, ValueError):
     """Invalid @schedule: expression."""
