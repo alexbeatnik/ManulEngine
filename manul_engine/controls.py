@@ -35,12 +35,14 @@ from __future__ import annotations
 import ast
 import importlib.util
 import re
+import threading
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 
 # ── Global registry ───────────────────────────────────────────────────────────
 # key: (page_name_lower, target_name_lower) → handler callable
 _CUSTOM_CONTROLS: dict[tuple[str, str], Callable] = {}
+_REGISTRY_LOCK = threading.Lock()
 
 # Tracks which workspace dirs have been fully (eagerly) loaded to prevent
 # re-execution when multiple ManulEngine instances are created in the same
@@ -71,7 +73,8 @@ def custom_control(page: str, target: str) -> Callable:
     """
     def decorator(func: Callable) -> Callable:
         key = (page.strip().lower(), target.strip().lower())
-        _CUSTOM_CONTROLS[key] = func
+        with _REGISTRY_LOCK:
+            _CUSTOM_CONTROLS[key] = func
         return func
     return decorator
 
@@ -79,7 +82,8 @@ def custom_control(page: str, target: str) -> Callable:
 def get_custom_control(page_name: str, target_name: str) -> Callable | None:
     """Return the registered handler for (page_name, target_name), or ``None``."""
     key = (page_name.strip().lower(), target_name.strip().lower())
-    return _CUSTOM_CONTROLS.get(key)
+    with _REGISTRY_LOCK:
+        return _CUSTOM_CONTROLS.get(key)
 
 
 def _iter_custom_control_targets(source: str) -> list[str]:
