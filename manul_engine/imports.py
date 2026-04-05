@@ -21,6 +21,8 @@ from typing import NamedTuple
 
 from manul_engine.exceptions import HuntImportError as HuntImportError
 
+_MAX_IMPORT_DEPTH = 10
+
 
 class ImportDirective(NamedTuple):
     """Parsed @import: header directive."""
@@ -177,7 +179,10 @@ def _extract_exported_blocks(
     abs_path = os.path.abspath(hunt_path)
     if seen_files is not None and abs_path in seen_files:
         chain = " → ".join(sorted(seen_files)) + f" → {abs_path}"
-        raise HuntImportError(f"Circular import detected: {chain}")
+        raise HuntImportError(
+            f"Circular import detected: {chain}. "
+            f"Break the cycle by removing one of the @import: directives."
+        )
 
     exports: list[str] = []
     parsed_vars: dict[str, str] = {}
@@ -262,13 +267,23 @@ def resolve_imports(
     hunt_file: str,
     cwd: str | None = None,
     seen_files: set[str] | None = None,
+    _depth: int = 0,
 ) -> tuple[dict[str, list[str]], dict[str, str]]:
     """Resolve all @import: directives and return importable blocks + vars.
 
     Returns (imported_blocks, import_vars) where:
       - imported_blocks: {"AliasOrName": [action_lines...]}
       - import_vars: merged @var: from all imported files (lowest priority)
+
+    Raises :class:`HuntImportError` when the import chain exceeds
+    ``_MAX_IMPORT_DEPTH`` levels (currently 10) to protect against
+    pathological recursive imports.
     """
+    if _depth > _MAX_IMPORT_DEPTH:
+        raise HuntImportError(
+            f"Import depth limit ({_MAX_IMPORT_DEPTH}) exceeded while resolving "
+            f"imports in {hunt_file}. Check for deep or indirect circular imports."
+        )
     if seen_files is None:
         seen_files = set()
     seen_files.add(os.path.abspath(hunt_file))
