@@ -5,7 +5,7 @@
 
 ```json
 {
-  "version": "0.0.9.25",
+  "version": "0.0.9.26",
   "generatedFrom": "manul_engine/api.py :: ManulSession; manul_engine/__init__.py :: re-exports",
 
   "importPath": "from manul_engine import ManulSession",

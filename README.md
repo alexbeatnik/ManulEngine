@@ -9,7 +9,6 @@
 [![Manul Engine Extension](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=Manul%20Engine%20Extension&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
 [![MCP Server](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-mcp-server?label=MCP%20Server&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-mcp-server)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-d97706)](#status)
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/alexbeatnik)
 
 Deterministic, DSL-first web and desktop automation on top of Playwright, with explainable heuristics, a standalone Python API, and optional local AI fallback.
 
@@ -275,7 +274,7 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.25
+pip install manul-engine==0.0.9.26
 playwright install
 ```
 
@@ -284,7 +283,7 @@ If you install standalone Python dependencies manually instead of using the pack
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.25"
+pip install "manul-engine[ai]==0.0.9.26"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -644,7 +643,7 @@ ManulEngine ships an alpha-stage headless CI runner image for browser automation
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.25 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.26 \
   --html-report --screenshot on-fail hunts/
 ```
 
@@ -656,13 +655,13 @@ docker run --rm --shm-size=1g \
   -e MANUL_BROWSER=firefox \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.25 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.26 \
   hunts/
 ```
 
 The image runs as non-root user `manul` (UID 1000), includes `dumb-init` for proper signal handling, and sets `--no-sandbox --disable-dev-shm-usage` by default. Build with additional browsers via `--build-arg BROWSERS="chromium firefox"`. A `docker-compose.yml` is included for local development with `manul` and `manul-daemon` services.
 
-## What's New in v0.0.9.25
+## What's New in v0.0.9.26
 
 - **`EngineConfig` frozen dataclass:** New `config.py` module with injectable `EngineConfig` replacing module-level globals. `ManulEngine.__init__` accepts an optional `config` parameter; all runtime settings (timeouts, AI, auto-annotate) are stored as instance attributes.
 - **`run_mission()` decomposition:** Extracted `_launch_browser()` and `_parse_task()` from the 400-line `run_mission()` method for testability and readability.
@@ -681,6 +680,6 @@ The image runs as non-root user `manul` (UID 1000), includes `dumb-init` for pro
 
 ## License
 
-**Version:** 0.0.9.25
+**Version:** 0.0.9.26
 
 Apache-2.0.

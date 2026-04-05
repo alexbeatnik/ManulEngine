@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.25 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.26 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -26,7 +26,7 @@ ManulEngine/
 ├── manul.py                          Dev CLI entry point (run hunts from repo root without install)
 ├── run_tests.py                      Synthetic DOM test suite runner (dev only)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.25
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.26
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession, EngineConfig
@@ -591,7 +591,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.25
+pip install manul-engine==0.0.9.26
 playwright install chromium
 ```
 
@@ -714,7 +714,7 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.25 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.26 \
   --html-report --screenshot on-fail hunts/
 ```
 
@@ -928,7 +928,7 @@ The published extension provides:
 
 ---
 
-## Release Notes: v0.0.9.25
+## Release Notes: v0.0.9.26
 
 - **`EngineConfig` frozen dataclass:** New `config.py` module with injectable `EngineConfig` replacing module-level globals. `ManulEngine.__init__` accepts an optional `config` parameter; all runtime settings are stored as instance attributes.
 - **`run_mission()` decomposition:** Extracted `_launch_browser()` and `_parse_task()` from the 400-line `run_mission()` method.
@@ -945,7 +945,7 @@ The published extension provides:
 
 </details>
 
-**Version:** 0.0.9.25
+**Version:** 0.0.9.26
 
 **Codename:** Containerised Manul
 
