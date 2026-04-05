@@ -61,7 +61,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (run hunts from repo root without install)
 run_tests.py               Synthetic DOM test suite runner (dev only)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.25
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.26
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession, EngineConfig
   api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)
@@ -513,7 +513,7 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.25 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.26 \
   --html-report --screenshot on-fail hunts/
 ```
 
