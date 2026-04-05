@@ -10,7 +10,7 @@ network access and installed Playwright browsers.
 Usage (from the repo root):
   python demo/run_demo.py                       run all demo hunts (headed)
   python demo/run_demo.py --headless            run all demo hunts headless
-  python demo/run_demo.py saucedemo.hunt        run a single hunt
+  python demo/run_demo.py tests/saucedemo.hunt   run a single hunt
   python demo/run_demo.py --html-report         generate HTML report
 
 The script changes CWD to `demo/` so that manul_engine_configuration.json,

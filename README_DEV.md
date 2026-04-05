@@ -103,11 +103,12 @@ ManulEngine/
 │   ├── run_demo.py                   Runner script (sets CWD, calls manul CLI)
 │   ├── manul_engine_configuration.json Demo-specific config (heuristics-only)
 │   ├── pages.json                    Page-name registry for demo sites
-│   ├── saucedemo.hunt                SauceDemo checkout flow with @var and NEAR qualifier
-│   ├── demoqa.hunt                   DemoQA form, checkbox, radio, and table coverage
-│   ├── mega.hunt                     Large UI gauntlet: drag-drop, shadow DOM, scroll
-│   ├── rahul.hunt                    Rahul Shetty practice flow: radio, autocomplete, hover
-│   ├── call_python_variants.hunt     All CALL PYTHON variants: positional args, aliases, to/into capture
+│   ├── tests/                        Integration .hunt files
+│   │   ├── saucedemo.hunt            SauceDemo checkout flow with @var and NEAR qualifier
+│   │   ├── demoqa.hunt               DemoQA form, checkbox, radio, and table coverage
+│   │   ├── mega.hunt                 Large UI gauntlet: drag-drop, shadow DOM, scroll
+│   │   ├── rahul.hunt                Rahul Shetty practice flow: radio, autocomplete, hover
+│   │   └── call_python_variants.hunt All CALL PYTHON variants: positional args, aliases, to/into capture
 │   ├── scripts/                      Python helpers used by call_python_variants.hunt
 │   ├── controls/                     Educational @custom_control examples
 │   ├── examples/                     Additional Python helpers for CALL PYTHON demos
@@ -699,7 +700,7 @@ python run_tests.py
 
 # Integration demo hunts (needs network + Playwright browsers)
 python demo/run_demo.py
-python demo/run_demo.py saucedemo.hunt
+python demo/run_demo.py tests/saucedemo.hunt
 python demo/run_demo.py --headless
 ```
 
@@ -841,7 +842,7 @@ The engine is battle-tested with **2731** synthetic DOM/unit tests across 49 tes
 * **Attribute-semantic heuristic suite:** `manul_engine/test/test_46_attribute_semantic.py`.
 * **Contextual navigator unit suite:** `manul_engine/test/test_47_contextual_proximity.py`.
 * **Prompts & Config unit suite:** `manul_engine/test/test_48_prompts_config.py`.
-* **Integration hunts:** Real-site E2E flows under `demo/*.hunt` — run with `python demo/run_demo.py` (requires Playwright + network).
+* **Integration hunts:** Real-site E2E flows under `demo/tests/*.hunt` — run with `python demo/run_demo.py` (requires Playwright + network).
 
 Run the synthetic suite:
 

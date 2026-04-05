@@ -267,7 +267,7 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 
 - `python run_tests.py` runs the synthetic and unit suite.
 - `demo/benchmarks/run_benchmarks.py` exercises dynamic IDs, overlapping traps, nested tables, and custom dropdown fixtures.
-- `demo/*.hunt` holds integration-style hunts for real browser flows — run them with `python demo/run_demo.py`.
+- `demo/tests/*.hunt` holds integration-style hunts for real browser flows — run them with `python demo/run_demo.py`.
 
 ## Getting Started
 
@@ -620,7 +620,7 @@ def teardown(ctx: GlobalContext) -> None:
 The project is alpha, but it is not undocumented or untested.
 
 - `python run_tests.py` runs the synthetic and unit suite
-- `demo/*.hunt` holds integration-style hunts — run with `python demo/run_demo.py`
+- `demo/tests/*.hunt` holds integration-style hunts — run with `python demo/run_demo.py`
 - `demo/benchmarks/run_benchmarks.py` exercises adversarial fixtures such as dynamic IDs, overlays, nested tables, and custom dropdowns
 
 Representative coverage areas include:

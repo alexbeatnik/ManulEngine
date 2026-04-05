@@ -134,11 +134,12 @@ demo/
   run_demo.py              Runner script for integration hunts (sets CWD, calls manul CLI)
   manul_engine_configuration.json  Demo-specific config (heuristics-only)
   pages.json               Page-name registry for demo sites
-  saucedemo.hunt           integration: login, inventory, cart (saucedemo.com)
-  demoqa.hunt              integration: forms, checkboxes, radios, tables (demoqa.com)
-  mega.hunt                integration: all element types, drag-drop, shadow DOM
-  rahul.hunt               integration: radios, autocomplete, hover
-  call_python_variants.hunt  integration: all CALL PYTHON variants (hooks, aliases, args)
+  tests/
+    saucedemo.hunt         integration: login, inventory, cart (saucedemo.com)
+    demoqa.hunt            integration: forms, checkboxes, radios, tables (demoqa.com)
+    mega.hunt              integration: all element types, drag-drop, shadow DOM
+    rahul.hunt             integration: radios, autocomplete, hover
+    call_python_variants.hunt  integration: all CALL PYTHON variants (hooks, aliases, args)
   scripts/                 Python helpers used by call_python_variants.hunt
   controls/                Educational @custom_control examples
   examples/                Additional Python helpers for CALL PYTHON demos
@@ -463,9 +464,9 @@ source venv/bin/activate        # Linux/Mac (venv)
 python run_tests.py
 
 # Integration demo hunts (needs network + Playwright browsers; Ollama optional)
-python demo/run_demo.py                  # run all demo hunts (headed)
-python demo/run_demo.py saucedemo.hunt   # single hunt
-python demo/run_demo.py --headless       # headless mode
+python demo/run_demo.py                              # run all demo hunts (headed)
+python demo/run_demo.py tests/saucedemo.hunt         # single hunt
+python demo/run_demo.py --headless                   # headless mode
 
 # General hunt execution (installed manul CLI or dev launcher)
 manul path/to/hunts/                     # run all *.hunt files in a dir
