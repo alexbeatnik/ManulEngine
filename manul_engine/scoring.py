@@ -32,8 +32,12 @@ from __future__ import annotations
 
 import math
 import re
+from typing import TYPE_CHECKING
 
 from .helpers import ContextualHint
+
+if TYPE_CHECKING:
+    from ._types import ElementSnapshot  # noqa: F401
 
 # ── Pre-compiled regex patterns (compiled once at module load) ────────────────
 

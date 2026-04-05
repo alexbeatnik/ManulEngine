@@ -3,8 +3,12 @@ import asyncio
 import hashlib
 import os
 import re
+from typing import TYPE_CHECKING
 
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+
+if TYPE_CHECKING:
+    from playwright.async_api import Page  # noqa: F401
 
 from .helpers import (
     ACTION_WAIT,
