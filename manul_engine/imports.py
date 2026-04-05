@@ -19,8 +19,7 @@ import os
 import re
 from typing import NamedTuple
 
-
-from manul_engine.exceptions import HuntImportError as HuntImportError  # noqa: F401 — backward compat re-export
+from manul_engine.exceptions import HuntImportError as HuntImportError
 
 
 class ImportDirective(NamedTuple):
