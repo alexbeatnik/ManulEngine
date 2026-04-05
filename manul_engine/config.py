@@ -28,12 +28,21 @@ from __future__ import annotations
 
 import dataclasses
 import json
-import logging
 import os
 from pathlib import Path
 from typing import Any
 
-log = logging.getLogger("manul_engine")
+from .logging_config import logger
+
+log = logger.getChild("config")
+
+
+def _resolve_cache_dir(raw_dir: str) -> str:
+    """Normalize cache directory: resolve relative paths against CWD."""
+    p = Path(raw_dir)
+    if not p.is_absolute():
+        p = Path.cwd() / p
+    return str(p.resolve())
 
 
 def _find_config_file() -> Path | None:
@@ -232,7 +241,7 @@ class EngineConfig:
             ai_always=_bool("ai_always", "MANUL_AI_ALWAYS"),
             ai_policy=_str("ai_policy", "MANUL_AI_POLICY", "prior"),
             controls_cache_enabled=_bool("controls_cache_enabled", "MANUL_CONTROLS_CACHE_ENABLED", True),
-            controls_cache_dir=_str("controls_cache_dir", "MANUL_CONTROLS_CACHE_DIR", "cache"),
+            controls_cache_dir=_resolve_cache_dir(_str("controls_cache_dir", "MANUL_CONTROLS_CACHE_DIR", "cache")),
             semantic_cache_enabled=_bool("semantic_cache_enabled", "MANUL_SEMANTIC_CACHE_ENABLED", True),
             auto_annotate=_bool("auto_annotate", "MANUL_AUTO_ANNOTATE"),
             retries=_int("retries", "MANUL_RETRIES", 0),

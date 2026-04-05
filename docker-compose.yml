@@ -1,3 +1,6 @@
+# Example docker-compose for running ManulEngine in Docker.
+# This is a reference template — mount your own hunts/ directory.
+# To run the shipped demo hunts, use: python demo/run_demo.py
 services:
   manul:
     build:
