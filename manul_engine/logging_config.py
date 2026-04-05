@@ -44,3 +44,4 @@ if not logger.handlers:
     )
     _handler.setFormatter(_formatter)
     logger.addHandler(_handler)
+    logger.propagate = False
