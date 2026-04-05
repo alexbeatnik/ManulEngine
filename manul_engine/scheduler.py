@@ -18,9 +18,8 @@ import os
 import re
 import sys
 import traceback
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import List
 
 # ── Schedule representation ──────────────────────────────────────────────────
 
@@ -199,8 +198,8 @@ async def daemon_main(args: list[str]) -> None:
     Scans *directory* for ``*.hunt`` files that declare ``@schedule:``,
     launches an async task per file, and runs forever.
     """
-    from .cli import parse_hunt_file
     from . import prompts as _prompts_scheduler
+    from .cli import parse_hunt_file
 
     headless = True if "--headless" in args else _prompts_scheduler.HEADLESS_MODE
     args_clean = [a for a in args if a != "--headless"]

@@ -35,8 +35,8 @@ from __future__ import annotations
 import ast
 import importlib.util
 import re
+from collections.abc import Callable
 from pathlib import Path, PurePosixPath
-from typing import Callable
 
 # ── Global registry ───────────────────────────────────────────────────────────
 # key: (page_name_lower, target_name_lower) → handler callable
@@ -134,7 +134,7 @@ def _iter_custom_control_targets(source: str) -> list[str]:
 def extract_required_controls(
     mission_text: str,
     workspace_dir: str,
-    custom_modules_dirs: "list[str] | None" = None,
+    custom_modules_dirs: list[str] | None = None,
 ) -> set[str]:
     """Pre-flight scan: identify which custom module ``.py`` files are needed.
 
@@ -187,8 +187,8 @@ def extract_required_controls(
 
 def load_custom_controls(
     workspace_dir: str,
-    required_modules: "set[str] | None" = None,
-    custom_modules_dirs: "list[str] | None" = None,
+    required_modules: set[str] | None = None,
+    custom_modules_dirs: list[str] | None = None,
 ) -> None:
     """Import custom control modules from workspace directories.
 

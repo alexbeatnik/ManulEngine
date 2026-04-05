@@ -13,11 +13,11 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def _default_session_id() -> str:
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     return f"session-{stamp}-{os.getpid()}"
 
 
@@ -169,7 +169,7 @@ def load_report_state(max_age_seconds: int | None = None) -> RunSummary | None:
         stat = os.stat(state_path)
     except OSError:
         return None
-    now = datetime.now(timezone.utc).timestamp()
+    now = datetime.now(UTC).timestamp()
     if max_age_seconds > 0 and (now - stat.st_mtime) > max_age_seconds:
         return None
     try:
@@ -230,7 +230,7 @@ def append_run_history(mission: MissionResult) -> None:
     record = {
         "file": mission.file,
         "name": mission.name,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "status": mission.status,
         "duration_ms": round(mission.duration_ms, 1),
     }
