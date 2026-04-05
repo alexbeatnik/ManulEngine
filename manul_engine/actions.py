@@ -906,7 +906,7 @@ class _ActionsMixin:
 
                 elif mode == "select":
                     if is_sel:
-                        opts = [expected[0]] if expected else [list(set(re.findall(r'\b[a-z0-9]{3,}\b', step_l)))[0]]
+                        opts = [expected[0]] if expected else [next(iter(set(re.findall(r'\b[a-z0-9]{3,}\b', step_l))))]
                         try: await loc.select_option(label=opts, timeout=3000)
                         except Exception as exc:
                             _log.debug("select_option(label=) failed, trying value: %s", exc)

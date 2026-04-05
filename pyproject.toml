@@ -77,8 +77,10 @@ ignore = [
     "S101",   # assert — used extensively in the custom test suite
     "S108",   # hardcoded-temp-file — /tmp paths in test HTML fixtures
     "S110",   # try-except-pass — intentional silent error handling in engine
+    "S324",   # hashlib-insecure — SHA1 used only for non-cryptographic cache keys
     "S603",   # subprocess call: check for execution of untrusted input
     "S607",   # start process with a partial executable path
+    "S608",   # sql-injection false positive — DSL string construction, not SQL
     "B905",   # zip() without strict= — backward compat with Python <3.10 idioms
     "RUF001", # ambiguous unicode char in string — intentional emoji in log messages
     "RUF002", # ambiguous unicode char in docstring — intentional unicode
@@ -89,6 +91,7 @@ fixable = ["ALL"]
 [tool.ruff.lint.per-file-ignores]
 "manul_engine/test/*" = ["S", "F601", "F811", "F841", "B"]
 "manul_engine/js_scripts.py" = ["E501", "W293"]
+"manul_engine/core.py" = ["E402"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["manul_engine"]

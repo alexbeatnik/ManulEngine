@@ -84,7 +84,7 @@ if _CONFIG_PATH.exists():
             _json_cfg_custom_controls_dirs = [str(d).strip() for d in _json_cfg["custom_controls_dirs"] if str(d).strip()]
     except (json.JSONDecodeError, OSError) as _cfg_err:
         import warnings
-        warnings.warn(f"ManulEngine: could not load config file '{_CONFIG_PATH}': {_cfg_err}")
+        warnings.warn(f"ManulEngine: could not load config file '{_CONFIG_PATH}': {_cfg_err}", stacklevel=2)
 
 # ── Core ──────────────────────────────────────────────────────────────────────
 # If MANUL_MODEL is unset or empty, DEFAULT_MODEL is None — AI is fully disabled.
@@ -162,7 +162,7 @@ if _PAGES_READ_PATH.exists():
                     PAGE_REGISTRY[_site_key] = {str(k): str(v) for k, v in _site_val.items()}
     except (json.JSONDecodeError, OSError) as _pages_err:
         import warnings as _warnings
-        _warnings.warn(f"ManulEngine: could not load pages file '{_PAGES_READ_PATH}': {_pages_err}")
+        _warnings.warn(f"ManulEngine: could not load pages file '{_PAGES_READ_PATH}': {_pages_err}", stacklevel=2)
 
 # Auto-create pages.json in CWD if it doesn't exist anywhere, so the user has
 # a ready-made file to populate after the first run.
