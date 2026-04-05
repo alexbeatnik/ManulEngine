@@ -3,17 +3,28 @@ import asyncio
 import hashlib
 import os
 import re
+
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
-from .helpers import extract_quoted, compact_log_field, SCROLL_WAIT, ACTION_WAIT, NAV_WAIT, detect_mode, parse_explicit_wait, parse_contextual_hint, parse_verify_strict_assertion
+from .helpers import (
+    ACTION_WAIT,
+    NAV_WAIT,
+    SCROLL_WAIT,
+    compact_log_field,
+    detect_mode,
+    extract_quoted,
+    parse_contextual_hint,
+    parse_explicit_wait,
+    parse_verify_strict_assertion,
+)
 from .js_scripts import (
-    VISIBLE_TEXT_JS,
-    EXTRACT_DATA_JS,
     DEEP_TEXT_JS,
-    STATE_CHECK_JS,
-    SCAN_JS,
-    FIND_CONTAINER_XPATH_JS,
+    EXTRACT_DATA_JS,
     FILTER_CONTAINER_DESCENDANT_XPATHS_JS,
+    FIND_CONTAINER_XPATH_JS,
+    SCAN_JS,
+    STATE_CHECK_JS,
+    VISIBLE_TEXT_JS,
 )
 from .logging_config import logger
 
@@ -199,7 +210,7 @@ class _ActionsMixin:
                 None, strategic_context, failed_ids=set(),
             )
             if el is None:
-                print(f"    ❌ PRESS: could not resolve target element")
+                print("    ❌ PRESS: could not resolve target element")
                 return False
             frame = self._frame_for(page, el)
             loc = frame.locator(f"xpath={el['xpath']}").first
@@ -338,7 +349,7 @@ class _ActionsMixin:
             for w in ("the", "of", "from", "a", "an", "text", "value"):
                 raw = re.sub(rf'\b{w}\b', '', raw).strip()
             hint = raw.strip()
-        
+
         currency_hint = ""
         curr_m = re.search(r'([$€£₴¥₹])', step)
         if curr_m:
@@ -361,7 +372,7 @@ class _ActionsMixin:
                     label_ws = set(re.findall(r'[a-z]{3,}', label_part))
                     if hint_ws & label_ws:
                         val = value_part
-            
+
             self.memory[var_m.group(1)] = val
             print(f"    📦 COLLECTED: {val}")
             return True
@@ -541,16 +552,16 @@ class _ActionsMixin:
 
             if is_negative:
                 if not found:
-                    print(f"    ✅ Verified ABSENT — OK")
+                    print("    ✅ Verified ABSENT — OK")
                     return True
                 if retry < self._VERIFY_MAX_RETRIES - 1:
                     await asyncio.sleep(1)
                     continue
-                print(f"    ❌ Text still present after retries")
+                print("    ❌ Text still present after retries")
                 return False
             else:
                 if found:
-                    print(f"    ✅ Verified — OK")
+                    print("    ✅ Verified — OK")
                     return True
                 if retry < self._VERIFY_MAX_RETRIES - 1:
                     await asyncio.sleep(1.5)
@@ -845,7 +856,7 @@ class _ActionsMixin:
             if mode == "locate":
                 try:
                     loc = frame.locator(f"xpath={xpath}").first
-                    if not is_shad: 
+                    if not is_shad:
                         await loc.scroll_into_view_if_needed(timeout=2000)
                         await self._highlight(page, loc)
                     else:
@@ -900,22 +911,22 @@ class _ActionsMixin:
                         except Exception as exc:
                             _log.debug("select_option(label=) failed, trying value: %s", exc)
                             await loc.select_option(value=[o.lower() for o in opts], timeout=3000)
-                    else: 
+                    else:
                         print(f"    🖱️  Clicked (Custom Select) '{self._fmt_el_name(name)}'")
                         try:
                             await loc.click(force=True, timeout=3000)
                         except Exception as exc:
                             _log.debug("Custom select click failed, using JS fallback: %s", exc)
                             await frame.evaluate("id => window.manulClick(id)", el_id)
-                        
+
                         if expected:
-                            await asyncio.sleep(0.5) 
+                            await asyncio.sleep(0.5)
                             option_text = expected[0]
                             print(f"    🖱️  Selecting option '{option_text}'")
                             try:
                                 opt_loc = frame.locator(f"[role='option']:has-text('{option_text}'), [role='menuitem']:has-text('{option_text}')").first
                                 await opt_loc.click(timeout=3000)
-                            except Exception as exc:
+                            except Exception:
                                 try:
                                     opt_loc = frame.locator(f"text='{option_text}'").last
                                     await opt_loc.click(timeout=3000)
@@ -958,7 +969,7 @@ class _ActionsMixin:
                 )
                 return True
 
-            except Exception as ex:
+            except Exception:
                 print(f"    ⚠️  Element not actionable (attempt {attempt+1}/3), trying next candidate...")
                 failed_ids.add(_ek)
                 self.last_xpath = None
@@ -973,7 +984,9 @@ class _ActionsMixin:
         Handle:  SCAN PAGE                   → print draft steps to console
                  SCAN PAGE into {filename}   → also write to file
         """
-        import json, os
+        import json
+        import os
+
         from .scanner import build_hunt
 
         # Detect optional output filename: "into {filename}" or "into 'filename'"
@@ -1050,7 +1063,7 @@ class _ActionsMixin:
             return False
 
         try:
-            with open(resolved, "r", encoding="utf-8") as f:
+            with open(resolved, encoding="utf-8") as f:
                 body = f.read()
         except (OSError, UnicodeError) as e:
             print(f"    ❌ MOCK: failed to read mock file {mock_file}: {e}")
@@ -1063,7 +1076,7 @@ class _ActionsMixin:
         pattern_key = f"**{url_pattern}"
         mock_routes: dict = getattr(page, "_manul_mock_routes", None) or {}
         if not hasattr(page, "_manul_mock_routes"):
-            setattr(page, "_manul_mock_routes", mock_routes)
+            page._manul_mock_routes = mock_routes
 
         if pattern_key not in mock_routes:
             mock_routes[pattern_key] = {}
@@ -1171,8 +1184,9 @@ class _ActionsMixin:
         Returns True if images match within threshold.
         """
         try:
-            from PIL import Image, ImageChops  # type: ignore
             import io
+
+            from PIL import Image, ImageChops  # type: ignore
             baseline_img = Image.open(baseline_path).convert("RGBA")
             actual_img = Image.open(io.BytesIO(actual_bytes)).convert("RGBA")
 

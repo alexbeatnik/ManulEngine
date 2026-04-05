@@ -87,8 +87,8 @@ ignore = [
 fixable = ["ALL"]
 
 [tool.ruff.lint.per-file-ignores]
-"manul_engine/test/*" = ["S101", "S603", "S607"]
-"manul_engine/js_scripts.py" = ["E501"]
+"manul_engine/test/*" = ["S", "F601", "F811", "F841", "B"]
+"manul_engine/js_scripts.py" = ["E501", "W293"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["manul_engine"]

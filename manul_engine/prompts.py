@@ -15,8 +15,8 @@ Exports:
 
 import json
 import os
-from pathlib import Path
 import re as _re
+from pathlib import Path
 
 from .helpers import env_bool
 

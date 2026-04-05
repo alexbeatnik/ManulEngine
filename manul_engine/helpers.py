@@ -3,10 +3,10 @@
 Shared helper functions and timing constants used across the engine.
 """
 
-from dataclasses import dataclass, field
-from typing import NamedTuple
 import os
 import re
+from dataclasses import dataclass, field
+from typing import NamedTuple
 
 # ── Timing constants ──────────────────────────────────────────────────────────
 SCROLL_WAIT = 1.5

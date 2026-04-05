@@ -75,7 +75,7 @@ def build_hunt(url: str, elements: list[dict]) -> str:
         "",
         f"STEP 1:\n    NAVIGATE to {url}",
         "",
-        f"STEP 2:\n    WAIT 2",
+        "STEP 2:\n    WAIT 2",
         "",
     ]
 
@@ -184,7 +184,8 @@ async def scan_page(
 
 def _default_output(filename: str = "draft.hunt") -> str:
     """Return tests_home/filename, reading tests_home from the project config."""
-    import json, pathlib
+    import json
+    import pathlib
     cfg_path = pathlib.Path.cwd() / "manul_engine_configuration.json"
     if not cfg_path.exists():
         cfg_path = pathlib.Path(__file__).resolve().parents[1] / "manul_engine_configuration.json"

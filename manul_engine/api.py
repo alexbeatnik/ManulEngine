@@ -27,12 +27,12 @@ import os
 import re
 from typing import Any
 
-from playwright.async_api import async_playwright, Playwright, Browser, BrowserContext, Page
+from playwright.async_api import Browser, BrowserContext, Page, Playwright, async_playwright
 
 from .core import ManulEngine
 from .helpers import classify_step, substitute_memory
+from .reporting import MissionResult, StepResult
 from .variables import ScopedVariables
-from .reporting import StepResult, MissionResult
 
 
 def _quote_for_dsl(text: str) -> str:
@@ -94,7 +94,7 @@ class ManulSession:
 
     # ── Lifecycle ─────────────────────────────────────────────────────────
 
-    async def start(self) -> "ManulSession":
+    async def start(self) -> ManulSession:
         """Launch the browser and open a page.  Called by ``__aenter__``."""
         eng = self._engine
         self._pw_cm = async_playwright()
@@ -173,7 +173,7 @@ class ManulSession:
         self._context = None
         self._page = None
 
-    async def __aenter__(self) -> "ManulSession":
+    async def __aenter__(self) -> ManulSession:
         await self.start()
         return self
 
@@ -418,7 +418,7 @@ class ManulSession:
         skips browser launch/teardown — the session already owns the page.
         """
         import time
-        import traceback
+
         from .hooks import execute_hook_line
 
         eng = self._engine

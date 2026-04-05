@@ -70,7 +70,7 @@ _STOP_WORDS = frozenset({
 
 class _SearchTerm:
     """Pre-computed search-term data for efficient per-element matching."""
-    __slots__ = ("text", "dashed", "words", "id_variants")
+    __slots__ = ("dashed", "id_variants", "text", "words")
 
     def __init__(self, raw: str) -> None:
         self.text: str = raw.lower().strip()
@@ -802,11 +802,11 @@ def score_elements(
     target_field: str | None,
     is_blind: bool,
     learned_elements: dict,
-    last_xpath: "str | None",
+    last_xpath: str | None,
     explain: bool = False,
-    contextual_hint: "ContextualHint | None" = None,
-    anchor_rect: "dict | None" = None,
-    container_elements: "list[dict] | None" = None,
+    contextual_hint: ContextualHint | None = None,
+    anchor_rect: dict | None = None,
+    container_elements: list[dict] | None = None,
     viewport_height: int = 0,
 ) -> list[dict]:
     """Score and rank DOM elements against a given step.

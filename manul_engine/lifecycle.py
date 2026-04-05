@@ -66,11 +66,9 @@ import importlib.util
 import json
 import os
 import traceback
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from types import ModuleType
-from typing import Callable
-
 
 # ── Shared context object ─────────────────────────────────────────────────────
 

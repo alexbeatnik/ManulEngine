@@ -124,7 +124,7 @@ class ScopedVariables:
                 for k, v in store.items():
                     lines.append(f"  │  {{{k}}} = {v}")
             else:
-                lines.append(f"  │  (empty)")
+                lines.append("  │  (empty)")
             lines.append(f"  └{'─' * 50}")
         return "\n".join(lines)
 
