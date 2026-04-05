@@ -28,14 +28,12 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Any
 
-
-def _env_bool(key: str, default: str = "") -> bool:
-    """Read a boolean from an environment variable (local helper)."""
-    return os.getenv(key, default).strip().lower() in ("1", "true", "yes")
+log = logging.getLogger("manul_engine")
 
 
 def _find_config_file() -> Path | None:
@@ -107,8 +105,10 @@ class EngineConfig:
             try:
                 with open(cfg_path, encoding="utf-8") as f:
                     raw = json.load(f)
-            except (json.JSONDecodeError, OSError):
-                pass
+            except json.JSONDecodeError as exc:
+                log.warning("EngineConfig: invalid JSON in %s: %s", cfg_path, exc)
+            except OSError as exc:
+                log.warning("EngineConfig: cannot read %s: %s", cfg_path, exc)
 
         return cls._build(raw)
 
@@ -124,7 +124,13 @@ class EngineConfig:
         """Merge JSON *raw* dict with env vars and return a frozen instance."""
 
         def _str(key: str, env: str, default: str = "") -> str:
-            return (os.getenv(env) or str(raw.get(key, default))).strip()
+            env_val = os.getenv(env)
+            if env_val:
+                return env_val.strip()
+            val = raw.get(key)
+            if val is not None:
+                return str(val).strip()
+            return default
 
         def _int(key: str, env: str, default: int) -> int:
             raw_val = os.getenv(env)

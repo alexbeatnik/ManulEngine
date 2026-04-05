@@ -71,7 +71,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         break_steps:    "set[int] | None" = None,
         disable_cache:  bool          = False,
         semantic_cache: "bool | None" = None,     # None → read from config/env
-        explain_mode:   bool          = False,
+        explain_mode:   "bool | None" = None,
         required_controls: "set[str] | None" = None,  # lazy-load: filenames from extract_required_controls
         config:         "EngineConfig | None" = None,  # injectable config (takes priority)
         **_kwargs,
@@ -151,7 +151,12 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         self._executor_prompt = prompts.get_executor_prompt(self.model)
         self._planner_prompt  = prompts.PLANNER_SYSTEM_PROMPT
         self.debug_mode = debug_mode
-        self.explain_mode = _cfg.explain_mode if _cfg and not explain_mode else explain_mode
+        if explain_mode is not None:
+            self.explain_mode = explain_mode
+        elif _cfg:
+            self.explain_mode = _cfg.explain_mode
+        else:
+            self.explain_mode = False
         self._debug_continue = False   # set to True by 'Continue All' in debug session
         self._user_break_steps: set[int] = set(break_steps) if break_steps else set()
         self.break_steps: set[int] = set(self._user_break_steps)
