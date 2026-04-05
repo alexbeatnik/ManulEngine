@@ -23,7 +23,8 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 
 ```text
 ManulEngine/
-├── manul.py                          Dev CLI entry point (intercepts `test` subcommand)
+├── manul.py                          Dev CLI entry point (run hunts from repo root without install)
+├── run_tests.py                      Synthetic DOM test suite runner (dev only)
 ├── manul_engine_configuration.json   Project configuration (JSON)
 ├── pyproject.toml                    Build config — package: manul-engine 0.0.9.25
 ├── requirements.txt                  Python dependencies
@@ -651,7 +652,7 @@ cache/
 
 Relative `controls_cache_dir` is resolved against CWD (the directory where you invoke `manul`), not the package installation path.
 
-Synthetic tests (`python manul.py test`) disable cache by default for deterministic, side-effect-free results.
+Synthetic tests (`python run_tests.py`) disable cache by default for deterministic, side-effect-free results.
 
 ---
 
@@ -693,8 +694,8 @@ manul path/to/hunts/ --retries 2 --screenshot on-fail --html-report
 # Screenshots for every step
 manul path/to/hunts/ --screenshot always --html-report
 
-# Dev launcher (from repo root, no install needed)
-python manul.py test
+# Synthetic DOM test suite (dev only, no install needed)
+python run_tests.py
 
 # Integration demo hunts (needs network + Playwright browsers)
 python demo/run_demo.py
@@ -846,11 +847,11 @@ Run the synthetic suite:
 
 ```bash
 # From repo root (dev mode)
-python manul.py test
+python run_tests.py
 
 # Heuristics-only (no Ollama), deterministic:
 # Set "model": null in manul_engine_configuration.json
-python manul.py test
+python run_tests.py
 ```
 
 ---
@@ -930,7 +931,7 @@ The published extension provides:
 
 - **`EngineConfig` frozen dataclass:** New `config.py` module with injectable `EngineConfig` replacing module-level globals. `ManulEngine.__init__` accepts an optional `config` parameter; all runtime settings are stored as instance attributes.
 - **`run_mission()` decomposition:** Extracted `_launch_browser()` and `_parse_task()` from the 400-line `run_mission()` method.
-- **Demo directory restructure:** All integration hunts, scripts, controls, benchmarks, and pages.json moved to `demo/`. New `demo/run_demo.py` runner. `manul.py test` is now exclusively for the synthetic test suite.
+- **Demo directory restructure:** All integration hunts, scripts, controls, benchmarks, and pages.json moved to `demo/`. New `demo/run_demo.py` runner. Synthetic test suite extracted to standalone `run_tests.py`.
 - **Security hygiene:** Eliminated false-positive "shell access" alert from package security scanners (socket.dev).
 
 <details>

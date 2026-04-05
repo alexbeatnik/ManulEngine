@@ -73,7 +73,7 @@
     },
     {
       "id": "test",
-      "syntax": "python manul.py test",
+      "syntax": "python run_tests.py",
       "description": "Dev-only: runs the synthetic DOM test suite. Only available via the dev CLI entry point (manul.py), not the installed console_scripts command.",
       "devOnly": true
     },

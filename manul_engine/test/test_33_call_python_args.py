@@ -14,7 +14,7 @@ Tests:
   6. Engine integration — run_mission passes self.memory as variables.
 
 Entry point ``run_suite()`` is picked up by the dev test runner
-(``python manul.py test``) and must remain async.
+(``python run_tests.py``) and must remain async.
 """
 
 from __future__ import annotations

@@ -11,7 +11,7 @@ No live browser required — tests exercise:
   3. Handler methods via mocked Playwright page objects
 
 Entry point ``run_suite()`` is picked up by the dev test runner
-(``python manul.py test``) and must remain async.
+(``python run_tests.py``) and must remain async.
 """
 
 from __future__ import annotations

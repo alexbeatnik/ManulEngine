@@ -265,7 +265,7 @@ There are two levels of Python orchestration:
 
 The repo ships with both synthetic tests and adversarial fixtures. The point is not to claim maturity. The point is to show that the scoring model, parser, hooks, recorder, scheduler, and reporter are exercised against concrete failure modes.
 
-- `python manul.py test` runs the synthetic and unit suite.
+- `python run_tests.py` runs the synthetic and unit suite.
 - `demo/benchmarks/run_benchmarks.py` exercises dynamic IDs, overlapping traps, nested tables, and custom dropdown fixtures.
 - `demo/*.hunt` holds integration-style hunts for real browser flows — run them with `python demo/run_demo.py`.
 
@@ -453,7 +453,7 @@ manul path/to/login.hunt
 Useful commands:
 
 ```bash
-python manul.py test
+python run_tests.py
 manul path/to/hunts/
 manul --headless path/to/file.hunt
 manul --html-report --screenshot on-fail path/to/hunts/
@@ -619,7 +619,7 @@ def teardown(ctx: GlobalContext) -> None:
 
 The project is alpha, but it is not undocumented or untested.
 
-- `python manul.py test` runs the synthetic and unit suite
+- `python run_tests.py` runs the synthetic and unit suite
 - `demo/*.hunt` holds integration-style hunts — run with `python demo/run_demo.py`
 - `demo/benchmarks/run_benchmarks.py` exercises adversarial fixtures such as dynamic IDs, overlays, nested tables, and custom dropdowns
 
@@ -665,7 +665,7 @@ The image runs as non-root user `manul` (UID 1000), includes `dumb-init` for pro
 
 - **`EngineConfig` frozen dataclass:** New `config.py` module with injectable `EngineConfig` replacing module-level globals. `ManulEngine.__init__` accepts an optional `config` parameter; all runtime settings (timeouts, AI, auto-annotate) are stored as instance attributes.
 - **`run_mission()` decomposition:** Extracted `_launch_browser()` and `_parse_task()` from the 400-line `run_mission()` method for testability and readability.
-- **Demo directory restructure:** All integration hunts, scripts, controls, benchmarks, and pages.json moved to `demo/`. New `demo/run_demo.py` runner script. `manul.py test` is now exclusively for the synthetic test suite.
+- **Demo directory restructure:** All integration hunts, scripts, controls, benchmarks, and pages.json moved to `demo/`. New `demo/run_demo.py` runner script. Synthetic test suite extracted to standalone `run_tests.py`.
 - **Security hygiene:** Eliminated false-positive "shell access" alert from package security scanners (socket.dev).
 
 <details>

@@ -58,7 +58,8 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 ## Repository layout
 
 ```text
-manul.py                   Dev CLI entry point (intercepts `test` subcommand)
+manul.py                   Dev CLI entry point (run hunts from repo root without install)
+run_tests.py               Synthetic DOM test suite runner (dev only)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.25
 manul_engine/
@@ -459,7 +460,7 @@ source venv/bin/activate        # Linux/Mac (venv)
 .venv\Scripts\activate          # Windows
 
 # Synthetic DOM laboratory tests (local HTML via Playwright; no real websites)
-python manul.py test
+python run_tests.py
 
 # Integration demo hunts (needs network + Playwright browsers; Ollama optional)
 python demo/run_demo.py                  # run all demo hunts (headed)
@@ -499,9 +500,9 @@ Ollama is optional — only needed as a last-resort self-healing fallback:
 
 To use Ollama: install the [Ollama app](https://ollama.com), run `pip install ollama==0.6.1` (Python client), pull a model (`ollama pull qwen2.5:0.5b`), and start the server (`ollama serve`).
 
-**Rule:** after any engine change, `python manul.py test` must exit with code **0**.
+**Rule:** after any engine change, `python run_tests.py` must exit with code **0**.
 Tip: `"model": null` (the default) forces heuristics-only mode. This is the recommended configuration for deterministic tests and CI pipelines.
-Note: `python manul.py test` disables persistent controls cache by default for deterministic synthetic suites. `test_13_controls_cache.py` explicitly enables cache in a temporary `cache/run_<datetime>` folder and removes it after the test.
+Note: `python run_tests.py` disables persistent controls cache by default for deterministic synthetic suites. `test_13_controls_cache.py` explicitly enables cache in a temporary `cache/run_<datetime>` folder and removes it after the test.
 
 ## Docker CI/CD Runner
 

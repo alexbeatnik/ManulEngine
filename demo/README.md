@@ -4,7 +4,7 @@ This directory contains **integration demo** `.hunt` files that exercise ManulEn
 against real websites.  They require network access and installed Playwright browsers.
 
 > **Note:** These are NOT unit/synthetic tests.  The synthetic DOM test suite lives
-> in `manul_engine/test/` and is invoked with `python manul.py test` from the repo root.
+> in `manul_engine/test/` and is invoked with `python run_tests.py` from the repo root.
 
 ## Directory layout
 

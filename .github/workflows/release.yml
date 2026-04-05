@@ -27,7 +27,7 @@ jobs:
           pip install -e .
           playwright install chromium --with-deps
       - name: Run synthetic tests
-        run: python manul.py test
+        run: python run_tests.py
 
   # ── 2. Build Python package ────────────────────────────────────────
   build-python:

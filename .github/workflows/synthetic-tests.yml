@@ -29,4 +29,4 @@ jobs:
 
       - name: Run synthetic engine tests
         run: |
-          python manul.py test
+          python run_tests.py

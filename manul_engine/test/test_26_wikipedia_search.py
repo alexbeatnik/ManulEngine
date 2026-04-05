@@ -15,7 +15,7 @@ attribute (e.g. name="search", name="q") is now exposed in element dicts
 and used as a secondary scoring signal in the text-matching pass.
 
 Entry point ``run_suite()`` is picked up by the dev test runner
-(``python manul.py test``) and must remain async.
+(``python run_tests.py``) and must remain async.
 """
 
 from __future__ import annotations
