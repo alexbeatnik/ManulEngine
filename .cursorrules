@@ -43,6 +43,23 @@ Follow these rules before generating code, documentation, architecture notes, or
 - Playwright is used for both web automation and local Electron app automation.
 - Always preserve support for the `executable_path` configuration when implementing launch flows, config UIs, docs, or integration code.
 
+### Exception hierarchy
+
+- `exceptions.py` owns the structured hierarchy: `ManulEngineError(Exception)` base, plus `ConfigurationError`, `ElementResolutionError`, `HookExecutionError`, `HuntImportError`, `VerificationError`, `SessionError`, `ScheduleError`.
+- Multi-inheritance (`ValueError`, `RuntimeError`) preserves backward compatibility; all exceptions re-exported from `__init__.py`.
+
+### Type definitions and thread safety
+
+- `_types.py` owns `ElementSnapshot` TypedDict — used with `TYPE_CHECKING` imports, not at runtime.
+- `controls.py` uses `_REGISTRY_LOCK`; `hooks.py` uses `_CACHE_LOCK` — both `threading.Lock`.
+- `EngineConfig.validate()` checks invariants before the engine starts.
+
+### Static analysis
+
+- Ruff (target-version `py311`, line-length `120`) and mypy configs live in `pyproject.toml`.
+- `lint.yml` CI workflow gates on `ruff check` + `ruff format --check`.
+- `release.yml` includes a lint gate before PyPI publish.
+
 ## 3. Versioning and Dependencies
 
 - Treat `0.0.9.26` as the current engine version for this documentation and release line.
