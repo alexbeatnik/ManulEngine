@@ -101,7 +101,7 @@ STEP 2: Text inputs
     # Fill detects the "input" interaction mode from keywords like
     # "fill", "type", "enter". The engine resolves the target by
     # heuristic scoring — quoted text gets the strongest signal.
-    Fill "Name" field with "Mega Manul"
+    Fill "Email" field with "Mega Manul"
     Fill "Email" field with "mega@manul.ai"
     Fill "Phone" field with "9876543210"
     # Adding "textarea" outside the quotes acts as an element-type hint,

@@ -147,9 +147,9 @@ Run a hunt in Debug mode through Test Explorer, then hover over any resolved ste
 
 ### What-If Analysis REPL (Explain Next)
 
-During a debug pause — either in the terminal (`--debug`) or through the VS Code extension (`--break-lines`) — type `w` or send the `what-if` token to enter the interactive What-If Analysis REPL (terminal only — the REPL is unavailable in extension protocol mode because stdin is reserved for debug control tokens).
+During a debug pause in the terminal (`--debug`), type `w` to enter the interactive What-If Analysis REPL. This REPL is terminal-only; it is unavailable in VS Code extension protocol mode (`--break-lines`) because stdin is reserved for debug control tokens.
 
-For a **one-shot evaluation** without entering the REPL, type `e` (terminal) or send the `explain-next` token (extension protocol). The extension protocol also accepts an optional JSON payload to evaluate a different step: `explain-next {"step":"Click the 'Cancel' button"}`.
+For a **one-shot evaluation** without entering the REPL, type `e` in terminal mode or use the `explain-next` token in extension protocol mode. The extension protocol also accepts an optional JSON payload to evaluate a different step: `explain-next {"step":"Click the 'Cancel' button"}`.
 
 The REPL and one-shot mode both evaluate hypothetical steps against the live browser state **without executing them**. They capture a read-only DOM snapshot, run DOMScorer heuristics in-memory, optionally query the configured LLM, and return a 0–10 confidence score with an explanation.
 

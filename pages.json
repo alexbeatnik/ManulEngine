@@ -2,5 +2,9 @@
     "https://example.com/": {
         "Domain": "Auto: example.com/login",
         "https://example.com/login": "Auto: example.com/login"
+    },
+    "https://testautomationpractice.blogspot.com/": {
+        "Domain": "Auto: testautomationpractice.blogspot.com",
+        "https://testautomationpractice.blogspot.com/": "Auto: testautomationpractice.blogspot.com"
     }
 }

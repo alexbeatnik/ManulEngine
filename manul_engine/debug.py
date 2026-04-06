@@ -191,7 +191,9 @@ class _DebugMixin:
              - ``'explain-next'``  : evaluate upcoming step via ExplainNextDebugger,
                emit ``\\x00MANUL_EXPLAIN_NEXT\\x00{json}\\n`` marker, stay paused.
                Optionally ``explain-next {"step":"..."}`` to evaluate overridden text.
-             - ``'what-if'``       : enter the Explain Next what-if REPL
+             - ``'what-if'``       : disabled in extension protocol mode (stdin
+               reserved for control tokens); prints an informational message
+               and stays paused.  The interactive REPL is terminal-only.
              - ``'continue'``      : reset to original gutter breakpoints, proceed
              - ``'next'``          : also pause at the immediately following step
              - ``'debug-stop'``    : clear all breakpoints, run to end
