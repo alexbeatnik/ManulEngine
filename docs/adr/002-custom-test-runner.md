@@ -1,7 +1,7 @@
 # ADR-002: Custom test runner instead of pytest
 
 **Status:** Accepted
-**Date:** 2024-11
+**Date:** 2026-04
 
 ## Context
 
