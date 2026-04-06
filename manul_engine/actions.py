@@ -964,7 +964,12 @@ class _ActionsMixin:
                 replacement_step = getattr(self, "_what_if_execute_step", None)
                 if replacement_step:
                     self._what_if_execute_step = None
-                    return await self._execute_step(page, replacement_step, step_idx)
+                    return await self._execute_step(
+                        page,
+                        replacement_step,
+                        strategic_context=strategic_context,
+                        step_idx=step_idx,
+                    )
 
             try:
                 if mode == "input":

@@ -958,11 +958,14 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                         # What-If REPL: if the debugger chose a step to execute,
                         # replace the current step and re-classify it.
                         if self._what_if_execute_step is not None:
-                            step = self._what_if_execute_step
-                            raw_step = step
+                            injected_step = self._what_if_execute_step
+                            step = substitute_memory(injected_step, self.memory)
                             step_kind = classify_step(step)
                             self._what_if_execute_step = None
-                            print(f"  [🔮 WHAT-IF EXECUTE] {step}")
+                            if step != injected_step:
+                                print(f"  [🔮 WHAT-IF EXECUTE] {injected_step} -> {step}")
+                            else:
+                                print(f"  [🔮 WHAT-IF EXECUTE] {step}")
 
                         _auto_annotate_live = (
                             _environ.get("MANUL_AUTO_ANNOTATE", "").strip().lower() in ("1", "true", "yes")

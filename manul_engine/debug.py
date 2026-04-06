@@ -273,11 +273,11 @@ class _DebugMixin:
                             print(f"    ❌ Explain-next evaluation failed: {exc}")
                         continue  # stay in the pause loop
                     elif resp == "what-if":
-                        dbg = self._get_explain_next()
-                        chosen = await dbg.run_repl(page, current_step=step)
-                        if chosen is not None:
-                            self._what_if_execute_step = chosen
-                        break
+                        print(
+                            "    ℹ️  'what-if' interactive REPL is unavailable in extension "
+                            "protocol mode because stdin is reserved for debug control tokens."
+                        )
+                        continue  # loop: re-emit the marker
                     elif resp == "debug-stop":
                         self._user_break_steps = set()
                         self.break_steps = set()
