@@ -52,6 +52,7 @@ def _assert(condition: bool, name: str, detail: str = "") -> None:
 
 # ── Section 1: Registry correctness ──────────────────────────────────────────
 
+
 def _test_registry() -> None:
     print("\n  ── Registry (decorator + lookup) ────────────────────────────")
 
@@ -140,9 +141,7 @@ def _test_registry() -> None:
             pass
 
         _assert(
-            asyncio.iscoroutinefunction(
-                get_custom_control("Search Page", "Date Range")
-            ),
+            asyncio.iscoroutinefunction(get_custom_control("Search Page", "Date Range")),
             "async handler stored and detectable via iscoroutinefunction",
         )
 
@@ -152,6 +151,7 @@ def _test_registry() -> None:
 
 
 # ── Section 2: Engine interception ───────────────────────────────────────────
+
 
 async def _test_interception() -> None:
     print("\n  ── Engine interception (core.py else-branch) ────────────────")
@@ -172,6 +172,7 @@ async def _test_interception() -> None:
         # We patch load_custom_controls so it does not scan the filesystem
         # (which would overwrite our synthetic registry entry).
         from manul_engine.core import ManulEngine
+
         engine = ManulEngine(model=None, disable_cache=True)
 
         # Patch out the parts of run_mission we do not want to exercise:
@@ -270,6 +271,7 @@ async def _test_interception() -> None:
 
 
 # ── Section 3: Pre-flight extraction & lazy loading ──────────────────────────
+
 
 def _test_extraction_and_lazy_loading() -> None:
     import tempfile
@@ -407,6 +409,7 @@ def _test_extraction_and_lazy_loading() -> None:
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
+
 
 async def run_suite() -> bool:
     global _PASS, _FAIL

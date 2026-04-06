@@ -1,5 +1,6 @@
 import sys, os, asyncio
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from playwright.async_api import async_playwright
 from manul_engine import ManulEngine
 
@@ -68,64 +69,55 @@ ENABLED_DOM = """
 # ─────────────────────────────────────────────────────────────────────────────
 TESTS = [
     # ── Group 1: simple buttons ──────────────────────────────────────
-    {"n": "1. Active button is ENABLED",
-     "step": "VERIFY that 'Active Button' is ENABLED", "res": True},
-    {"n": "2. Inactive button is DISABLED",
-     "step": "VERIFY that 'Inactive Button' is DISABLED", "res": True},
-
+    {"n": "1. Active button is ENABLED", "step": "VERIFY that 'Active Button' is ENABLED", "res": True},
+    {"n": "2. Inactive button is DISABLED", "step": "VERIFY that 'Inactive Button' is DISABLED", "res": True},
     # ── Group 2: inputs ──────────────────────────────────────────────
-    {"n": "3. Active input is ENABLED",
-     "step": "VERIFY that 'Active Input' is ENABLED", "res": True},
-    {"n": "4. Inactive input is DISABLED",
-     "step": "VERIFY that 'Inactive Input' is DISABLED", "res": True},
-
+    {"n": "3. Active input is ENABLED", "step": "VERIFY that 'Active Input' is ENABLED", "res": True},
+    {"n": "4. Inactive input is DISABLED", "step": "VERIFY that 'Inactive Input' is DISABLED", "res": True},
     # ── Group 3: select ──────────────────────────────────────────────
-    {"n": "5. Active select is ENABLED",
-     "step": "VERIFY that 'Active Select' is ENABLED", "res": True},
-    {"n": "6. Inactive select is DISABLED",
-     "step": "VERIFY that 'Inactive Select' is DISABLED", "res": True},
-
+    {"n": "5. Active select is ENABLED", "step": "VERIFY that 'Active Select' is ENABLED", "res": True},
+    {"n": "6. Inactive select is DISABLED", "step": "VERIFY that 'Inactive Select' is DISABLED", "res": True},
     # ── Group 4: textarea ────────────────────────────────────────────
-    {"n": "7. Active textarea is ENABLED",
-     "step": "VERIFY that 'Active Textarea' is ENABLED", "res": True},
-    {"n": "8. Inactive textarea is DISABLED",
-     "step": "VERIFY that 'Inactive Textarea' is DISABLED", "res": True},
-
+    {"n": "7. Active textarea is ENABLED", "step": "VERIFY that 'Active Textarea' is ENABLED", "res": True},
+    {"n": "8. Inactive textarea is DISABLED", "step": "VERIFY that 'Inactive Textarea' is DISABLED", "res": True},
     # ── Group 5: anchor with aria-disabled ───────────────────────────
-    {"n": "9. Active link is ENABLED",
-     "step": "VERIFY that 'Active Link' is ENABLED", "res": True},
-    {"n": "10. Inactive link is DISABLED (aria-disabled)",
-     "step": "VERIFY that 'Inactive Link' is DISABLED", "res": True},
-
+    {"n": "9. Active link is ENABLED", "step": "VERIFY that 'Active Link' is ENABLED", "res": True},
+    {
+        "n": "10. Inactive link is DISABLED (aria-disabled)",
+        "step": "VERIFY that 'Inactive Link' is DISABLED",
+        "res": True,
+    },
     # ── Group 6: div role=button with CSS disabled class ─────────────
-    {"n": "11. Active div-button is ENABLED",
-     "step": "VERIFY that 'Active Action' is ENABLED", "res": True},
-    {"n": "12. Inactive div-button is DISABLED (class)",
-     "step": "VERIFY that 'Inactive Action' is DISABLED", "res": True},
-
+    {"n": "11. Active div-button is ENABLED", "step": "VERIFY that 'Active Action' is ENABLED", "res": True},
+    {
+        "n": "12. Inactive div-button is DISABLED (class)",
+        "step": "VERIFY that 'Inactive Action' is DISABLED",
+        "res": True,
+    },
     # ── Group 7: label with associated control ───────────────────────
-    {"n": "13. Label with enabled control is ENABLED",
-     "step": "VERIFY that 'Active Control' is ENABLED", "res": True},
-    {"n": "14. Label with disabled control is DISABLED",
-     "step": "VERIFY that 'Inactive Control' is DISABLED", "res": True},
-
+    {"n": "13. Label with enabled control is ENABLED", "step": "VERIFY that 'Active Control' is ENABLED", "res": True},
+    {
+        "n": "14. Label with disabled control is DISABLED",
+        "step": "VERIFY that 'Inactive Control' is DISABLED",
+        "res": True,
+    },
     # ── Group 8: aria-disabled attribute (no native disabled) ────────
-    {"n": "15. Aria active button is ENABLED",
-     "step": "VERIFY that 'Aria Active' is ENABLED", "res": True},
-    {"n": "16. Aria-disabled button is DISABLED",
-     "step": "VERIFY that 'Aria Inactive' is DISABLED", "res": True},
-
+    {"n": "15. Aria active button is ENABLED", "step": "VERIFY that 'Aria Active' is ENABLED", "res": True},
+    {"n": "16. Aria-disabled button is DISABLED", "step": "VERIFY that 'Aria Inactive' is DISABLED", "res": True},
     # ── Group 9: disabled="" attribute ───────────────────────────────
-    {"n": "17. disabled='' attribute counts as DISABLED",
-     "step": "VERIFY that 'Attr Disabled' is DISABLED", "res": True},
-    {"n": "18. No disabled attr counts as ENABLED",
-     "step": "VERIFY that 'No Attr' is ENABLED", "res": True},
-
+    {
+        "n": "17. disabled='' attribute counts as DISABLED",
+        "step": "VERIFY that 'Attr Disabled' is DISABLED",
+        "res": True,
+    },
+    {"n": "18. No disabled attr counts as ENABLED", "step": "VERIFY that 'No Attr' is ENABLED", "res": True},
     # ── Group 10: role=menuitem / tab ────────────────────────────────
-    {"n": "19. Active menu item is ENABLED",
-     "step": "VERIFY that 'Active Menu Item' is ENABLED", "res": True},
-    {"n": "20. Inactive menu item is DISABLED (aria-disabled)",
-     "step": "VERIFY that 'Inactive Menu Item' is DISABLED", "res": True},
+    {"n": "19. Active menu item is ENABLED", "step": "VERIFY that 'Active Menu Item' is ENABLED", "res": True},
+    {
+        "n": "20. Inactive menu item is DISABLED (aria-disabled)",
+        "step": "VERIFY that 'Inactive Menu Item' is DISABLED",
+        "res": True,
+    },
 ]
 
 

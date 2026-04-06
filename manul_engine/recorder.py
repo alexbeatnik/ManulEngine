@@ -254,6 +254,7 @@ def _event_to_dsl(event: dict) -> str | None:
 
 # ── Step aggregation ──────────────────────────────────────────────────────────
 
+
 def _aggregate_event(
     event: dict,
     recorded_lines: list[str],
@@ -288,6 +289,7 @@ def _aggregate_event(
 
 # ── Default output path ──────────────────────────────────────────────────────
 
+
 def _default_output(filename: str = "recorded_mission.hunt") -> str:
     """Return tests_home/filename, reading tests_home from the project config."""
     import json
@@ -308,6 +310,7 @@ def _default_output(filename: str = "recorded_mission.hunt") -> str:
 
 
 # ── Playwright orchestration ─────────────────────────────────────────────────
+
 
 async def record_session(
     url: str,
@@ -352,6 +355,7 @@ async def record_session(
     def on_event(raw_json: str) -> None:
         """Bridge callback invoked from the browser JS context."""
         import json
+
         try:
             event = json.loads(raw_json)
         except (json.JSONDecodeError, TypeError):
@@ -448,6 +452,7 @@ def _write_hunt_file(path: str, url: str, lines: list[str]) -> None:
 
 
 # ── CLI entry point ──────────────────────────────────────────────────────────
+
 
 async def record_main(args: list[str]) -> None:
     """Async entry point called from ``cli.main()`` when subcommand is ``record``."""

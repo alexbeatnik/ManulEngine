@@ -198,6 +198,7 @@ class EngineConfig:
         browser_args: list[str] = []
         if "MANUL_BROWSER_ARGS" in os.environ:
             import re
+
             _env_ba = os.environ["MANUL_BROWSER_ARGS"].strip()
             if _env_ba:
                 browser_args = [a.strip() for a in re.split(r"[,\s]+", _env_ba) if a.strip()]
@@ -269,15 +270,11 @@ class EngineConfig:
 
         _valid_browsers = ("chromium", "firefox", "webkit", "electron")
         if self.browser not in _valid_browsers:
-            raise ConfigurationError(
-                f"Invalid browser {self.browser!r}; must be one of {_valid_browsers}"
-            )
+            raise ConfigurationError(f"Invalid browser {self.browser!r}; must be one of {_valid_browsers}")
 
         _valid_ss = ("on-fail", "always", "none")
         if self.screenshot not in _valid_ss:
-            raise ConfigurationError(
-                f"Invalid screenshot mode {self.screenshot!r}; must be one of {_valid_ss}"
-            )
+            raise ConfigurationError(f"Invalid screenshot mode {self.screenshot!r}; must be one of {_valid_ss}")
 
         if self.channel is not None and self.browser != "chromium":
             raise ConfigurationError(
@@ -295,9 +292,7 @@ class EngineConfig:
             raise ConfigurationError(f"retries must be non-negative; got {self.retries}")
 
         if self.ai_always and self.model is None:
-            raise ConfigurationError(
-                "ai_always=True requires a model to be configured"
-            )
+            raise ConfigurationError("ai_always=True requires a model to be configured")
 
     # ── Convenience ───────────────────────────────────────────────────────
 

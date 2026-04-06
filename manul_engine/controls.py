@@ -71,11 +71,13 @@ def custom_control(page: str, target: str) -> Callable:
         async def handle_username(page, action_type, value):
             await page.locator("#user").fill(value or "")
     """
+
     def decorator(func: Callable) -> Callable:
         key = (page.strip().lower(), target.strip().lower())
         with _REGISTRY_LOCK:
             _CUSTOM_CONTROLS[key] = func
         return func
+
     return decorator
 
 
@@ -110,9 +112,7 @@ def _iter_custom_control_targets(source: str) -> list[str]:
             if not isinstance(decorator, ast.Call):
                 continue
             func = decorator.func
-            is_custom_control = (
-                isinstance(func, ast.Name) and func.id == "custom_control"
-            ) or (
+            is_custom_control = (isinstance(func, ast.Name) and func.id == "custom_control") or (
                 isinstance(func, ast.Attribute) and func.attr == "custom_control"
             )
             if not is_custom_control:
@@ -161,7 +161,7 @@ def extract_required_controls(
 
     # Collect all quoted target strings from the mission steps (lowered).
     step_targets: set[str] = set()
-    for match in re.finditer(r'"([^"]+)"|'  r"'([^']+)'", mission_text):
+    for match in re.finditer(r'"([^"]+)"|' r"'([^']+)'", mission_text):
         token = (match.group(1) or match.group(2)).strip().lower()
         if token:
             step_targets.add(token)
@@ -246,11 +246,7 @@ def load_custom_controls(
                 candidates.append(modules_dir.joinpath(*sub_path.parts))
             # Backward compat: accept bare filenames for the "controls" directory.
             if dir_name == "controls":
-                candidates += [
-                    modules_dir / rel
-                    for rel in sorted(required_modules)
-                    if "/" not in rel
-                ]
+                candidates += [modules_dir / rel for rel in sorted(required_modules) if "/" not in rel]
         else:
             # Eager loading (legacy) — skip entirely if this dir was already loaded.
             dir_key = f"{resolved}/{dir_name}"

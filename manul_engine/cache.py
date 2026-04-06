@@ -145,9 +145,7 @@ class _ControlsCacheMixin:
         }
         serialized = json.dumps(payload, ensure_ascii=False, indent=2)
         self._controls_cache_path.parent.mkdir(parents=True, exist_ok=True)
-        tmp_path = self._controls_cache_path.with_name(
-            f"{self._controls_cache_path.name}.tmp-{time.time_ns()}"
-        )
+        tmp_path = self._controls_cache_path.with_name(f"{self._controls_cache_path.name}.tmp-{time.time_ns()}")
         try:
             tmp_path.write_text(serialized, encoding="utf-8")
             tmp_path.replace(self._controls_cache_path)
@@ -246,7 +244,8 @@ class _ControlsCacheMixin:
             return True
 
         anchor_words = [
-            w for w in re.findall(r"[a-z0-9]{3,}", anchor)
+            w
+            for w in re.findall(r"[a-z0-9]{3,}", anchor)
             if w not in {"the", "and", "for", "with", "from", "into", "onto", "near", "button", "field", "link"}
         ]
         if not anchor_words:

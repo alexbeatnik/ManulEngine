@@ -37,6 +37,7 @@ def _assert(cond: bool, label: str, detail: str = "") -> None:
 # Section 1: parse_import_directive
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _test_parse_import_directive() -> None:
     print("\n  ── parse_import_directive ────────────────────────────────────")
     from manul_engine.imports import parse_import_directive
@@ -88,6 +89,7 @@ def _test_parse_import_directive() -> None:
 # Section 2: resolve_source_path
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _test_resolve_source_path() -> None:
     print("\n  ── resolve_source_path ───────────────────────────────────────")
     from manul_engine.imports import resolve_source_path, HuntImportError
@@ -130,6 +132,7 @@ def _test_resolve_source_path() -> None:
         os.makedirs(pkg2_dir)
         with open(os.path.join(pkg2_dir, "huntlib.json"), "w") as f:
             import json
+
             json.dump({"name": "custom_pkg", "version": "1.0.0", "entry": "flows.hunt"}, f)
         flows_path = os.path.join(pkg2_dir, "flows.hunt")
         with open(flows_path, "w") as f:
@@ -142,6 +145,7 @@ def _test_resolve_source_path() -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Section 3: _extract_exported_blocks
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _test_extract_exported_blocks() -> None:
     print("\n  ── _extract_exported_blocks ──────────────────────────────────")
@@ -201,11 +205,10 @@ def _test_extract_exported_blocks() -> None:
 # Section 4: resolve_imports full resolution
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _test_resolve_imports() -> None:
     print("\n  ── resolve_imports (full resolution) ─────────────────────────")
-    from manul_engine.imports import (
-        ImportDirective, resolve_imports, HuntImportError
-    )
+    from manul_engine.imports import ImportDirective, resolve_imports, HuntImportError
 
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create lib file
@@ -287,6 +290,7 @@ def _test_resolve_imports() -> None:
 # Section 5: expand_use_directives
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _test_expand_use() -> None:
     print("\n  ── expand_use_directives ─────────────────────────────────────")
     from manul_engine.imports import expand_use_directives, HuntImportError
@@ -339,6 +343,7 @@ def _test_expand_use() -> None:
 # Section 6: classify_step recognizes USE
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _test_classify_use() -> None:
     print("\n  ── classify_step: USE keyword ────────────────────────────────")
     from manul_engine.helpers import classify_step, RE_SYSTEM_STEP
@@ -352,6 +357,7 @@ def _test_classify_use() -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Section 7: ParsedHunt @import/@export integration
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _test_parse_hunt_file_imports() -> None:
     print("\n  ── ParsedHunt @import/@export round-trip ─────────────────────")
@@ -419,6 +425,7 @@ def _test_parse_hunt_file_imports() -> None:
 # Section 8: Variable precedence — import vars are lowest
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _test_import_variable_precedence() -> None:
     print("\n  ── Import variable precedence ────────────────────────────────")
     from manul_engine.variables import ScopedVariables
@@ -467,6 +474,7 @@ def _test_import_variable_precedence() -> None:
 # Section 9: validate_exports
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _test_validate_exports() -> None:
     print("\n  ── validate_exports ──────────────────────────────────────────")
     from manul_engine.imports import validate_exports
@@ -475,24 +483,14 @@ def _test_validate_exports() -> None:
         # Valid exports
         good_path = os.path.join(tmpdir, "good.hunt")
         with open(good_path, "w") as f:
-            f.write(
-                "@export: Login\n"
-                "\n"
-                "STEP 1: Login\n"
-                "    Click 'Login'\n"
-            )
+            f.write("@export: Login\n\nSTEP 1: Login\n    Click 'Login'\n")
         warnings = validate_exports(good_path)
         _assert(len(warnings) == 0, "no warnings for valid exports")
 
         # Export with no matching block
         bad_path = os.path.join(tmpdir, "bad.hunt")
         with open(bad_path, "w") as f:
-            f.write(
-                "@export: NonExistent\n"
-                "\n"
-                "STEP 1: Login\n"
-                "    Click 'Login'\n"
-            )
+            f.write("@export: NonExistent\n\nSTEP 1: Login\n    Click 'Login'\n")
         warnings2 = validate_exports(bad_path)
         _assert(len(warnings2) == 1, "warning for missing export block", f"{len(warnings2)}")
         _assert("NonExistent" in warnings2[0], "warning mentions block name")
@@ -501,6 +499,7 @@ def _test_validate_exports() -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Entry point
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def run_suite() -> tuple[int, int]:
     global _PASS, _FAIL

@@ -28,9 +28,7 @@ def _validate_manifest(manifest: dict, manifest_path: str) -> None:
     required = ("name", "version")
     for key in required:
         if key not in manifest:
-            raise HuntImportError(
-                f"huntlib.json is missing required field '{key}': {manifest_path}"
-            )
+            raise HuntImportError(f"huntlib.json is missing required field '{key}': {manifest_path}")
 
 
 def pack(source_dir: str, output_dir: str | None = None) -> str:
@@ -42,8 +40,7 @@ def pack(source_dir: str, output_dir: str | None = None) -> str:
     manifest_path = os.path.join(source_dir, "huntlib.json")
     if not os.path.isfile(manifest_path):
         raise HuntImportError(
-            f"No huntlib.json found in '{source_dir}'. "
-            f"Run `manul pack` from a directory containing huntlib.json."
+            f"No huntlib.json found in '{source_dir}'. Run `manul pack` from a directory containing huntlib.json."
         )
 
     manifest = parse_huntlib_json(manifest_path)
@@ -110,28 +107,17 @@ def install(
         with tarfile.open(source, "r:gz") as tar:
             # Security: prevent path traversal
             for member in tar.getmembers():
-                if (
-                    member.name.startswith("/")
-                    or ".." in member.name
-                    or member.issym()
-                    or member.islnk()
-                ):
-                    raise HuntImportError(
-                        f"Unsafe path in archive: '{member.name}'"
-                    )
+                if member.name.startswith("/") or ".." in member.name or member.issym() or member.islnk():
+                    raise HuntImportError(f"Unsafe path in archive: '{member.name}'")
                 # Verify resolved path stays within destination
                 dest_path = os.path.realpath(os.path.join(tmp, member.name))
                 if not dest_path.startswith(os.path.realpath(tmp) + os.sep) and dest_path != os.path.realpath(tmp):
-                    raise HuntImportError(
-                        f"Path traversal in archive: '{member.name}'"
-                    )
+                    raise HuntImportError(f"Path traversal in archive: '{member.name}'")
             tar.extractall(tmp)  # noqa: S202 — path traversal checked above
 
         manifest_path = os.path.join(tmp, "huntlib.json")
         if not os.path.isfile(manifest_path):
-            raise HuntImportError(
-                f"Archive does not contain huntlib.json: '{source}'"
-            )
+            raise HuntImportError(f"Archive does not contain huntlib.json: '{source}'")
 
         manifest = parse_huntlib_json(manifest_path)
         _validate_manifest(manifest, manifest_path)

@@ -72,6 +72,7 @@ from pathlib import Path
 
 # ── Shared context object ─────────────────────────────────────────────────────
 
+
 @dataclass
 class GlobalContext:
     """Mutable state shared between all lifecycle hooks and every hunt mission.
@@ -83,17 +84,19 @@ class GlobalContext:
         metadata:   Arbitrary per-hook scratch space.  Not propagated to the
                     hunt engine; hook-to-hook communication only.
     """
+
     variables: dict[str, str] = field(default_factory=dict)
-    metadata:  dict[str, object] = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=dict)
 
 
 # ── Internal registry helpers ─────────────────────────────────────────────────
 
+
 @dataclass
 class _HookEntry:
-    fn:  Callable
-    tag: str | None   # None  → before_all / after_all
-                       # str   → before_group / after_group (lower-cased)
+    fn: Callable
+    tag: str | None  # None  → before_all / after_all
+    # str   → before_group / after_group (lower-cased)
 
 
 class _HookRegistry:
@@ -105,10 +108,10 @@ class _HookRegistry:
     """
 
     def __init__(self) -> None:
-        self._before_all:   list[_HookEntry] = []
-        self._after_all:    list[_HookEntry] = []
+        self._before_all: list[_HookEntry] = []
+        self._after_all: list[_HookEntry] = []
         self._before_group: list[_HookEntry] = []
-        self._after_group:  list[_HookEntry] = []
+        self._after_group: list[_HookEntry] = []
 
     # ── Registration ──────────────────────────────────────────────────────────
 
@@ -127,6 +130,7 @@ class _HookRegistry:
             _reject_async(fn)
             self._before_group.append(_HookEntry(fn=fn, tag=tag.lower()))
             return fn
+
         return _decorator
 
     def register_after_group(self, tag: str) -> Callable[[Callable], Callable]:
@@ -134,6 +138,7 @@ class _HookRegistry:
             _reject_async(fn)
             self._after_group.append(_HookEntry(fn=fn, tag=tag.lower()))
             return fn
+
         return _decorator
 
     # ── Execution ─────────────────────────────────────────────────────────────
@@ -158,8 +163,7 @@ class _HookRegistry:
 
     @property
     def is_empty(self) -> bool:
-        return not (self._before_all or self._after_all
-                    or self._before_group or self._after_group)
+        return not (self._before_all or self._after_all or self._before_group or self._after_group)
 
     def clear(self) -> None:
         """Reset all registrations. Used between isolated test runs."""
@@ -175,6 +179,7 @@ registry = _HookRegistry()
 
 
 # ── Public decorators (re-exported via __init__.py) ───────────────────────────
+
 
 def before_all(fn: Callable) -> Callable:
     """Decorator: register *fn(ctx)* to run once before the entire suite."""
@@ -199,6 +204,7 @@ def after_group(tag: str) -> Callable[[Callable], Callable]:
 
 
 # ── Auto-discovery ────────────────────────────────────────────────────────────
+
 
 def load_hooks_file(directory: str) -> bool:
     """Silently attempt to import ``manul_hooks.py`` from *directory*.
@@ -256,6 +262,7 @@ def deserialize_global_vars() -> dict[str, str]:
 
 
 # ── Internal utilities ────────────────────────────────────────────────────────
+
 
 def _reject_async(fn: Callable) -> None:
     if asyncio.iscoroutinefunction(fn):

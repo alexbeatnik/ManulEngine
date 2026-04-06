@@ -71,6 +71,7 @@ FB_EXTREME_DOM = """
 </html>
 """
 
+
 async def run_suite() -> bool:
     print(f"\n{'=' * 70}")
     print("🧬 FACEBOOK FINAL BOSS — Integration Test (Resolver Path)")
@@ -79,8 +80,14 @@ async def run_suite() -> bool:
     passed = 0
     failures: list[str] = []
 
-    TESTS =  [
-        {"n": "1", "step": "Fill 'Email or mobile number'", "m": "input", "st": ["Email or mobile number"], "exp": "_R_1h6"},
+    TESTS = [
+        {
+            "n": "1",
+            "step": "Fill 'Email or mobile number'",
+            "m": "input",
+            "st": ["Email or mobile number"],
+            "exp": "_R_1h6",
+        },
         {"n": "2", "step": "Click 'Log in'", "m": "clickable", "st": ["Log in"], "exp": "login_btn_click"},
         {"n": "3", "step": "Fill 'First name'", "m": "input", "st": ["First name"], "exp": "_R_1cl"},
         {"n": "4", "step": "Fill 'Last name'", "m": "input", "st": ["Last name"], "exp": "_R_1kl"},
@@ -88,7 +95,13 @@ async def run_suite() -> bool:
         {"n": "6", "step": "Select 'Day'", "m": "select", "st": ["Day"], "exp": "_r_9"},
         {"n": "7", "step": "Select 'Year'", "m": "select", "st": ["Year"], "exp": "_r_f"},
         {"n": "8", "step": "Select 'Select your gender'", "m": "select", "st": ["Select your gender"], "exp": "_R_mad"},
-        {"n": "9", "step": "Fill 'Mobile number or email'", "m": "input", "st": ["Mobile number or email"], "exp": "_R_6ad"},
+        {
+            "n": "9",
+            "step": "Fill 'Mobile number or email'",
+            "m": "input",
+            "st": ["Mobile number or email"],
+            "exp": "_R_6ad",
+        },
         {"n": "10", "step": "Fill 'Password'", "m": "input", "st": ["Password"], "exp": "_R_cla"},
         {"n": "11", "step": "Click 'Submit'", "m": "clickable", "st": ["Submit"], "exp": "reg_submit_click"},
     ]
@@ -119,25 +132,25 @@ async def run_suite() -> bool:
                 if candidates:
                     return 0
                 return None
-                
+
             manul._llm_select_element = _mock_llm_select_element
 
             for t in TESTS:
                 print(f"\n🐾 Step {t['n']}: {t['step']}")
-                
+
                 resolved = await manul._resolve_element(
                     page=page,
-                    step=t['step'],
-                    mode=t['m'],
-                    search_texts=t['st'],
-                    target_field=t['st'][0].lower(),
+                    step=t["step"],
+                    mode=t["m"],
+                    search_texts=t["st"],
+                    target_field=t["st"][0].lower(),
                     strategic_context="Facebook Integration Test",
-                    failed_ids=set()
+                    failed_ids=set(),
                 )
 
                 found_id = resolved.get("html_id") if resolved else "NOT_FOUND"
 
-                if found_id and found_id.startswith(t['exp']):
+                if found_id and found_id.startswith(t["exp"]):
                     print(f"   ✅ PASSED  → Found '{found_id}'")
                     passed += 1
                 else:

@@ -26,25 +26,35 @@ from .exceptions import ScheduleError
 # ── Schedule representation ──────────────────────────────────────────────────
 
 _WEEKDAYS = {
-    "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
-    "friday": 4, "saturday": 5, "sunday": 6,
+    "monday": 0,
+    "tuesday": 1,
+    "wednesday": 2,
+    "thursday": 3,
+    "friday": 4,
+    "saturday": 5,
+    "sunday": 6,
 }
 
 # Pre-compiled patterns  — all case-insensitive.
 _RE_EVERY_N = re.compile(
-    r"^every\s+(\d+)\s+(second|seconds|minute|minutes|hour|hours)$", re.I,
+    r"^every\s+(\d+)\s+(second|seconds|minute|minutes|hour|hours)$",
+    re.I,
 )
 _RE_EVERY_UNIT = re.compile(
-    r"^every\s+(second|minute|hour)$", re.I,
+    r"^every\s+(second|minute|hour)$",
+    re.I,
 )
 _RE_DAILY_AT = re.compile(
-    r"^daily\s+at\s+(\d{1,2}):(\d{2})$", re.I,
+    r"^daily\s+at\s+(\d{1,2}):(\d{2})$",
+    re.I,
 )
 _RE_EVERY_WEEKDAY = re.compile(
-    r"^every\s+(" + "|".join(_WEEKDAYS) + r")$", re.I,
+    r"^every\s+(" + "|".join(_WEEKDAYS) + r")$",
+    re.I,
 )
 _RE_EVERY_WEEKDAY_AT = re.compile(
-    r"^every\s+(" + "|".join(_WEEKDAYS) + r")\s+at\s+(\d{1,2}):(\d{2})$", re.I,
+    r"^every\s+(" + "|".join(_WEEKDAYS) + r")\s+at\s+(\d{1,2}):(\d{2})$",
+    re.I,
 )
 
 
@@ -59,6 +69,7 @@ class Schedule:
 
     ``raw`` always stores the original expression string.
     """
+
     raw: str
     interval_seconds: int | None = None
     daily_at: tuple[int, int] | None = None
@@ -127,6 +138,7 @@ def parse_schedule(expr: str) -> Schedule:
 
 # ── Time helpers ─────────────────────────────────────────────────────────────
 
+
 def _seconds_until_time(hh: int, mm: int, now: datetime | None = None) -> float:
     """Seconds from *now* until the next occurrence of *hh:mm* today or tomorrow."""
     now = now or datetime.now()
@@ -136,8 +148,7 @@ def _seconds_until_time(hh: int, mm: int, now: datetime | None = None) -> float:
     return (target - now).total_seconds()
 
 
-def _seconds_until_weekday(weekday: int, hh: int, mm: int,
-                           now: datetime | None = None) -> float:
+def _seconds_until_weekday(weekday: int, hh: int, mm: int, now: datetime | None = None) -> float:
     """Seconds from *now* until the next *weekday* at *hh:mm*."""
     now = now or datetime.now()
     days_ahead = (weekday - now.weekday()) % 7
@@ -160,9 +171,10 @@ def next_run_delay(sched: Schedule, now: datetime | None = None) -> float:
 
 # ── Per-job async loop ───────────────────────────────────────────────────────
 
-async def _run_scheduled_job(hunt_path: str, sched: Schedule,
-                             headless: bool, browser: str | None,
-                             screenshot_mode: str) -> None:
+
+async def _run_scheduled_job(
+    hunt_path: str, sched: Schedule, headless: bool, browser: str | None, screenshot_mode: str
+) -> None:
     """Infinite loop that runs a single hunt file on its schedule."""
     from .cli import _run_hunt_file
     from .reporting import append_run_history
@@ -172,8 +184,7 @@ async def _run_scheduled_job(hunt_path: str, sched: Schedule,
     while True:
         delay = next_run_delay(sched)
         next_ts = datetime.now() + timedelta(seconds=delay)
-        print(f"⏰ [{filename}] next run at {next_ts:%Y-%m-%d %H:%M:%S} "
-              f"(in {delay:.0f}s) — {sched.raw}")
+        print(f"⏰ [{filename}] next run at {next_ts:%Y-%m-%d %H:%M:%S} (in {delay:.0f}s) — {sched.raw}")
         await asyncio.sleep(delay)
 
         print(f"\n🚀 [{filename}] scheduled run starting — {datetime.now():%H:%M:%S}")
@@ -193,6 +204,7 @@ async def _run_scheduled_job(hunt_path: str, sched: Schedule,
 
 
 # ── Daemon entry point ───────────────────────────────────────────────────────
+
 
 async def daemon_main(args: list[str]) -> None:
     """Entry point for ``manul daemon <directory>``.
@@ -235,7 +247,10 @@ async def daemon_main(args: list[str]) -> None:
     args_clean = [a for a in args_clean if a != "--html-report"]
 
     if not args_clean:
-        print("Usage: manul daemon <directory> [--headless] [--browser <name>] [--screenshot <mode>] [--html-report]", file=sys.stderr)
+        print(
+            "Usage: manul daemon <directory> [--headless] [--browser <name>] [--screenshot <mode>] [--html-report]",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     target_dir = args_clean[0]
@@ -267,17 +282,15 @@ async def daemon_main(args: list[str]) -> None:
         print(f"No .hunt files with @schedule: headers found in '{target_dir}'.")
         return
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"😼 ManulEngine Daemon — {len(scheduled_jobs)} scheduled job(s)")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     for hf, sched in scheduled_jobs:
         print(f"  📋 {os.path.basename(hf)} — {sched.raw}")
     print()
 
     tasks = [
-        asyncio.create_task(
-            _run_scheduled_job(hf, sched, headless, browser, screenshot_mode)
-        )
+        asyncio.create_task(_run_scheduled_job(hf, sched, headless, browser, screenshot_mode))
         for hf, sched in scheduled_jobs
     ]
 

@@ -47,30 +47,40 @@ def _assert(condition: bool, name: str, detail: str = "") -> None:
 
 # ── Section 1: classify_step ──────────────────────────────────────────────────
 
+
 def _test_classify_step() -> None:
     print("\n  ── classify_step — STEP recognition ──────────────────────")
 
-    _assert(classify_step("1. STEP 1: Navigate to the login page") == "logical_step",
-            "classify_step: numbered STEP with number")
-    _assert(classify_step("2. STEP: Fill in credentials") == "logical_step",
-            "classify_step: numbered STEP without number")
-    _assert(classify_step("STEP 3: Verify checkout") == "logical_step",
-            "classify_step: STEP without leading index")
-    _assert(classify_step("step: lowercase accepted") == "logical_step",
-            "classify_step: lowercase 'step:' accepted")
-    _assert(classify_step("STEP  42 :  Trailing spaces") == "logical_step",
-            "classify_step: extra whitespace around number and colon")
+    _assert(
+        classify_step("1. STEP 1: Navigate to the login page") == "logical_step",
+        "classify_step: numbered STEP with number",
+    )
+    _assert(
+        classify_step("2. STEP: Fill in credentials") == "logical_step", "classify_step: numbered STEP without number"
+    )
+    _assert(classify_step("STEP 3: Verify checkout") == "logical_step", "classify_step: STEP without leading index")
+    _assert(classify_step("step: lowercase accepted") == "logical_step", "classify_step: lowercase 'step:' accepted")
+    _assert(
+        classify_step("STEP  42 :  Trailing spaces") == "logical_step",
+        "classify_step: extra whitespace around number and colon",
+    )
 
     # Must NOT be classified as logical_step
-    _assert(classify_step("1. NAVIGATE to https://example.com") == "navigate",
-            "classify_step: NAVIGATE is not logical_step")
-    _assert(classify_step("1. Click 'Next Step' button") == "action",
-            "classify_step: 'Next Step' inside a label is not logical_step")
-    _assert(classify_step("1. VERIFY that 'STEP completed' is present") == "verify",
-            "classify_step: STEP inside a quoted verify target is not logical_step")
+    _assert(
+        classify_step("1. NAVIGATE to https://example.com") == "navigate", "classify_step: NAVIGATE is not logical_step"
+    )
+    _assert(
+        classify_step("1. Click 'Next Step' button") == "action",
+        "classify_step: 'Next Step' inside a label is not logical_step",
+    )
+    _assert(
+        classify_step("1. VERIFY that 'STEP completed' is present") == "verify",
+        "classify_step: STEP inside a quoted verify target is not logical_step",
+    )
 
 
 # ── Section 2: parse_logical_step ────────────────────────────────────────────
+
 
 def _test_parse_logical_step() -> None:
     print("\n  ── parse_logical_step — description extraction ────────────")
@@ -88,24 +98,26 @@ def _test_parse_logical_step() -> None:
     _assert(desc3 == "Whitespace trimmed", "parse_logical_step: description trimmed")
 
     num4, desc4 = parse_logical_step("1. Click the 'Login' button")
-    _assert(num4 is None and desc4 is None,
-            "parse_logical_step: returns (None, None) for non-STEP steps")
+    _assert(num4 is None and desc4 is None, "parse_logical_step: returns (None, None) for non-STEP steps")
 
 
 # ── Section 3: quoted-label isolation ────────────────────────────────────────
+
 
 def _test_quoted_isolation() -> None:
     print("\n  ── STEP keyword inside quoted label is ignored ────────────")
 
     # 'STEP' appearing inside a quoted value should NOT trigger logical_step.
     # classify_step strips quotes before pattern matching.
-    _assert(classify_step("1. VERIFY that 'STEP 1: done' is present") == "verify",
-            "STEP inside quoted VERIFY target stays 'verify'")
-    _assert(classify_step("1. Click 'STEP button'") == "action",
-            "STEP inside a quoted click target stays 'action'")
+    _assert(
+        classify_step("1. VERIFY that 'STEP 1: done' is present") == "verify",
+        "STEP inside quoted VERIFY target stays 'verify'",
+    )
+    _assert(classify_step("1. Click 'STEP button'") == "action", "STEP inside a quoted click target stays 'action'")
 
 
 # ── Section 4: parse_hunt_blocks ─────────────────────────────────────────────
+
 
 def _test_parse_hunt_blocks() -> None:
     print("\n  ── parse_hunt_blocks — hierarchy extraction ───────────────")
@@ -122,10 +134,14 @@ def _test_parse_hunt_blocks() -> None:
 
     _assert(len(blocks) == 2, "parse_hunt_blocks: two STEP blocks parsed")
     _assert(blocks[0].block_name == "STEP 1: Login", "parse_hunt_blocks: first block name canonicalized")
-    _assert(blocks[0].actions == [
-        "NAVIGATE to https://example.com",
-        "Fill 'Username' with 'admin'",
-    ], "parse_hunt_blocks: first block actions preserved")
+    _assert(
+        blocks[0].actions
+        == [
+            "NAVIGATE to https://example.com",
+            "Fill 'Username' with 'admin'",
+        ],
+        "parse_hunt_blocks: first block actions preserved",
+    )
     _assert(blocks[0].block_line == 10, "parse_hunt_blocks: first block line recorded")
     _assert(blocks[0].action_lines == [11, 12], "parse_hunt_blocks: first block action lines recorded")
     _assert(blocks[1].block_name == "STEP 2: Verify", "parse_hunt_blocks: second block name canonicalized")
@@ -142,24 +158,24 @@ def _test_parse_hunt_blocks() -> None:
 
 # ── Section 5: StepResult.logical_step field ─────────────────────────────────
 
+
 def _test_step_result_field() -> None:
     print("\n  ── StepResult carries logical_step field ─────────────────")
 
     sr_default = StepResult(index=1, text="NAVIGATE to https://example.com")
-    _assert(sr_default.logical_step is None,
-            "StepResult.logical_step defaults to None")
+    _assert(sr_default.logical_step is None, "StepResult.logical_step defaults to None")
 
     sr_tagged = StepResult(index=2, text="Click 'Login'", logical_step="Login Flow")
-    _assert(sr_tagged.logical_step == "Login Flow",
-            "StepResult.logical_step stores the label")
+    _assert(sr_tagged.logical_step == "Login Flow", "StepResult.logical_step stores the label")
 
-    sr_fail = StepResult(index=3, text="VERIFY that 'Dashboard' is present",
-                         status="fail", logical_step="Post-Login Check")
-    _assert(sr_fail.logical_step == "Post-Login Check",
-            "StepResult.logical_step preserved on failure")
+    sr_fail = StepResult(
+        index=3, text="VERIFY that 'Dashboard' is present", status="fail", logical_step="Post-Login Check"
+    )
+    _assert(sr_fail.logical_step == "Post-Login Check", "StepResult.logical_step preserved on failure")
 
 
 # ── Section 5: _group_steps partitioning ─────────────────────────────────────
+
 
 def _test_group_steps() -> None:
     print("\n  ── _group_steps — partitioning logic ─────────────────────")
@@ -201,6 +217,7 @@ def _test_group_steps() -> None:
 
 # ── Section 6: _render_lstep_group HTML ──────────────────────────────────────
 
+
 def _test_render_lstep_group() -> None:
     print("\n  ── _render_lstep_group — HTML output ─────────────────────")
 
@@ -219,8 +236,10 @@ def _test_render_lstep_group() -> None:
 
     # Singular "action" for one step
     html_single = _render_lstep_group("Solo", [StepResult(index=1, text="DONE.")], 0)
-    _assert("1 action" in html_single and "1 actions" not in html_single,
-            "_render_lstep_group: 'action' singular for 1 step")
+    _assert(
+        "1 action" in html_single and "1 actions" not in html_single,
+        "_render_lstep_group: 'action' singular for 1 step",
+    )
 
     # FAIL status when any step fails
     fail_steps = [
@@ -240,26 +259,33 @@ def _test_render_lstep_group() -> None:
 
 # ── Section 7 & 8: generate_report integration ───────────────────────────────
 
+
 def _test_generate_report() -> None:
     print("\n  ── generate_report — STEP grouping in HTML output ─────────")
 
     # Build a mission with STEP-tagged steps
     steps_grouped = [
-        StepResult(index=1, text="NAVIGATE to https://example.com",
-                   logical_step="Setup", duration_ms=200),
-        StepResult(index=2, text="Fill 'Username' with 'admin'",
-                   logical_step="Login", duration_ms=50),
-        StepResult(index=3, text="Click 'Submit'",
-                   logical_step="Login", duration_ms=80),
-        StepResult(index=4, text="VERIFY that 'Dashboard' is present",
-                   logical_step="Verification", status="fail", duration_ms=5000,
-                   error="Element not found"),
+        StepResult(index=1, text="NAVIGATE to https://example.com", logical_step="Setup", duration_ms=200),
+        StepResult(index=2, text="Fill 'Username' with 'admin'", logical_step="Login", duration_ms=50),
+        StepResult(index=3, text="Click 'Submit'", logical_step="Login", duration_ms=80),
+        StepResult(
+            index=4,
+            text="VERIFY that 'Dashboard' is present",
+            logical_step="Verification",
+            status="fail",
+            duration_ms=5000,
+            error="Element not found",
+        ),
     ]
-    mr = MissionResult(file="/tmp/login.hunt", name="login.hunt", status="fail",
-                       duration_ms=6000, steps=steps_grouped)
+    mr = MissionResult(file="/tmp/login.hunt", name="login.hunt", status="fail", duration_ms=6000, steps=steps_grouped)
     summary = RunSummary(
-        started_at="2026-03-12T10:00:00", ended_at="2026-03-12T10:00:06",
-        total=1, passed=0, failed=1, flaky=0, duration_ms=6000,
+        started_at="2026-03-12T10:00:00",
+        ended_at="2026-03-12T10:00:06",
+        total=1,
+        passed=0,
+        failed=1,
+        flaky=0,
+        duration_ms=6000,
         missions=[mr],
     )
 
@@ -272,27 +298,26 @@ def _test_generate_report() -> None:
     finally:
         os.unlink(out_path)
 
-    _assert("lstep-header" in content,
-            "generate_report: lstep-header present when STEP markers used")
-    _assert("Setup" in content,
-            "generate_report: 'Setup' group label present")
-    _assert("Login" in content,
-            "generate_report: 'Login' group label present")
-    _assert("Verification" in content,
-            "generate_report: 'Verification' group label present")
-    _assert('<details class="lstep-block"' in content,
-            "generate_report: accordion details element present")
+    _assert("lstep-header" in content, "generate_report: lstep-header present when STEP markers used")
+    _assert("Setup" in content, "generate_report: 'Setup' group label present")
+    _assert("Login" in content, "generate_report: 'Login' group label present")
+    _assert("Verification" in content, "generate_report: 'Verification' group label present")
+    _assert('<details class="lstep-block"' in content, "generate_report: accordion details element present")
 
     # Flat rendering: no STEP markers → no lstep-header
     steps_flat = [
         StepResult(index=1, text="NAVIGATE to https://example.com", duration_ms=100),
         StepResult(index=2, text="DONE.", duration_ms=1),
     ]
-    mr_flat = MissionResult(file="/tmp/flat.hunt", name="flat.hunt", status="pass",
-                            duration_ms=200, steps=steps_flat)
+    mr_flat = MissionResult(file="/tmp/flat.hunt", name="flat.hunt", status="pass", duration_ms=200, steps=steps_flat)
     summary_flat = RunSummary(
-        started_at="2026-03-12T10:00:00", ended_at="2026-03-12T10:00:00",
-        total=1, passed=1, failed=0, flaky=0, duration_ms=200,
+        started_at="2026-03-12T10:00:00",
+        ended_at="2026-03-12T10:00:00",
+        total=1,
+        passed=1,
+        failed=0,
+        flaky=0,
+        duration_ms=200,
         missions=[mr_flat],
     )
 
@@ -305,13 +330,15 @@ def _test_generate_report() -> None:
     finally:
         os.unlink(out_path_flat)
 
-    _assert('class="lstep-header"' not in content_flat,
-            "generate_report: no lstep-header when no STEP markers (flat rendering)")
-    _assert("steps-list" in content_flat,
-            "generate_report: flat steps-list still present")
+    _assert(
+        'class="lstep-header"' not in content_flat,
+        "generate_report: no lstep-header when no STEP markers (flat rendering)",
+    )
+    _assert("steps-list" in content_flat, "generate_report: flat steps-list still present")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
+
 
 async def run_suite() -> bool:
     global _PASS, _FAIL

@@ -37,7 +37,7 @@ logger.setLevel(_level)
 logger.propagate = False
 
 if not logger.handlers:
-    _handler = logging.StreamHandler()          # stderr by default
+    _handler = logging.StreamHandler()  # stderr by default
     _handler.setLevel(_level)
     _formatter = logging.Formatter(
         "%(asctime)s [%(name)s] %(levelname)s: %(message)s",
