@@ -17,8 +17,8 @@ jobs:
     env:
       MANUL_CONTROLS_CACHE_ENABLED: "False"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install dependencies
@@ -29,13 +29,25 @@ jobs:
       - name: Run synthetic tests
         run: python run_tests.py
 
-  # ── 2. Build Python package ────────────────────────────────────────
-  build-python:
-    needs: test
+  # ── 1b. Security lint ──────────────────────────────────────────────
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - name: Ruff security + style check
+        run: ruff check manul_engine/
+
+  # ── 2. Build Python package ────────────────────────────────────────
+  build-python:
+    needs: [test, lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Install build tools
@@ -54,7 +66,7 @@ jobs:
         run: python -m build
       - name: Validate distributions
         run: twine check dist/*
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: dist
           path: dist/
@@ -67,7 +79,7 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           name: dist
           path: dist/
@@ -80,8 +92,8 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v7
         with:
           name: dist
           path: dist/
@@ -112,7 +124,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: docker/setup-qemu-action@v3
 
@@ -131,7 +143,7 @@ jobs:
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             echo "manul_version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
           else
-            echo "manul_version=0.0.9.25" >> "$GITHUB_OUTPUT"
+            echo "manul_version=0.0.9.26" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Extract metadata

@@ -198,6 +198,7 @@ class EngineConfig:
         browser_args: list[str] = []
         if "MANUL_BROWSER_ARGS" in os.environ:
             import re
+
             _env_ba = os.environ["MANUL_BROWSER_ARGS"].strip()
             if _env_ba:
                 browser_args = [a.strip() for a in re.split(r"[,\s]+", _env_ba) if a.strip()]
@@ -228,7 +229,7 @@ class EngineConfig:
         _ss = _str("screenshot", "MANUL_SCREENSHOT", "on-fail").lower()
         screenshot = _ss if _ss in _valid_ss else "on-fail"
 
-        return cls(
+        cfg = cls(
             model=model,
             headless=_bool("headless", "MANUL_HEADLESS"),
             browser=browser,
@@ -254,6 +255,44 @@ class EngineConfig:
             verify_max_retries=_int("verify_max_retries", "MANUL_VERIFY_MAX_RETRIES", 15),
             custom_controls_dirs=ccd,
         )
+        cfg.validate()
+        return cfg
+
+    # ── Validation ─────────────────────────────────────────────────────────
+
+    def validate(self) -> None:
+        """Check configuration consistency; raise on errors.
+
+        Raises:
+            ConfigurationError: When the configuration is invalid.
+        """
+        from .exceptions import ConfigurationError
+
+        _valid_browsers = ("chromium", "firefox", "webkit", "electron")
+        if self.browser not in _valid_browsers:
+            raise ConfigurationError(f"Invalid browser {self.browser!r}; must be one of {_valid_browsers}")
+
+        _valid_ss = ("on-fail", "always", "none")
+        if self.screenshot not in _valid_ss:
+            raise ConfigurationError(f"Invalid screenshot mode {self.screenshot!r}; must be one of {_valid_ss}")
+
+        if self.channel is not None and self.browser != "chromium":
+            raise ConfigurationError(
+                f"'channel' is only supported for browser='chromium'; "
+                f"got browser={self.browser!r}, channel={self.channel!r}"
+            )
+
+        if self.timeout < 0:
+            raise ConfigurationError(f"timeout must be non-negative; got {self.timeout}")
+
+        if self.nav_timeout < 0:
+            raise ConfigurationError(f"nav_timeout must be non-negative; got {self.nav_timeout}")
+
+        if self.retries < 0:
+            raise ConfigurationError(f"retries must be non-negative; got {self.retries}")
+
+        if self.ai_always and self.model is None:
+            raise ConfigurationError("ai_always=True requires a model to be configured")
 
     # ── Convenience ───────────────────────────────────────────────────────
 

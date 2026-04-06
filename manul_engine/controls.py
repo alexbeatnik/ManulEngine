@@ -35,12 +35,14 @@ from __future__ import annotations
 import ast
 import importlib.util
 import re
+import threading
+from collections.abc import Callable
 from pathlib import Path, PurePosixPath
-from typing import Callable
 
 # ── Global registry ───────────────────────────────────────────────────────────
 # key: (page_name_lower, target_name_lower) → handler callable
 _CUSTOM_CONTROLS: dict[tuple[str, str], Callable] = {}
+_REGISTRY_LOCK = threading.Lock()
 
 # Tracks which workspace dirs have been fully (eagerly) loaded to prevent
 # re-execution when multiple ManulEngine instances are created in the same
@@ -69,17 +71,21 @@ def custom_control(page: str, target: str) -> Callable:
         async def handle_username(page, action_type, value):
             await page.locator("#user").fill(value or "")
     """
+
     def decorator(func: Callable) -> Callable:
         key = (page.strip().lower(), target.strip().lower())
-        _CUSTOM_CONTROLS[key] = func
+        with _REGISTRY_LOCK:
+            _CUSTOM_CONTROLS[key] = func
         return func
+
     return decorator
 
 
 def get_custom_control(page_name: str, target_name: str) -> Callable | None:
     """Return the registered handler for (page_name, target_name), or ``None``."""
     key = (page_name.strip().lower(), target_name.strip().lower())
-    return _CUSTOM_CONTROLS.get(key)
+    with _REGISTRY_LOCK:
+        return _CUSTOM_CONTROLS.get(key)
 
 
 def _iter_custom_control_targets(source: str) -> list[str]:
@@ -106,9 +112,7 @@ def _iter_custom_control_targets(source: str) -> list[str]:
             if not isinstance(decorator, ast.Call):
                 continue
             func = decorator.func
-            is_custom_control = (
-                isinstance(func, ast.Name) and func.id == "custom_control"
-            ) or (
+            is_custom_control = (isinstance(func, ast.Name) and func.id == "custom_control") or (
                 isinstance(func, ast.Attribute) and func.attr == "custom_control"
             )
             if not is_custom_control:
@@ -134,7 +138,7 @@ def _iter_custom_control_targets(source: str) -> list[str]:
 def extract_required_controls(
     mission_text: str,
     workspace_dir: str,
-    custom_modules_dirs: "list[str] | None" = None,
+    custom_modules_dirs: list[str] | None = None,
 ) -> set[str]:
     """Pre-flight scan: identify which custom module ``.py`` files are needed.
 
@@ -157,7 +161,7 @@ def extract_required_controls(
 
     # Collect all quoted target strings from the mission steps (lowered).
     step_targets: set[str] = set()
-    for match in re.finditer(r'"([^"]+)"|'  r"'([^']+)'", mission_text):
+    for match in re.finditer(r'"([^"]+)"|' r"'([^']+)'", mission_text):
         token = (match.group(1) or match.group(2)).strip().lower()
         if token:
             step_targets.add(token)
@@ -187,8 +191,8 @@ def extract_required_controls(
 
 def load_custom_controls(
     workspace_dir: str,
-    required_modules: "set[str] | None" = None,
-    custom_modules_dirs: "list[str] | None" = None,
+    required_modules: set[str] | None = None,
+    custom_modules_dirs: list[str] | None = None,
 ) -> None:
     """Import custom control modules from workspace directories.
 
@@ -242,11 +246,7 @@ def load_custom_controls(
                 candidates.append(modules_dir.joinpath(*sub_path.parts))
             # Backward compat: accept bare filenames for the "controls" directory.
             if dir_name == "controls":
-                candidates += [
-                    modules_dir / rel
-                    for rel in sorted(required_modules)
-                    if "/" not in rel
-                ]
+                candidates += [modules_dir / rel for rel in sorted(required_modules) if "/" not in rel]
         else:
             # Eager loading (legacy) — skip entirely if this dir was already loaded.
             dir_key = f"{resolved}/{dir_name}"

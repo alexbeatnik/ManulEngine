@@ -1,5 +1,6 @@
 import sys, os, asyncio
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from playwright.async_api import async_playwright
 from manul_engine import ManulEngine
 
@@ -172,54 +173,209 @@ CLASSICS_DOM = """
 # ─────────────────────────────────────────────────────────────────────────────
 TESTS = [
     # ── RAHUL SHETTY ACADEMY ──
-    {"n": "1", "step": "Click the radio button for 'Radio2'", "m": "clickable", "st": ["Radio2"], "tf": None, "exp": "rs_rad2"},
-    {"n": "2", "step": "Fill 'Suggession Class Example' with 'Ukraine'", "m": "input", "st": ["Suggession Class Example"], "tf": "suggession class example", "exp": "autocomplete"},
-    {"n": "3", "step": "Select 'Option3' from 'Dropdown Example'", "m": "select", "st": ["Option3", "Dropdown Example"], "tf": None, "exp": "dropdown-class-example"},
-    {"n": "4", "step": "Check 'Option1' checkbox", "m": "clickable", "st": ["Option1"], "tf": None, "exp": "checkBoxOption1"},
-    {"n": "5", "step": "Check 'Option3' checkbox", "m": "clickable", "st": ["Option3"], "tf": None, "exp": "checkBoxOption3"},
-    {"n": "6", "step": "Fill 'Enter Your Name' with 'John Doe'", "m": "input", "st": ["Enter Your Name"], "tf": "enter your name", "exp": "name"},
+    {
+        "n": "1",
+        "step": "Click the radio button for 'Radio2'",
+        "m": "clickable",
+        "st": ["Radio2"],
+        "tf": None,
+        "exp": "rs_rad2",
+    },
+    {
+        "n": "2",
+        "step": "Fill 'Suggession Class Example' with 'Ukraine'",
+        "m": "input",
+        "st": ["Suggession Class Example"],
+        "tf": "suggession class example",
+        "exp": "autocomplete",
+    },
+    {
+        "n": "3",
+        "step": "Select 'Option3' from 'Dropdown Example'",
+        "m": "select",
+        "st": ["Option3", "Dropdown Example"],
+        "tf": None,
+        "exp": "dropdown-class-example",
+    },
+    {
+        "n": "4",
+        "step": "Check 'Option1' checkbox",
+        "m": "clickable",
+        "st": ["Option1"],
+        "tf": None,
+        "exp": "checkBoxOption1",
+    },
+    {
+        "n": "5",
+        "step": "Check 'Option3' checkbox",
+        "m": "clickable",
+        "st": ["Option3"],
+        "tf": None,
+        "exp": "checkBoxOption3",
+    },
+    {
+        "n": "6",
+        "step": "Fill 'Enter Your Name' with 'John Doe'",
+        "m": "input",
+        "st": ["Enter Your Name"],
+        "tf": "enter your name",
+        "exp": "name",
+    },
     {"n": "7", "step": "Click 'Alert' button", "m": "clickable", "st": ["Alert"], "tf": None, "exp": "alertbtn"},
     {"n": "8", "step": "Click 'Confirm' button", "m": "clickable", "st": ["Confirm"], "tf": None, "exp": "confirmbtn"},
-    {"n": "9", "step": "Fill 'Hide/Show Example' with 'Magic'", "m": "input", "st": ["Hide/Show Example"], "tf": "hide/show example", "exp": "displayed-text"},
+    {
+        "n": "9",
+        "step": "Fill 'Hide/Show Example' with 'Magic'",
+        "m": "input",
+        "st": ["Hide/Show Example"],
+        "tf": "hide/show example",
+        "exp": "displayed-text",
+    },
     {"n": "10", "step": "Click 'Hide' button", "m": "clickable", "st": ["Hide"], "tf": None, "exp": "hide-textbox"},
-    
     # Table Extraction (Classic <table> without specific data-attributes)
-    {"n": "11", "step": "EXTRACT the Price of 'Appium (Selenium)' into {appium_price}", "ex": True, "var": "appium_price", "val": "30"},
-    {"n": "12", "step": "EXTRACT the Price of 'Master Selenium Automation in simple Python' into {python_price}", "ex": True, "var": "python_price", "val": "25"},
-    {"n": "13", "step": "EXTRACT the Instructor of 'Learn SQL' into {sql_inst}", "ex": True, "var": "sql_inst", "val": "Rahul Shetty"},
-    
+    {
+        "n": "11",
+        "step": "EXTRACT the Price of 'Appium (Selenium)' into {appium_price}",
+        "ex": True,
+        "var": "appium_price",
+        "val": "30",
+    },
+    {
+        "n": "12",
+        "step": "EXTRACT the Price of 'Master Selenium Automation in simple Python' into {python_price}",
+        "ex": True,
+        "var": "python_price",
+        "val": "25",
+    },
+    {
+        "n": "13",
+        "step": "EXTRACT the Instructor of 'Learn SQL' into {sql_inst}",
+        "ex": True,
+        "var": "sql_inst",
+        "val": "Rahul Shetty",
+    },
     # Hover Menus
-    {"n": "14", "step": "HOVER over 'Mouse Hover'", "m": "hover", "st": ["Mouse Hover"], "tf": None, "exp": "mousehover", "execute_step": True},
+    {
+        "n": "14",
+        "step": "HOVER over 'Mouse Hover'",
+        "m": "hover",
+        "st": ["Mouse Hover"],
+        "tf": None,
+        "exp": "mousehover",
+        "execute_step": True,
+    },
     {"n": "15", "step": "Click 'Top' from hover menu", "m": "clickable", "st": ["Top"], "tf": None, "exp": "rs_top"},
-    {"n": "16", "step": "Click 'Reload' from hover menu", "m": "clickable", "st": ["Reload"], "tf": None, "exp": "rs_reload"},
-
+    {
+        "n": "16",
+        "step": "Click 'Reload' from hover menu",
+        "m": "clickable",
+        "st": ["Reload"],
+        "tf": None,
+        "exp": "rs_reload",
+    },
     # ── TEST AUTOMATION PRACTICE BLOGSPOT ──
-    {"n": "17", "step": "Fill 'Wikipedia Search' with 'Manul'", "m": "input", "st": ["Wikipedia Search"], "tf": "wikipedia search", "exp": "Wikipedia1_wikipedia-search-input"},
-    {"n": "18", "step": "Click the Wikipedia search button (🔍)", "m": "clickable", "st": ["🔍"], "tf": None, "exp": "bs_wiki_btn"},
-    {"n": "19", "step": "Click 'New Browser Window'", "m": "clickable", "st": ["New Browser Window"], "tf": None, "exp": "bs_new_window"},
-    {"n": "20", "step": "Fill 'Date Picker' with '10/10/2026'", "m": "input", "st": ["Date Picker"], "tf": "date picker", "exp": "datepicker"},
-    
+    {
+        "n": "17",
+        "step": "Fill 'Wikipedia Search' with 'Manul'",
+        "m": "input",
+        "st": ["Wikipedia Search"],
+        "tf": "wikipedia search",
+        "exp": "Wikipedia1_wikipedia-search-input",
+    },
+    {
+        "n": "18",
+        "step": "Click the Wikipedia search button (🔍)",
+        "m": "clickable",
+        "st": ["🔍"],
+        "tf": None,
+        "exp": "bs_wiki_btn",
+    },
+    {
+        "n": "19",
+        "step": "Click 'New Browser Window'",
+        "m": "clickable",
+        "st": ["New Browser Window"],
+        "tf": None,
+        "exp": "bs_new_window",
+    },
+    {
+        "n": "20",
+        "step": "Fill 'Date Picker' with '10/10/2026'",
+        "m": "input",
+        "st": ["Date Picker"],
+        "tf": "date picker",
+        "exp": "datepicker",
+    },
     # Legacy Select Menus
-    {"n": "21", "step": "Select 'Fast' from 'Select Speed'", "m": "select", "st": ["Fast", "Select Speed"], "tf": None, "exp": "speed"},
-    {"n": "22", "step": "Select 'jQuery.js' from 'Select a file'", "m": "select", "st": ["jQuery.js", "Select a file"], "tf": None, "exp": "files"},
-    
+    {
+        "n": "21",
+        "step": "Select 'Fast' from 'Select Speed'",
+        "m": "select",
+        "st": ["Fast", "Select Speed"],
+        "tf": None,
+        "exp": "speed",
+    },
+    {
+        "n": "22",
+        "step": "Select 'jQuery.js' from 'Select a file'",
+        "m": "select",
+        "st": ["jQuery.js", "Select a file"],
+        "tf": None,
+        "exp": "files",
+    },
     # Complex Actions
-    {"n": "23", "step": "DOUBLE CLICK 'Copy Text'", "m": "clickable", "st": ["Copy Text"], "tf": None, "exp": "bs_dbl_click"},
-    {"n": "24", "step": "Fill 'bs_field1' optional field with 'Override'", "m": "input", "st": ["Hello World"], "tf": None, "exp": "bs_field1"},
-    
+    {
+        "n": "23",
+        "step": "DOUBLE CLICK 'Copy Text'",
+        "m": "clickable",
+        "st": ["Copy Text"],
+        "tf": None,
+        "exp": "bs_dbl_click",
+    },
+    {
+        "n": "24",
+        "step": "Fill 'bs_field1' optional field with 'Override'",
+        "m": "input",
+        "st": ["Hello World"],
+        "tf": None,
+        "exp": "bs_field1",
+    },
     # Drag and Drop Targeting
     {"n": "25", "step": "Click 'Drag me'", "m": "clickable", "st": ["Drag me"], "tf": None, "exp": "draggable"},
     {"n": "26", "step": "Click 'Drop here'", "m": "clickable", "st": ["Drop here"], "tf": None, "exp": "droppable"},
-    
     # Blogspot Table Extraction
-    {"n": "27", "step": "EXTRACT the Author of 'Learn Selenium' into {sel_auth}", "ex": True, "var": "sel_auth", "val": "Amit"},
-    {"n": "28", "step": "EXTRACT the Price of 'Master In Java' into {java_price}", "ex": True, "var": "java_price", "val": "500"},
-    {"n": "28b", "step": "EXTRACT the Price of 'Java' into {java_price_short}", "ex": True, "var": "java_price_short", "val": "500"}, # Ensure short ambiguous token matches "Java" row over "Javascript" row
-    {"n": "29", "step": "EXTRACT the Subject of 'Master In Python' into {py_subj}", "ex": True, "var": "py_subj", "val": "Python"},
-
+    {
+        "n": "27",
+        "step": "EXTRACT the Author of 'Learn Selenium' into {sel_auth}",
+        "ex": True,
+        "var": "sel_auth",
+        "val": "Amit",
+    },
+    {
+        "n": "28",
+        "step": "EXTRACT the Price of 'Master In Java' into {java_price}",
+        "ex": True,
+        "var": "java_price",
+        "val": "500",
+    },
+    {
+        "n": "28b",
+        "step": "EXTRACT the Price of 'Java' into {java_price_short}",
+        "ex": True,
+        "var": "java_price_short",
+        "val": "500",
+    },  # Ensure short ambiguous token matches "Java" row over "Javascript" row
+    {
+        "n": "29",
+        "step": "EXTRACT the Subject of 'Master In Python' into {py_subj}",
+        "ex": True,
+        "var": "py_subj",
+        "val": "Python",
+    },
     # Verify Legacy UI
     {"n": "30", "step": "VERIFY that 'Radio Button Example' is present", "ver": True, "res": True},
 ]
+
 
 async def run_suite() -> bool:
     print(f"\n{'=' * 70}")
@@ -231,9 +387,9 @@ async def run_suite() -> bool:
     async with async_playwright() as p:
         browser = await p.chromium.launch()
         # Automatically close alerts, same behavior as Playwright's default
-        ctx  = await browser.new_context()
+        ctx = await browser.new_context()
         page = await ctx.new_page()
-        page.on("dialog", lambda dialog: asyncio.create_task(dialog.accept())) # Alert dialog interceptor
+        page.on("dialog", lambda dialog: asyncio.create_task(dialog.accept()))  # Alert dialog interceptor
 
         await page.set_content(CLASSICS_DOM)
 
@@ -301,6 +457,7 @@ async def run_suite() -> bool:
         await browser.close()
 
     return passed == len(TESTS)
+
 
 if __name__ == "__main__":
     asyncio.run(run_suite())

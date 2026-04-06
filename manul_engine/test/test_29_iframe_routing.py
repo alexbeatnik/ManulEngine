@@ -1,5 +1,6 @@
 import sys, os, asyncio
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from playwright.async_api import async_playwright
 from manul_engine import ManulEngine
 
@@ -54,107 +55,188 @@ IFRAME_DOM = """
 # ─────────────────────────────────────────────────────────────────────────────
 TESTS = [
     # ── Main frame elements (frame_index=0) ──────────────────────────────
-    {"n": "1. Main: Submit button",
-     "step": "Click the 'Submit Order' button",
-     "m": "clickable", "st": ["Submit Order"], "tf": None,
-     "exp_id": "main_submit", "exp_frame": 0},
-
-    {"n": "2. Main: Email input",
-     "step": "Fill 'Email Address' field with 'ghost@manul.ai'",
-     "m": "input", "st": ["Email Address"], "tf": "email address",
-     "exp_id": "main_email", "exp_frame": 0},
-
-    {"n": "3. Main: Help link",
-     "step": "Click the 'Help Center' link",
-     "m": "clickable", "st": ["Help Center"], "tf": None,
-     "exp_id": "main_help", "exp_frame": 0},
-
-    {"n": "4. Main: Language dropdown",
-     "step": "Select 'French' from the 'Language' dropdown",
-     "m": "select", "st": ["French", "Language"], "tf": None,
-     "exp_id": "main_lang", "exp_frame": 0},
-
-    {"n": "5. Main: Search by aria",
-     "step": "Fill 'Search Products' field with 'manul'",
-     "m": "input", "st": ["Search Products"], "tf": "search products",
-     "exp_id": "main_search", "exp_frame": 0},
-
-    {"n": "6. Main: Logout aria-only",
-     "step": "Click the 'Logout' button",
-     "m": "clickable", "st": ["Logout"], "tf": None,
-     "exp_id": "main_logout", "exp_frame": 0},
-
+    {
+        "n": "1. Main: Submit button",
+        "step": "Click the 'Submit Order' button",
+        "m": "clickable",
+        "st": ["Submit Order"],
+        "tf": None,
+        "exp_id": "main_submit",
+        "exp_frame": 0,
+    },
+    {
+        "n": "2. Main: Email input",
+        "step": "Fill 'Email Address' field with 'ghost@manul.ai'",
+        "m": "input",
+        "st": ["Email Address"],
+        "tf": "email address",
+        "exp_id": "main_email",
+        "exp_frame": 0,
+    },
+    {
+        "n": "3. Main: Help link",
+        "step": "Click the 'Help Center' link",
+        "m": "clickable",
+        "st": ["Help Center"],
+        "tf": None,
+        "exp_id": "main_help",
+        "exp_frame": 0,
+    },
+    {
+        "n": "4. Main: Language dropdown",
+        "step": "Select 'French' from the 'Language' dropdown",
+        "m": "select",
+        "st": ["French", "Language"],
+        "tf": None,
+        "exp_id": "main_lang",
+        "exp_frame": 0,
+    },
+    {
+        "n": "5. Main: Search by aria",
+        "step": "Fill 'Search Products' field with 'manul'",
+        "m": "input",
+        "st": ["Search Products"],
+        "tf": "search products",
+        "exp_id": "main_search",
+        "exp_frame": 0,
+    },
+    {
+        "n": "6. Main: Logout aria-only",
+        "step": "Click the 'Logout' button",
+        "m": "clickable",
+        "st": ["Logout"],
+        "tf": None,
+        "exp_id": "main_logout",
+        "exp_frame": 0,
+    },
     # ── Login iframe elements (frame_index=1) ────────────────────────────
-    {"n": "7. iFrame Login: Login button",
-     "step": "Click the 'Login' button",
-     "m": "clickable", "st": ["Login"], "tf": None,
-     "exp_id": "iframe_login_btn", "exp_frame": 1},
-
-    {"n": "8. iFrame Login: Username",
-     "step": "Fill 'Username' field with 'admin'",
-     "m": "input", "st": ["Username"], "tf": "username",
-     "exp_id": "iframe_user", "exp_frame": 1},
-
-    {"n": "9. iFrame Login: Password",
-     "step": "Fill 'Password' field with 'secret'",
-     "m": "input", "st": ["Password"], "tf": "password",
-     "exp_id": "iframe_pass", "exp_frame": 1},
-
-    {"n": "10. iFrame Login: Remember checkbox",
-     "step": "Check the 'Remember Me' checkbox",
-     "m": "clickable", "st": ["Remember Me"], "tf": None,
-     "exp_id": "iframe_remember", "exp_frame": 1},
-
-    {"n": "11. iFrame Login: Forgot link",
-     "step": "Click the 'Forgot Password?' link",
-     "m": "clickable", "st": ["Forgot Password?"], "tf": None,
-     "exp_id": "iframe_forgot", "exp_frame": 1},
-
-    {"n": "12. iFrame Login: data-qa signup",
-     "step": "Click the 'Sign Up Free' button",
-     "m": "clickable", "st": ["Sign Up Free"], "tf": None,
-     "exp_id": "iframe_signup", "exp_frame": 1},
-
+    {
+        "n": "7. iFrame Login: Login button",
+        "step": "Click the 'Login' button",
+        "m": "clickable",
+        "st": ["Login"],
+        "tf": None,
+        "exp_id": "iframe_login_btn",
+        "exp_frame": 1,
+    },
+    {
+        "n": "8. iFrame Login: Username",
+        "step": "Fill 'Username' field with 'admin'",
+        "m": "input",
+        "st": ["Username"],
+        "tf": "username",
+        "exp_id": "iframe_user",
+        "exp_frame": 1,
+    },
+    {
+        "n": "9. iFrame Login: Password",
+        "step": "Fill 'Password' field with 'secret'",
+        "m": "input",
+        "st": ["Password"],
+        "tf": "password",
+        "exp_id": "iframe_pass",
+        "exp_frame": 1,
+    },
+    {
+        "n": "10. iFrame Login: Remember checkbox",
+        "step": "Check the 'Remember Me' checkbox",
+        "m": "clickable",
+        "st": ["Remember Me"],
+        "tf": None,
+        "exp_id": "iframe_remember",
+        "exp_frame": 1,
+    },
+    {
+        "n": "11. iFrame Login: Forgot link",
+        "step": "Click the 'Forgot Password?' link",
+        "m": "clickable",
+        "st": ["Forgot Password?"],
+        "tf": None,
+        "exp_id": "iframe_forgot",
+        "exp_frame": 1,
+    },
+    {
+        "n": "12. iFrame Login: data-qa signup",
+        "step": "Click the 'Sign Up Free' button",
+        "m": "clickable",
+        "st": ["Sign Up Free"],
+        "tf": None,
+        "exp_id": "iframe_signup",
+        "exp_frame": 1,
+    },
     # ── Widget iframe elements (frame_index=2) ──────────────────────────
-    {"n": "13. iFrame Widget: Save by aria",
-     "step": "Click the 'Save Changes' button",
-     "m": "clickable", "st": ["Save Changes"], "tf": None,
-     "exp_id": "widget_save", "exp_frame": 2},
-
-    {"n": "14. iFrame Widget: Note input",
-     "step": "Fill 'Add a note' field with 'important'",
-     "m": "input", "st": ["Add a note"], "tf": "add a note",
-     "exp_id": "widget_note", "exp_frame": 2},
-
-    {"n": "15. iFrame Widget: Priority select",
-     "step": "Select 'High' from the 'Priority' dropdown",
-     "m": "select", "st": ["High", "Priority"], "tf": None,
-     "exp_id": "widget_priority", "exp_frame": 2},
-
-    {"n": "16. iFrame Widget: Cancel button",
-     "step": "Click the 'Cancel' button",
-     "m": "clickable", "st": ["Cancel"], "tf": None,
-     "exp_id": "widget_cancel", "exp_frame": 2},
-
-    {"n": "17. iFrame Widget: data-qa tag input",
-     "step": "Fill 'Tag' field with 'urgent'",
-     "m": "input", "st": ["Tag"], "tf": "tag",
-     "exp_id": "widget_tag", "exp_frame": 2},
-
-    {"n": "18. iFrame Widget: role checkbox",
-     "step": "Click the 'Mark as Urgent' checkbox",
-     "m": "clickable", "st": ["Mark as Urgent"], "tf": None,
-     "exp_id": "widget_urgent", "exp_frame": 2},
-
-    {"n": "19. iFrame Widget: title-based delete",
-     "step": "Click the 'Delete Item' button",
-     "m": "clickable", "st": ["Delete Item"], "tf": None,
-     "exp_id": "widget_delete", "exp_frame": 2},
-
-    {"n": "20. iFrame Widget: Due Date",
-     "step": "Fill 'Due Date' field with '2026-06-15'",
-     "m": "input", "st": ["Due Date"], "tf": "due date",
-     "exp_id": "widget_due", "exp_frame": 2},
+    {
+        "n": "13. iFrame Widget: Save by aria",
+        "step": "Click the 'Save Changes' button",
+        "m": "clickable",
+        "st": ["Save Changes"],
+        "tf": None,
+        "exp_id": "widget_save",
+        "exp_frame": 2,
+    },
+    {
+        "n": "14. iFrame Widget: Note input",
+        "step": "Fill 'Add a note' field with 'important'",
+        "m": "input",
+        "st": ["Add a note"],
+        "tf": "add a note",
+        "exp_id": "widget_note",
+        "exp_frame": 2,
+    },
+    {
+        "n": "15. iFrame Widget: Priority select",
+        "step": "Select 'High' from the 'Priority' dropdown",
+        "m": "select",
+        "st": ["High", "Priority"],
+        "tf": None,
+        "exp_id": "widget_priority",
+        "exp_frame": 2,
+    },
+    {
+        "n": "16. iFrame Widget: Cancel button",
+        "step": "Click the 'Cancel' button",
+        "m": "clickable",
+        "st": ["Cancel"],
+        "tf": None,
+        "exp_id": "widget_cancel",
+        "exp_frame": 2,
+    },
+    {
+        "n": "17. iFrame Widget: data-qa tag input",
+        "step": "Fill 'Tag' field with 'urgent'",
+        "m": "input",
+        "st": ["Tag"],
+        "tf": "tag",
+        "exp_id": "widget_tag",
+        "exp_frame": 2,
+    },
+    {
+        "n": "18. iFrame Widget: role checkbox",
+        "step": "Click the 'Mark as Urgent' checkbox",
+        "m": "clickable",
+        "st": ["Mark as Urgent"],
+        "tf": None,
+        "exp_id": "widget_urgent",
+        "exp_frame": 2,
+    },
+    {
+        "n": "19. iFrame Widget: title-based delete",
+        "step": "Click the 'Delete Item' button",
+        "m": "clickable",
+        "st": ["Delete Item"],
+        "tf": None,
+        "exp_id": "widget_delete",
+        "exp_frame": 2,
+    },
+    {
+        "n": "20. iFrame Widget: Due Date",
+        "step": "Fill 'Due Date' field with '2026-06-15'",
+        "m": "input",
+        "st": ["Due Date"],
+        "tf": "due date",
+        "exp_id": "widget_due",
+        "exp_frame": 2,
+    },
 ]
 
 
@@ -181,9 +263,7 @@ async def run_suite():
 
             manul.reset_session_state()
 
-            el = await manul._resolve_element(
-                page, t["step"], t["m"], t["st"], t["tf"], "", set()
-            )
+            el = await manul._resolve_element(page, t["step"], t["m"], t["st"], t["tf"], "", set())
 
             if el is None:
                 msg = f"FAILED — element not found (None)"

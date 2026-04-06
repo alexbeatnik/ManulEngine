@@ -61,11 +61,13 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (run hunts from repo root without install)
 run_tests.py               Synthetic DOM test suite runner (dev only)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.25
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.26
 manul_engine/
-  __init__.py              public API — re-exports ManulEngine, ManulSession, EngineConfig
+  __init__.py              public API — re-exports ManulEngine, ManulSession, EngineConfig, all exception classes
+  exceptions.py            Structured exception hierarchy (ManulEngineError base, ConfigurationError, ElementResolutionError, HookExecutionError, HuntImportError, VerificationError, SessionError, ScheduleError)
+  _types.py                Shared type definitions — ElementSnapshot TypedDict used across scoring, core, actions
   api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)
-  config.py                EngineConfig frozen dataclass — injectable configuration (replaces module-global reads)
+  config.py                EngineConfig frozen dataclass — injectable configuration (replaces module-global reads); validate() method checks invariants
   core.py                  ManulEngine class (resolution, run_mission, self-healing)
   cache.py                 _ControlsCacheMixin (persistent per-site controls cache)
   debug.py                 _DebugMixin (element highlighting, debug prompt, breakpoint protocol)
@@ -80,13 +82,13 @@ manul_engine/
   scanner.py               Smart Page Scanner — scan_page(), build_hunt(), scan_main()
   helpers.py               HuntBlock, parse_hunt_blocks(), substitute_memory(), extract_quoted(), env_bool(), detect_mode(), classify_step(), timing constants
   cli.py                   Public installed CLI entry point (manul command + manul scan + manul record + manul daemon subcommands); ParsedHunt NamedTuple
-  controls.py              Custom Controls registry (@custom_control, get_custom_control, load_custom_controls)
-  hooks.py                 [SETUP] / [TEARDOWN] hook parser and executor
+  controls.py              Custom Controls registry (@custom_control, get_custom_control, load_custom_controls); thread-safe _REGISTRY_LOCK
+  hooks.py                 [SETUP] / [TEARDOWN] hook parser and executor; thread-safe _CACHE_LOCK; 30s CALL PYTHON timeout warning
   lifecycle.py             Global Lifecycle Hook Registry (@before_all, @after_all, @before_group, @after_group, GlobalContext, load_hooks_file)
   recorder.py              Semantic Test Recorder — JS injection, Python bridge, DSL generator
   scheduler.py             Built-in Scheduler — parse_schedule(), Schedule dataclass, next_run_delay(), daemon_main()
   variables.py             ScopedVariables — 5-level variable hierarchy (row, step, mission, global, import)
-  imports.py               @import/@export/USE system — parse_import_directive(), resolve_imports(), expand_use_directives(), validate_exports()
+  imports.py               @import/@export/USE system — parse_import_directive(), resolve_imports(), expand_use_directives(), validate_exports(); _MAX_IMPORT_DEPTH=10 guard
   packager.py              Pack/install .huntlib archives — pack(), install(), _update_lockfile(), resolve_lockfile()
   _test_runner.py          Dev-only synthetic test runner (not in public CLI)
   test/
@@ -145,6 +147,8 @@ demo/
   examples/                Additional Python helpers for CALL PYTHON demos
   playground/              Experimental nested-module demos
   benchmarks/              Adversarial benchmark suite (12 tasks, 5 HTML fixtures)
+docs/
+  adr/                     Architecture Decision Records (ADR-001 through ADR-004)
 contracts/
   MANUL_API_CONTRACT.md    Machine-readable contract: ManulSession Python API
   MANUL_CLI_CONTRACT.md    Machine-readable contract: CLI interface
@@ -158,9 +162,11 @@ Dockerfile                 Multi-stage CI/CD runner image (ghcr.io/alexbeatnik/m
 docker-compose.yml         Local dev/CI compose: manul, manul-daemon services
 .github/workflows/
   synthetic-tests.yml      PR quality gate (synthetic test suite)
-  release.yml              Unified release: PyPI + GHCR + GitHub Release on v* tag
+  lint.yml                 Ruff lint + format check on PR and push to main
+  release.yml              Unified release: PyPI + GHCR + GitHub Release on v* tag (includes lint gate)
   docker-dev.yml           Dev Docker image on main push (amd64-only)
   manul-ci.yml             Reusable example workflow for downstream repos
+.github/dependabot.yml     Automated dependency updates (pip + github-actions, weekly)
 ```
 
 ## How the engine works
@@ -428,7 +434,9 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 ## Code patterns to follow
 
 * Import: `from manul_engine import ManulEngine` (never `engine` or `framework`). For the programmatic API: `from manul_engine import ManulSession`. For injectable configuration: `from manul_engine import EngineConfig`.
-* `config.py` owns `EngineConfig` — a frozen dataclass with 24 fields mirroring the JSON config surface. `EngineConfig.from_file(path)` loads JSON + env overlay. `ManulEngine.__init__` accepts an optional `config: EngineConfig` parameter; when provided, all settings are read from the config object instead of module-level globals. All runtime configuration (timeouts, AI settings, auto-annotate, etc.) is stored as instance attributes on `ManulEngine` — never read from `prompts.*` at call time.
+* `exceptions.py` owns the structured exception hierarchy: `ManulEngineError(Exception)` is the base class. Concrete exceptions: `ConfigurationError(ManulEngineError, ValueError)`, `ElementResolutionError(ManulEngineError)`, `HookExecutionError(ManulEngineError)`, `HuntImportError(ManulEngineError)`, `VerificationError(ManulEngineError)`, `SessionError(ManulEngineError, RuntimeError)`, `ScheduleError(ManulEngineError, ValueError)`. Multi-inheritance preserves backward compatibility with `except ValueError` / `except RuntimeError` in existing code. All exceptions are re-exported from `__init__.py`.
+* `_types.py` owns shared type definitions. `ElementSnapshot` is a `TypedDict(total=False)` describing the shape of element dicts returned by `SNAPSHOT_JS`. Used with `TYPE_CHECKING` imports in `core.py`, `actions.py`, and `scoring.py` for IDE support and future type-checking.
+* `config.py` owns `EngineConfig` — a frozen dataclass with 24 fields mirroring the JSON config surface. `EngineConfig.from_file(path)` loads JSON + env overlay. `ManulEngine.__init__` accepts an optional `config: EngineConfig` parameter; when provided, all settings are read from the config object instead of module-level globals. All runtime configuration (timeouts, AI settings, auto-annotate, etc.) is stored as instance attributes on `ManulEngine` — never read from `prompts.*` at call time. `validate()` method checks invariants: browser enum, screenshot mode, channel+chromium compat, non-negative timeouts/retries, ai_always requires model.
 * `scoring.py` owns `DOMScorer` class — normalised `0.0–1.0` float scoring with five weighted channels (`WEIGHTS` dict: cache=2.0, text=0.45, attributes=0.25, semantics=0.60, proximity=0.10). `SCALE=177,778` maps the weighted float to integer thresholds expected by `core.py`. `score_elements()` is the backward-compatible entry point that delegates to `DOMScorer.score_all()`. Receives `learned_elements` and `last_xpath` as kwargs. Pre-compiled regex loaded at module import; per-element strings normalised in `_preprocess()`.
 * **Safety first in `scoring.py`:** Always cast fetched attributes using `str(el.get("...", ""))`. JavaScript can pass objects (like `SVGAnimatedString` for SVG icons) instead of strings, which will crash Python's `.lower()`.
 * **iframe routing in `core.py`:** `_snapshot()` iterates `page.frames`, evaluates `SNAPSHOT_JS` per frame, tags elements with `frame_index`. `_frame_for(page, el)` resolves the correct Playwright `Frame` by index with stale fallback to main frame. All 12+ locator call-sites in `actions.py` route through the resolved frame. Cross-origin frames are silently skipped (3-retry, 1.5s backoff on `closed` errors).
@@ -445,11 +453,12 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
 * **Debug mode:** `ManulEngine(debug_mode=True, break_steps={N,...})`. `debug_mode=True` (from `--debug`) highlights the resolved element and pauses before every step using `input()` in TTY or Playwright's `page.pause()`. `break_steps` (from `--break-lines`) pauses only at listed step indices using the stdout/stdin panel protocol when stdout is not a TTY. The two are mutually exclusive in practice — the extension only ever sets `break_steps` via `--break-lines`.
 * **Element highlight in debug mode:** When `debug_mode=True` (or a `break_steps` pause fires), the engine calls `highlight_element(page, locator)` which injects `<style id="manul-debug-style">` (once) and sets `data-manul-debug-highlight="true"` on the target element, producing a persistent 4px magenta outline + glow that stays until `clear_highlight(page)` is called just before the action executes. A separate `_highlight()` method draws a short 2-second flash (non-debug, `setTimeout` inside JS) for non-pausing visual feedback.
-* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). It also supports `PRINT`, optional `with args:` sugar, the fixed helper-module resolution order (`hunt dir -> CWD -> sys.path`), and `bind_hook_result()` for sharing scalar or dict-returned variables across hook lines and browser steps. `_module_cache` is a module-level `dict[str, ModuleType]` that caches resolved modules by absolute file path (JIT loading). `_resolve_module()` returns `tuple[ModuleType, bool]` (module, from_cache). `clear_module_cache()` resets the cache (used for test isolation). `parse_hunt_file()` in `cli.py` returns a `ParsedHunt` NamedTuple with 12 fields: `mission`, `context`, `title`, `step_file_lines`, `setup_lines`, `teardown_lines`, `parsed_vars`, `tags`, `data_file`, `schedule`, `exports`, `imports`. It also strips header-only `@script:` declarations and rewrites `CALL PYTHON {alias}.func` and `CALL PYTHON {callable_alias}` usages to real dotted paths before returning the mission and hook lines. `parse_hunt_file()` does not build hierarchical blocks; the runtime layer does that later with `parse_hunt_blocks()`. `parsed_vars` is a `dict[str, str]` populated from `@var: {key} = value` header lines. `tags` is a `list[str]` populated from `@tags: tag1, tag2` header lines; empty list when absent. `schedule` is a `str` from `@schedule: <expression>`; empty string when absent. `exports` is a `list[str]` from `@export:` header lines; empty list when absent. `imports` is a `list[ImportDirective]` from `@import:` header lines; empty list when absent. `parse_hunt_file()` also resolves imports via `resolve_imports()` and expands `USE` directives via `expand_use_directives()` before returning the mission text. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
+* `hooks.py` owns all `[SETUP]` / `[TEARDOWN]` parsing (`extract_hook_blocks()`) and execution (`execute_hook_line()`, `run_hooks()`). It also supports `PRINT`, optional `with args:` sugar, the fixed helper-module resolution order (`hunt dir -> CWD -> sys.path`), and `bind_hook_result()` for sharing scalar or dict-returned variables across hook lines and browser steps. `_module_cache` is a module-level `dict[str, ModuleType]` that caches resolved modules by absolute file path (JIT loading). `_resolve_module()` returns `tuple[ModuleType, bool]` (module, from_cache). `clear_module_cache()` resets the cache (used for test isolation). All `_module_cache` access is guarded by `_CACHE_LOCK` (`threading.Lock`) for thread safety. `execute_hook_line()` logs a warning when a `CALL PYTHON` function takes longer than 30 seconds. `parse_hunt_file()` in `cli.py` returns a `ParsedHunt` NamedTuple with 12 fields: `mission`, `context`, `title`, `step_file_lines`, `setup_lines`, `teardown_lines`, `parsed_vars`, `tags`, `data_file`, `schedule`, `exports`, `imports`. It also strips header-only `@script:` declarations and rewrites `CALL PYTHON {alias}.func` and `CALL PYTHON {callable_alias}` usages to real dotted paths before returning the mission and hook lines. `parse_hunt_file()` does not build hierarchical blocks; the runtime layer does that later with `parse_hunt_blocks()`. `parsed_vars` is a `dict[str, str]` populated from `@var: {key} = value` header lines. `tags` is a `list[str]` populated from `@tags: tag1, tag2` header lines; empty list when absent. `schedule` is a `str` from `@schedule: <expression>`; empty string when absent. `exports` is a `list[str]` from `@export:` header lines; empty list when absent. `imports` is a `list[ImportDirective]` from `@import:` header lines; empty list when absent. `parse_hunt_file()` also resolves imports via `resolve_imports()` and expands `USE` directives via `expand_use_directives()` before returning the mission text. Modules resolved via `importlib.util.spec_from_file_location` + `spec.loader.exec_module(fresh_ModuleType)` — **never** inserted into `sys.modules`. Target functions must be synchronous; async callables are rejected before invocation.
 * **Auto-Nav annotation:** When `auto_annotate` is enabled, `run_mission()` captures `url_before = page.url` before every action. For `NAVIGATE` actions, the annotation is written above the action itself. For all other actions, `url_after` is checked in the `finally` block — if the URL changed, `_auto_annotate_navigate(page, hunt_file, action_file_lines, action_idx+1)` is called to insert a comment above the next action line. The comment uses the mapped page name when found in `pages.json`, or the full URL when the lookup returns an `"Auto:"` placeholder.
 * **`pages.json` — nested per-site format:** `{ "<site_root_url>": { "Domain": "<display_name>", "<regex_or_exact_url>": "<page_name>" } }`. `lookup_page_name(url)` in `prompts.py` re-reads this file from disk on **every call** (live edits take effect immediately with no restart). Resolution order: exact URL key → regex/substring patterns (skipping `"Domain"` key) → `"Domain"` fallback. When no site block matches, a new nested entry is auto-generated. The longest-prefix site block wins when multiple blocks could match.
 * **`_debug_prompt()` `debug-stop` token:** When Python receives `"debug-stop"` on stdin from the VS Code extension (user pressed ⏹ Debug Stop), it clears **both** `self._user_break_steps = set()` and `self.break_steps = set()`, then breaks the pause loop. The test run continues to completion without any further pauses.
 * **Reporting & HTML reports:** `reporting.py` owns `StepResult`, `BlockResult`, `MissionResult` (with `__bool__` — truthy if status != `"fail"`; has `tags: list[str]` for `@tags` from `.hunt` files and `blocks: list[BlockResult]` for hierarchical execution), plus `RunSummary` fields `session_id` and `invocation_count` for recent cross-invocation HTML-report aggregation. `append_run_history(mission)` appends JSON Lines to `reports/run_history.json` (keys: `file`, `name`, `timestamp`, `status`, `duration_ms`). Separate HTML-report session state is persisted in `reports/manul_report_state.json` so repeated CLI or VS Code Test Explorer invocations can merge into the same `reports/manul_report.html` instead of overwriting it with only the last run. History is appended by `cli.py` (sequential, parallel, and failure paths) and `scheduler.py` (`_run_scheduled_job()`). `reporter.py` owns `generate_report(summary, output_path)` — produces a self-contained dark-themed HTML file with dashboard stats, native `<details>/<summary>` accordions (collapsed by default, auto-expanded on failure), Flexbox step rows, inline base64 screenshots, a **control panel** with "Show Only Failed" checkbox toggle, **tag filter chips** (dynamically collected from all missions' `tags`), and a visible **Run Session / Merged invocations** banner. Each `<div class="mission">` carries `data-status` and `data-tags` attributes for JS filtering. All artifacts (logs, HTML reports, persisted report state) are saved to `reports/` (auto-created by `cli.py`). The `reports/` directory is `.gitignored`.
+* **Scoring early exit:** `DOMScorer.score_all()` accepts an optional `early_exit_score: int | None` parameter. When a scored element exceeds the threshold and explain mode is off, remaining elements are skipped. This reduces O(n) scoring on large DOMs.
 * **Screenshot capture:** `run_mission()` accepts `screenshot_mode` (`"none"`, `"on-fail"`, `"always"`). Screenshots are stored as base64 PNGs in `StepResult.screenshot`.
 
 ## Running tests
@@ -513,7 +522,7 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.25 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.26 \
   --html-report --screenshot on-fail hunts/
 ```
 
@@ -631,7 +640,7 @@ Suggested config for mixed mode (optional AI self-healing fallback):
 
 `manul_engine/controls.py` owns the Custom Controls registry:
 
-* `_CUSTOM_CONTROLS` — module-level `dict[tuple[str, str], Callable]` keyed by `(page_name_lower, target_name_lower)`.
+* `_CUSTOM_CONTROLS` — module-level `dict[tuple[str, str], Callable]` keyed by `(page_name_lower, target_name_lower)`. All registry access is guarded by `_REGISTRY_LOCK` (`threading.Lock`) for thread safety.
 * `@custom_control(page, target)` — decorator; both sync and async handlers accepted.
 * `get_custom_control(page_name, target_name) -> Callable | None` — case-insensitive lookup.
 * `load_custom_controls(workspace_dir, required_modules=None, custom_modules_dirs=None)` — supports just-in-time loading for custom controls. The loader is fed from `custom_controls_dirs` config (default: `["controls"]`; legacy alias `custom_modules_dirs`). The CLI computes `required_controls = extract_required_controls(hunt.mission, workspace_dir, custom_modules_dirs)` before engine startup, then `run_mission()` calls `load_custom_controls()` unconditionally so only the Python files needed for each hunt are imported. Per-file idempotency (`_LOADED_FILES`) prevents duplicate imports across sequential runs. Modules still execute in isolated `ModuleType` sandboxes.
