@@ -386,9 +386,13 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
     try:
         if import_directives:
             hunt_dir = os.path.dirname(os.path.abspath(filepath))
-            imported_blocks, _import_vars = resolve_imports(
+            imported_blocks, import_vars = resolve_imports(
                 import_directives, hunt_dir, filepath,
             )
+            # Merge imported @var: at lowest priority (don't overwrite local declarations)
+            for k, v in import_vars.items():
+                if k not in parsed_vars:
+                    parsed_vars[k] = v
 
         # Expand USE <BlockName> directives in mission body
         if mission_lines:
