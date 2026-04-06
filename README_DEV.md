@@ -48,7 +48,8 @@ ManulEngine/
 │   ├── scanner.py                    Smart Page Scanner: scan_page(), build_hunt(), scan_main()
 │   ├── core.py                       ManulEngine class (resolution, mission runner)
 │   ├── cache.py                      Persistent per-site controls cache mixin
-│   ├── debug.py                      _DebugMixin (element highlighting, debug prompt, breakpoint protocol)
+│   ├── debug.py                      _DebugMixin (element highlighting, debug prompt, breakpoint protocol, What-If REPL integration)
+│   ├── explain_next.py               ExplainNextDebugger — interactive What-If Analysis REPL (PageContext, WhatIfResult, heuristic pre-check, LLM dry-run)
 │   ├── llm.py                        LLMProvider protocol + OllamaProvider / NullProvider
 │   ├── logging_config.py             Centralized logging hierarchy (stderr, MANUL_LOG_LEVEL)
 │   ├── actions.py                    Action execution mixin (click, type, select, hover, drag, scan_page)
@@ -100,7 +101,8 @@ ManulEngine/
 │       ├── test_48_prompts_config.py  Unit: Configuration loading, threshold derivation, page-name lookup, _KEY_MAP, env_bool (83 assertions, no browser)
 │       ├── test_50_imports.py         Unit: @import/@export/USE directive system (84 assertions, no browser)
 │       ├── test_51_packager.py        Unit: Pack/install .huntlib archives and lockfile (21 assertions, no browser)
-│       └── test_52_exports.py         Unit: @export validation, wildcard exports, access control (19 assertions, no browser)
+│       ├── test_52_exports.py         Unit: @export validation, wildcard exports, access control (19 assertions, no browser)
+│       └── test_53_explain_next.py    Unit: ExplainNextDebugger What-If Analysis REPL (83 assertions, no browser)
 ├── demo/                             Integration demo hunts and supporting assets
 │   ├── run_demo.py                   Runner script (sets CWD, calls manul CLI)
 │   ├── manul_engine_configuration.json Demo-specific config (heuristics-only)
@@ -939,6 +941,12 @@ The published extension provides:
 
 ## Release Notes: v0.0.9.27
 
+- **What-If Analysis REPL (`ExplainNextDebugger`):** New `explain_next.py` module with interactive debug REPL for hypothetical step evaluation. During a debug pause, type `w` (terminal) or send `what-if` (extension protocol) to evaluate DSL steps against the live page without executing them. Combines DOMScorer heuristic scoring with optional LLM analysis to produce a 0–10 confidence rating, element match info, risk assessment, and corrective suggestions. The best heuristic match is highlighted with a persistent magenta outline on the live page via the engine's `_debug_highlight` / `_clear_debug_highlight` methods. Classes: `PageContext` (read-only snapshot), `WhatIfResult` (structured result with `confidence_label` property and `format_report()`), `_HeuristicHit` (best candidate from scoring), `ExplainNextDebugger` (REPL controller). REPL commands: `!execute [N]`, `!history`, `!context`, `!quit`. Hooked into `debug.py` via `_get_explain_next()` lazy factory and `_what_if_execute_step` attribute in `core.py`. 83-assertion test suite (`test_53_explain_next.py`).
+- **LLM JSON fence-stripping:** `_parse_llm_json()` in `llm.py` now strips markdown code fences (```` ``` ````) before JSON parsing, improving robustness with models that wrap JSON responses in triple-backtick blocks.
+
+<details>
+<summary>v0.0.9.26</summary>
+
 - **`EngineConfig` frozen dataclass:** New `config.py` module with injectable `EngineConfig` replacing module-level globals. `ManulEngine.__init__` accepts an optional `config` parameter; all runtime settings are stored as instance attributes. `validate()` method checks invariants (browser enum, screenshot mode, channel+chromium compat, non-negative timeouts/retries, ai_always requires model).
 - **Structured exception hierarchy:** New `exceptions.py` with `ManulEngineError` base class and 7 concrete subclasses (`ConfigurationError`, `ElementResolutionError`, `HookExecutionError`, `HuntImportError`, `VerificationError`, `SessionError`, `ScheduleError`). Multi-inheritance preserves backward compatibility. All exceptions re-exported from `__init__.py`.
 - **Shared type definitions:** New `_types.py` with `ElementSnapshot` TypedDict describing the shape of element dicts returned by `SNAPSHOT_JS`. Used with `TYPE_CHECKING` imports in core, actions, and scoring.
@@ -952,14 +960,6 @@ The published extension provides:
 - **`run_mission()` decomposition:** Extracted `_launch_browser()` and `_parse_task()` from the 400-line `run_mission()` method.
 - **Demo directory restructure:** All integration hunts, scripts, controls, benchmarks, and pages.json moved to `demo/`. New `demo/run_demo.py` runner. Synthetic test suite extracted to standalone `run_tests.py`.
 - **Security hygiene:** Eliminated false-positive "shell access" alert from package security scanners (socket.dev).
-
-<details>
-<summary>v0.0.9.22</summary>
-
-- **Docker CI/CD runner:** Multi-stage `Dockerfile` packaging ManulEngine as a headless CI runner image (`ghcr.io/alexbeatnik/manul-engine`). Two-stage build: `builder` (pip install + Playwright browsers) → `runtime` (slim image). Non-root `manul` user (UID 1000), `dumb-init` PID 1, Chromium-only by default (configurable via `BROWSERS` build arg). Includes `docker-compose.yml` with `manul` and `manul-daemon` services.
-- **GitHub Actions workflows:** `release.yml` handles unified release automation (PyPI + GHCR + GitHub Release on `v*` tags). `docker-dev.yml` pushes dev images to GHCR on `main` merge. `manul-ci.yml` is a reusable example workflow for downstream repositories.
-- **`.dockerignore`:** Excludes common repository-only artifacts such as `.git`, `reports/`, `cache/`, and `__pycache__` from the build context.
-- **CI defaults baked into image:** `MANUL_HEADLESS=true`, `MANUL_BROWSER_ARGS="--no-sandbox --disable-dev-shm-usage"`, `TZ=UTC`, `LANG=C.UTF-8`, `PYTHONUNBUFFERED=1`.
 
 </details>
 
