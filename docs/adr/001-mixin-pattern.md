@@ -1,7 +1,7 @@
 # ADR-001: Mixin pattern for ManulEngine
 
 **Status:** Accepted
-**Date:** 2024-12
+**Date:** 2026-04
 
 ## Context
 

@@ -1,7 +1,7 @@
 # ADR-004: Heuristics-first, LLM-last resolution
 
 **Status:** Accepted
-**Date:** 2024-12
+**Date:** 2026-04
 
 ## Context
 
