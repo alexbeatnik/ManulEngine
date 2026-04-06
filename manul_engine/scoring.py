@@ -729,7 +729,7 @@ class DOMScorer:
 
     # ── Orchestrator ──────────────────────────────────────────────────
 
-    def score_all(self, els: list[dict]) -> list[dict]:
+    def score_all(self, els: list[dict], early_exit_score: int | None = None) -> list[dict]:
         """Pre-process, score, and sort elements by score (descending).
 
         Combines normalised ``[0.0, 1.0]`` sub-scores via the ``WEIGHTS``
@@ -792,6 +792,22 @@ class DOMScorer:
                     explain_dict["ctx_kind"] = self._hint.kind
                     explain_dict["ctx_prox_raw"] = round(prox_score, 3)
                 el["_explain"] = explain_dict
+
+            # Early exit optimisation: when an element scores above the
+            # threshold, the remaining candidates are very unlikely to beat
+            # it (cache reuse or exact data-qa matches are near-unique).
+            # Skipping the rest avoids O(n) scoring on large DOMs.
+            # Note: explain mode always scores all elements for completeness.
+            if (
+                early_exit_score is not None
+                and not self._explain
+                and el["score"] >= early_exit_score
+            ):
+                # Move the winning element to the front; unscored elements
+                # keep their default score of 0 which is safe.
+                els.remove(el)
+                els.insert(0, el)
+                return els
 
         return sorted(els, key=lambda x: x.get("score", 0), reverse=True)
 

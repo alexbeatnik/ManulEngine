@@ -29,9 +29,21 @@ jobs:
       - name: Run synthetic tests
         run: python run_tests.py
 
+  # ── 1b. Security lint ──────────────────────────────────────────────
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - name: Ruff security + style check
+        run: ruff check manul_engine/
+
   # ── 2. Build Python package ────────────────────────────────────────
   build-python:
-    needs: test
+    needs: [test, lint]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
