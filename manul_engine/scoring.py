@@ -848,11 +848,9 @@ class DOMScorer:
             # Skipping the rest avoids O(n) scoring on large DOMs.
             # Note: explain mode always scores all elements for completeness.
             if early_exit_score is not None and not self._explain and el["score"] >= early_exit_score:
-                # Move the winning element to the front; unscored elements
-                # keep their default score of 0 which is safe.
-                els.remove(el)
-                els.insert(0, el)
-                return els
+                # Return a correctly sorted list instead of mutating during
+                # iteration — unscored elements keep their default score of 0.
+                return sorted(els, key=lambda x: x.get("score", 0), reverse=True)
 
         return sorted(els, key=lambda x: x.get("score", 0), reverse=True)
 
