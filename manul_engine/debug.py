@@ -21,12 +21,26 @@ import sys
 
 from .js_scripts import DEBUG_MODAL_JS, DEBUG_REMOVE_MODAL_JS
 from .logging_config import logger
+from .explain_next import ExplainNextDebugger
 
 _log = logger.getChild("debug")
 
 
 class _DebugMixin:
     """Mixin providing interactive debugging capabilities for ManulEngine."""
+
+    _explain_next_debugger: ExplainNextDebugger | None = None
+
+    def _get_explain_next(self) -> ExplainNextDebugger:
+        """Lazily create the ExplainNextDebugger for what-if analysis."""
+        if self._explain_next_debugger is None:
+            self._explain_next_debugger = ExplainNextDebugger(
+                llm=self._llm,  # type: ignore[attr-defined]
+                learned_elements=getattr(self, "learned_elements", None),
+                last_xpath=getattr(self, "last_xpath", None),
+                engine=self,
+            )
+        return self._explain_next_debugger
 
     # ── Visual feedback ───────────────────────
 
@@ -152,6 +166,7 @@ class _DebugMixin:
            tokens from stdin in a loop.  Accepted tokens:
              - ``'highlight'`` : re-scroll to the currently highlighted element
              - ``'explain'``   : print heuristic score breakdown
+             - ``'what-if'``   : enter the Explain Next what-if REPL
              - ``'continue'``  : reset to original gutter breakpoints, proceed
              - ``'next'``      : also pause at the immediately following step
              - ``'debug-stop'``: clear all breakpoints, run to end
@@ -211,6 +226,12 @@ class _DebugMixin:
                         else:
                             print("    ℹ️  No element resolution data for this step.")
                         continue  # loop: re-emit the marker
+                    elif resp == "what-if":
+                        dbg = self._get_explain_next()
+                        chosen = await dbg.run_repl(page, current_step=step)
+                        if chosen is not None:
+                            self._what_if_execute_step = chosen
+                        break
                     elif resp == "debug-stop":
                         self._user_break_steps = set()
                         self.break_steps = set()
@@ -227,7 +248,7 @@ class _DebugMixin:
             sys.stdout.flush()
             prompt_text = (
                 f"\n[DEBUG] Next step: {step}\n"
-                f"        ENTER/n = execute · h = re-highlight · pause = Inspector · c = continue all… "
+                f"        ENTER/n = execute · h = re-highlight · w = what-if · pause = Inspector · c = continue all… "
             )
             while True:
                 try:
@@ -258,6 +279,13 @@ class _DebugMixin:
                         print("    🔎 Opening Playwright Inspector…")
                         await page.pause()
                         continue  # re-show the prompt after closing Inspector
+                    elif user_in in ("w", "what-if"):
+                        dbg = self._get_explain_next()
+                        chosen = await dbg.run_repl(page, current_step=step)
+                        if chosen is not None:
+                            self._what_if_execute_step = chosen
+                            break
+                        continue  # user quit REPL, back to debug prompt
                     elif user_in in ("c", "continue"):
                         self._debug_continue = True
                         print("    ▶ Continuing all steps without further pauses…")

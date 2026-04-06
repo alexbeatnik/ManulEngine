@@ -52,6 +52,7 @@ from .lifecycle import (
 )
 from .variables import ScopedVariables
 from .imports import HuntImportError
+from .explain_next import ExplainNextDebugger, WhatIfResult
 
 __all__ = [
     "ManulEngine",
@@ -65,4 +66,6 @@ __all__ = [
     "after_group",
     "ScopedVariables",
     "HuntImportError",
+    "ExplainNextDebugger",
+    "WhatIfResult",
 ]

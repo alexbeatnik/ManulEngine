@@ -176,6 +176,9 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         )
         # LLM provider (delegates to Ollama or no-op for heuristics-only mode).
         self._llm = create_provider(self.model)
+        # What-if REPL: when the debugger's Explain Next session chooses a step
+        # to execute, it is stored here and injected into the mission flow.
+        self._what_if_execute_step: str | None = None
         if self.model is None:
             print("    ℹ️  No model configured — running in heuristics-only mode (AI disabled).")
         if self.debug_mode:
@@ -902,6 +905,15 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                             else:
                                 print(f"    🔴 BREAKPOINT at action {action_index} — opening Playwright Inspector…")
                                 await page.pause()
+
+                        # What-If REPL: if the debugger chose a step to execute,
+                        # replace the current step and re-classify it.
+                        if self._what_if_execute_step is not None:
+                            step = self._what_if_execute_step
+                            raw_step = step
+                            step_kind = classify_step(step)
+                            self._what_if_execute_step = None
+                            print(f"  [🔮 WHAT-IF EXECUTE] {step}")
 
                         _auto_annotate_live = (
                             _environ.get("MANUL_AUTO_ANNOTATE", "").strip().lower()
