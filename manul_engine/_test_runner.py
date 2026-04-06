@@ -65,6 +65,7 @@ async def run_tests(log_path: str) -> bool:
     os.environ["MANUL_AI_THRESHOLD"] = "0"
     try:
         from manul_engine import prompts as _prompts
+
         _prompts.CONTROLS_CACHE_ENABLED = False
         _prompts.SEMANTIC_CACHE_ENABLED = False
         _prompts.ENV_AI_THRESHOLD = 0
@@ -73,9 +74,7 @@ async def run_tests(log_path: str) -> bool:
 
     # Ensure UTF-8 output on Windows / misconfigured terminals.
     if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
-        sys.stdout = io.TextIOWrapper(
-            sys.stdout.detach(), encoding="utf-8", errors="replace", line_buffering=True
-        )
+        sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding="utf-8", errors="replace", line_buffering=True)
 
     tee = _Tee(log_path)
     real_stdout = sys.stdout
@@ -98,11 +97,7 @@ async def run_tests(log_path: str) -> bool:
 
     sys.stdout = _ScoreTee()
 
-    test_files = sorted(
-        f[:-3]
-        for f in os.listdir(_TEST_DIR)
-        if f.startswith("test_") and f.endswith(".py")
-    )
+    test_files = sorted(f[:-3] for f in os.listdir(_TEST_DIR) if f.startswith("test_") and f.endswith(".py"))
 
     suite_results: list[tuple[str, int, int]] = []
 

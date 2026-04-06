@@ -299,12 +299,15 @@ async def run_suite() -> bool:
         # ── 10. Reporter renders healed badge ─────────────────────────────
 
         import tempfile
-        step_healed = StepResult(index=1, text="Click 'Login' button", status="pass",
-                                 duration_ms=150, healed=True)
+
+        step_healed = StepResult(index=1, text="Click 'Login' button", status="pass", duration_ms=150, healed=True)
         step_normal = StepResult(index=2, text="DONE.", status="pass", duration_ms=5)
         mission = MissionResult(
-            file="/tmp/heal_test.hunt", name="heal_test.hunt", status="pass",
-            duration_ms=155, steps=[step_healed, step_normal],
+            file="/tmp/heal_test.hunt",
+            name="heal_test.hunt",
+            status="pass",
+            duration_ms=155,
+            steps=[step_healed, step_normal],
         )
         summary = RunSummary()
         summary.started_at = "2025-01-15 10:30:00"
@@ -329,11 +332,13 @@ async def run_suite() -> bool:
 
         # ── 11. Reporter does NOT render healed badge for non-healed steps
 
-        step_no_heal = StepResult(index=1, text="Click 'OK' button", status="pass",
-                                  duration_ms=100, healed=False)
+        step_no_heal = StepResult(index=1, text="Click 'OK' button", status="pass", duration_ms=100, healed=False)
         mission2 = MissionResult(
-            file="/tmp/no_heal.hunt", name="no_heal.hunt", status="pass",
-            duration_ms=100, steps=[step_no_heal],
+            file="/tmp/no_heal.hunt",
+            name="no_heal.hunt",
+            status="pass",
+            duration_ms=100,
+            steps=[step_no_heal],
         )
         summary2 = RunSummary()
         summary2.started_at = "2025-01-15 10:30:00"
@@ -356,14 +361,23 @@ async def run_suite() -> bool:
 
         # ── 12. Reporter healed badge in logical step group ───────────────
 
-        step_lg_healed = StepResult(index=1, text="Click 'Submit'", status="pass",
-                                    duration_ms=200, healed=True,
-                                    logical_step="STEP 1: Fill form")
-        step_lg_normal = StepResult(index=2, text="DONE.", status="pass",
-                                    duration_ms=5, logical_step="STEP 1: Fill form")
+        step_lg_healed = StepResult(
+            index=1,
+            text="Click 'Submit'",
+            status="pass",
+            duration_ms=200,
+            healed=True,
+            logical_step="STEP 1: Fill form",
+        )
+        step_lg_normal = StepResult(
+            index=2, text="DONE.", status="pass", duration_ms=5, logical_step="STEP 1: Fill form"
+        )
         mission3 = MissionResult(
-            file="/tmp/lg_heal.hunt", name="lg_heal.hunt", status="pass",
-            duration_ms=205, steps=[step_lg_healed, step_lg_normal],
+            file="/tmp/lg_heal.hunt",
+            name="lg_heal.hunt",
+            status="pass",
+            duration_ms=205,
+            steps=[step_lg_healed, step_lg_normal],
         )
         summary3 = RunSummary()
         summary3.started_at = "2025-01-15 10:30:00"

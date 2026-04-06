@@ -57,6 +57,7 @@ def _make_module(func_name: str, func) -> types.ModuleType:
 
 # ── Section 1: Hook parser (execute_hook_line) ────────────────────────────────
 
+
 def _test_hook_parser() -> None:
     print("\n  ── Hook parser (CALL PYTHON ... into {var}) ─────────────────")
 
@@ -148,19 +149,19 @@ def _test_hook_parser() -> None:
 
 # ── Section 2: Engine integration ────────────────────────────────────────────
 
+
 async def _test_engine_integration() -> None:
     print("\n  ── Engine integration (run_mission binds CALL PYTHON return) ─")
 
     with patch("manul_engine.core.load_custom_controls"):
         from manul_engine.core import ManulEngine
+
         engine = ManulEngine(model=None, disable_cache=True)
 
     # Capture which step strings reach _execute_step.
     captured_steps: list[str] = []
 
-    async def _fake_execute_step(
-        page, step: str, strategic_context: str = "", step_idx: int = 0
-    ) -> bool:
+    async def _fake_execute_step(page, step: str, strategic_context: str = "", step_idx: int = 0) -> bool:
         captured_steps.append(step)
         return True
 
@@ -191,10 +192,7 @@ async def _test_engine_integration() -> None:
 
     otp_mod = _make_module("fetch_otp", _fetch_otp)
 
-    mission = (
-        "1. CALL PYTHON api_helpers.fetch_otp into {magic_code}\n"
-        "2. Fill 'Security Code' with '{magic_code}'\n"
-    )
+    mission = "1. CALL PYTHON api_helpers.fetch_otp into {magic_code}\n2. Fill 'Security Code' with '{magic_code}'\n"
 
     with (
         patch("manul_engine.core.async_playwright", return_value=mock_playwright),
@@ -235,10 +233,7 @@ async def _test_engine_integration() -> None:
     captured_steps.clear()
     with patch("manul_engine.core.load_custom_controls"):
         engine2 = ManulEngine(model=None, disable_cache=True)
-    mission2 = (
-        "1. CALL PYTHON api_helpers.fetch_otp to {token}\n"
-        "2. Fill 'Token' with '{token}'\n"
-    )
+    mission2 = "1. CALL PYTHON api_helpers.fetch_otp to {token}\n2. Fill 'Token' with '{token}'\n"
     with (
         patch("manul_engine.core.async_playwright", return_value=mock_playwright),
         patch.object(engine2, "_execute_step", side_effect=_fake_execute_step),
@@ -255,6 +250,7 @@ async def _test_engine_integration() -> None:
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
+
 
 async def run_suite() -> bool:
     global _PASS, _FAIL

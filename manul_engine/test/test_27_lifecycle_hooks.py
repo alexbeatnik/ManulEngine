@@ -75,6 +75,7 @@ def _fresh_registry() -> _HookRegistry:
 
 # ── Section 1: Decorator registration ────────────────────────────────────────
 
+
 def _test_registration() -> None:
     print("\n  ── Decorator registration ─────────────────────────────────")
     reg = _fresh_registry()
@@ -113,6 +114,7 @@ def _test_registration() -> None:
 
 # ── Section 2: Async rejection ────────────────────────────────────────────────
 
+
 def _test_async_rejection() -> None:
     print("\n  ── Async rejection ────────────────────────────────────────")
     reg = _fresh_registry()
@@ -121,12 +123,14 @@ def _test_async_rejection() -> None:
         pass
 
     rejected = [False, False, False, False]
-    for i, call in enumerate([
-        lambda: reg.register_before_all(async_fn),
-        lambda: reg.register_after_all(async_fn),
-        lambda: reg.register_before_group("smoke")(async_fn),
-        lambda: reg.register_after_group("smoke")(async_fn),
-    ]):
+    for i, call in enumerate(
+        [
+            lambda: reg.register_before_all(async_fn),
+            lambda: reg.register_after_all(async_fn),
+            lambda: reg.register_before_group("smoke")(async_fn),
+            lambda: reg.register_after_group("smoke")(async_fn),
+        ]
+    ):
         try:
             call()
         except TypeError:
@@ -139,6 +143,7 @@ def _test_async_rejection() -> None:
 
 
 # ── Section 3: run_before_all ─────────────────────────────────────────────────
+
 
 def _test_run_before_all() -> None:
     print("\n  ── run_before_all ─────────────────────────────────────────")
@@ -185,6 +190,7 @@ def _test_run_before_all() -> None:
 
 # ── Section 4: run_after_all ──────────────────────────────────────────────────
 
+
 def _test_run_after_all() -> None:
     print("\n  ── run_after_all ──────────────────────────────────────────")
     reg = _fresh_registry()
@@ -207,6 +213,7 @@ def _test_run_after_all() -> None:
 
 
 # ── Section 5: run_before_group / run_after_group tag matching ────────────────
+
 
 def _test_group_tag_matching() -> None:
     print("\n  ── before_group / after_group tag matching ────────────────")
@@ -258,6 +265,7 @@ def _test_group_tag_matching() -> None:
 
 # ── Section 6: GlobalContext variable propagation ─────────────────────────────
 
+
 def _test_global_context() -> None:
     print("\n  ── GlobalContext variable propagation ─────────────────────")
     ctx = GlobalContext()
@@ -286,6 +294,7 @@ def _test_global_context() -> None:
 
 # ── Section 7: is_empty / clear ───────────────────────────────────────────────
 
+
 def _test_is_empty_and_clear() -> None:
     print("\n  ── is_empty / clear ───────────────────────────────────────")
     reg = _fresh_registry()
@@ -306,6 +315,7 @@ def _test_is_empty_and_clear() -> None:
 
 
 # ── Section 8: load_hooks_file ────────────────────────────────────────────────
+
 
 def _test_load_hooks_file() -> None:
     print("\n  ── load_hooks_file ────────────────────────────────────────")
@@ -359,6 +369,7 @@ def _test_load_hooks_file() -> None:
 
 # ── Section 9: serialize / deserialize ───────────────────────────────────────
 
+
 def _test_serialize_deserialize() -> None:
     print("\n  ── serialize / deserialize ────────────────────────────────")
 
@@ -406,9 +417,11 @@ def _test_serialize_deserialize() -> None:
 
 # ── Section 10: _run_hunt_file accepts global_vars ────────────────────────────
 
+
 def _test_run_hunt_file_signature() -> None:
     print("\n  ── _run_hunt_file signature accepts global_vars ───────────")
     from manul_engine.cli import _run_hunt_file
+
     sig = inspect.signature(_run_hunt_file)
     _assert("global_vars" in sig.parameters, "_run_hunt_file has global_vars parameter")
     param = sig.parameters["global_vars"]
@@ -417,9 +430,11 @@ def _test_run_hunt_file_signature() -> None:
 
 # ── Section 11: __init__.py public re-exports ─────────────────────────────────
 
+
 def _test_public_exports() -> None:
     print("\n  ── manul_engine public re-exports ─────────────────────────")
     import manul_engine as me
+
     _assert(hasattr(me, "GlobalContext"), "GlobalContext in manul_engine namespace")
     _assert(hasattr(me, "before_all"), "before_all in manul_engine namespace")
     _assert(hasattr(me, "after_all"), "after_all in manul_engine namespace")
@@ -429,6 +444,7 @@ def _test_public_exports() -> None:
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
+
 
 async def run_suite() -> bool:
     global _PASS, _FAIL

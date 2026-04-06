@@ -37,6 +37,7 @@ def _assert(cond: bool, label: str, detail: str = "") -> None:
 # Section 1: pack()
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _test_pack() -> None:
     print("\n  ── pack() ────────────────────────────────────────────────────")
     from manul_engine.packager import pack
@@ -91,6 +92,7 @@ def _test_pack() -> None:
 # Section 2: install() from archive
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _test_install_from_archive() -> None:
     print("\n  ── install() from archive ────────────────────────────────────")
     from manul_engine.packager import pack, install
@@ -127,6 +129,7 @@ def _test_install_from_archive() -> None:
 # Section 3: install() from directory
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _test_install_from_directory() -> None:
     print("\n  ── install() from directory ──────────────────────────────────")
     from manul_engine.packager import install
@@ -149,6 +152,7 @@ def _test_install_from_directory() -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Section 4: resolve_lockfile()
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _test_resolve_lockfile() -> None:
     print("\n  ── resolve_lockfile() ────────────────────────────────────────")
@@ -178,6 +182,7 @@ def _test_resolve_lockfile() -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Section 5: Reinstall / overwrite
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _test_reinstall() -> None:
     print("\n  ── reinstall (overwrite existing) ────────────────────────────")
@@ -216,6 +221,7 @@ def _test_reinstall() -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Entry point
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def run_suite() -> tuple[int, int]:
     global _PASS, _FAIL

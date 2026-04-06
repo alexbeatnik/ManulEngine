@@ -47,6 +47,7 @@ def _assert(condition: bool, name: str, detail: str = "") -> None:
 # Section A: Indentation robustness
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _test_indentation_stripping() -> None:
     """Prove that indented lines (as produced by the VS Code formatter) parse
     identically to flush lines after the master strip in run_mission()."""
@@ -73,40 +74,24 @@ STEP 2: Extract data
 """
     plan = [line.strip() for line in indented_hunt.splitlines() if line.strip()]
 
-    _assert(classify_step(plan[0]) == "logical_step",
-            "indented: STEP 1 recognised as logical_step")
-    _assert(classify_step(plan[1]) == "navigate",
-            "indented: NAVIGATE recognised after stripping")
-    _assert(classify_step(plan[2]) == "action",
-            "indented: Fill recognised as action after stripping")
-    _assert(classify_step(plan[3]) == "action",
-            "indented: Fill (password) recognised as action")
-    _assert(classify_step(plan[4]) == "action",
-            "indented: Click recognised as action")
-    _assert(classify_step(plan[5]) == "verify",
-            "indented: VERIFY recognised after stripping")
-    _assert(classify_step(plan[6]) == "logical_step",
-            "indented: STEP 2 recognised as logical_step")
-    _assert(classify_step(plan[7]) == "extract",
-            "indented: EXTRACT recognised after stripping")
-    _assert(classify_step(plan[8]) == "set_var",
-            "indented: SET recognised after stripping")
-    _assert(classify_step(plan[9]) == "wait",
-            "indented: WAIT recognised after stripping")
-    _assert(classify_step(plan[10]) == "scroll",
-            "indented: SCROLL recognised after stripping")
-    _assert(classify_step(plan[11]) == "press_enter",
-            "indented: PRESS ENTER recognised after stripping")
-    _assert(classify_step(plan[12]) == "call_python",
-            "indented: CALL PYTHON recognised after stripping")
-    _assert(classify_step(plan[13]) == "done",
-            "indented: DONE recognised after stripping")
+    _assert(classify_step(plan[0]) == "logical_step", "indented: STEP 1 recognised as logical_step")
+    _assert(classify_step(plan[1]) == "navigate", "indented: NAVIGATE recognised after stripping")
+    _assert(classify_step(plan[2]) == "action", "indented: Fill recognised as action after stripping")
+    _assert(classify_step(plan[3]) == "action", "indented: Fill (password) recognised as action")
+    _assert(classify_step(plan[4]) == "action", "indented: Click recognised as action")
+    _assert(classify_step(plan[5]) == "verify", "indented: VERIFY recognised after stripping")
+    _assert(classify_step(plan[6]) == "logical_step", "indented: STEP 2 recognised as logical_step")
+    _assert(classify_step(plan[7]) == "extract", "indented: EXTRACT recognised after stripping")
+    _assert(classify_step(plan[8]) == "set_var", "indented: SET recognised after stripping")
+    _assert(classify_step(plan[9]) == "wait", "indented: WAIT recognised after stripping")
+    _assert(classify_step(plan[10]) == "scroll", "indented: SCROLL recognised after stripping")
+    _assert(classify_step(plan[11]) == "press_enter", "indented: PRESS ENTER recognised after stripping")
+    _assert(classify_step(plan[12]) == "call_python", "indented: CALL PYTHON recognised after stripping")
+    _assert(classify_step(plan[13]) == "done", "indented: DONE recognised after stripping")
 
     # Also verify detect_mode works on stripped indented lines
-    _assert(detect_mode(plan[2]) == "input",
-            "indented: detect_mode Fill = input")
-    _assert(detect_mode(plan[4]) == "clickable",
-            "indented: detect_mode Click = clickable")
+    _assert(detect_mode(plan[2]) == "input", "indented: detect_mode Fill = input")
+    _assert(detect_mode(plan[4]) == "clickable", "indented: detect_mode Click = clickable")
 
 
 def _test_indented_hunt_file_parse() -> None:
@@ -135,18 +120,12 @@ STEP 1: Login
 
         # The mission text should contain the lines (with or without
         # leading whitespace — run_mission strips anyway).
-        _assert("NAVIGATE" in mission,
-                "indented file: NAVIGATE present in mission")
-        _assert("Fill" in mission,
-                "indented file: Fill present in mission")
-        _assert("VERIFY" in mission,
-                "indented file: VERIFY present in mission")
-        _assert(parsed.context == "Indentation test",
-                "indented file: @context parsed correctly")
-        _assert(parsed.title == "indent-test",
-                "indented file: @title parsed correctly")
-        _assert(parsed.parsed_vars.get("email") == "admin@test.com",
-                "indented file: @var parsed correctly")
+        _assert("NAVIGATE" in mission, "indented file: NAVIGATE present in mission")
+        _assert("Fill" in mission, "indented file: Fill present in mission")
+        _assert("VERIFY" in mission, "indented file: VERIFY present in mission")
+        _assert(parsed.context == "Indentation test", "indented file: @context parsed correctly")
+        _assert(parsed.title == "indent-test", "indented file: @title parsed correctly")
+        _assert(parsed.parsed_vars.get("email") == "admin@test.com", "indented file: @var parsed correctly")
     finally:
         os.unlink(path)
 
@@ -162,45 +141,36 @@ def _test_tab_indentation() -> None:
         "\tSET {x} = 'hello'",
     ]
     stripped = [line.strip() for line in tab_lines]
-    _assert(classify_step(stripped[0]) == "navigate",
-            "tab indent: NAVIGATE recognised")
-    _assert(classify_step(stripped[1]) == "action",
-            "tab indent: Click recognised as action")
-    _assert(classify_step(stripped[2]) == "verify",
-            "tab indent: VERIFY recognised")
-    _assert(classify_step(stripped[3]) == "set_var",
-            "tab indent: SET recognised")
+    _assert(classify_step(stripped[0]) == "navigate", "tab indent: NAVIGATE recognised")
+    _assert(classify_step(stripped[1]) == "action", "tab indent: Click recognised as action")
+    _assert(classify_step(stripped[2]) == "verify", "tab indent: VERIFY recognised")
+    _assert(classify_step(stripped[3]) == "set_var", "tab indent: SET recognised")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Section B: SET command — classify_step recognition
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _test_classify_set() -> None:
     """classify_step must return 'set_var' for SET commands."""
     print("\n  ── classify_step — SET recognition ───────────────────────────")
 
-    _assert(classify_step("SET {user_email} = 'admin@test.com'") == "set_var",
-            "SET with braces and quoted value")
-    _assert(classify_step("SET user_email = admin@test.com") == "set_var",
-            "SET with bare key and unquoted value")
-    _assert(classify_step("SET {token} = abc123") == "set_var",
-            "SET with braces and unquoted value")
-    _assert(classify_step('SET {greeting} = "Hello World"') == "set_var",
-            "SET with double-quoted value")
-    _assert(classify_step("1. SET {x} = 42") == "set_var",
-            "numbered SET command")
+    _assert(classify_step("SET {user_email} = 'admin@test.com'") == "set_var", "SET with braces and quoted value")
+    _assert(classify_step("SET user_email = admin@test.com") == "set_var", "SET with bare key and unquoted value")
+    _assert(classify_step("SET {token} = abc123") == "set_var", "SET with braces and unquoted value")
+    _assert(classify_step('SET {greeting} = "Hello World"') == "set_var", "SET with double-quoted value")
+    _assert(classify_step("1. SET {x} = 42") == "set_var", "numbered SET command")
 
     # Must NOT match SET inside quoted labels
-    _assert(classify_step("Click 'Settings' button") == "action",
-            "SET inside quoted text is not set_var (Settings)")
-    _assert(classify_step("Click the 'Reset' button") == "action",
-            "Reset is not SET")
+    _assert(classify_step("Click 'Settings' button") == "action", "SET inside quoted text is not set_var (Settings)")
+    _assert(classify_step("Click the 'Reset' button") == "action", "Reset is not SET")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Section C: SET command — regex parsing
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _test_set_regex_parsing() -> None:
     """Verify the SET regex from core.py correctly extracts var name and value."""
@@ -215,13 +185,11 @@ def _test_set_regex_parsing() -> None:
     m = _RE_SET.match("SET {user_email} = 'admin@test.com'")
     _assert(m is not None, "regex: SET {key} = 'value' matches")
     if m:
-        _assert(m.group(1) == "user_email", "regex: var name extracted",
-                f"got {m.group(1)!r}")
+        _assert(m.group(1) == "user_email", "regex: var name extracted", f"got {m.group(1)!r}")
         raw = m.group(2).strip()
         if len(raw) >= 2 and raw[0] in ("'", '"') and raw[-1] == raw[0]:
             raw = raw[1:-1]
-        _assert(raw == "admin@test.com", "regex: quoted value unquoted",
-                f"got {raw!r}")
+        _assert(raw == "admin@test.com", "regex: quoted value unquoted", f"got {raw!r}")
 
     # Case 2: bare key + unquoted value
     m = _RE_SET.match("SET token = abc123")
@@ -249,13 +217,13 @@ def _test_set_regex_parsing() -> None:
     m = _RE_SET.match("SET {desc} = a long description here")
     _assert(m is not None, "regex: unquoted multi-word value matches")
     if m:
-        _assert(m.group(2).strip() == "a long description here",
-                "regex: multi-word value preserved")
+        _assert(m.group(2).strip() == "a long description here", "regex: multi-word value preserved")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Section D: SET + substitute_memory integration
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _test_set_substitute_memory() -> None:
     """Simulate the SET → substitute_memory flow that core.py executes."""
@@ -269,9 +237,11 @@ def _test_set_substitute_memory() -> None:
     # Step 2: NAVIGATE to {base_url}/login
     step2 = "NAVIGATE to {base_url}/login"
     substituted = substitute_memory(step2, memory)
-    _assert(substituted == "NAVIGATE to https://staging.example.com/login",
-            "SET var substituted in NAVIGATE step",
-            f"got {substituted!r}")
+    _assert(
+        substituted == "NAVIGATE to https://staging.example.com/login",
+        "SET var substituted in NAVIGATE step",
+        f"got {substituted!r}",
+    )
 
     # Step 3: SET {user} = 'admin'
     memory["user"] = "admin"
@@ -279,9 +249,7 @@ def _test_set_substitute_memory() -> None:
     # Step 4: Fill 'Username' with '{user}'
     step4 = "Fill 'Username' with '{user}'"
     substituted4 = substitute_memory(step4, memory)
-    _assert(substituted4 == "Fill 'Username' with 'admin'",
-            "SET var substituted in Fill step",
-            f"got {substituted4!r}")
+    _assert(substituted4 == "Fill 'Username' with 'admin'", "SET var substituted in Fill step", f"got {substituted4!r}")
 
 
 def _test_var_and_set_coexistence() -> None:
@@ -310,26 +278,30 @@ DONE.
         parsed = parse_hunt_file(path)
 
         # Static vars parsed correctly
-        _assert(parsed.parsed_vars.get("static_email") == "static@example.com",
-                "coexistence: @var static_email parsed")
-        _assert(parsed.parsed_vars.get("env") == "staging",
-                "coexistence: @var env parsed")
+        _assert(parsed.parsed_vars.get("static_email") == "static@example.com", "coexistence: @var static_email parsed")
+        _assert(parsed.parsed_vars.get("env") == "staging", "coexistence: @var env parsed")
 
         # Simulate engine memory state after @var loading + SET execution
         memory = dict(parsed.parsed_vars)
         memory["dynamic_token"] = "tok_abc123"  # simulates SET step
 
         step_fill = "Fill 'Email' with '{static_email}'"
-        _assert(substitute_memory(step_fill, memory) == "Fill 'Email' with 'static@example.com'",
-                "coexistence: @var substitution works")
+        _assert(
+            substitute_memory(step_fill, memory) == "Fill 'Email' with 'static@example.com'",
+            "coexistence: @var substitution works",
+        )
 
         step_token = "Fill 'Token' with '{dynamic_token}'"
-        _assert(substitute_memory(step_token, memory) == "Fill 'Token' with 'tok_abc123'",
-                "coexistence: SET substitution works")
+        _assert(
+            substitute_memory(step_token, memory) == "Fill 'Token' with 'tok_abc123'",
+            "coexistence: SET substitution works",
+        )
 
         step_nav = "NAVIGATE to https://{env}.example.com"
-        _assert(substitute_memory(step_nav, memory) == "NAVIGATE to https://staging.example.com",
-                "coexistence: @var in URL substitution works")
+        _assert(
+            substitute_memory(step_nav, memory) == "NAVIGATE to https://staging.example.com",
+            "coexistence: @var in URL substitution works",
+        )
     finally:
         os.unlink(path)
 
@@ -339,17 +311,18 @@ def _test_set_not_confused_with_labels() -> None:
     print("\n  ── SET inside quoted labels ───────────────────────────────────")
 
     # 'Settings' contains 'SET' as a substring but should stay action
-    _assert(classify_step("Click the 'Settings' button") == "action",
-            "'Settings' label not classified as set_var")
-    _assert(classify_step("VERIFY that 'Set up your account' is present") == "verify",
-            "'Set up' in quoted verify not classified as set_var")
-    _assert(classify_step("Fill 'Offset' field with '100'") == "action",
-            "'Offset' label not classified as set_var")
+    _assert(classify_step("Click the 'Settings' button") == "action", "'Settings' label not classified as set_var")
+    _assert(
+        classify_step("VERIFY that 'Set up your account' is present") == "verify",
+        "'Set up' in quoted verify not classified as set_var",
+    )
+    _assert(classify_step("Fill 'Offset' field with '100'") == "action", "'Offset' label not classified as set_var")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Entry point
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def run_suite() -> tuple[int, int]:
     """Run all test sections and return (passed, failed)."""
@@ -377,8 +350,8 @@ async def run_suite() -> tuple[int, int]:
     _test_set_not_confused_with_labels()
 
     total = _PASS + _FAIL
-    print(f"\n  {'='*50}")
+    print(f"\n  {'=' * 50}")
     print(f"  RESULTS: {_PASS} passed, {_FAIL} failed")
-    print(f"  {'='*50}")
+    print(f"  {'=' * 50}")
     print(f"  \U0001f4ca SCORE: {_PASS}/{total}")
     return _PASS, _FAIL

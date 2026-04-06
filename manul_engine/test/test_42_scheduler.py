@@ -52,6 +52,7 @@ def _assert(condition: bool, name: str, detail: str = "") -> None:
 
 # ── 1. parse_schedule — interval expressions ─────────────────────────────────
 
+
 def test_parse_every_n_minutes() -> None:
     s = parse_schedule("every 5 minutes")
     _assert(s.interval_seconds == 300, "every 5 minutes = 300s")
@@ -86,6 +87,7 @@ def test_parse_every_1_minute() -> None:
 
 # ── 2. parse_schedule — daily expressions ────────────────────────────────────
 
+
 def test_parse_daily_at() -> None:
     s = parse_schedule("daily at 09:00")
     _assert(s.daily_at == (9, 0), "daily at 09:00 → (9, 0)")
@@ -98,6 +100,7 @@ def test_parse_daily_at_afternoon() -> None:
 
 
 # ── 3. parse_schedule — weekly expressions ───────────────────────────────────
+
 
 def test_parse_every_monday() -> None:
     s = parse_schedule("every monday")
@@ -123,6 +126,7 @@ def test_parse_every_wednesday_at() -> None:
 
 # ── 4. parse_schedule — case insensitivity ───────────────────────────────────
 
+
 def test_parse_case_insensitive() -> None:
     s1 = parse_schedule("Every 5 Minutes")
     _assert(s1.interval_seconds == 300, "case insensitive: Every 5 Minutes")
@@ -133,6 +137,7 @@ def test_parse_case_insensitive() -> None:
 
 
 # ── 5. parse_schedule — error cases ──────────────────────────────────────────
+
 
 def test_parse_empty() -> None:
     try:
@@ -168,6 +173,7 @@ def test_parse_invalid_weekly_time() -> None:
 
 # ── 6. next_run_delay — interval ─────────────────────────────────────────────
 
+
 def test_next_run_delay_interval() -> None:
     s = parse_schedule("every 10 minutes")
     delay = next_run_delay(s)
@@ -175,6 +181,7 @@ def test_next_run_delay_interval() -> None:
 
 
 # ── 7. _seconds_until_time ───────────────────────────────────────────────────
+
 
 def test_seconds_until_time_future_today() -> None:
     now = datetime(2026, 3, 15, 8, 0, 0)
@@ -197,6 +204,7 @@ def test_seconds_until_time_exact_now() -> None:
 
 
 # ── 8. _seconds_until_weekday ────────────────────────────────────────────────
+
 
 def test_seconds_until_weekday_same_day_future() -> None:
     # 2026-03-15 is a Sunday (weekday=6)
@@ -223,6 +231,7 @@ def test_seconds_until_weekday_different_day() -> None:
 
 # ── 9. next_run_delay — daily, weekly ────────────────────────────────────────
 
+
 def test_next_run_delay_daily() -> None:
     s = parse_schedule("daily at 14:00")
     now = datetime(2026, 3, 15, 10, 0, 0)
@@ -239,6 +248,7 @@ def test_next_run_delay_weekly() -> None:
 
 
 # ── 10. ParsedHunt @schedule: integration ────────────────────────────────────
+
 
 def test_parse_hunt_file_with_schedule() -> None:
     content = (
@@ -267,12 +277,7 @@ def test_parse_hunt_file_with_schedule() -> None:
 
 def test_parse_hunt_file_no_schedule() -> None:
     content = (
-        "@context: Normal test\n"
-        "@title: Test\n"
-        "\n"
-        "STEP 1: Do stuff\n"
-        "    NAVIGATE to https://example.com\n"
-        "    DONE.\n"
+        "@context: Normal test\n@title: Test\n\nSTEP 1: Do stuff\n    NAVIGATE to https://example.com\n    DONE.\n"
     )
     with tempfile.NamedTemporaryFile(mode="w", suffix=".hunt", delete=False) as f:
         f.write(content)
@@ -312,6 +317,7 @@ def test_parse_hunt_file_schedule_with_tags_and_vars() -> None:
 
 # ── 11. Schedule dataclass frozen ────────────────────────────────────────────
 
+
 def test_schedule_frozen() -> None:
     s = parse_schedule("every 5 minutes")
     try:
@@ -323,6 +329,7 @@ def test_schedule_frozen() -> None:
 
 # ── 12. All weekday names parse ──────────────────────────────────────────────
 
+
 def test_all_weekdays() -> None:
     days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
     for i, day in enumerate(days):
@@ -331,6 +338,7 @@ def test_all_weekdays() -> None:
 
 
 # ── Suite runner ─────────────────────────────────────────────────────────────
+
 
 async def run_suite() -> tuple[int, int]:
     global _PASS, _FAIL
@@ -394,12 +402,12 @@ async def run_suite() -> tuple[int, int]:
     test_all_weekdays()
 
     total = _PASS + _FAIL
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     if _FAIL == 0:
         print(f"SCORE: {_PASS}/{total} — FLAWLESS VICTORY 🏆")
     else:
         print(f"SCORE: {_PASS}/{total} — {_FAIL} FAILED 💀")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
     return _PASS, _FAIL
 
 

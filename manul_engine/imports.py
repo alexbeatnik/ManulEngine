@@ -27,9 +27,9 @@ _MAX_IMPORT_DEPTH = 10
 class ImportDirective(NamedTuple):
     """Parsed @import: header directive."""
 
-    block_names: list[str]    # ["Login", "Logout"] or ["*"]
-    source: str               # "lib/auth_flows.hunt" or "@manul/saucedemo-flows"
-    aliases: dict[str, str]   # {"Login": "AuthLogin"} when 'as' syntax used
+    block_names: list[str]  # ["Login", "Logout"] or ["*"]
+    source: str  # "lib/auth_flows.hunt" or "@manul/saucedemo-flows"
+    aliases: dict[str, str]  # {"Login": "AuthLogin"} when 'as' syntax used
 
 
 class ResolvedImport(NamedTuple):
@@ -106,10 +106,7 @@ def resolve_source_path(
 
     # If it looks like a file path (contains / or \ or ends with .hunt)
     # but NOT a scoped package like "@scope/pkg"
-    is_file_path = (
-        ("/" in source or "\\" in source or source.endswith(".hunt"))
-        and not source.startswith("@")
-    )
+    is_file_path = ("/" in source or "\\" in source or source.endswith(".hunt")) and not source.startswith("@")
     if is_file_path:
         candidates = [
             os.path.normpath(os.path.join(hunt_dir, source)),
@@ -119,10 +116,7 @@ def resolve_source_path(
             if os.path.isfile(c):
                 return os.path.abspath(c)
         tried = ", ".join(candidates)
-        raise HuntImportError(
-            f"Import source file not found: '{source}' "
-            f"(tried: {tried})"
-        )
+        raise HuntImportError(f"Import source file not found: '{source}' (tried: {tried})")
 
     # Package-style import: "@manul/saucedemo-flows" or "auth_flows"
     # Normalize scoped names: @manul/foo → @manul/foo
@@ -148,10 +142,7 @@ def resolve_source_path(
             return os.path.abspath(main_path)
 
     tried = ", ".join(package_dirs)
-    raise HuntImportError(
-        f"Import package not found: '{source}' "
-        f"(tried: {tried})"
-    )
+    raise HuntImportError(f"Import package not found: '{source}' (tried: {tried})")
 
 
 def parse_huntlib_json(path: str) -> dict:
@@ -180,8 +171,7 @@ def _extract_exported_blocks(
     if seen_files is not None and abs_path in seen_files:
         chain = " → ".join(sorted(seen_files)) + f" → {abs_path}"
         raise HuntImportError(
-            f"Circular import detected: {chain}. "
-            f"Break the cycle by removing one of the @import: directives."
+            f"Circular import detected: {chain}. Break the cycle by removing one of the @import: directives."
         )
 
     exports: list[str] = []
@@ -302,7 +292,8 @@ def resolve_imports(
             ) from e
 
         exports, blocks, lib_vars = _extract_exported_blocks(
-            source_path, seen_files=set(seen_files),
+            source_path,
+            seen_files=set(seen_files),
         )
 
         # Merge library vars (import-level, will be lowest priority)
@@ -356,9 +347,7 @@ def validate_exports(hunt_path: str) -> list[str]:
         return warnings
     for name in exports:
         if name not in blocks:
-            warnings.append(
-                f"@export: '{name}' has no matching STEP block in {hunt_path}"
-            )
+            warnings.append(f"@export: '{name}' has no matching STEP block in {hunt_path}")
     return warnings
 
 

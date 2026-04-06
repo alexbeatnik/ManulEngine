@@ -1,5 +1,6 @@
 import sys, os, asyncio
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from playwright.async_api import async_playwright
 from manul_engine import ManulEngine
 
@@ -70,60 +71,93 @@ CHECKED_DOM = """
 # ─────────────────────────────────────────────────────────────────────────────
 TESTS = [
     # ── Group 1: simple checkboxes ───────────────────────────────────
-    {"n": "1. Checked checkbox → is checked = True",
-     "step": "VERIFY that 'Newsletter' is checked", "res": True},
-    {"n": "2. Unchecked checkbox → is NOT checked = True",
-     "step": "VERIFY that 'Promotions' is NOT checked", "res": True},
-
+    {"n": "1. Checked checkbox → is checked = True", "step": "VERIFY that 'Newsletter' is checked", "res": True},
+    {
+        "n": "2. Unchecked checkbox → is NOT checked = True",
+        "step": "VERIFY that 'Promotions' is NOT checked",
+        "res": True,
+    },
     # ── Group 2: radio buttons ───────────────────────────────────────
-    {"n": "3. Selected radio → is checked = True",
-     "step": "VERIFY that 'Pro Plan' is checked", "res": True},
-    {"n": "4. Unselected radio → is NOT checked = True",
-     "step": "VERIFY that 'Free Plan' is NOT checked", "res": True},
-
+    {"n": "3. Selected radio → is checked = True", "step": "VERIFY that 'Pro Plan' is checked", "res": True},
+    {"n": "4. Unselected radio → is NOT checked = True", "step": "VERIFY that 'Free Plan' is NOT checked", "res": True},
     # ── Group 3: aria-label only ─────────────────────────────────────
-    {"n": "5. Aria-label checked checkbox → is checked = True",
-     "step": "VERIFY that 'Accept Terms' is checked", "res": True},
-    {"n": "6. Aria-label unchecked checkbox → is NOT checked = True",
-     "step": "VERIFY that 'Subscribe Updates' is NOT checked", "res": True},
-
+    {
+        "n": "5. Aria-label checked checkbox → is checked = True",
+        "step": "VERIFY that 'Accept Terms' is checked",
+        "res": True,
+    },
+    {
+        "n": "6. Aria-label unchecked checkbox → is NOT checked = True",
+        "step": "VERIFY that 'Subscribe Updates' is NOT checked",
+        "res": True,
+    },
     # ── Group 4: data-qa identified ──────────────────────────────────
-    {"n": "7. data-qa checked checkbox → is checked = True",
-     "step": "VERIFY that 'Agree to TOS' is checked", "res": True},
-    {"n": "8. data-qa unchecked checkbox → is NOT checked = True",
-     "step": "VERIFY that 'Opt-in Marketing' is NOT checked", "res": True},
-
+    {
+        "n": "7. data-qa checked checkbox → is checked = True",
+        "step": "VERIFY that 'Agree to TOS' is checked",
+        "res": True,
+    },
+    {
+        "n": "8. data-qa unchecked checkbox → is NOT checked = True",
+        "step": "VERIFY that 'Opt-in Marketing' is NOT checked",
+        "res": True,
+    },
     # ── Group 5: checkbox inside form ────────────────────────────────
-    {"n": "9. Form checkbox checked → is checked = True",
-     "step": "VERIFY that 'Remember Me' is checked", "res": True},
-    {"n": "10. Form checkbox unchecked → is NOT checked = True",
-     "step": "VERIFY that 'Save Card' is NOT checked", "res": True},
-
+    {"n": "9. Form checkbox checked → is checked = True", "step": "VERIFY that 'Remember Me' is checked", "res": True},
+    {
+        "n": "10. Form checkbox unchecked → is NOT checked = True",
+        "step": "VERIFY that 'Save Card' is NOT checked",
+        "res": True,
+    },
     # ── Group 6: second radio group ──────────────────────────────────
-    {"n": "11. Express radio checked → is checked = True",
-     "step": "VERIFY that 'Express Shipping' is checked", "res": True},
-    {"n": "12. Standard radio unchecked → is NOT checked = True",
-     "step": "VERIFY that 'Standard Shipping' is NOT checked", "res": True},
-
+    {
+        "n": "11. Express radio checked → is checked = True",
+        "step": "VERIFY that 'Express Shipping' is checked",
+        "res": True,
+    },
+    {
+        "n": "12. Standard radio unchecked → is NOT checked = True",
+        "step": "VERIFY that 'Standard Shipping' is NOT checked",
+        "res": True,
+    },
     # ── Group 7: fieldset preferences ────────────────────────────────
-    {"n": "13. Email Alerts checked → is checked = True",
-     "step": "VERIFY that 'Email Alerts' is checked", "res": True},
-    {"n": "14. SMS Alerts unchecked → is NOT checked = True",
-     "step": "VERIFY that 'SMS Alerts' is NOT checked", "res": True},
-    {"n": "15. Push Notifications checked → is checked = True",
-     "step": "VERIFY that 'Push Notifications' is checked", "res": True},
-    {"n": "16. Weekly Digest unchecked → is NOT checked = True",
-     "step": "VERIFY that 'Weekly Digest' is NOT checked", "res": True},
-
+    {"n": "13. Email Alerts checked → is checked = True", "step": "VERIFY that 'Email Alerts' is checked", "res": True},
+    {
+        "n": "14. SMS Alerts unchecked → is NOT checked = True",
+        "step": "VERIFY that 'SMS Alerts' is NOT checked",
+        "res": True,
+    },
+    {
+        "n": "15. Push Notifications checked → is checked = True",
+        "step": "VERIFY that 'Push Notifications' is checked",
+        "res": True,
+    },
+    {
+        "n": "16. Weekly Digest unchecked → is NOT checked = True",
+        "step": "VERIFY that 'Weekly Digest' is NOT checked",
+        "res": True,
+    },
     # ── Cross-validation: positive on checked, negative on same ──────
-    {"n": "17. Newsletter checked (cross-val) → is checked = True",
-     "step": "VERIFY that 'Newsletter' is checked", "res": True},
-    {"n": "18. Pro Plan checked (cross-val) → is checked = True",
-     "step": "VERIFY that 'Pro Plan' is checked", "res": True},
-    {"n": "19. Accept Terms checked (cross-val) → is checked = True",
-     "step": "VERIFY that 'Accept Terms' is checked", "res": True},
-    {"n": "20. Agree to TOS checked (cross-val) → is checked = True",
-     "step": "VERIFY that 'Agree to TOS' is checked", "res": True},
+    {
+        "n": "17. Newsletter checked (cross-val) → is checked = True",
+        "step": "VERIFY that 'Newsletter' is checked",
+        "res": True,
+    },
+    {
+        "n": "18. Pro Plan checked (cross-val) → is checked = True",
+        "step": "VERIFY that 'Pro Plan' is checked",
+        "res": True,
+    },
+    {
+        "n": "19. Accept Terms checked (cross-val) → is checked = True",
+        "step": "VERIFY that 'Accept Terms' is checked",
+        "res": True,
+    },
+    {
+        "n": "20. Agree to TOS checked (cross-val) → is checked = True",
+        "step": "VERIFY that 'Agree to TOS' is checked",
+        "res": True,
+    },
 ]
 
 

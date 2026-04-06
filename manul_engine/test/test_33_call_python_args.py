@@ -64,6 +64,7 @@ def _make_helper(tmp_dir: str, filename: str, source: str) -> None:
 
 # ── Section 1: Arg parser unit tests ─────────────────────────────────────────
 
+
 def _test_parse_call_args() -> None:
     print("\n  ── _parse_call_args ─────────────────────────────────────────")
 
@@ -92,7 +93,7 @@ def _test_parse_call_args() -> None:
 
     # 1e. Mixed quotes
     _assert(
-        _parse_call_args('''"arg 1" 'arg 2' plain''') == ["arg 1", "arg 2", "plain"],
+        _parse_call_args(""""arg 1" 'arg 2' plain""") == ["arg 1", "arg 2", "plain"],
         "mixed quotes and plain token",
     )
 
@@ -126,6 +127,7 @@ def _test_parse_call_args() -> None:
 
 
 # ── Section 2: Parser regex + execute_hook_line parsing ──────────────────────
+
 
 def _test_parser_regex() -> None:
     print("\n  ── Parser regex (splitting dotted, args, into) ──────────────")
@@ -165,7 +167,11 @@ def _test_parser_regex() -> None:
         r = execute_hook_line('CALL PYTHON mock_mod.echo "hello" "world" into {msg}')
         _assert(r.success, "with args and into → success", r.message)
         _assert(r.var_name == "msg", "with args and into → var_name='msg'", f"got={r.var_name!r}")
-        _assert(r.return_value == "hello world", "with args and into → return_value='hello world'", f"got={r.return_value!r}")
+        _assert(
+            r.return_value == "hello world",
+            "with args and into → return_value='hello world'",
+            f"got={r.return_value!r}",
+        )
 
         # 2e. With 'to' alias
         r = execute_hook_line('CALL PYTHON mock_mod.echo "a" "b" to {out}')
@@ -177,7 +183,7 @@ def _test_parser_regex() -> None:
 def _test_unresolved_script_alias_error() -> None:
     print("\n  ── CALL PYTHON unresolved @script alias ───────────────────")
 
-    r = execute_hook_line('CALL PYTHON {printer}.emit into {msg}')
+    r = execute_hook_line("CALL PYTHON {printer}.emit into {msg}")
     _assert(not r.success, "unresolved @script alias → failure")
     _assert("Unresolved @script alias" in r.message, "unresolved alias → helpful message")
     _assert("@script: {printer}" in r.message, "unresolved alias → declaration hint included")
@@ -189,6 +195,7 @@ def _test_unresolved_script_alias_error() -> None:
 
 
 # ── Section 3: Variable resolution in args ───────────────────────────────────
+
 
 def _test_variable_resolution() -> None:
     print("\n  ── Variable resolution in args ─────────────────────────────")
@@ -228,10 +235,14 @@ def _test_variable_resolution() -> None:
 
 # ── Section 4: File-based execution with args ────────────────────────────────
 
+
 def _test_file_based_execution(tmp_dir: str) -> None:
     print("\n  ── File-based helper execution with args ───────────────────")
 
-    _make_helper(tmp_dir, "math_helper.py", """\
+    _make_helper(
+        tmp_dir,
+        "math_helper.py",
+        """\
         def add(a, b):
             return int(a) + int(b)
 
@@ -243,7 +254,8 @@ def _test_file_based_execution(tmp_dir: str) -> None:
 
         def no_args():
             return "ok"
-    """)
+    """,
+    )
 
     # 4a. Two args, file-based module
     r = execute_hook_line(
@@ -271,7 +283,7 @@ def _test_file_based_execution(tmp_dir: str) -> None:
 
     # 4d. Args with variable resolution
     r = execute_hook_line(
-        'CALL PYTHON math_helper.greet {user} into {msg}',
+        "CALL PYTHON math_helper.greet {user} into {msg}",
         hunt_dir=tmp_dir,
         variables={"user": "Manul"},
     )
@@ -281,18 +293,18 @@ def _test_file_based_execution(tmp_dir: str) -> None:
 
 # ── Section 5: Engine integration ────────────────────────────────────────────
 
+
 async def _test_engine_integration() -> None:
     print("\n  ── Engine integration (args + memory) ──────────────────────")
 
     with patch("manul_engine.core.load_custom_controls"):
         from manul_engine.core import ManulEngine
+
         engine = ManulEngine(model=None, disable_cache=True)
 
     captured_steps: list[str] = []
 
-    async def _fake_execute_step(
-        page, step: str, strategic_context: str = "", step_idx: int = 0
-    ) -> bool:
+    async def _fake_execute_step(page, step: str, strategic_context: str = "", step_idx: int = 0) -> bool:
         captured_steps.append(step)
         return True
 
@@ -323,10 +335,7 @@ async def _test_engine_integration() -> None:
     calc_mod = _make_module({"multiply": _multiply})
 
     # 5a. CALL PYTHON with static args + into — value bound to memory
-    mission = (
-        '1. CALL PYTHON calc.multiply "6" "7" into {product}\n'
-        "2. Fill 'Result' with '{product}'\n"
-    )
+    mission = "1. CALL PYTHON calc.multiply \"6\" \"7\" into {product}\n2. Fill 'Result' with '{product}'\n"
 
     with (
         patch("manul_engine.core.async_playwright", return_value=mock_playwright),
@@ -355,10 +364,7 @@ async def _test_engine_integration() -> None:
         engine2 = ManulEngine(model=None, disable_cache=True)
     engine2.memory["base"] = "10"
 
-    mission2 = (
-        '1. CALL PYTHON calc.multiply {base} "5" into {result}\n'
-        "2. Fill 'Total' with '{result}'\n"
-    )
+    mission2 = "1. CALL PYTHON calc.multiply {base} \"5\" into {result}\n2. Fill 'Total' with '{result}'\n"
 
     with (
         patch("manul_engine.core.async_playwright", return_value=mock_playwright),
@@ -390,10 +396,7 @@ async def _test_engine_integration() -> None:
         return "abc123"
 
     token_mod = _make_module({"get_token": _get_token})
-    mission3 = (
-        "1. CALL PYTHON auth.get_token into {token}\n"
-        "2. Fill 'Token' with '{token}'\n"
-    )
+    mission3 = "1. CALL PYTHON auth.get_token into {token}\n2. Fill 'Token' with '{token}'\n"
     with (
         patch("manul_engine.core.async_playwright", return_value=mock_playwright),
         patch.object(engine3, "_execute_step", side_effect=_fake_execute_step),
@@ -410,6 +413,7 @@ async def _test_engine_integration() -> None:
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
+
 
 async def run_suite() -> bool:
     global _PASS, _FAIL

@@ -34,10 +34,13 @@ def _assert(cond: bool, label: str, detail: str = "") -> None:
 # Section 1: Wildcard @export: *
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _test_wildcard_export() -> None:
     print("\n  ── wildcard @export: * ───────────────────────────────────────")
     from manul_engine.imports import (
-        ImportDirective, resolve_imports, _extract_exported_blocks,
+        ImportDirective,
+        resolve_imports,
+        _extract_exported_blocks,
     )
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -76,6 +79,7 @@ def _test_wildcard_export() -> None:
 # Section 2: No @export: with wildcard import
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _test_no_export_wildcard_import() -> None:
     print("\n  ── no @export: + wildcard @import ────────────────────────────")
     from manul_engine.imports import ImportDirective, resolve_imports
@@ -84,13 +88,7 @@ def _test_no_export_wildcard_import() -> None:
         # Library with no @export: headers
         lib_path = os.path.join(tmpdir, "plain.hunt")
         with open(lib_path, "w") as f:
-            f.write(
-                "STEP 1: Setup\n"
-                "    Click 'Setup'\n"
-                "\n"
-                "STEP 2: Verify\n"
-                "    VERIFY that 'Done' is present\n"
-            )
+            f.write("STEP 1: Setup\n    Click 'Setup'\n\nSTEP 2: Verify\n    VERIFY that 'Done' is present\n")
 
         consumer = os.path.join(tmpdir, "c.hunt")
         with open(consumer, "w") as f:
@@ -107,6 +105,7 @@ def _test_no_export_wildcard_import() -> None:
 # Section 3: Empty blocks
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _test_empty_blocks() -> None:
     print("\n  ── empty STEP blocks ─────────────────────────────────────────")
     from manul_engine.imports import _extract_exported_blocks
@@ -114,14 +113,7 @@ def _test_empty_blocks() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         hunt_path = os.path.join(tmpdir, "empty.hunt")
         with open(hunt_path, "w") as f:
-            f.write(
-                "@export: EmptyStep\n"
-                "\n"
-                "STEP 1: EmptyStep\n"
-                "\n"
-                "STEP 2: HasAction\n"
-                "    Click 'Go'\n"
-            )
+            f.write("@export: EmptyStep\n\nSTEP 1: EmptyStep\n\nSTEP 2: HasAction\n    Click 'Go'\n")
 
         exports, blocks, _ = _extract_exported_blocks(hunt_path)
         _assert("EmptyStep" in blocks, "empty block still extracted")
@@ -132,6 +124,7 @@ def _test_empty_blocks() -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Section 4: Multiple files importing same library
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def _test_multiple_consumers() -> None:
     print("\n  ── multiple consumers of same library ────────────────────────")
@@ -168,6 +161,7 @@ def _test_multiple_consumers() -> None:
 # Section 5: HuntImportError re-export
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _test_hunt_import_error_reexport() -> None:
     print("\n  ── HuntImportError re-export ─────────────────────────────────")
     from manul_engine import HuntImportError
@@ -186,6 +180,7 @@ def _test_hunt_import_error_reexport() -> None:
 # Section 6: Named import with explicit @export access control
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _test_export_access_control() -> None:
     print("\n  ── @export access control ────────────────────────────────────")
     from manul_engine.imports import ImportDirective, resolve_imports, HuntImportError
@@ -193,15 +188,7 @@ def _test_export_access_control() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         lib_path = os.path.join(tmpdir, "restricted.hunt")
         with open(lib_path, "w") as f:
-            f.write(
-                "@export: Public\n"
-                "\n"
-                "STEP 1: Public\n"
-                "    Click 'Public'\n"
-                "\n"
-                "STEP 2: Private\n"
-                "    Click 'Private'\n"
-            )
+            f.write("@export: Public\n\nSTEP 1: Public\n    Click 'Public'\n\nSTEP 2: Private\n    Click 'Private'\n")
 
         consumer = os.path.join(tmpdir, "c.hunt")
         with open(consumer, "w") as f:
@@ -224,6 +211,7 @@ def _test_export_access_control() -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 # Entry point
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def run_suite() -> tuple[int, int]:
     global _PASS, _FAIL

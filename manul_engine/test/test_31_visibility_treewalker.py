@@ -1,5 +1,6 @@
 import sys, os, asyncio
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from playwright.async_api import async_playwright
 from manul_engine import ManulEngine
 
@@ -106,80 +107,120 @@ VISIBILITY_DOM = """
 # ─────────────────────────────────────────────────────────────────────────────
 TESTS = [
     # ── Group 1: display:none ──────────────────────────────────────────
-    {"n": "1. Visible beats display:none",
-     "step": "Click the 'Checkout' button",
-     "m": "clickable", "st": ["Checkout"], "tf": None,
-     "exp": "vis_btn1"},
-
+    {
+        "n": "1. Visible beats display:none",
+        "step": "Click the 'Checkout' button",
+        "m": "clickable",
+        "st": ["Checkout"],
+        "tf": None,
+        "exp": "vis_btn1",
+    },
     # ── Group 2: visibility:hidden ─────────────────────────────────────
-    {"n": "2. Visible beats visibility:hidden",
-     "step": "Click the 'Pay Now' button",
-     "m": "clickable", "st": ["Pay Now"], "tf": None,
-     "exp": "vis_btn2"},
-
+    {
+        "n": "2. Visible beats visibility:hidden",
+        "step": "Click the 'Pay Now' button",
+        "m": "clickable",
+        "st": ["Pay Now"],
+        "tf": None,
+        "exp": "vis_btn2",
+    },
     # ── Group 3: opacity:0 ────────────────────────────────────────────
-    {"n": "3. Visible beats opacity:0",
-     "step": "Click the 'Apply Coupon' button",
-     "m": "clickable", "st": ["Apply Coupon"], "tf": None,
-     "exp": "vis_btn3"},
-
+    {
+        "n": "3. Visible beats opacity:0",
+        "step": "Click the 'Apply Coupon' button",
+        "m": "clickable",
+        "st": ["Apply Coupon"],
+        "tf": None,
+        "exp": "vis_btn3",
+    },
     # ── Group 4: offscreen ────────────────────────────────────────────
-    {"n": "4. Visible beats offscreen",
-     "step": "Click the 'Subscribe' button",
-     "m": "clickable", "st": ["Subscribe"], "tf": None,
-     "exp": "vis_btn4"},
-
+    {
+        "n": "4. Visible beats offscreen",
+        "step": "Click the 'Subscribe' button",
+        "m": "clickable",
+        "st": ["Subscribe"],
+        "tf": None,
+        "exp": "vis_btn4",
+    },
     # ── Group 5: zero-size ────────────────────────────────────────────
-    {"n": "5. Visible beats zero-size",
-     "step": "Click the 'Refresh' button",
-     "m": "clickable", "st": ["Refresh"], "tf": None,
-     "exp": "vis_btn5"},
-
+    {
+        "n": "5. Visible beats zero-size",
+        "step": "Click the 'Refresh' button",
+        "m": "clickable",
+        "st": ["Refresh"],
+        "tf": None,
+        "exp": "vis_btn5",
+    },
     # ── Group 6: aria-hidden ──────────────────────────────────────────
-    {"n": "6. Visible beats aria-hidden",
-     "step": "Click the 'Connect Wallet' button",
-     "m": "clickable", "st": ["Connect Wallet"], "tf": None,
-     "exp": "vis_btn6"},
-
+    {
+        "n": "6. Visible beats aria-hidden",
+        "step": "Click the 'Connect Wallet' button",
+        "m": "clickable",
+        "st": ["Connect Wallet"],
+        "tf": None,
+        "exp": "vis_btn6",
+    },
     # ── Group 7: nested hiding ────────────────────────────────────────
-    {"n": "7. Visible beats nested-in-display-none",
-     "step": "Click the 'Delete' button",
-     "m": "clickable", "st": ["Delete"], "tf": None,
-     "exp": "nested_vis"},
-
+    {
+        "n": "7. Visible beats nested-in-display-none",
+        "step": "Click the 'Delete' button",
+        "m": "clickable",
+        "st": ["Delete"],
+        "tf": None,
+        "exp": "nested_vis",
+    },
     # ── Group 8: PRUNE subtrees ──────────────────────────────────────
-    {"n": "8. Action button found (PRUNE skips script/template)",
-     "step": "Click the 'Action Button' button",
-     "m": "clickable", "st": ["Action Button"], "tf": None,
-     "exp": "real_action_btn"},
-
+    {
+        "n": "8. Action button found (PRUNE skips script/template)",
+        "step": "Click the 'Action Button' button",
+        "m": "clickable",
+        "st": ["Action Button"],
+        "tf": None,
+        "exp": "real_action_btn",
+    },
     # ── Group 9: special hidden inputs ───────────────────────────────
-    {"n": "9. Hidden file input — label clickable",
-     "step": "Click the 'Upload Resume' button",
-     "m": "clickable", "st": ["Upload Resume"], "tf": None,
-     "exp": "file_label"},
-
-    {"n": "10. Hidden checkbox — engine finds real input (special input)",
-     "step": "Check the 'Accept Terms' checkbox",
-     "m": "clickable", "st": ["Accept Terms"], "tf": None,
-     "exp": "chk_hidden"},
-
-    {"n": "11. Hidden radio — label clickable",
-     "step": "Click the radio button for 'Male'",
-     "m": "clickable", "st": ["Male"], "tf": None,
-     "exp": "radio_label"},
-
+    {
+        "n": "9. Hidden file input — label clickable",
+        "step": "Click the 'Upload Resume' button",
+        "m": "clickable",
+        "st": ["Upload Resume"],
+        "tf": None,
+        "exp": "file_label",
+    },
+    {
+        "n": "10. Hidden checkbox — engine finds real input (special input)",
+        "step": "Check the 'Accept Terms' checkbox",
+        "m": "clickable",
+        "st": ["Accept Terms"],
+        "tf": None,
+        "exp": "chk_hidden",
+    },
+    {
+        "n": "11. Hidden radio — label clickable",
+        "step": "Click the radio button for 'Male'",
+        "m": "clickable",
+        "st": ["Male"],
+        "tf": None,
+        "exp": "radio_label",
+    },
     # ── Group 10: deep nested hiding ─────────────────────────────────
-    {"n": "12. Visible beats deeply hidden element",
-     "step": "Click the 'Submit' button",
-     "m": "clickable", "st": ["Submit"], "tf": None,
-     "exp": "deep_vis"},
-
+    {
+        "n": "12. Visible beats deeply hidden element",
+        "step": "Click the 'Submit' button",
+        "m": "clickable",
+        "st": ["Submit"],
+        "tf": None,
+        "exp": "deep_vis",
+    },
     # ── Group 12: shadow DOM visibility ──────────────────────────────
-    {"n": "13. Shadow DOM button is discoverable",
-     "step": "Click the 'Shadow Action' button",
-     "m": "clickable", "st": ["Shadow Action"], "tf": None,
-     "exp": "shadow_btn"},
+    {
+        "n": "13. Shadow DOM button is discoverable",
+        "step": "Click the 'Shadow Action' button",
+        "m": "clickable",
+        "st": ["Shadow Action"],
+        "tf": None,
+        "exp": "shadow_btn",
+    },
 ]
 
 
@@ -195,9 +236,7 @@ async def _test_snapshot_filtering(page, manul):
 
     # Get the full snapshot
     all_els = await manul._snapshot(page, "clickable", [])
-    all_names_lower = " ".join(
-        str(el.get("name", "")).lower() for el in all_els
-    )
+    all_names_lower = " ".join(str(el.get("name", "")).lower() for el in all_els)
     all_ids = {str(el.get("html_id", "")) for el in all_els}
 
     # 1. Elements inside <template> should NOT appear
@@ -219,10 +258,14 @@ async def _test_snapshot_filtering(page, manul):
         failures.append("noscript elements in snapshot")
 
     # 3. Hidden elements may appear but with [HIDDEN] tag
-    hidden_els = [el for el in all_els if "[HIDDEN]" in str(el.get("name", "")).upper()
-                  or "[hidden]" in str(el.get("name", ""))]
-    visible_els = [el for el in all_els if "[HIDDEN]" not in str(el.get("name", "")).upper()
-                   and "[hidden]" not in str(el.get("name", ""))]
+    hidden_els = [
+        el for el in all_els if "[HIDDEN]" in str(el.get("name", "")).upper() or "[hidden]" in str(el.get("name", ""))
+    ]
+    visible_els = [
+        el
+        for el in all_els
+        if "[HIDDEN]" not in str(el.get("name", "")).upper() and "[hidden]" not in str(el.get("name", ""))
+    ]
 
     if len(visible_els) > 0:
         print(f"    ✅  Snapshot contains {len(visible_els)} visible + {len(hidden_els)} hidden elements")
@@ -263,6 +306,7 @@ async def _test_snapshot_filtering(page, manul):
     # Score both a visible and hidden "Checkout" button
     scored = await manul._snapshot(page, "clickable", ["Checkout"])
     from manul_engine.scoring import score_elements
+
     scored = score_elements(scored, "Click 'Checkout'", "clickable", ["Checkout"], None, False, {}, None)
     vis_scores = [el["score"] for el in scored if el.get("html_id") == "vis_btn1"]
     hid_scores = [el["score"] for el in scored if el.get("html_id") == "hid_btn1"]
@@ -286,7 +330,13 @@ async def _test_snapshot_filtering(page, manul):
     # 7. Opacity:0 element either filtered or penalized
     opacity_scored = score_elements(
         await manul._snapshot(page, "clickable", ["Apply Coupon"]),
-        "Click 'Apply Coupon'", "clickable", ["Apply Coupon"], None, False, {}, None
+        "Click 'Apply Coupon'",
+        "clickable",
+        ["Apply Coupon"],
+        None,
+        False,
+        {},
+        None,
     )
     vis3 = [el["score"] for el in opacity_scored if el.get("html_id") == "vis_btn3"]
     hid3 = [el["score"] for el in opacity_scored if el.get("html_id") == "hid_btn3"]
@@ -335,9 +385,7 @@ async def run_suite():
 
             manul.reset_session_state()
 
-            el = await manul._resolve_element(
-                page, t["step"], t["m"], t["st"], t["tf"], "", set()
-            )
+            el = await manul._resolve_element(page, t["step"], t["m"], t["st"], t["tf"], "", set())
 
             if el is None:
                 msg = "FAILED — element not found (None)"
