@@ -26,17 +26,15 @@ Architecture:
 from __future__ import annotations
 
 import asyncio
-import json
-import sys
 import textwrap
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from .helpers import detect_mode, extract_quoted, classify_step
+from .helpers import classify_step, detect_mode, extract_quoted
 from .js_scripts import SNAPSHOT_JS
-from .llm import LLMProvider, NullProvider, _parse_llm_json
+from .llm import LLMProvider
 from .logging_config import logger
-from .scoring import score_elements, SCALE
+from .scoring import SCALE, score_elements
 
 if TYPE_CHECKING:
     from playwright.async_api import Page
@@ -213,7 +211,7 @@ _VISIBLE_TEXT_JS: str = """
 """
 
 
-async def capture_page_context(page: "Page") -> PageContext:
+async def capture_page_context(page: Page) -> PageContext:
     """Capture a read-only snapshot of the page for LLM context.
 
     This function does NOT mutate the page state in any way.
@@ -324,7 +322,7 @@ class ExplainNextDebugger:
         llm: LLMProvider,
         learned_elements: dict | None = None,
         last_xpath: str | None = None,
-        engine: "object | None" = None,
+        engine: object | None = None,
     ) -> None:
         self._llm = llm
         self._learned_elements = learned_elements or {}
@@ -341,7 +339,7 @@ class ExplainNextDebugger:
 
     async def evaluate(
         self,
-        page: "Page",
+        page: Page,
         hypothetical_step: str,
         *,
         last_step: str = "",
@@ -418,7 +416,7 @@ class ExplainNextDebugger:
         return what_if
 
     async def _highlight_match(
-        self, page: "Page", hit: _HeuristicHit | None,
+        self, page: Page, hit: _HeuristicHit | None,
     ) -> None:
         """Highlight the best heuristic match on the live page.
 
@@ -514,7 +512,7 @@ class ExplainNextDebugger:
 
     async def run_repl(
         self,
-        page: "Page",
+        page: Page,
         *,
         current_step: str = "",
     ) -> str | None:

@@ -19,9 +19,9 @@ import asyncio
 import json
 import sys
 
+from .explain_next import ExplainNextDebugger
 from .js_scripts import DEBUG_MODAL_JS, DEBUG_REMOVE_MODAL_JS
 from .logging_config import logger
-from .explain_next import ExplainNextDebugger
 
 _log = logger.getChild("debug")
 

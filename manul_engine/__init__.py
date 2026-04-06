@@ -53,6 +53,7 @@ from .exceptions import (
     SessionError,
     VerificationError,
 )
+from .explain_next import ExplainNextDebugger, WhatIfResult
 from .lifecycle import (
     GlobalContext,
     after_all,
@@ -61,7 +62,6 @@ from .lifecycle import (
     before_group,
 )
 from .variables import ScopedVariables
-from .explain_next import ExplainNextDebugger, WhatIfResult
 
 __all__ = [
     "ConfigurationError",
