@@ -434,8 +434,17 @@ def execute_hook_line(
     args_repr = ", ".join(repr(a) for a in call_args)
 
     # ── Execute ───────────────────────────────────────────────────────────────
+    _CALL_PYTHON_WARN_SECONDS = 30
     try:
+        import time as _time
+        _t0 = _time.monotonic()
         ret = func(*call_args)
+        _elapsed = _time.monotonic() - _t0
+        if _elapsed > _CALL_PYTHON_WARN_SECONDS:
+            print(
+                f"    ⚠️  CALL PYTHON {dotted}() took {_elapsed:.1f}s "
+                f"(>{_CALL_PYTHON_WARN_SECONDS}s threshold)"
+            )
         ret_str: str | None = None
         ret_mapping: dict[str, str] = {}
         if isinstance(ret, dict):
