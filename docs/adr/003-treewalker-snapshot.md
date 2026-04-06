@@ -1,7 +1,7 @@
 # ADR-003: TreeWalker-based DOM snapshot
 
 **Status:** Accepted
-**Date:** 2024-12
+**Date:** 2026-04
 
 ## Context
 
