@@ -20,4 +20,4 @@ jobs:
       - name: Ruff check
         run: ruff check manul_engine/
       - name: Ruff format check
-        run: ruff format --check manul_engine/ || echo "::warning::Code formatting differences found. Run 'ruff format manul_engine/' locally."
+        run: ruff format --check manul_engine/

@@ -828,6 +828,7 @@ def score_elements(
     anchor_rect: dict | None = None,
     container_elements: list[dict] | None = None,
     viewport_height: int = 0,
+    early_exit_score: int | None = None,
 ) -> list[dict]:
     """Score and rank DOM elements against a given step.
 
@@ -842,4 +843,4 @@ def score_elements(
         container_elements=container_elements,
         viewport_height=viewport_height,
     )
-    return scorer.score_all(els)
+    return scorer.score_all(els, early_exit_score=early_exit_score)

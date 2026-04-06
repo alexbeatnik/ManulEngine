@@ -228,7 +228,7 @@ class EngineConfig:
         _ss = _str("screenshot", "MANUL_SCREENSHOT", "on-fail").lower()
         screenshot = _ss if _ss in _valid_ss else "on-fail"
 
-        return cls(
+        cfg = cls(
             model=model,
             headless=_bool("headless", "MANUL_HEADLESS"),
             browser=browser,
@@ -254,6 +254,8 @@ class EngineConfig:
             verify_max_retries=_int("verify_max_retries", "MANUL_VERIFY_MAX_RETRIES", 15),
             custom_controls_dirs=ccd,
         )
+        cfg.validate()
+        return cfg
 
     # ── Validation ─────────────────────────────────────────────────────────
 

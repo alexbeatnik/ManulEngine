@@ -472,6 +472,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             anchor_rect=anchor_rect,
             container_elements=container_elements,
             viewport_height=viewport_height,
+            early_exit_score=self._threshold if self._threshold > 0 else None,
         )
 
     # ── Element resolution ────────────────────
