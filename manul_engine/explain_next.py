@@ -85,6 +85,7 @@ WHAT_IF_SYSTEM_PROMPT: str = textwrap.dedent("""\
 
 # ── Data classes ──────────────────────────────────────────────────────────────
 
+
 @dataclass(frozen=True)
 class PageContext:
     """Read-only snapshot of the current browser page state."""
@@ -101,8 +102,7 @@ class PageContext:
             f"Title: {self.title}",
             f"Visible text (truncated): {self.visible_text_snippet[:500]}",
             "",
-            f"Interactive elements ({min(len(self.elements), max_elements)}"
-            f" of {len(self.elements)} shown):",
+            f"Interactive elements ({min(len(self.elements), max_elements)} of {len(self.elements)} shown):",
         ]
         for el in self.elements[:max_elements]:
             tag = el.get("tag_name", "?")
@@ -139,14 +139,14 @@ class WhatIfResult:
     """Structured result of a hypothetical step evaluation."""
 
     step: str
-    score: int                    # 0–10 confidence
+    score: int  # 0–10 confidence
     target_found: bool
     target_element: str | None
     explanation: str
     risk: str
     suggestion: str | None
-    heuristic_score: int | None = None   # DOMScorer best score (scaled int)
-    heuristic_match: str | None = None   # DOMScorer best candidate name
+    heuristic_score: int | None = None  # DOMScorer best score (scaled int)
+    heuristic_match: str | None = None  # DOMScorer best candidate name
 
     @property
     def confidence_label(self) -> str:
@@ -162,14 +162,14 @@ class WhatIfResult:
         """Return a human-readable multi-line report."""
         lines = [
             "",
-            f"    ┌─ 🔮 WHAT-IF ANALYSIS: \"{self.step}\"",
+            f'    ┌─ 🔮 WHAT-IF ANALYSIS: "{self.step}"',
             f"    │  Confidence: {self.score}/10 ({self.confidence_label})",
         ]
         if self.heuristic_score is not None:
             norm = self.heuristic_score / SCALE
             lines.append(f"    │  Heuristic Score: {norm:.3f} (raw {self.heuristic_score})")
         if self.heuristic_match:
-            lines.append(f"    │  Best Heuristic Match: \"{self.heuristic_match}\"")
+            lines.append(f'    │  Best Heuristic Match: "{self.heuristic_match}"')
         if self.target_element:
             lines.append(f"    │  Target Element: {self.target_element}")
         lines.append(f"    │  Explanation: {self.explanation}")
@@ -257,9 +257,11 @@ async def capture_page_context(page: Page) -> PageContext:
 
 # ── Heuristic pre-check (read-only scoring) ──────────────────────────────────
 
+
 @dataclass(frozen=True)
 class _HeuristicHit:
     """Best candidate from heuristic pre-check (read-only scoring)."""
+
     score: int
     name: str
     xpath: str
@@ -283,8 +285,15 @@ def _heuristic_pre_check(
     mode = detect_mode(step)
     is_blind = not search_texts and not target_field
     scored = score_elements(
-        elements, step, mode, search_texts, target_field, is_blind,
-        learned_elements={}, last_xpath=None, explain=False,
+        elements,
+        step,
+        mode,
+        search_texts,
+        target_field,
+        is_blind,
+        learned_elements={},
+        last_xpath=None,
+        explain=False,
     )
     if scored:
         best = scored[0]
@@ -298,6 +307,7 @@ def _heuristic_pre_check(
 
 
 # ── ExplainNextDebugger ──────────────────────────────────────────────────────
+
 
 class ExplainNextDebugger:
     """Interactive What-If Analysis REPL for debug sessions.
@@ -375,7 +385,10 @@ class ExplainNextDebugger:
 
         # Heuristic pre-check (deterministic, no page interaction)
         hit = _heuristic_pre_check(
-            ctx.elements, hypothetical_step, search_texts, target_field,
+            ctx.elements,
+            hypothetical_step,
+            search_texts,
+            target_field,
         )
         h_score = hit.score if hit else None
         h_match = hit.name if hit else None
@@ -405,8 +418,12 @@ class ExplainNextDebugger:
         else:
             # LLM unavailable — build result from heuristics alone
             what_if = self._heuristic_only_result(
-                hypothetical_step, step_class, ctx, search_texts,
-                h_score, h_match,
+                hypothetical_step,
+                step_class,
+                ctx,
+                search_texts,
+                h_score,
+                h_match,
             )
 
         # Highlight the best-matched element on the live page
@@ -416,7 +433,9 @@ class ExplainNextDebugger:
         return what_if
 
     async def _highlight_match(
-        self, page: Page, hit: _HeuristicHit | None,
+        self,
+        page: Page,
+        hit: _HeuristicHit | None,
     ) -> None:
         """Highlight the best heuristic match on the live page.
 
@@ -470,14 +489,20 @@ class ExplainNextDebugger:
             found = True
             explanation = (
                 f"Heuristic scoring found a candidate "
-                f"\"{h_match}\" with normalized score {norm:.3f}. "
+                f'"{h_match}" with normalized score {norm:.3f}. '
                 f"The step appears viable based on element matching."
             )
 
         # System steps (NAVIGATE, WAIT, etc.) don't need element resolution
         if step_class in (
-            "navigate", "wait", "scroll", "press_enter", "done",
-            "logical_step", "set_variable", "scan_page",
+            "navigate",
+            "wait",
+            "scroll",
+            "press_enter",
+            "done",
+            "logical_step",
+            "set_variable",
+            "scan_page",
         ):
             score = max(score, 8)
             found = True
@@ -530,15 +555,13 @@ class ExplainNextDebugger:
         """
         print(self._REPL_HELP)
         if current_step:
-            print(f"    ℹ️  Paused before: \"{current_step}\"\n")
+            print(f'    ℹ️  Paused before: "{current_step}"\n')
 
         last_step = current_step
 
         while True:
             try:
-                user_input = await asyncio.to_thread(
-                    input, "  🔮 explain-next> "
-                )
+                user_input = await asyncio.to_thread(input, "  🔮 explain-next> ")
             except (EOFError, KeyboardInterrupt):
                 print("\n    Exiting Explain Next REPL.")
                 return None
@@ -580,14 +603,14 @@ class ExplainNextDebugger:
                     idx = int(parts[1]) - 1
                     if 0 <= idx < len(self._history):
                         chosen = self._history[idx].step
-                        print(f"    ✅ Executing: \"{chosen}\"")
+                        print(f'    ✅ Executing: "{chosen}"')
                         return chosen
                     else:
                         print(f"    ⚠️  Invalid index. History has {len(self._history)} entries.")
                         continue
                 elif self._history:
                     chosen = self._history[-1].step
-                    print(f"    ✅ Executing: \"{chosen}\"")
+                    print(f'    ✅ Executing: "{chosen}"')
                     return chosen
                 else:
                     print("    ⚠️  No evaluations in history. Evaluate a step first.")
@@ -597,7 +620,9 @@ class ExplainNextDebugger:
             print("    ⏳ Analyzing...")
             try:
                 result = await self.evaluate(
-                    page, user_input, last_step=last_step,
+                    page,
+                    user_input,
+                    last_step=last_step,
                 )
                 print(result.format_report())
             except Exception as exc:

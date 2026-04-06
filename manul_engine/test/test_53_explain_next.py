@@ -75,12 +75,23 @@ def _make_el(**overrides) -> dict:
     base = {
         "name": overrides.pop("name", "Login button"),
         "xpath": overrides.pop("xpath", "/html/body/button[1]"),
-        "is_select": False, "is_shadow": False, "is_contenteditable": False,
-        "class_name": "", "tag_name": "button", "input_type": "",
-        "data_qa": "", "html_id": "", "icon_classes": "",
-        "aria_label": "", "placeholder": "", "role": "",
-        "disabled": False, "aria_disabled": "", "name_attr": "",
-        "id": 1, "frame_index": 0,
+        "is_select": False,
+        "is_shadow": False,
+        "is_contenteditable": False,
+        "class_name": "",
+        "tag_name": "button",
+        "input_type": "",
+        "data_qa": "",
+        "html_id": "",
+        "icon_classes": "",
+        "aria_label": "",
+        "placeholder": "",
+        "role": "",
+        "disabled": False,
+        "aria_disabled": "",
+        "name_attr": "",
+        "id": 1,
+        "frame_index": 0,
     }
     base.update(overrides)
     return base
@@ -102,6 +113,7 @@ class FakeLLM:
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
+
 
 def test_01_page_context_creation():
     """PageContext stores URL, title, elements, and visible text."""
@@ -130,24 +142,33 @@ def test_02_page_context_empty():
 def test_03_confidence_labels():
     """WhatIfResult confidence_label maps score ranges correctly."""
     cases = [
-        (0, "IMPOSSIBLE"), (1, "LOW"), (3, "LOW"),
-        (5, "MODERATE"), (7, "MODERATE"),
-        (8, "HIGH"), (10, "HIGH"),
+        (0, "IMPOSSIBLE"),
+        (1, "LOW"),
+        (3, "LOW"),
+        (5, "MODERATE"),
+        (7, "MODERATE"),
+        (8, "HIGH"),
+        (10, "HIGH"),
     ]
     for score, expected in cases:
         r = WhatIfResult(
-            step="test", score=score, target_found=True,
-            target_element=None, explanation="", risk="", suggestion=None,
+            step="test",
+            score=score,
+            target_found=True,
+            target_element=None,
+            explanation="",
+            risk="",
+            suggestion=None,
         )
-        _assert(r.confidence_label == expected, f"score {score} → {expected}",
-                f"got {r.confidence_label}")
+        _assert(r.confidence_label == expected, f"score {score} → {expected}", f"got {r.confidence_label}")
 
 
 def test_04_format_report_structure():
     """format_report() includes key sections."""
     r = WhatIfResult(
         step="Click the 'Login' button",
-        score=8, target_found=True,
+        score=8,
+        target_found=True,
         target_element="<button> Login",
         explanation="Would click the login button",
         risk="Navigates to dashboard",
@@ -217,8 +238,7 @@ def test_07_system_command_high_score():
             h_score=None,
             h_match=None,
         )
-        _assert(result.score >= 8, f"system command '{kind}' → high score",
-                f"got {result.score}")
+        _assert(result.score >= 8, f"system command '{kind}' → high score", f"got {result.score}")
 
 
 def test_08_llm_backed_evaluation():
@@ -333,10 +353,15 @@ def test_14_heuristic_pre_check_scored():
 def test_15_report_with_heuristic_score():
     """WhatIfResult format_report includes heuristic score when set."""
     r = WhatIfResult(
-        step="Click 'Save'", score=7, target_found=True,
-        target_element="<button> Save", explanation="Saves the form",
-        risk="None", suggestion=None,
-        heuristic_score=50000, heuristic_match="Save Button",
+        step="Click 'Save'",
+        score=7,
+        target_found=True,
+        target_element="<button> Save",
+        explanation="Saves the form",
+        risk="None",
+        suggestion=None,
+        heuristic_score=50000,
+        heuristic_match="Save Button",
     )
     report = r.format_report()
     _assert("Heuristic Score" in report, "heuristic score in report")
@@ -365,10 +390,12 @@ def test_17_prompt_text_disabled_element():
 def test_18_evaluate_extracts_quoted():
     """evaluate() extracts quoted targets for heuristic scoring."""
     llm_response = {
-        "score": 5, "target_found": True,
+        "score": 5,
+        "target_found": True,
         "target_element": "Email field",
         "explanation": "Would fill the email field",
-        "risk": "None", "suggestion": None,
+        "risk": "None",
+        "suggestion": None,
     }
     debugger = ExplainNextDebugger(llm=FakeLLM(llm_response))
 
@@ -407,10 +434,8 @@ def test_20_null_provider_debugger():
 def test_21_system_prompt_well_formed():
     """WHAT_IF_SYSTEM_PROMPT contains essential instructions."""
     _assert("HYPOTHETICAL" in WHAT_IF_SYSTEM_PROMPT, "mentions hypothetical")
-    _assert("Confidence" in WHAT_IF_SYSTEM_PROMPT or "confidence" in WHAT_IF_SYSTEM_PROMPT,
-            "mentions confidence")
-    _assert("0–10" in WHAT_IF_SYSTEM_PROMPT or "0-10" in WHAT_IF_SYSTEM_PROMPT,
-            "mentions 0-10 scale")
+    _assert("Confidence" in WHAT_IF_SYSTEM_PROMPT or "confidence" in WHAT_IF_SYSTEM_PROMPT, "mentions confidence")
+    _assert("0–10" in WHAT_IF_SYSTEM_PROMPT or "0-10" in WHAT_IF_SYSTEM_PROMPT, "mentions 0-10 scale")
     _assert("JSON" in WHAT_IF_SYSTEM_PROMPT, "mentions JSON output format")
     _assert("score" in WHAT_IF_SYSTEM_PROMPT, "mentions score field")
     _assert("explanation" in WHAT_IF_SYSTEM_PROMPT, "mentions explanation field")
@@ -419,9 +444,11 @@ def test_21_system_prompt_well_formed():
 def test_22_capture_page_context_mock():
     """capture_page_context returns a PageContext from a mock page."""
     mock_frame = AsyncMock()
-    mock_frame.evaluate = AsyncMock(return_value=[
-        _make_el(name="Button 1", id=1),
-    ])
+    mock_frame.evaluate = AsyncMock(
+        return_value=[
+            _make_el(name="Button 1", id=1),
+        ]
+    )
     mock_frame.url = "https://example.com"
     mock_frame.name = ""
 
@@ -442,7 +469,9 @@ def test_22_capture_page_context_mock():
 def test_23_suggestion_in_report():
     """WhatIfResult format_report includes suggestion when present."""
     r = WhatIfResult(
-        step="Click 'Sbumit' button", score=3, target_found=False,
+        step="Click 'Sbumit' button",
+        score=3,
+        target_found=False,
         target_element=None,
         explanation="No element with text 'Sbumit' found",
         risk="Step would fail",
@@ -456,9 +485,13 @@ def test_23_suggestion_in_report():
 def test_24_zero_score_impossible():
     """Score 0 shows IMPOSSIBLE label."""
     r = WhatIfResult(
-        step="Click the 'Ghost' button", score=0, target_found=False,
-        target_element=None, explanation="Element not found",
-        risk="Will fail", suggestion=None,
+        step="Click the 'Ghost' button",
+        score=0,
+        target_found=False,
+        target_element=None,
+        explanation="Element not found",
+        risk="Will fail",
+        suggestion=None,
     )
     _assert(r.confidence_label == "IMPOSSIBLE", "zero score → IMPOSSIBLE")
     report = r.format_report()
@@ -468,9 +501,12 @@ def test_24_zero_score_impossible():
 def test_25_llm_score_clamping():
     """LLM score is clamped to 0-10 range."""
     llm_response = {
-        "score": 15, "target_found": True,
-        "target_element": "btn", "explanation": "ok",
-        "risk": "", "suggestion": None,
+        "score": 15,
+        "target_found": True,
+        "target_element": "btn",
+        "explanation": "ok",
+        "risk": "",
+        "suggestion": None,
     }
     debugger = ExplainNextDebugger(llm=FakeLLM(llm_response))
 
@@ -487,9 +523,12 @@ def test_25_llm_score_clamping():
 def test_26_llm_negative_score_clamped():
     """Negative LLM score is clamped to 0."""
     llm_response = {
-        "score": -5, "target_found": False,
-        "target_element": None, "explanation": "bad",
-        "risk": "fail", "suggestion": None,
+        "score": -5,
+        "target_found": False,
+        "target_element": None,
+        "explanation": "bad",
+        "risk": "fail",
+        "suggestion": None,
     }
     debugger = ExplainNextDebugger(llm=FakeLLM(llm_response))
 
