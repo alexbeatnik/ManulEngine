@@ -1,2 +1,5 @@
+# Core runtime dependency — matches pyproject.toml [project].dependencies
 playwright>=1.58.0
-ollama>=0.6.1
+
+# Optional: AI self-healing fallback (pip install manul-engine[ai])
+# ollama>=0.6.1

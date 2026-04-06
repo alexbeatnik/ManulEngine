@@ -48,117 +48,111 @@ def _assert(condition: bool, name: str, detail: str = "") -> None:
 
 # ── 1. classify_step tests ───────────────────────────────────────────────────
 
+
 def _test_classify_step() -> None:
     print("\n  ── classify_step — new step kinds ──────────────────────")
 
     # PRESS ENTER must still map to press_enter (not the generic press)
-    _assert(classify_step("1. PRESS ENTER") == "press_enter",
-            "PRESS ENTER → press_enter")
-    _assert(classify_step("PRESS ENTER") == "press_enter",
-            "PRESS ENTER (no number) → press_enter")
+    _assert(classify_step("1. PRESS ENTER") == "press_enter", "PRESS ENTER → press_enter")
+    _assert(classify_step("PRESS ENTER") == "press_enter", "PRESS ENTER (no number) → press_enter")
 
     # Generic PRESS variants
-    _assert(classify_step("1. PRESS Escape") == "press",
-            "PRESS Escape → press")
-    _assert(classify_step("2. PRESS Control+A") == "press",
-            "PRESS Control+A → press")
-    _assert(classify_step("3. PRESS ArrowDown on 'Search Input'") == "press",
-            "PRESS ArrowDown on 'Target' → press")
-    _assert(classify_step("PRESS Tab") == "press",
-            "PRESS Tab (no number) → press")
-    _assert(classify_step("4. PRESS Shift+Tab on 'Username'") == "press",
-            "PRESS Shift+Tab on 'Target' → press")
+    _assert(classify_step("1. PRESS Escape") == "press", "PRESS Escape → press")
+    _assert(classify_step("2. PRESS Control+A") == "press", "PRESS Control+A → press")
+    _assert(classify_step("3. PRESS ArrowDown on 'Search Input'") == "press", "PRESS ArrowDown on 'Target' → press")
+    _assert(classify_step("PRESS Tab") == "press", "PRESS Tab (no number) → press")
+    _assert(classify_step("4. PRESS Shift+Tab on 'Username'") == "press", "PRESS Shift+Tab on 'Target' → press")
 
     # RIGHT CLICK
-    _assert(classify_step("1. RIGHT CLICK 'Image'") == "right_click",
-            "RIGHT CLICK 'Image' → right_click")
-    _assert(classify_step("RIGHT CLICK the 'Context Menu Area'") == "right_click",
-            "RIGHT CLICK the 'Target' → right_click")
-    _assert(classify_step("5. Right Click 'Menu'") == "right_click",
-            "Right Click (mixed case) → right_click")
+    _assert(classify_step("1. RIGHT CLICK 'Image'") == "right_click", "RIGHT CLICK 'Image' → right_click")
+    _assert(
+        classify_step("RIGHT CLICK the 'Context Menu Area'") == "right_click", "RIGHT CLICK the 'Target' → right_click"
+    )
+    _assert(classify_step("5. Right Click 'Menu'") == "right_click", "Right Click (mixed case) → right_click")
 
     # UPLOAD
-    _assert(classify_step("1. UPLOAD 'avatar.png' to 'Profile Picture'") == "upload",
-            "UPLOAD 'file' to 'Target' → upload")
-    _assert(classify_step("UPLOAD 'file.pdf' to 'Dropzone'") == "upload",
-            "UPLOAD (no number) → upload")
-    _assert(classify_step("3. Upload 'data.csv' to 'Import'") == "upload",
-            "Upload (mixed case) → upload")
+    _assert(
+        classify_step("1. UPLOAD 'avatar.png' to 'Profile Picture'") == "upload", "UPLOAD 'file' to 'Target' → upload"
+    )
+    _assert(classify_step("UPLOAD 'file.pdf' to 'Dropzone'") == "upload", "UPLOAD (no number) → upload")
+    _assert(classify_step("3. Upload 'data.csv' to 'Import'") == "upload", "Upload (mixed case) → upload")
 
     # Explicit waits
-    _assert(classify_step('Wait for "Welcome, User" to be visible') == "wait_for_element",
-            "Wait for text to be visible → wait_for_element")
-    _assert(classify_step("Wait for 'Loading...' to disappear") == "wait_for_element",
-            "Wait for text to disappear → wait_for_element")
-    _assert(classify_step('1. Wait for "Submit" to be hidden') == "wait_for_element",
-            "Numbered explicit wait → wait_for_element")
+    _assert(
+        classify_step('Wait for "Welcome, User" to be visible') == "wait_for_element",
+        "Wait for text to be visible → wait_for_element",
+    )
+    _assert(
+        classify_step("Wait for 'Loading...' to disappear") == "wait_for_element",
+        "Wait for text to disappear → wait_for_element",
+    )
+    _assert(
+        classify_step('1. Wait for "Submit" to be hidden') == "wait_for_element",
+        "Numbered explicit wait → wait_for_element",
+    )
 
     # Ensure existing keywords still work correctly
-    _assert(classify_step("1. NAVIGATE to https://x.com") == "navigate",
-            "NAVIGATE still works")
-    _assert(classify_step("Click 'Submit'") == "action",
-            "Click still → action")
-    _assert(classify_step("DONE.") == "done",
-            "DONE. still works")
+    _assert(classify_step("1. NAVIGATE to https://x.com") == "navigate", "NAVIGATE still works")
+    _assert(classify_step("Click 'Submit'") == "action", "Click still → action")
+    _assert(classify_step("DONE.") == "done", "DONE. still works")
 
     # Keywords inside quoted labels must NOT misclassify
-    _assert(classify_step("Click 'Press Here' button") == "action",
-            "PRESS inside quotes → action (not press)")
-    _assert(classify_step("Click the 'Upload Logo' button") == "action",
-            "UPLOAD inside quotes → action (not upload)")
-    _assert(classify_step("Click 'DONE' button") == "action",
-            "DONE inside quotes → action (not done)")
-    _assert(classify_step("Fill 'Navigate Away' field with 'test'") == "action",
-            "NAVIGATE inside quotes → action (not navigate)")
+    _assert(classify_step("Click 'Press Here' button") == "action", "PRESS inside quotes → action (not press)")
+    _assert(classify_step("Click the 'Upload Logo' button") == "action", "UPLOAD inside quotes → action (not upload)")
+    _assert(classify_step("Click 'DONE' button") == "action", "DONE inside quotes → action (not done)")
+    _assert(
+        classify_step("Fill 'Navigate Away' field with 'test'") == "action",
+        "NAVIGATE inside quotes → action (not navigate)",
+    )
+
 
 # ── 2. RE_SYSTEM_STEP tests ─────────────────────────────────────────────────
 
+
 def _test_re_system_step() -> None:
     from manul_engine.helpers import RE_SYSTEM_STEP
+
     print("\n  ── RE_SYSTEM_STEP — new keywords ──────────────────────")
 
-    _assert(RE_SYSTEM_STEP.search("1. PRESS Escape") is not None,
-            "RE_SYSTEM_STEP matches PRESS Escape")
-    _assert(RE_SYSTEM_STEP.search("PRESS ENTER") is not None,
-            "RE_SYSTEM_STEP matches PRESS ENTER")
-    _assert(RE_SYSTEM_STEP.search("RIGHT CLICK 'Image'") is not None,
-            "RE_SYSTEM_STEP matches RIGHT CLICK")
-    _assert(RE_SYSTEM_STEP.search("UPLOAD 'file.pdf' to 'Target'") is not None,
-            "RE_SYSTEM_STEP matches UPLOAD")
-    _assert(RE_SYSTEM_STEP.search('Wait for "Loading..." to disappear') is not None,
-            "RE_SYSTEM_STEP matches explicit wait")
-    _assert(RE_SYSTEM_STEP.search("VERIFY that 'Welcome' is present") is not None,
-            "RE_SYSTEM_STEP matches VERIFY")
-    _assert(RE_SYSTEM_STEP.search("Click 'Submit'") is None,
-            "RE_SYSTEM_STEP does NOT match Click (action)")
+    _assert(RE_SYSTEM_STEP.search("1. PRESS Escape") is not None, "RE_SYSTEM_STEP matches PRESS Escape")
+    _assert(RE_SYSTEM_STEP.search("PRESS ENTER") is not None, "RE_SYSTEM_STEP matches PRESS ENTER")
+    _assert(RE_SYSTEM_STEP.search("RIGHT CLICK 'Image'") is not None, "RE_SYSTEM_STEP matches RIGHT CLICK")
+    _assert(RE_SYSTEM_STEP.search("UPLOAD 'file.pdf' to 'Target'") is not None, "RE_SYSTEM_STEP matches UPLOAD")
+    _assert(
+        RE_SYSTEM_STEP.search('Wait for "Loading..." to disappear') is not None, "RE_SYSTEM_STEP matches explicit wait"
+    )
+    _assert(RE_SYSTEM_STEP.search("VERIFY that 'Welcome' is present") is not None, "RE_SYSTEM_STEP matches VERIFY")
+    _assert(RE_SYSTEM_STEP.search("Click 'Submit'") is None, "RE_SYSTEM_STEP does NOT match Click (action)")
 
 
 # ── 3. Handler tests (mocked Playwright) ────────────────────────────────────
 
+
 def _make_engine():
     """Create a ManulEngine with model=None, disable_cache=True."""
     from manul_engine import ManulEngine
+
     return ManulEngine(model=None, headless=True, disable_cache=True)
 
 
 def _mock_page():
-        page = MagicMock()
-        page.keyboard = MagicMock()
-        page.keyboard.press = AsyncMock()
-        page.evaluate = AsyncMock(return_value=[])
-        page.url = "https://example.com"
+    page = MagicMock()
+    page.keyboard = MagicMock()
+    page.keyboard.press = AsyncMock()
+    page.evaluate = AsyncMock(return_value=[])
+    page.url = "https://example.com"
 
-        mock_loc = MagicMock()
-        mock_loc.press = AsyncMock()
-        mock_loc.click = AsyncMock()
-        mock_loc.set_input_files = AsyncMock()
-        mock_loc.scroll_into_view_if_needed = AsyncMock()
-        mock_loc.wait_for = AsyncMock()
-        mock_loc.first = mock_loc
-        page.locator = MagicMock(return_value=mock_loc)
-        page.get_by_text = MagicMock(return_value=mock_loc)
-        page._mock_locator = mock_loc
-        return page
+    mock_loc = MagicMock()
+    mock_loc.press = AsyncMock()
+    mock_loc.click = AsyncMock()
+    mock_loc.set_input_files = AsyncMock()
+    mock_loc.scroll_into_view_if_needed = AsyncMock()
+    mock_loc.wait_for = AsyncMock()
+    mock_loc.first = mock_loc
+    page.locator = MagicMock(return_value=mock_loc)
+    page.get_by_text = MagicMock(return_value=mock_loc)
+    page._mock_locator = mock_loc
+    return page
 
 
 def _mock_element(el_id=1, name="Test Element", xpath="//button[@id='test']"):
@@ -240,8 +234,7 @@ async def _test_handle_right_click() -> None:
         _assert(ok, "RIGHT CLICK returns True")
         page._mock_locator.click.assert_awaited_once()
         call_kwargs = page._mock_locator.click.call_args
-        _assert(call_kwargs.kwargs.get("button") == "right",
-                "click called with button='right'")
+        _assert(call_kwargs.kwargs.get("button") == "right", "click called with button='right'")
 
 
 async def _test_handle_right_click_not_found() -> None:
@@ -283,7 +276,8 @@ async def _test_handle_upload() -> None:
 
         with patch.object(engine, "_resolve_element", new=AsyncMock(return_value=el)):
             ok = await engine._handle_upload(
-                page, "1. UPLOAD 'avatar.png' to 'Profile Picture'",
+                page,
+                "1. UPLOAD 'avatar.png' to 'Profile Picture'",
                 hunt_dir=tmp,
             )
             _assert(ok, "UPLOAD returns True")
@@ -311,7 +305,8 @@ async def _test_handle_upload_not_found() -> None:
 
         with patch.object(engine, "_resolve_element", new=AsyncMock(return_value=None)):
             ok = await engine._handle_upload(
-                page, "2. UPLOAD 'file.pdf' to 'Dropzone'",
+                page,
+                "2. UPLOAD 'file.pdf' to 'Dropzone'",
                 hunt_dir=tmp,
             )
             _assert(not ok, "UPLOAD on missing element returns False")
@@ -332,14 +327,14 @@ async def _test_handle_upload_hunt_dir_resolution() -> None:
 
         with patch.object(engine, "_resolve_element", new=AsyncMock(return_value=el)):
             ok = await engine._handle_upload(
-                page, "1. UPLOAD 'data.csv' to 'Import'",
+                page,
+                "1. UPLOAD 'data.csv' to 'Import'",
                 hunt_dir=tmp,
             )
             _assert(ok, "UPLOAD with existing file in hunt_dir returns True")
             call_args = page._mock_locator.set_input_files.call_args
             resolved = call_args.args[0]
-            _assert(str(test_file.resolve()) == resolved,
-                    f"file resolved to hunt_dir path: {resolved}")
+            _assert(str(test_file.resolve()) == resolved, f"file resolved to hunt_dir path: {resolved}")
 
 
 async def _test_handle_upload_file_not_found() -> None:
@@ -349,7 +344,8 @@ async def _test_handle_upload_file_not_found() -> None:
 
     with tempfile.TemporaryDirectory() as tmp:
         ok = await engine._handle_upload(
-            page, "1. UPLOAD 'nonexistent.pdf' to 'Target'",
+            page,
+            "1. UPLOAD 'nonexistent.pdf' to 'Target'",
             hunt_dir=tmp,
         )
         _assert(not ok, "UPLOAD with missing file returns False")
@@ -368,7 +364,8 @@ async def _test_handle_upload_wrong_element_type() -> None:
 
         with patch.object(engine, "_resolve_element", new=AsyncMock(return_value=el)):
             ok = await engine._handle_upload(
-                page, "1. UPLOAD 'doc.txt' to 'Submit Button'",
+                page,
+                "1. UPLOAD 'doc.txt' to 'Submit Button'",
                 hunt_dir=tmp,
             )
             _assert(not ok, "UPLOAD on non-file-input element returns False")
@@ -425,37 +422,38 @@ async def _test_handle_wait_for_element_timeout() -> None:
 
 # ── Suite runner ──────────────────────────────────────────────────────────────
 
+
 async def run_suite() -> bool:
-        global _PASS, _FAIL
-        _PASS = 0
-        _FAIL = 0
+    global _PASS, _FAIL
+    _PASS = 0
+    _FAIL = 0
 
-        print("\n═══ test_23_advanced_interactions ═══════════════════════")
+    print("\n═══ test_23_advanced_interactions ═══════════════════════")
 
-        # Synchronous parser tests
-        _test_classify_step()
-        _test_re_system_step()
+    # Synchronous parser tests
+    _test_classify_step()
+    _test_re_system_step()
 
-        # Async handler tests
-        await _test_handle_press_global()
-        await _test_handle_press_combo()
-        await _test_handle_press_targeted()
-        await _test_handle_press_targeted_not_found()
-        await _test_handle_right_click()
-        await _test_handle_right_click_not_found()
-        await _test_handle_right_click_shadow()
-        await _test_handle_upload()
-        await _test_handle_upload_missing_args()
-        await _test_handle_upload_not_found()
-        await _test_handle_upload_hunt_dir_resolution()
-        await _test_handle_upload_file_not_found()
-        await _test_handle_upload_wrong_element_type()
-        await _test_handle_press_empty_key()
-        await _test_handle_wait_for_element_visible()
-        await _test_handle_wait_for_element_disappear()
-        await _test_handle_wait_for_element_timeout()
+    # Async handler tests
+    await _test_handle_press_global()
+    await _test_handle_press_combo()
+    await _test_handle_press_targeted()
+    await _test_handle_press_targeted_not_found()
+    await _test_handle_right_click()
+    await _test_handle_right_click_not_found()
+    await _test_handle_right_click_shadow()
+    await _test_handle_upload()
+    await _test_handle_upload_missing_args()
+    await _test_handle_upload_not_found()
+    await _test_handle_upload_hunt_dir_resolution()
+    await _test_handle_upload_file_not_found()
+    await _test_handle_upload_wrong_element_type()
+    await _test_handle_press_empty_key()
+    await _test_handle_wait_for_element_visible()
+    await _test_handle_wait_for_element_disappear()
+    await _test_handle_wait_for_element_timeout()
 
-        print(f"\n  ── RESULT: {_PASS} passed, {_FAIL} failed ──")
-        total = _PASS + _FAIL
-        print(f"\n📊 SCORE: {_PASS}/{total} passed")
-        return _FAIL == 0
+    print(f"\n  ── RESULT: {_PASS} passed, {_FAIL} failed ──")
+    total = _PASS + _FAIL
+    print(f"\n📊 SCORE: {_PASS}/{total} passed")
+    return _FAIL == 0

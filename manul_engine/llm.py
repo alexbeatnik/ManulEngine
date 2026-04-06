@@ -57,6 +57,7 @@ class LLMProvider(Protocol):
 
 # ── Ollama implementation ─────────────────────────────────────────────────────
 
+
 class OllamaProvider:
     """Concrete LLM provider backed by the local Ollama server."""
 
@@ -73,7 +74,7 @@ class OllamaProvider:
                 model=self.model,
                 messages=[
                     {"role": "system", "content": system},
-                    {"role": "user",   "content": user},
+                    {"role": "user", "content": user},
                 ],
                 format="json",
             )
@@ -96,6 +97,7 @@ class NullProvider:
 
 # ── JSON extraction helpers ───────────────────────────────────────────────────
 
+
 def _parse_llm_json(raw: str) -> dict | None:
     """Parse a JSON object from raw LLM text.
 
@@ -103,6 +105,15 @@ def _parse_llm_json(raw: str) -> dict | None:
     to skip any surrounding text (code fences, preamble, etc.) without
     needing to construct fence marker strings explicitly.
     """
+    _fence = chr(96) * 3
+    raw_clean = raw.strip()
+    if raw_clean.startswith(_fence + "json"):
+        raw_clean = raw_clean[len(_fence) + 4 :]
+    elif raw_clean.startswith(_fence):
+        raw_clean = raw_clean[len(_fence) :]
+    if raw_clean.endswith(_fence):
+        raw_clean = raw_clean[: -len(_fence)]
+
     decoder = json.JSONDecoder()
     start = raw.find("{")
     if start != -1:

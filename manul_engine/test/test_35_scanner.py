@@ -1,5 +1,6 @@
 import sys, os, asyncio
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from playwright.async_api import async_playwright
 from manul_engine.scanner import build_hunt, _is_useful, _map_to_step
 
@@ -32,6 +33,7 @@ def _assert(cond: bool, name: str, detail: str = "") -> None:
 
 # ── Part 1: _is_useful() filter ──────────────────────────────────────────────
 
+
 def _test_is_useful():
     print("\n── _is_useful() filter ──")
     # Accepted labels
@@ -56,6 +58,7 @@ def _test_is_useful():
 
 
 # ── Part 2: _map_to_step() type mapping ─────────────────────────────────────
+
 
 def _test_map_to_step():
     print("\n── _map_to_step() type mapping ──")
@@ -84,6 +87,7 @@ def _test_map_to_step():
 
 # ── Part 3: build_hunt() assembly ─────────────────────────────────────────────
 
+
 def _test_build_hunt_basic():
     print("\n── build_hunt() basic assembly ──")
     elements = [
@@ -107,8 +111,8 @@ def _test_build_hunt_dedup():
     print("\n── build_hunt() deduplication ──")
     elements = [
         {"type": "button", "identifier": "Save"},
-        {"type": "button", "identifier": "Save"},   # exact duplicate
-        {"type": "button", "identifier": "save"},   # case-insensitive duplicate
+        {"type": "button", "identifier": "Save"},  # exact duplicate
+        {"type": "button", "identifier": "save"},  # case-insensitive duplicate
         {"type": "button", "identifier": "Cancel"},
     ]
     result = build_hunt("https://example.com", elements)
@@ -122,16 +126,20 @@ def _test_build_hunt_dedup():
 def _test_build_hunt_filters_noise():
     print("\n── build_hunt() noise filtering ──")
     elements = [
-        {"type": "button", "identifier": ""},         # empty
-        {"type": "button", "identifier": "×"},        # close symbol
-        {"type": "link",   "identifier": "https://cdn.example.com"},  # URL
+        {"type": "button", "identifier": ""},  # empty
+        {"type": "button", "identifier": "×"},  # close symbol
+        {"type": "link", "identifier": "https://cdn.example.com"},  # URL
         {"type": "button", "identifier": "Real Button"},
     ]
     result = build_hunt("https://example.com", elements)
 
     _assert("'Real Button'" in result, "real button kept")
     # Count STEP lines that are not STEP 1 (NAV) or STEP 2 (WAIT)
-    step_lines = [l for l in result.split("\n") if l.startswith("STEP ") and not l.startswith("STEP 1:") and not l.startswith("STEP 2:")]
+    step_lines = [
+        l
+        for l in result.split("\n")
+        if l.startswith("STEP ") and not l.startswith("STEP 1:") and not l.startswith("STEP 2:")
+    ]
     _assert(len(step_lines) == 1, f"only 1 action STEP after filtering noise, got {len(step_lines)}")
 
 
@@ -139,8 +147,8 @@ def _test_build_hunt_step_numbering():
     print("\n── build_hunt() step numbering ──")
     elements = [
         {"type": "button", "identifier": "Alpha"},
-        {"type": "input",  "identifier": "Beta"},
-        {"type": "link",   "identifier": "Gamma"},
+        {"type": "input", "identifier": "Beta"},
+        {"type": "link", "identifier": "Gamma"},
     ]
     result = build_hunt("https://example.com", elements)
 

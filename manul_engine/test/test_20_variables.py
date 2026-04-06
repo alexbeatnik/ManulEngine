@@ -46,6 +46,7 @@ def _assert(condition: bool, name: str, detail: str = "") -> None:
 
 # ── Section 1: Parser correctness ────────────────────────────────────────────
 
+
 def _test_parser() -> None:
     print("\n  ── Parser (@var: extraction) ────────────────────────────────")
 
@@ -63,9 +64,7 @@ def _test_parser() -> None:
 4. Fill 'Key' with '{bare_key}'
 5. DONE.
 """
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".hunt", encoding="utf-8", delete=False
-    ) as tf:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".hunt", encoding="utf-8", delete=False) as tf:
         tf.write(hunt_content)
         tmp_path = tf.name
 
@@ -128,9 +127,7 @@ def _test_parser() -> None:
 
     # 1h. Empty @var: line (malformed — no '=') is silently skipped.
     hunt_malformed = "@var: {broken}\n1. DONE.\n"
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".hunt", encoding="utf-8", delete=False
-    ) as tf:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".hunt", encoding="utf-8", delete=False) as tf:
         tf.write(hunt_malformed)
         tmp_path2 = tf.name
     try:
@@ -163,9 +160,7 @@ CALL PYTHON {printer}.emit into {message}
 CALL PYTHON {seed_mega_fixture} into {fixture_id}
 DONE.
 """
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".hunt", encoding="utf-8", delete=False
-    ) as tf:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".hunt", encoding="utf-8", delete=False) as tf:
         tf.write(hunt_content)
         tmp_path = tf.name
 
@@ -182,7 +177,8 @@ DONE.
         f"mission={mission!r}",
     )
     _assert(
-        setup_lines == [
+        setup_lines
+        == [
             "CALL PYTHON scripts.print.bootstrap",
             'CALL PYTHON scripts.demo_helpers.seed_mega_fixture with args: "shadow" "table"',
         ],
@@ -216,9 +212,7 @@ STEP 1: Aliased calls stay separate
 STEP 2: Next step header stays separate
     DONE.
 """
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".hunt", encoding="utf-8", delete=False
-    ) as tf:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".hunt", encoding="utf-8", delete=False) as tf:
         tf.write(hunt_content)
         tmp_path = tf.name
 
@@ -236,7 +230,8 @@ STEP 2: Next step header stays separate
         f"mission_lines={mission_lines!r}",
     )
     _assert(
-        'CALL PYTHON scripts.call_python_showcase.build_token with args: "module-alias" into {alias_token}' in mission_lines,
+        'CALL PYTHON scripts.call_python_showcase.build_token with args: "module-alias" into {alias_token}'
+        in mission_lines,
         "module alias rewrite preserves second action as its own line",
         f"mission_lines={mission_lines!r}",
     )
@@ -257,9 +252,7 @@ def _test_script_alias_requires_dotted_python_path() -> None:
 
 DONE.
 """
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".hunt", encoding="utf-8", delete=False
-    ) as tf:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".hunt", encoding="utf-8", delete=False) as tf:
         tf.write(bad_hunt)
         tmp_path = tf.name
 
@@ -269,7 +262,9 @@ DONE.
             _assert(False, "slash-style @script path is rejected")
         except ValueError as exc:
             msg = str(exc)
-            _assert("Invalid @script target 'scripts/print.py'" in msg, "invalid @script path reports offending value", msg)
+            _assert(
+                "Invalid @script target 'scripts/print.py'" in msg, "invalid @script path reports offending value", msg
+            )
             _assert("no '/'" in msg and "no '.py' suffix" in msg, "invalid @script path explains dotted-path rule", msg)
     finally:
         os.unlink(tmp_path)
@@ -285,9 +280,7 @@ def _test_script_alias_requires_placeholder_identifier_name() -> None:
 
 DONE.
 """
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".hunt", encoding="utf-8", delete=False
-    ) as tf:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".hunt", encoding="utf-8", delete=False) as tf:
         tf.write(bad_hunt)
         tmp_path = tf.name
 
@@ -305,11 +298,13 @@ DONE.
 
 # ── Section 2: Engine interpolation ──────────────────────────────────────────
 
+
 async def _test_interpolation() -> None:
     print("\n  ── Engine interpolation (run_mission + initial_vars) ────────")
 
     with patch("manul_engine.core.load_custom_controls"):
         from manul_engine.core import ManulEngine
+
         engine = ManulEngine(model=None, disable_cache=True)
 
     # Capture the step string that _execute_step receives.
@@ -413,6 +408,7 @@ async def _test_interpolation() -> None:
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
+
 
 async def run_suite() -> bool:
     global _PASS, _FAIL

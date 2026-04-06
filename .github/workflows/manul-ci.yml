@@ -16,7 +16,7 @@ jobs:
   manul:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Run hunt tests
         run: |
@@ -30,12 +30,12 @@ jobs:
             -e MANUL_HTML_REPORT=true \
             -e MANUL_SCREENSHOT=on-fail \
             -e MANUL_WORKERS=2 \
-            ghcr.io/alexbeatnik/manul-engine:0.0.9.25 \
+            ghcr.io/alexbeatnik/manul-engine:0.0.9.26 \
             --html-report --screenshot on-fail --workers 2 hunts/
 
       - name: Upload test report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: manul-report
           path: reports/

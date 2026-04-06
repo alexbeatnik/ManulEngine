@@ -1,5 +1,6 @@
 import sys
 import os
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 import asyncio
@@ -94,7 +95,11 @@ async def run_suite() -> bool:
                 print(f"   ❌ {msg}")
                 failures.append(msg)
 
-            raw = json.loads(cache_file.read_text(encoding="utf-8")) if cache_file is not None and cache_file.exists() else {}
+            raw = (
+                json.loads(cache_file.read_text(encoding="utf-8"))
+                if cache_file is not None and cache_file.exists()
+                else {}
+            )
             controls = raw.get("controls", {}) if isinstance(raw, dict) else {}
             has_key = cache_key in controls
 
@@ -164,9 +169,16 @@ async def run_suite() -> bool:
                 target_field=target_field,
                 element=updated_element,
             )
-            raw_after = json.loads(cache_file.read_text(encoding="utf-8")) if cache_file is not None and cache_file.exists() else {}
+            raw_after = (
+                json.loads(cache_file.read_text(encoding="utf-8"))
+                if cache_file is not None and cache_file.exists()
+                else {}
+            )
             controls_after = raw_after.get("controls", {}) if isinstance(raw_after, dict) else {}
-            overwritten = isinstance(controls_after.get(cache_key), dict) and controls_after.get(cache_key, {}).get("html_id") == "save-btn-v2"
+            overwritten = (
+                isinstance(controls_after.get(cache_key), dict)
+                and controls_after.get(cache_key, {}).get("html_id") == "save-btn-v2"
+            )
             if overwritten:
                 print("   ✅ Cache entry is overwritten when resolved control changes")
                 passed += 1

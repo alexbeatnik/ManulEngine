@@ -1,5 +1,6 @@
 import sys
 import os
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 import asyncio
@@ -129,7 +130,7 @@ async def run_suite() -> bool:
             print("   ✅ Always-AI: picker used; Mixed: heuristics used")
             passed += 1
         else:
-            msg = f"FAILED — always-ai/mixed behavior mismatch (ai={getattr(el_ai,'get',lambda *_: None)('html_id') if el_ai else None}, heur={getattr(el_heur,'get',lambda *_: None)('html_id') if el_heur else None}, picker_calls={called['n']})"
+            msg = f"FAILED — always-ai/mixed behavior mismatch (ai={getattr(el_ai, 'get', lambda *_: None)('html_id') if el_ai else None}, heur={getattr(el_heur, 'get', lambda *_: None)('html_id') if el_heur else None}, picker_calls={called['n']})"
             print(f"   ❌ {msg}")
             failures.append(msg)
 

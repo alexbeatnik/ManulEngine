@@ -1,5 +1,6 @@
 import sys, os, asyncio
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from playwright.async_api import async_playwright
 from manul_engine import ManulEngine
 
@@ -273,163 +274,395 @@ DISAMBIGUATION_DOM = """
 # ─────────────────────────────────────────────────────────────────────────────
 TESTS = [
     # ── A. Yes / No antonym pairs ────────────────────────────────────────────
-    {"n":  "1", "step": "Click the 'Yes' radio button",         "m": "clickable", "st": ["Yes"],      "tf": None, "exp": "d1"},
-    {"n":  "2", "step": "Click the 'No' radio button",          "m": "clickable", "st": ["No"],       "tf": None, "exp": "d2"},
-    {"n":  "3", "step": "Click radio button for 'Active'",      "m": "clickable", "st": ["Active"],   "tf": None, "exp": "d3"},
-    {"n":  "4", "step": "Click radio button for 'Inactive'",   "m": "clickable", "st": ["Inactive"], "tf": None, "exp": "d4"},
-    {"n":  "5", "step": "Click 'Enabled'",                      "m": "clickable", "st": ["Enabled"],  "tf": None, "exp": "d5"},
-    {"n":  "6", "step": "Click 'Disabled'",                     "m": "clickable", "st": ["Disabled"], "tf": None, "exp": "d6"},
-
+    {"n": "1", "step": "Click the 'Yes' radio button", "m": "clickable", "st": ["Yes"], "tf": None, "exp": "d1"},
+    {"n": "2", "step": "Click the 'No' radio button", "m": "clickable", "st": ["No"], "tf": None, "exp": "d2"},
+    {"n": "3", "step": "Click radio button for 'Active'", "m": "clickable", "st": ["Active"], "tf": None, "exp": "d3"},
+    {
+        "n": "4",
+        "step": "Click radio button for 'Inactive'",
+        "m": "clickable",
+        "st": ["Inactive"],
+        "tf": None,
+        "exp": "d4",
+    },
+    {"n": "5", "step": "Click 'Enabled'", "m": "clickable", "st": ["Enabled"], "tf": None, "exp": "d5"},
+    {"n": "6", "step": "Click 'Disabled'", "m": "clickable", "st": ["Disabled"], "tf": None, "exp": "d6"},
     # ── B. Increase / Decrease antonym pairs ─────────────────────────────────
-    {"n":  "7", "step": "Click 'Decrease Adults'",   "m": "clickable", "st": ["Decrease Adults"],   "tf": None, "exp": "d7"},
-    {"n":  "8", "step": "Click 'Increase Adults'",   "m": "clickable", "st": ["Increase Adults"],   "tf": None, "exp": "d8"},
-    {"n":  "9", "step": "Click 'Decrease Children'", "m": "clickable", "st": ["Decrease Children"], "tf": None, "exp": "d9"},
-    {"n": "10", "step": "Click 'Increase Children'", "m": "clickable", "st": ["Increase Children"], "tf": None, "exp": "d10"},
-    {"n": "11", "step": "Click 'Decrease Rooms'",    "m": "clickable", "st": ["Decrease Rooms"],    "tf": None, "exp": "d11"},
-    {"n": "12", "step": "Click 'Increase Rooms'",    "m": "clickable", "st": ["Increase Rooms"],    "tf": None, "exp": "d12"},
-    {"n": "13", "step": "Click 'Decrease Quantity'", "m": "clickable", "st": ["Decrease Quantity"], "tf": None, "exp": "d13"},
-    {"n": "14", "step": "Click 'Increase Quantity'", "m": "clickable", "st": ["Increase Quantity"], "tf": None, "exp": "d14"},
-    {"n": "15", "step": "Click 'Decrease Nights'",   "m": "clickable", "st": ["Decrease Nights"],   "tf": None, "exp": "d15"},
-    {"n": "16", "step": "Click 'Increase Nights'",   "m": "clickable", "st": ["Increase Nights"],   "tf": None, "exp": "d16"},
-    {"n": "17", "step": "Click 'Decrease Price'",    "m": "clickable", "st": ["Decrease Price"],    "tf": None, "exp": "d17"},
-    {"n": "18", "step": "Click 'Increase Price'",    "m": "clickable", "st": ["Increase Price"],    "tf": None, "exp": "d18"},
-
+    {"n": "7", "step": "Click 'Decrease Adults'", "m": "clickable", "st": ["Decrease Adults"], "tf": None, "exp": "d7"},
+    {"n": "8", "step": "Click 'Increase Adults'", "m": "clickable", "st": ["Increase Adults"], "tf": None, "exp": "d8"},
+    {
+        "n": "9",
+        "step": "Click 'Decrease Children'",
+        "m": "clickable",
+        "st": ["Decrease Children"],
+        "tf": None,
+        "exp": "d9",
+    },
+    {
+        "n": "10",
+        "step": "Click 'Increase Children'",
+        "m": "clickable",
+        "st": ["Increase Children"],
+        "tf": None,
+        "exp": "d10",
+    },
+    {"n": "11", "step": "Click 'Decrease Rooms'", "m": "clickable", "st": ["Decrease Rooms"], "tf": None, "exp": "d11"},
+    {"n": "12", "step": "Click 'Increase Rooms'", "m": "clickable", "st": ["Increase Rooms"], "tf": None, "exp": "d12"},
+    {
+        "n": "13",
+        "step": "Click 'Decrease Quantity'",
+        "m": "clickable",
+        "st": ["Decrease Quantity"],
+        "tf": None,
+        "exp": "d13",
+    },
+    {
+        "n": "14",
+        "step": "Click 'Increase Quantity'",
+        "m": "clickable",
+        "st": ["Increase Quantity"],
+        "tf": None,
+        "exp": "d14",
+    },
+    {
+        "n": "15",
+        "step": "Click 'Decrease Nights'",
+        "m": "clickable",
+        "st": ["Decrease Nights"],
+        "tf": None,
+        "exp": "d15",
+    },
+    {
+        "n": "16",
+        "step": "Click 'Increase Nights'",
+        "m": "clickable",
+        "st": ["Increase Nights"],
+        "tf": None,
+        "exp": "d16",
+    },
+    {"n": "17", "step": "Click 'Decrease Price'", "m": "clickable", "st": ["Decrease Price"], "tf": None, "exp": "d17"},
+    {"n": "18", "step": "Click 'Increase Price'", "m": "clickable", "st": ["Increase Price"], "tf": None, "exp": "d18"},
     # ── C. Next / Previous antonym pairs ─────────────────────────────────────
     {"n": "19", "step": "Click 'Previous Page'", "m": "clickable", "st": ["Previous Page"], "tf": None, "exp": "d19"},
-    {"n": "20", "step": "Click 'Next Page'",     "m": "clickable", "st": ["Next Page"],     "tf": None, "exp": "d20"},
-    {"n": "21", "step": "Click 'Previous Month'","m": "clickable", "st": ["Previous Month"],"tf": None, "exp": "d21"},
-    {"n": "22", "step": "Click 'Next Month'",    "m": "clickable", "st": ["Next Month"],    "tf": None, "exp": "d22"},
+    {"n": "20", "step": "Click 'Next Page'", "m": "clickable", "st": ["Next Page"], "tf": None, "exp": "d20"},
+    {"n": "21", "step": "Click 'Previous Month'", "m": "clickable", "st": ["Previous Month"], "tf": None, "exp": "d21"},
+    {"n": "22", "step": "Click 'Next Month'", "m": "clickable", "st": ["Next Month"], "tf": None, "exp": "d22"},
     {"n": "23", "step": "Click 'Previous Step'", "m": "clickable", "st": ["Previous Step"], "tf": None, "exp": "d23"},
-    {"n": "24", "step": "Click 'Next Step'",     "m": "clickable", "st": ["Next Step"],     "tf": None, "exp": "d24"},
-
+    {"n": "24", "step": "Click 'Next Step'", "m": "clickable", "st": ["Next Step"], "tf": None, "exp": "d24"},
     # ── D. Enable/Disable · Show/Hide · Expand/Collapse · Sort ───────────────
-    {"n": "25", "step": "Click 'Enable Notifications'",  "m": "clickable", "st": ["Enable Notifications"],  "tf": None, "exp": "d25"},
-    {"n": "26", "step": "Click 'Disable Notifications'", "m": "clickable", "st": ["Disable Notifications"], "tf": None, "exp": "d26"},
-    {"n": "27", "step": "Click 'Show Password'",         "m": "clickable", "st": ["Show Password"],         "tf": None, "exp": "d27"},
-    {"n": "28", "step": "Click 'Hide Password'",         "m": "clickable", "st": ["Hide Password"],         "tf": None, "exp": "d28"},
-    {"n": "29", "step": "Click 'Expand All Sections'",   "m": "clickable", "st": ["Expand All Sections"],   "tf": None, "exp": "d29"},
-    {"n": "30", "step": "Click 'Collapse All Sections'", "m": "clickable", "st": ["Collapse All Sections"], "tf": None, "exp": "d30"},
-    {"n": "31", "step": "Click 'Sort Ascending'",        "m": "clickable", "st": ["Sort Ascending"],        "tf": None, "exp": "d31"},
-    {"n": "32", "step": "Click 'Sort Descending'",       "m": "clickable", "st": ["Sort Descending"],       "tf": None, "exp": "d32"},
-    {"n": "33", "step": "Click 'Zoom In'",               "m": "clickable", "st": ["Zoom In"],               "tf": None, "exp": "d33"},
-    {"n": "34", "step": "Click 'Zoom Out'",              "m": "clickable", "st": ["Zoom Out"],              "tf": None, "exp": "d34"},
-
+    {
+        "n": "25",
+        "step": "Click 'Enable Notifications'",
+        "m": "clickable",
+        "st": ["Enable Notifications"],
+        "tf": None,
+        "exp": "d25",
+    },
+    {
+        "n": "26",
+        "step": "Click 'Disable Notifications'",
+        "m": "clickable",
+        "st": ["Disable Notifications"],
+        "tf": None,
+        "exp": "d26",
+    },
+    {"n": "27", "step": "Click 'Show Password'", "m": "clickable", "st": ["Show Password"], "tf": None, "exp": "d27"},
+    {"n": "28", "step": "Click 'Hide Password'", "m": "clickable", "st": ["Hide Password"], "tf": None, "exp": "d28"},
+    {
+        "n": "29",
+        "step": "Click 'Expand All Sections'",
+        "m": "clickable",
+        "st": ["Expand All Sections"],
+        "tf": None,
+        "exp": "d29",
+    },
+    {
+        "n": "30",
+        "step": "Click 'Collapse All Sections'",
+        "m": "clickable",
+        "st": ["Collapse All Sections"],
+        "tf": None,
+        "exp": "d30",
+    },
+    {"n": "31", "step": "Click 'Sort Ascending'", "m": "clickable", "st": ["Sort Ascending"], "tf": None, "exp": "d31"},
+    {
+        "n": "32",
+        "step": "Click 'Sort Descending'",
+        "m": "clickable",
+        "st": ["Sort Descending"],
+        "tf": None,
+        "exp": "d32",
+    },
+    {"n": "33", "step": "Click 'Zoom In'", "m": "clickable", "st": ["Zoom In"], "tf": None, "exp": "d33"},
+    {"n": "34", "step": "Click 'Zoom Out'", "m": "clickable", "st": ["Zoom Out"], "tf": None, "exp": "d34"},
     # ── E. Follow / Subscribe / Like containment families ────────────────────
-    {"n": "35", "step": "Click 'Follow'",       "m": "clickable", "st": ["Follow"],      "tf": None, "exp": "d35"},
-    {"n": "36", "step": "Click 'Following'",    "m": "clickable", "st": ["Following"],   "tf": None, "exp": "d36"},
-    {"n": "37", "step": "Click 'Unfollow'",     "m": "clickable", "st": ["Unfollow"],    "tf": None, "exp": "d37"},
-    {"n": "38", "step": "Click 'Subscribe'",    "m": "clickable", "st": ["Subscribe"],   "tf": None, "exp": "d38"},
-    {"n": "39", "step": "Click 'Subscribed'",   "m": "clickable", "st": ["Subscribed"],  "tf": None, "exp": "d39"},
-    {"n": "40", "step": "Click 'Unsubscribe'",  "m": "clickable", "st": ["Unsubscribe"], "tf": None, "exp": "d40"},
-    {"n": "41", "step": "Click 'Connect'",      "m": "clickable", "st": ["Connect"],     "tf": None, "exp": "d41"},
-    {"n": "42", "step": "Click 'Disconnect'",   "m": "clickable", "st": ["Disconnect"],  "tf": None, "exp": "d42"},
-    {"n": "43", "step": "Click 'Like'",         "m": "clickable", "st": ["Like"],        "tf": None, "exp": "d43"},
-    {"n": "44", "step": "Click 'Unlike'",       "m": "clickable", "st": ["Unlike"],      "tf": None, "exp": "d44"},
-
+    {"n": "35", "step": "Click 'Follow'", "m": "clickable", "st": ["Follow"], "tf": None, "exp": "d35"},
+    {"n": "36", "step": "Click 'Following'", "m": "clickable", "st": ["Following"], "tf": None, "exp": "d36"},
+    {"n": "37", "step": "Click 'Unfollow'", "m": "clickable", "st": ["Unfollow"], "tf": None, "exp": "d37"},
+    {"n": "38", "step": "Click 'Subscribe'", "m": "clickable", "st": ["Subscribe"], "tf": None, "exp": "d38"},
+    {"n": "39", "step": "Click 'Subscribed'", "m": "clickable", "st": ["Subscribed"], "tf": None, "exp": "d39"},
+    {"n": "40", "step": "Click 'Unsubscribe'", "m": "clickable", "st": ["Unsubscribe"], "tf": None, "exp": "d40"},
+    {"n": "41", "step": "Click 'Connect'", "m": "clickable", "st": ["Connect"], "tf": None, "exp": "d41"},
+    {"n": "42", "step": "Click 'Disconnect'", "m": "clickable", "st": ["Disconnect"], "tf": None, "exp": "d42"},
+    {"n": "43", "step": "Click 'Like'", "m": "clickable", "st": ["Like"], "tf": None, "exp": "d43"},
+    {"n": "44", "step": "Click 'Unlike'", "m": "clickable", "st": ["Unlike"], "tf": None, "exp": "d44"},
     # ── F. Add / Save / Load variants ────────────────────────────────────────
-    {"n": "45", "step": "Click 'Add'",               "m": "clickable", "st": ["Add"],              "tf": None, "exp": "d45"},
-    {"n": "46", "step": "Click 'Add to Cart'",       "m": "clickable", "st": ["Add to Cart"],      "tf": None, "exp": "d46"},
-    {"n": "47", "step": "Click 'Add to Wishlist'",   "m": "clickable", "st": ["Add to Wishlist"],  "tf": None, "exp": "d47"},
-    {"n": "48", "step": "Click 'Add to Comparison'", "m": "clickable", "st": ["Add to Comparison"],"tf": None, "exp": "d48"},
-    {"n": "49", "step": "Click 'Save'",              "m": "clickable", "st": ["Save"],             "tf": None, "exp": "d49"},
-    {"n": "50", "step": "Click 'Save Changes'",      "m": "clickable", "st": ["Save Changes"],     "tf": None, "exp": "d50"},
-    {"n": "51", "step": "Click 'Save Draft'",        "m": "clickable", "st": ["Save Draft"],       "tf": None, "exp": "d51"},
-    {"n": "52", "step": "Click 'Save as Template'",  "m": "clickable", "st": ["Save as Template"], "tf": None, "exp": "d52"},
-    {"n": "53", "step": "Click 'Save and Continue'", "m": "clickable", "st": ["Save and Continue"],"tf": None, "exp": "d53"},
-    {"n": "54", "step": "Click 'Load More'",         "m": "clickable", "st": ["Load More"],        "tf": None, "exp": "d54"},
-    {"n": "55", "step": "Click 'Show More'",         "m": "clickable", "st": ["Show More"],        "tf": None, "exp": "d55"},
-    {"n": "56", "step": "Click 'See All'",           "m": "clickable", "st": ["See All"],          "tf": None, "exp": "d56"},
-
+    {"n": "45", "step": "Click 'Add'", "m": "clickable", "st": ["Add"], "tf": None, "exp": "d45"},
+    {"n": "46", "step": "Click 'Add to Cart'", "m": "clickable", "st": ["Add to Cart"], "tf": None, "exp": "d46"},
+    {
+        "n": "47",
+        "step": "Click 'Add to Wishlist'",
+        "m": "clickable",
+        "st": ["Add to Wishlist"],
+        "tf": None,
+        "exp": "d47",
+    },
+    {
+        "n": "48",
+        "step": "Click 'Add to Comparison'",
+        "m": "clickable",
+        "st": ["Add to Comparison"],
+        "tf": None,
+        "exp": "d48",
+    },
+    {"n": "49", "step": "Click 'Save'", "m": "clickable", "st": ["Save"], "tf": None, "exp": "d49"},
+    {"n": "50", "step": "Click 'Save Changes'", "m": "clickable", "st": ["Save Changes"], "tf": None, "exp": "d50"},
+    {"n": "51", "step": "Click 'Save Draft'", "m": "clickable", "st": ["Save Draft"], "tf": None, "exp": "d51"},
+    {
+        "n": "52",
+        "step": "Click 'Save as Template'",
+        "m": "clickable",
+        "st": ["Save as Template"],
+        "tf": None,
+        "exp": "d52",
+    },
+    {
+        "n": "53",
+        "step": "Click 'Save and Continue'",
+        "m": "clickable",
+        "st": ["Save and Continue"],
+        "tf": None,
+        "exp": "d53",
+    },
+    {"n": "54", "step": "Click 'Load More'", "m": "clickable", "st": ["Load More"], "tf": None, "exp": "d54"},
+    {"n": "55", "step": "Click 'Show More'", "m": "clickable", "st": ["Show More"], "tf": None, "exp": "d55"},
+    {"n": "56", "step": "Click 'See All'", "m": "clickable", "st": ["See All"], "tf": None, "exp": "d56"},
     # ── G. Ordinal specificity: Play / Download episode N ────────────────────
-    {"n": "57", "step": "Click 'Play'",             "m": "clickable", "st": ["Play"],             "tf": None, "exp": "d57"},
-    {"n": "58", "step": "Click 'Play Episode 1'",   "m": "clickable", "st": ["Play Episode 1"],   "tf": None, "exp": "d58"},
-    {"n": "59", "step": "Click 'Play Episode 2'",   "m": "clickable", "st": ["Play Episode 2"],   "tf": None, "exp": "d59"},
-    {"n": "60", "step": "Click 'Play Episode 3'",   "m": "clickable", "st": ["Play Episode 3"],   "tf": None, "exp": "d60"},
-    {"n": "61", "step": "Click 'Download'",         "m": "clickable", "st": ["Download"],         "tf": None, "exp": "d61"},
-    {"n": "62", "step": "Click 'Download Episode 1'","m": "clickable","st": ["Download Episode 1"],"tf": None, "exp": "d62"},
-    {"n": "63", "step": "Click 'Download Episode 2'","m": "clickable","st": ["Download Episode 2"],"tf": None, "exp": "d63"},
-    {"n": "64", "step": "Click 'Download Episode 3'","m": "clickable","st": ["Download Episode 3"],"tf": None, "exp": "d64"},
-    {"n": "65", "step": "Click 'Download All'",     "m": "clickable", "st": ["Download All"],     "tf": None, "exp": "d65"},
-
+    {"n": "57", "step": "Click 'Play'", "m": "clickable", "st": ["Play"], "tf": None, "exp": "d57"},
+    {"n": "58", "step": "Click 'Play Episode 1'", "m": "clickable", "st": ["Play Episode 1"], "tf": None, "exp": "d58"},
+    {"n": "59", "step": "Click 'Play Episode 2'", "m": "clickable", "st": ["Play Episode 2"], "tf": None, "exp": "d59"},
+    {"n": "60", "step": "Click 'Play Episode 3'", "m": "clickable", "st": ["Play Episode 3"], "tf": None, "exp": "d60"},
+    {"n": "61", "step": "Click 'Download'", "m": "clickable", "st": ["Download"], "tf": None, "exp": "d61"},
+    {
+        "n": "62",
+        "step": "Click 'Download Episode 1'",
+        "m": "clickable",
+        "st": ["Download Episode 1"],
+        "tf": None,
+        "exp": "d62",
+    },
+    {
+        "n": "63",
+        "step": "Click 'Download Episode 2'",
+        "m": "clickable",
+        "st": ["Download Episode 2"],
+        "tf": None,
+        "exp": "d63",
+    },
+    {
+        "n": "64",
+        "step": "Click 'Download Episode 3'",
+        "m": "clickable",
+        "st": ["Download Episode 3"],
+        "tf": None,
+        "exp": "d64",
+    },
+    {"n": "65", "step": "Click 'Download All'", "m": "clickable", "st": ["Download All"], "tf": None, "exp": "d65"},
     # ── H. (Container div hard-negatives — kept in DOM only, not tested) ─────
-
     # ── K. Exact placeholder vs placeholder-plus-extra ───────────────────────
-    {"n": "86", "step": "Fill 'Phone Number' field with '555'",
-     "m": "input",     "st": ["Phone Number"],    "tf": "phone number",    "exp": "dk1"},
-    {"n": "87", "step": "Fill 'Search' field with 'query'",
-     "m": "input",     "st": ["Search"],           "tf": "search",          "exp": "dk3"},
-    {"n": "88", "step": "Fill 'Email' field with 'test@test.com'",
-     "m": "input",     "st": ["Email"],             "tf": "email",           "exp": "dk5"},
-    {"n": "89", "step": "Fill 'Username' with 'alex'",
-     "m": "input",     "st": ["Username"],         "tf": "username",        "exp": "dk7"},
-
+    {
+        "n": "86",
+        "step": "Fill 'Phone Number' field with '555'",
+        "m": "input",
+        "st": ["Phone Number"],
+        "tf": "phone number",
+        "exp": "dk1",
+    },
+    {
+        "n": "87",
+        "step": "Fill 'Search' field with 'query'",
+        "m": "input",
+        "st": ["Search"],
+        "tf": "search",
+        "exp": "dk3",
+    },
+    {
+        "n": "88",
+        "step": "Fill 'Email' field with 'test@test.com'",
+        "m": "input",
+        "st": ["Email"],
+        "tf": "email",
+        "exp": "dk5",
+    },
+    {
+        "n": "89",
+        "step": "Fill 'Username' with 'alex'",
+        "m": "input",
+        "st": ["Username"],
+        "tf": "username",
+        "exp": "dk7",
+    },
     # ── L. Textarea vs input disambiguation ────────────────────────────────────
-    {"n": "90", "step": "Fill 'Short Note' field with 'hello'",
-     "m": "input",     "st": ["Short Note"],        "tf": "short note",       "exp": "dk9"},
-    {"n": "91", "step": "Fill 'Long Note' textarea with 'hello'",
-     "m": "input",     "st": ["Long Note"],         "tf": "long note",        "exp": "dk10"},
-    {"n": "92", "step": "Fill 'Pre-filled textarea' with 'new content'",
-     "m": "input",     "st": ["Pre-filled textarea"],"tf": "pre-filled textarea","exp": "dk12"},
-    {"n": "93", "step": "Fill 'Summary area' with 'notes'",
-     "m": "input",     "st": ["Summary area"],      "tf": "summary area",     "exp": "dk14"},
-
+    {
+        "n": "90",
+        "step": "Fill 'Short Note' field with 'hello'",
+        "m": "input",
+        "st": ["Short Note"],
+        "tf": "short note",
+        "exp": "dk9",
+    },
+    {
+        "n": "91",
+        "step": "Fill 'Long Note' textarea with 'hello'",
+        "m": "input",
+        "st": ["Long Note"],
+        "tf": "long note",
+        "exp": "dk10",
+    },
+    {
+        "n": "92",
+        "step": "Fill 'Pre-filled textarea' with 'new content'",
+        "m": "input",
+        "st": ["Pre-filled textarea"],
+        "tf": "pre-filled textarea",
+        "exp": "dk12",
+    },
+    {
+        "n": "93",
+        "step": "Fill 'Summary area' with 'notes'",
+        "m": "input",
+        "st": ["Summary area"],
+        "tf": "summary area",
+        "exp": "dk14",
+    },
     # ── M. Clickable (button) wins over toggleable (checkbox) for "Click" verb ───
     # Each button has a unique name so there are no identical-text_b conflicts.
-    {"n": "94", "step": "Click 'Edit' button",
-     "m": "clickable", "st": ["Edit"],              "tf": None, "exp": "dk16"},
-    {"n": "95", "step": "Click 'Process'",
-     "m": "clickable", "st": ["Process"],           "tf": None, "exp": "dk18"},
-    {"n": "96", "step": "Click 'Delete'",
-     "m": "clickable", "st": ["Delete"],            "tf": None, "exp": "dk20"},
+    {"n": "94", "step": "Click 'Edit' button", "m": "clickable", "st": ["Edit"], "tf": None, "exp": "dk16"},
+    {"n": "95", "step": "Click 'Process'", "m": "clickable", "st": ["Process"], "tf": None, "exp": "dk18"},
+    {"n": "96", "step": "Click 'Delete'", "m": "clickable", "st": ["Delete"], "tf": None, "exp": "dk20"},
     # Toggleable (checkbox) wins when verb is "Check":
-    {"n": "97", "step": "Check 'Allow Editing' checkbox",
-     "m": "clickable", "st": ["Allow Editing"],     "tf": None, "exp": "dk15"},
-    {"n": "98", "step": "Check 'Allow Deletion' checkbox",
-     "m": "clickable", "st": ["Allow Deletion"],    "tf": None, "exp": "dk19"},
-
+    {
+        "n": "97",
+        "step": "Check 'Allow Editing' checkbox",
+        "m": "clickable",
+        "st": ["Allow Editing"],
+        "tf": None,
+        "exp": "dk15",
+    },
+    {
+        "n": "98",
+        "step": "Check 'Allow Deletion' checkbox",
+        "m": "clickable",
+        "st": ["Allow Deletion"],
+        "tf": None,
+        "exp": "dk19",
+    },
     # ── N. Icon-only button: exact aria-label beats partial text match ───────
     # dn2 aria='Refresh Feed' ≠ d54 text='Load More' — no conflict.
-    {"n": "99",  "step": "Click 'Refresh Feed'",
-     "m": "clickable", "st": ["Refresh Feed"],             "tf": None, "exp": "dn2"},
-    {"n": "100", "step": "Click 'Profile Settings'",
-     "m": "clickable", "st": ["Profile Settings"],        "tf": None, "exp": "dn4"},
-    {"n": "101", "step": "Click 'Save to favorites'",
-     "m": "clickable", "st": ["Save to favorites"],       "tf": None, "exp": "dn6"},
-
+    {"n": "99", "step": "Click 'Refresh Feed'", "m": "clickable", "st": ["Refresh Feed"], "tf": None, "exp": "dn2"},
+    {
+        "n": "100",
+        "step": "Click 'Profile Settings'",
+        "m": "clickable",
+        "st": ["Profile Settings"],
+        "tf": None,
+        "exp": "dn4",
+    },
+    {
+        "n": "101",
+        "step": "Click 'Save to favorites'",
+        "m": "clickable",
+        "st": ["Save to favorites"],
+        "tf": None,
+        "exp": "dn6",
+    },
     # ── I. Button vs Input disambiguation ────────────────────────────────────
     # d81 = input placeholder "Save filter as...", d82 = button "Save Filter"
-    {"n": "74", "step": "Fill 'Save filter as' field with 'Active Leads'",
-     "m": "input",     "st": ["Save filter as"],     "tf": "save filter as",     "exp": "d81"},
-    {"n": "75", "step": "Click 'Save Filter'",
-     "m": "clickable", "st": ["Save Filter"],         "tf": None,                 "exp": "d82"},
+    {
+        "n": "74",
+        "step": "Fill 'Save filter as' field with 'Active Leads'",
+        "m": "input",
+        "st": ["Save filter as"],
+        "tf": "save filter as",
+        "exp": "d81",
+    },
+    {"n": "75", "step": "Click 'Save Filter'", "m": "clickable", "st": ["Save Filter"], "tf": None, "exp": "d82"},
     # d83 = input "Search products...", d84 = button aria "Search products"
-    {"n": "76", "step": "Fill 'Search products' field with 'laptop'",
-     "m": "input",     "st": ["Search products"],    "tf": "search products",    "exp": "d83"},
-    {"n": "77", "step": "Click the search button",
-     "m": "clickable", "st": ["Search"],              "tf": None,                 "exp": "d84"},
+    {
+        "n": "76",
+        "step": "Fill 'Search products' field with 'laptop'",
+        "m": "input",
+        "st": ["Search products"],
+        "tf": "search products",
+        "exp": "d83",
+    },
+    {"n": "77", "step": "Click the search button", "m": "clickable", "st": ["Search"], "tf": None, "exp": "d84"},
     # d85 = input placeholder "Type workspace name to confirm"
     # d86 = input aria "Workspace Name" (pre-filled trap)
-    {"n": "78", "step": "Fill 'Type workspace name' with 'Acme Corp'",
-     "m": "input",     "st": ["Type workspace name"], "tf": "type workspace name","exp": "d85"},
-    {"n": "79", "step": "Fill 'Workspace Name' with 'Manul Labs'",
-     "m": "input",     "st": ["Workspace Name"],      "tf": "workspace name",     "exp": "d86"},
-
+    {
+        "n": "78",
+        "step": "Fill 'Type workspace name' with 'Acme Corp'",
+        "m": "input",
+        "st": ["Type workspace name"],
+        "tf": "type workspace name",
+        "exp": "d85",
+    },
+    {
+        "n": "79",
+        "step": "Fill 'Workspace Name' with 'Manul Labs'",
+        "m": "input",
+        "st": ["Workspace Name"],
+        "tf": "workspace name",
+        "exp": "d86",
+    },
     # ── J. Identical text, different class / context ──────────────────────────
     # Three Confirm buttons — class encodes the action context.
-    {"n": "80", "step": "Click 'Confirm' to approve the action",
-     "m": "clickable", "st": ["Confirm", "approve"],  "tf": None, "exp": "d89"},
-    {"n": "81", "step": "Click 'Confirm' in transfer dialog",
-     "m": "clickable", "st": ["Confirm", "transfer"], "tf": None, "exp": "d87"},
-    {"n": "82", "step": "Click 'Confirm' to delete",
-     "m": "clickable", "st": ["Confirm", "delete"],   "tf": None, "exp": "d88"},
+    {
+        "n": "80",
+        "step": "Click 'Confirm' to approve the action",
+        "m": "clickable",
+        "st": ["Confirm", "approve"],
+        "tf": None,
+        "exp": "d89",
+    },
+    {
+        "n": "81",
+        "step": "Click 'Confirm' in transfer dialog",
+        "m": "clickable",
+        "st": ["Confirm", "transfer"],
+        "tf": None,
+        "exp": "d87",
+    },
+    {
+        "n": "82",
+        "step": "Click 'Confirm' to delete",
+        "m": "clickable",
+        "st": ["Confirm", "delete"],
+        "tf": None,
+        "exp": "d88",
+    },
     # input[type=submit] vs div[role=button] — div wins on exact text match (by design)
-    {"n": "83", "step": "Click the submit button",
-     "m": "clickable", "st": ["Submit"],               "tf": None, "exp": "d91"},
+    {"n": "83", "step": "Click the submit button", "m": "clickable", "st": ["Submit"], "tf": None, "exp": "d91"},
     # Save playlist (exact aria) vs Add to playlist (distinct aria, no overlap)
-    {"n": "84", "step": "Click 'Save playlist'",
-     "m": "clickable", "st": ["Save playlist"],        "tf": None, "exp": "d92"},
-    {"n": "85", "step": "Click 'Add to playlist'",
-     "m": "clickable", "st": ["Add to playlist"],      "tf": None, "exp": "d93"},
+    {"n": "84", "step": "Click 'Save playlist'", "m": "clickable", "st": ["Save playlist"], "tf": None, "exp": "d92"},
+    {
+        "n": "85",
+        "step": "Click 'Add to playlist'",
+        "m": "clickable",
+        "st": ["Add to playlist"],
+        "tf": None,
+        "exp": "d93",
+    },
 ]
 
 
@@ -443,7 +676,7 @@ async def run_suite():
 
     async with async_playwright() as p:
         browser = await p.chromium.launch()
-        page    = await browser.new_page()
+        page = await browser.new_page()
         await page.set_content(DISAMBIGUATION_DOM)
 
         passed = failed = 0
@@ -455,15 +688,13 @@ async def run_suite():
 
             manul.reset_session_state()
 
-            mode         = t.get("m", "clickable")
+            mode = t.get("m", "clickable")
             search_texts = [tx.lower() for tx in (t.get("st") or [])]
             target_field = t.get("tf")
-            exp          = t.get("exp")
+            exp = t.get("exp")
 
             try:
-                found = await manul._resolve_element(
-                    page, t["step"], mode, search_texts, target_field, ""
-                )
+                found = await manul._resolve_element(page, t["step"], mode, search_texts, target_field, "")
                 found_id = found.get("html_id", "") if found else None
             except Exception as exc:
                 found_id = None
