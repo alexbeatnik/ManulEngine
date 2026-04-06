@@ -721,6 +721,10 @@ The image runs as non-root user `manul` (UID 1000), includes `dumb-init` for pro
 - **Security hygiene:** Eliminated false-positive "shell access" alert from package security scanners (socket.dev).
 
 </details>
+
+<details>
+<summary>v0.0.9.22</summary>
+
 - **`manul pack` / `manul install` CLI:** Pack `.hunt` libraries into distributable `.huntlib` archives and install them locally or globally (`~/.manul/hunt_libs/`). Lockfile (`huntlib-lock.json`) tracks installed versions.
 - **Docker CI/CD runner:** Multi-stage `Dockerfile` packaging ManulEngine as a headless CI runner image (`ghcr.io/alexbeatnik/manul-engine`). Non-root `manul` user (UID 1000), `dumb-init` PID 1, Chromium-only by default (configurable via `BROWSERS` build arg). Includes `docker-compose.yml` with `manul` and `manul-daemon` services.
 - **GitHub Actions workflows:** `release.yml` handles unified release automation (PyPI + GHCR + GitHub Release on `v*` tags), `docker-dev.yml` pushes dev images on `main` merge, and `manul-ci.yml` provides a reusable example workflow for downstream repositories.

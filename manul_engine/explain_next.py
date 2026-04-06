@@ -273,6 +273,9 @@ def _heuristic_pre_check(
     step: str,
     search_texts: list[str],
     target_field: str | None,
+    *,
+    learned_elements: dict | None = None,
+    last_xpath: str | None = None,
 ) -> _HeuristicHit | None:
     """Run the DOMScorer against the snapshot to find the best candidate.
 
@@ -291,8 +294,8 @@ def _heuristic_pre_check(
         search_texts,
         target_field,
         is_blind,
-        learned_elements={},
-        last_xpath=None,
+        learned_elements=learned_elements or {},
+        last_xpath=last_xpath,
         explain=False,
     )
     if scored:
@@ -381,7 +384,17 @@ class ExplainNextDebugger:
         # Extract quoted targets for heuristic scoring
         search_texts = extract_quoted(hypothetical_step)
         step_class = classify_step(hypothetical_step)
+        mode = detect_mode(hypothetical_step)
         target_field = search_texts[0] if search_texts else None
+        # Value-first DSL forms: "Type 'VALUE' into 'TARGET'",
+        # "Select 'OPTION' from 'TARGET'" — the actionable element is
+        # the second quoted string, not the first.
+        step_lower = hypothetical_step.lower()
+        if len(search_texts) >= 2:
+            if mode == "input" and " into " in f" {step_lower} ":
+                target_field = search_texts[1]
+            elif mode == "select" and " from " in f" {step_lower} ":
+                target_field = search_texts[1]
 
         # Heuristic pre-check (deterministic, no page interaction)
         hit = _heuristic_pre_check(
@@ -389,6 +402,8 @@ class ExplainNextDebugger:
             hypothetical_step,
             search_texts,
             target_field,
+            learned_elements=self._learned_elements,
+            last_xpath=self._last_xpath,
         )
         h_score = hit.score if hit else None
         h_match = hit.name if hit else None
@@ -559,79 +574,80 @@ class ExplainNextDebugger:
 
         last_step = current_step
 
-        while True:
-            try:
-                user_input = await asyncio.to_thread(input, "  🔮 explain-next> ")
-            except (EOFError, KeyboardInterrupt):
-                print("\n    Exiting Explain Next REPL.")
-                return None
-
-            user_input = user_input.strip()
-            if not user_input:
-                continue
-
-            # ── REPL meta-commands ──
-            if user_input == "!quit":
-                print("    Exiting Explain Next REPL.")
-                return None
-
-            if user_input == "!help":
-                print(self._REPL_HELP)
-                continue
-
-            if user_input == "!context":
+        try:
+            while True:
                 try:
-                    url = page.url
-                    title = await page.title()
-                    print(f"    URL:   {url}")
-                    print(f"    Title: {title}")
-                except (OSError, RuntimeError):
-                    print("    ⚠️  Page context lost.")
-                continue
+                    user_input = await asyncio.to_thread(input, "  🔮 explain-next> ")
+                except (EOFError, KeyboardInterrupt):
+                    print("\n    Exiting Explain Next REPL.")
+                    return None
 
-            if user_input == "!history":
-                if not self._history:
-                    print("    (no evaluations yet)")
-                else:
-                    for i, r in enumerate(self._history, 1):
-                        print(f"    #{i}  [{r.score}/10 {r.confidence_label}] {r.step}")
-                continue
+                user_input = user_input.strip()
+                if not user_input:
+                    continue
 
-            if user_input.startswith("!execute"):
-                parts = user_input.split(maxsplit=1)
-                if len(parts) == 2 and parts[1].isdigit():
-                    idx = int(parts[1]) - 1
-                    if 0 <= idx < len(self._history):
-                        chosen = self._history[idx].step
+                # ── REPL meta-commands ──
+                if user_input == "!quit":
+                    print("    Exiting Explain Next REPL.")
+                    return None
+
+                if user_input == "!help":
+                    print(self._REPL_HELP)
+                    continue
+
+                if user_input == "!context":
+                    try:
+                        url = page.url
+                        title = await page.title()
+                        print(f"    URL:   {url}")
+                        print(f"    Title: {title}")
+                    except (OSError, RuntimeError):
+                        print("    ⚠️  Page context lost.")
+                    continue
+
+                if user_input == "!history":
+                    if not self._history:
+                        print("    (no evaluations yet)")
+                    else:
+                        for i, r in enumerate(self._history, 1):
+                            print(f"    #{i}  [{r.score}/10 {r.confidence_label}] {r.step}")
+                    continue
+
+                if user_input.startswith("!execute"):
+                    parts = user_input.split(maxsplit=1)
+                    if len(parts) == 2 and parts[1].isdigit():
+                        idx = int(parts[1]) - 1
+                        if 0 <= idx < len(self._history):
+                            chosen = self._history[idx].step
+                            print(f'    ✅ Executing: "{chosen}"')
+                            return chosen
+                        else:
+                            print(f"    ⚠️  Invalid index. History has {len(self._history)} entries.")
+                            continue
+                    elif self._history:
+                        chosen = self._history[-1].step
                         print(f'    ✅ Executing: "{chosen}"')
                         return chosen
                     else:
-                        print(f"    ⚠️  Invalid index. History has {len(self._history)} entries.")
+                        print("    ⚠️  No evaluations in history. Evaluate a step first.")
                         continue
-                elif self._history:
-                    chosen = self._history[-1].step
-                    print(f'    ✅ Executing: "{chosen}"')
-                    return chosen
-                else:
-                    print("    ⚠️  No evaluations in history. Evaluate a step first.")
-                    continue
 
-            # ── Evaluate a hypothetical step ──
-            print("    ⏳ Analyzing...")
-            try:
-                result = await self.evaluate(
-                    page,
-                    user_input,
-                    last_step=last_step,
-                )
-                print(result.format_report())
-            except Exception as exc:
-                _log.warning("Explain Next evaluation failed: %s", exc)
-                print(f"    ❌ Evaluation failed: {exc}")
-
-        # Clean up highlight when leaving the REPL
-        if self._engine is not None:
-            try:
-                await self._engine._clear_debug_highlight(page)  # type: ignore[attr-defined]
-            except (OSError, RuntimeError):
-                pass
+                # ── Evaluate a hypothetical step ──
+                print("    ⏳ Analyzing...")
+                try:
+                    result = await self.evaluate(
+                        page,
+                        user_input,
+                        last_step=last_step,
+                    )
+                    print(result.format_report())
+                except Exception as exc:
+                    _log.warning("Explain Next evaluation failed: %s", exc)
+                    print(f"    ❌ Evaluation failed: {exc}")
+        finally:
+            # Clean up highlight when leaving the REPL
+            if self._engine is not None:
+                try:
+                    await self._engine._clear_debug_highlight(page)  # type: ignore[attr-defined]
+                except (OSError, RuntimeError):
+                    pass

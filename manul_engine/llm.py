@@ -115,14 +115,14 @@ def _parse_llm_json(raw: str) -> dict | None:
         raw_clean = raw_clean[: -len(_fence)]
 
     decoder = json.JSONDecoder()
-    start = raw.find("{")
+    start = raw_clean.find("{")
     if start != -1:
         try:
-            obj, _ = decoder.raw_decode(raw, start)
+            obj, _ = decoder.raw_decode(raw_clean, start)
             return obj
         except json.JSONDecodeError:
             pass
-    return json.loads(raw.strip())
+    return json.loads(raw_clean.strip())
 
 
 def create_provider(model: str | None) -> LLMProvider:

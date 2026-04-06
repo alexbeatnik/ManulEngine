@@ -960,8 +960,11 @@ class _ActionsMixin:
                 await self._debug_prompt(page, step, step_idx)
                 await self._clear_debug_highlight(page)
                 # What-If REPL: if the debugger chose a replacement step,
-                # it will be picked up by the run_mission loop on the next iteration.
-                # We do NOT re-execute here — just let the current action proceed.
+                # execute it immediately instead of the paused action.
+                replacement_step = getattr(self, "_what_if_execute_step", None)
+                if replacement_step:
+                    self._what_if_execute_step = None
+                    return await self._execute_step(page, replacement_step, step_idx)
 
             try:
                 if mode == "input":
