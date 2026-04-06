@@ -33,7 +33,7 @@ class ElementSnapshot(TypedDict, total=False):
     placeholder: str
     role: str
     disabled: bool
-    aria_disabled: bool
+    aria_disabled: str | bool
     name_attr: str
     frame_index: int
     # Scoring / runtime additions

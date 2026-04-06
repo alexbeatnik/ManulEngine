@@ -14,10 +14,10 @@ external state.
 
 Use a custom `run_tests.py` / `_test_runner.py` harness instead of pytest.
 
-Each `test_*.py` file exports an `async def run_suite(page, assert_eq)`,
-receives a Playwright `Page` pointing at a local HTML fixture, and calls
-a simple `assert_eq(actual, expected, label)` helper.  The runner
-collects pass/fail counts and prints a summary.
+Each `test_*.py` file exports an `async def run_suite()` (no parameters).
+The suite renders its own HTML fixture via `page.set_content()`, runs
+assertions, and prints a `SCORE: N/M` line.  The runner discovers suites,
+calls `await runner()`, collects pass/fail counts, and prints a summary.
 
 ## Consequences
 
