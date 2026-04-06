@@ -40,6 +40,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
+from manul_engine.debug import _DebugMixin
 from manul_engine.explain_next import (
     ExplainNextDebugger,
     PageContext,
@@ -568,6 +569,267 @@ def test_28_visible_text_js_is_readonly():
         _assert(bad not in _VISIBLE_TEXT_JS, f"no '{bad}' in visible text JS")
 
 
+# ── _DebugMixin protocol tests ────────────────────────────────────────────────
+
+
+def test_29_explain_next_marker_value():
+    """_EXPLAIN_NEXT_MARKER has the expected wire format."""
+    marker = _DebugMixin._EXPLAIN_NEXT_MARKER
+    _assert(marker == "\x00MANUL_EXPLAIN_NEXT\x00", "marker value matches")
+    _assert(marker.startswith("\x00"), "starts with NUL byte")
+    _assert(marker.endswith("\x00"), "ends with NUL byte")
+
+
+def test_30_result_to_dict_serialization():
+    """_result_to_dict serializes all WhatIfResult fields to a plain dict."""
+    r = WhatIfResult(
+        step="Click 'Login'",
+        score=9,
+        target_found=True,
+        target_element="Login button",
+        explanation="Matched via heuristics",
+        risk="Low",
+        suggestion=None,
+        heuristic_score=150000,
+        heuristic_match="Login button",
+    )
+    d = _DebugMixin._result_to_dict(r)
+    _assert(isinstance(d, dict), "returns a dict")
+    _assert(d["step"] == "Click 'Login'", "step field preserved")
+    _assert(d["score"] == 9, "score field preserved")
+    _assert(d["confidence_label"] == "HIGH", "confidence_label computed and preserved")
+    _assert(d["target_found"] is True, "target_found preserved")
+    _assert(d["target_element"] == "Login button", "target_element preserved")
+    _assert(d["explanation"] == "Matched via heuristics", "explanation preserved")
+    _assert(d["risk"] == "Low", "risk preserved")
+    _assert(d["suggestion"] is None, "suggestion=None preserved")
+    _assert(d["heuristic_score"] == 150000, "heuristic_score preserved")
+    _assert(d["heuristic_match"] == "Login button", "heuristic_match preserved")
+    # Verify round-trip JSON serialization
+    import json
+
+    serialized = json.dumps(d)
+    _assert('"step"' in serialized, "JSON round-trip works")
+
+
+def test_31_result_to_dict_zero_score():
+    """_result_to_dict handles zero/IMPOSSIBLE WhatIfResult."""
+    r = WhatIfResult(
+        step="WAIT 5",
+        score=0,
+        target_found=False,
+        target_element=None,
+        explanation="System command",
+        risk="None",
+        suggestion=None,
+        heuristic_score=None,
+        heuristic_match=None,
+    )
+    d = _DebugMixin._result_to_dict(r)
+    _assert(d["score"] == 0, "zero score serialized")
+    _assert(d["target_element"] is None, "None target_element serialized")
+    _assert(d["heuristic_score"] is None, "None heuristic_score serialized")
+
+
+def _make_debug_mixin():
+    """Create a minimal _DebugMixin instance with required attributes."""
+    mixin = _DebugMixin()
+    mixin._llm = NullProvider()
+    mixin.learned_elements = {}
+    mixin.last_xpath = None
+    mixin._debug_continue = False
+    mixin._user_break_steps = set()
+    mixin.break_steps = set()
+    mixin._what_if_execute_step = None
+    mixin._last_explain_data = None
+    mixin._explain_next_debugger = None
+    return mixin
+
+
+def _make_mock_page():
+    """Create a mock page with required async methods."""
+    page = AsyncMock()
+    page.url = "https://example.com"
+    page.title = AsyncMock(return_value="Example")
+    page.frames = []
+    page.evaluate = AsyncMock(return_value=[])
+    return page
+
+
+def test_32_extension_protocol_explain_next_current_step():
+    """explain-next in extension protocol evaluates the current step and emits marker."""
+    import io
+    import json
+
+    mixin = _make_debug_mixin()
+    page = _make_mock_page()
+
+    captured_stdout = io.StringIO()
+
+    # Simulate stdin: "explain-next\n" then "next\n"
+    stdin_data = "explain-next\nnext\n"
+    fake_stdin = io.StringIO(stdin_data)
+
+    async def run():
+        with (
+            patch("sys.stdin", fake_stdin),
+            patch("sys.stdin.isatty", return_value=False),
+            patch("sys.stdout", captured_stdout),
+        ):
+            await mixin._debug_prompt(page, "Click 'Submit'", idx=5)
+
+    _run(run())
+
+    output = captured_stdout.getvalue()
+    marker = _DebugMixin._EXPLAIN_NEXT_MARKER
+    _assert(marker in output, "EXPLAIN_NEXT marker present in stdout")
+
+    # Extract the JSON payload after the marker
+    marker_idx = output.index(marker)
+    after_marker = output[marker_idx + len(marker) :]
+    json_line = after_marker.split("\n")[0]
+    payload = json.loads(json_line)
+    _assert(payload["step"] == "Click 'Submit'", "evaluated the current step")
+    _assert("score" in payload, "payload contains score field")
+    _assert("confidence_label" in payload, "payload contains confidence_label")
+    _assert("target_found" in payload, "payload contains target_found")
+
+
+def test_33_extension_protocol_explain_next_overridden_step():
+    """explain-next with JSON payload evaluates the overridden step text."""
+    import io
+    import json
+
+    mixin = _make_debug_mixin()
+    page = _make_mock_page()
+
+    captured_stdout = io.StringIO()
+
+    stdin_data = 'explain-next {"step":"NAVIGATE to https://example.com"}\nnext\n'
+    fake_stdin = io.StringIO(stdin_data)
+
+    async def run():
+        with (
+            patch("sys.stdin", fake_stdin),
+            patch("sys.stdin.isatty", return_value=False),
+            patch("sys.stdout", captured_stdout),
+        ):
+            await mixin._debug_prompt(page, "Click 'Submit'", idx=5)
+
+    _run(run())
+
+    output = captured_stdout.getvalue()
+    marker = _DebugMixin._EXPLAIN_NEXT_MARKER
+
+    marker_idx = output.index(marker)
+    after_marker = output[marker_idx + len(marker) :]
+    json_line = after_marker.split("\n")[0]
+    payload = json.loads(json_line)
+    _assert(
+        payload["step"] == "NAVIGATE to https://example.com",
+        "evaluated the overridden step, not the current step",
+    )
+
+
+def test_34_extension_protocol_explain_next_malformed_json():
+    """explain-next with malformed JSON prints warning and stays paused."""
+    import io
+
+    mixin = _make_debug_mixin()
+    page = _make_mock_page()
+
+    captured_stdout = io.StringIO()
+
+    # Malformed JSON, then next to exit
+    stdin_data = "explain-next {bad json}\nnext\n"
+    fake_stdin = io.StringIO(stdin_data)
+
+    async def run():
+        with (
+            patch("sys.stdin", fake_stdin),
+            patch("sys.stdin.isatty", return_value=False),
+            patch("sys.stdout", captured_stdout),
+        ):
+            await mixin._debug_prompt(page, "Click 'Submit'", idx=5)
+
+    _run(run())
+
+    output = captured_stdout.getvalue()
+    _assert("Invalid JSON payload" in output, "warning about invalid JSON is printed")
+    # No EXPLAIN_NEXT marker should be emitted for the malformed request
+    marker = _DebugMixin._EXPLAIN_NEXT_MARKER
+    _assert(marker not in output, "no marker emitted for malformed JSON")
+
+
+def test_35_extension_protocol_multiple_explain_next():
+    """Multiple explain-next calls work before finally advancing."""
+    import io
+    import json
+
+    mixin = _make_debug_mixin()
+    page = _make_mock_page()
+
+    captured_stdout = io.StringIO()
+
+    # Three explain-next calls, then next
+    stdin_data = "explain-next\nexplain-next\nexplain-next\nnext\n"
+    fake_stdin = io.StringIO(stdin_data)
+
+    async def run():
+        with (
+            patch("sys.stdin", fake_stdin),
+            patch("sys.stdin.isatty", return_value=False),
+            patch("sys.stdout", captured_stdout),
+        ):
+            await mixin._debug_prompt(page, "WAIT 2", idx=3)
+
+    _run(run())
+
+    output = captured_stdout.getvalue()
+    marker = _DebugMixin._EXPLAIN_NEXT_MARKER
+    count = output.count(marker)
+    _assert(count == 3, f"3 markers emitted for 3 requests", f"got {count}")
+
+
+def test_36_terminal_mode_explain_next():
+    """Terminal mode 'e' command evaluates step and stays in loop."""
+    import io
+
+    mixin = _make_debug_mixin()
+    page = _make_mock_page()
+
+    captured_stdout = io.StringIO()
+
+    # In terminal mode, stdin.isatty() returns True.
+    # Simulate: "e" then "" (ENTER = advance)
+    call_count = [0]
+    inputs = ["e", ""]
+
+    def fake_input(prompt=""):
+        captured_stdout.write(prompt)
+        val = inputs[call_count[0]] if call_count[0] < len(inputs) else ""
+        call_count[0] += 1
+        return val
+
+    async def run():
+        with (
+            patch("sys.stdin") as mock_stdin,
+            patch("sys.stdout", captured_stdout),
+            patch("builtins.input", fake_input),
+        ):
+            mock_stdin.isatty.return_value = True
+            await mixin._debug_prompt(page, "Click 'Login'", idx=1)
+
+    _run(run())
+
+    output = captured_stdout.getvalue()
+    # Terminal mode doesn't emit the marker — it prints the human-readable report
+    marker = _DebugMixin._EXPLAIN_NEXT_MARKER
+    _assert(marker not in output, "no wire marker in terminal mode")
+    # It should have called evaluate (the format_report output goes to stdout)
+    _assert(call_count[0] == 2, "two inputs consumed (e + ENTER)")
+
+
 # ── Runner ────────────────────────────────────────────────────────────────────
 
 ALL_TESTS = [
@@ -599,6 +861,14 @@ ALL_TESTS = [
     test_26_llm_negative_score_clamped,
     test_27_history_property_returns_copy,
     test_28_visible_text_js_is_readonly,
+    test_29_explain_next_marker_value,
+    test_30_result_to_dict_serialization,
+    test_31_result_to_dict_zero_score,
+    test_32_extension_protocol_explain_next_current_step,
+    test_33_extension_protocol_explain_next_overridden_step,
+    test_34_extension_protocol_explain_next_malformed_json,
+    test_35_extension_protocol_multiple_explain_next,
+    test_36_terminal_mode_explain_next,
 ]
 
 
