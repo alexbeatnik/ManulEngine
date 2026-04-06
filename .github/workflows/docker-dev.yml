@@ -32,7 +32,7 @@ jobs:
             type=ref,event=branch
             type=sha,prefix=sha-
       - name: Build and push (amd64 only for speed)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile.dev
