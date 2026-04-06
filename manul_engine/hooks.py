@@ -42,7 +42,7 @@ from types import ModuleType
 # repeated CALL PYTHON invocations within a run reuse the same module object
 # instead of re-executing the file every time.
 _module_cache: dict[str, ModuleType] = {}
-_CACHE_LOCK = threading.Lock()
+_CACHE_LOCK = threading.RLock()
 
 # ── Block-marker patterns (also imported by cli.parse_hunt_file) ──────────────
 RE_SETUP = re.compile(r"^\[SETUP\]$", re.IGNORECASE)
@@ -436,7 +436,12 @@ def execute_hook_line(
         ret = func(*call_args)
         _elapsed = _time.monotonic() - _t0
         if _elapsed > _CALL_PYTHON_WARN_SECONDS:
-            print(f"    ⚠️  CALL PYTHON {dotted}() took {_elapsed:.1f}s (>{_CALL_PYTHON_WARN_SECONDS}s threshold)")
+            import sys as _sys
+
+            print(
+                f"    ⚠️  CALL PYTHON {dotted}() took {_elapsed:.1f}s (>{_CALL_PYTHON_WARN_SECONDS}s threshold)",
+                file=_sys.stderr,
+            )
         ret_str: str | None = None
         ret_mapping: dict[str, str] = {}
         if isinstance(ret, dict):

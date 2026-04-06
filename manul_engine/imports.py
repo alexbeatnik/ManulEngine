@@ -19,7 +19,7 @@ import os
 import re
 from typing import NamedTuple
 
-from manul_engine.exceptions import HuntImportError as HuntImportError
+from .exceptions import HuntImportError
 
 _MAX_IMPORT_DEPTH = 10
 
@@ -265,13 +265,13 @@ def resolve_imports(
       - imported_blocks: {"AliasOrName": [action_lines...]}
       - import_vars: merged @var: from all imported files (lowest priority)
 
-    Raises :class:`HuntImportError` when the import chain exceeds
+    Raises :class:`HuntImportError` when the import chain reaches
     ``_MAX_IMPORT_DEPTH`` levels (currently 10) to protect against
     pathological recursive imports.
     """
-    if _depth > _MAX_IMPORT_DEPTH:
+    if _depth >= _MAX_IMPORT_DEPTH:
         raise HuntImportError(
-            f"Import depth limit ({_MAX_IMPORT_DEPTH}) exceeded while resolving "
+            f"Import depth limit ({_MAX_IMPORT_DEPTH}) reached while resolving "
             f"imports in {hunt_file}. Check for deep or indirect circular imports."
         )
     if seen_files is None:
