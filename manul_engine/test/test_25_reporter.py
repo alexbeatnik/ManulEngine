@@ -46,34 +46,52 @@ def _assert(condition: bool, name: str, detail: str = "") -> None:
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
+
 def _make_summary() -> RunSummary:
     """Build a realistic RunSummary for testing."""
     step_pass = StepResult(index=1, text="NAVIGATE to https://example.com", duration_ms=320)
-    step_fail = StepResult(index=2, text="Click 'Login' button", status="fail",
-                           duration_ms=5001, error="Timeout waiting for selector",
-                           screenshot="iVBORw0KGgoAAAANSUhEUg==")
+    step_fail = StepResult(
+        index=2,
+        text="Click 'Login' button",
+        status="fail",
+        duration_ms=5001,
+        error="Timeout waiting for selector",
+        screenshot="iVBORw0KGgoAAAANSUhEUg==",
+    )
     step_skip = StepResult(index=3, text="DONE.", status="skip", duration_ms=1)
 
     m_pass = MissionResult(
-        file="/tmp/smoke.hunt", name="smoke.hunt", status="pass",
-        duration_ms=1200, steps=[step_pass, StepResult(index=2, text="DONE.")],
+        file="/tmp/smoke.hunt",
+        name="smoke.hunt",
+        status="pass",
+        duration_ms=1200,
+        steps=[step_pass, StepResult(index=2, text="DONE.")],
         tags=["smoke", "fast"],
     )
     m_fail = MissionResult(
-        file="/tmp/login.hunt", name="login.hunt", status="fail",
-        duration_ms=8500, error="Step 2 failed",
+        file="/tmp/login.hunt",
+        name="login.hunt",
+        status="fail",
+        duration_ms=8500,
+        error="Step 2 failed",
         steps=[step_pass, step_fail, step_skip],
         tags=["smoke", "login"],
     )
     m_flaky = MissionResult(
-        file="/tmp/flaky.hunt", name="flaky.hunt", status="flaky",
-        duration_ms=3200, attempts=3,
+        file="/tmp/flaky.hunt",
+        name="flaky.hunt",
+        status="flaky",
+        duration_ms=3200,
+        attempts=3,
         steps=[step_pass, StepResult(index=2, text="DONE.")],
         tags=["regression"],
     )
     m_broken = MissionResult(
-        file="/tmp/setup.hunt", name="setup.hunt", status="broken",
-        duration_ms=400, error="SETUP failed",
+        file="/tmp/setup.hunt",
+        name="setup.hunt",
+        status="broken",
+        duration_ms=400,
+        error="SETUP failed",
         steps=[],
         tags=["infra"],
     )
@@ -95,6 +113,7 @@ def _make_summary() -> RunSummary:
 
 # ── Section 1: generate_report file output ────────────────────────────────────
 
+
 def _test_generate_report_creates_file() -> None:
     print("\n  ── generate_report file output ───────────────────────────")
 
@@ -106,16 +125,15 @@ def _test_generate_report_creates_file() -> None:
         _assert(os.path.isfile(result), "generate_report creates the file")
         _assert(os.path.isabs(result), "returns absolute path")
         _assert(result.endswith("report.html"), "path ends with report.html")
-        _assert(os.path.isdir(os.path.join(tmpdir, "sub")),
-                "creates intermediate directories")
+        _assert(os.path.isdir(os.path.join(tmpdir, "sub")), "creates intermediate directories")
 
         content = open(result, encoding="utf-8").read()
         _assert(content.startswith("<!DOCTYPE html>"), "file starts with DOCTYPE")
-        _assert(len(content) > 500, "file has substantial content",
-                f"len={len(content)}")
+        _assert(len(content) > 500, "file has substantial content", f"len={len(content)}")
 
 
 # ── Section 2: HTML structure ─────────────────────────────────────────────────
+
 
 def _test_html_structure() -> None:
     print("\n  ── HTML structure ────────────────────────────────────────")
@@ -126,8 +144,7 @@ def _test_html_structure() -> None:
         generate_report(summary, out)
         html_content = open(out, encoding="utf-8").read()
 
-    _assert("<title>ManulEngine Test Report</title>" in html_content,
-            "contains <title>")
+    _assert("<title>ManulEngine Test Report</title>" in html_content, "contains <title>")
     _assert("<style>" in html_content, "contains inline <style>")
     _assert("<script>" in html_content, "contains inline <script>")
     _assert("ManulEngine Test Report" in html_content, "heading present")
@@ -136,10 +153,8 @@ def _test_html_structure() -> None:
     _assert("Merged invocations: 3" in html_content, "invocation count rendered")
 
     # Dashboard stats
-    _assert(">4</div>" in html_content or ">4<" in html_content,
-            "dashboard shows total=4")
-    _assert("50%" in html_content or "50" in html_content,
-            "pass rate shown")
+    _assert(">4</div>" in html_content or ">4<" in html_content, "dashboard shows total=4")
+    _assert("50%" in html_content or "50" in html_content, "pass rate shown")
 
     # Mission names
     _assert("smoke.hunt" in html_content, "smoke.hunt mission name present")
@@ -148,14 +163,15 @@ def _test_html_structure() -> None:
     _assert("setup.hunt" in html_content, "broken mission name present")
 
     # Step text
-    _assert("NAVIGATE to https://example.com" in html_content,
-            "step text preserved in output")
-    _assert("Click &#x27;Login&#x27; button" in html_content
-            or "Click 'Login' button" in html_content,
-            "step with quotes present (may be escaped)")
+    _assert("NAVIGATE to https://example.com" in html_content, "step text preserved in output")
+    _assert(
+        "Click &#x27;Login&#x27; button" in html_content or "Click 'Login' button" in html_content,
+        "step with quotes present (may be escaped)",
+    )
 
 
 # ── Section 3: Screenshot embedding ──────────────────────────────────────────
+
 
 def _test_screenshot_embedding() -> None:
     print("\n  ── Screenshot embedding ──────────────────────────────────")
@@ -166,15 +182,13 @@ def _test_screenshot_embedding() -> None:
         generate_report(summary, out)
         html_content = open(out, encoding="utf-8").read()
 
-    _assert("data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==" in html_content,
-            "base64 screenshot embedded as data URI")
-    _assert('alt="Screenshot step 2"' in html_content,
-            "screenshot has alt text with step index")
-    _assert("step-screenshot" in html_content,
-            "screenshot wrapper class present")
+    _assert("data:image/png;base64,iVBORw0KGgoAAAANSUhEUg==" in html_content, "base64 screenshot embedded as data URI")
+    _assert('alt="Screenshot step 2"' in html_content, "screenshot has alt text with step index")
+    _assert("step-screenshot" in html_content, "screenshot wrapper class present")
 
 
 # ── Section 4: Error rendering ────────────────────────────────────────────────
+
 
 def _test_error_rendering() -> None:
     print("\n  ── Error rendering ───────────────────────────────────────")
@@ -185,13 +199,12 @@ def _test_error_rendering() -> None:
         generate_report(summary, out)
         html_content = open(out, encoding="utf-8").read()
 
-    _assert("Timeout waiting for selector" in html_content,
-            "step-level error message rendered")
-    _assert("step-error" in html_content,
-            "step-error CSS class used")
+    _assert("Timeout waiting for selector" in html_content, "step-level error message rendered")
+    _assert("step-error" in html_content, "step-error CSS class used")
 
 
 # ── Section 5: Status badges ─────────────────────────────────────────────────
+
 
 def _test_status_badges() -> None:
     print("\n  ── Status badges ─────────────────────────────────────────")
@@ -207,11 +220,11 @@ def _test_status_badges() -> None:
     _assert("badge-broken" in html_content, "broken badge class present")
     _assert("badge-flaky" in html_content, "flaky badge class present")
     _assert("3 attempts" in html_content, "flaky mission shows attempt count")
-    _assert("passed on retry" in html_content,
-            "flaky mission shows retry note")
+    _assert("passed on retry" in html_content, "flaky mission shows retry note")
 
 
 # ── Section 6: Edge cases ────────────────────────────────────────────────────
+
 
 def _test_edge_cases() -> None:
     print("\n  ── Edge cases ────────────────────────────────────────────")
@@ -225,15 +238,14 @@ def _test_edge_cases() -> None:
         result = generate_report(rs_empty, out)
         content = open(result, encoding="utf-8").read()
         _assert("<!DOCTYPE html>" in content, "empty summary still produces valid HTML")
-        _assert("0%" in content or ">0</div>" in content,
-                "empty summary shows zero stats")
+        _assert("0%" in content or ">0</div>" in content, "empty summary shows zero stats")
 
     # Special HTML characters in mission name and step text
     m_xss = MissionResult(
-        file="test.hunt", name='<script>alert("xss")</script>.hunt',
-        status="pass", steps=[
-            StepResult(index=1, text='Fill "Name & <Address>" field')
-        ]
+        file="test.hunt",
+        name='<script>alert("xss")</script>.hunt',
+        status="pass",
+        steps=[StepResult(index=1, text='Fill "Name & <Address>" field')],
     )
     rs_xss = RunSummary()
     rs_xss.total = 1
@@ -245,34 +257,27 @@ def _test_edge_cases() -> None:
         out = os.path.join(tmpdir, "xss.html")
         generate_report(rs_xss, out)
         content = open(out, encoding="utf-8").read()
-        _assert('<script>alert("xss")</script>' not in content,
-                "script tag is escaped (XSS protection)")
-        _assert("&lt;script&gt;" in content,
-                "script tag rendered as escaped entity")
-        _assert("&amp;" in content,
-                "ampersand is escaped")
+        _assert('<script>alert("xss")</script>' not in content, "script tag is escaped (XSS protection)")
+        _assert("&lt;script&gt;" in content, "script tag rendered as escaped entity")
+        _assert("&amp;" in content, "ampersand is escaped")
 
 
 # ── Section 7: Duration formatting ───────────────────────────────────────────
 
+
 def _test_duration_formatting() -> None:
     print("\n  ── Duration formatting ───────────────────────────────────")
 
-    _assert(_fmt_duration(50) == "50ms", "50ms formatted",
-            f"got={_fmt_duration(50)!r}")
-    _assert(_fmt_duration(999) == "999ms", "999ms formatted",
-            f"got={_fmt_duration(999)!r}")
-    _assert(_fmt_duration(1000) == "1.0s", "1000ms → 1.0s",
-            f"got={_fmt_duration(1000)!r}")
-    _assert(_fmt_duration(5500) == "5.5s", "5500ms → 5.5s",
-            f"got={_fmt_duration(5500)!r}")
-    _assert(_fmt_duration(65000) == "1m 5s", "65000ms → 1m 5s",
-            f"got={_fmt_duration(65000)!r}")
-    _assert(_fmt_duration(0) == "0ms", "0ms edge case",
-            f"got={_fmt_duration(0)!r}")
+    _assert(_fmt_duration(50) == "50ms", "50ms formatted", f"got={_fmt_duration(50)!r}")
+    _assert(_fmt_duration(999) == "999ms", "999ms formatted", f"got={_fmt_duration(999)!r}")
+    _assert(_fmt_duration(1000) == "1.0s", "1000ms → 1.0s", f"got={_fmt_duration(1000)!r}")
+    _assert(_fmt_duration(5500) == "5.5s", "5500ms → 5.5s", f"got={_fmt_duration(5500)!r}")
+    _assert(_fmt_duration(65000) == "1m 5s", "65000ms → 1m 5s", f"got={_fmt_duration(65000)!r}")
+    _assert(_fmt_duration(0) == "0ms", "0ms edge case", f"got={_fmt_duration(0)!r}")
 
 
 # ── Section 8: _esc helper ───────────────────────────────────────────────────
+
 
 def _test_esc_helper() -> None:
     print("\n  ── _esc helper ───────────────────────────────────────────")
@@ -284,6 +289,7 @@ def _test_esc_helper() -> None:
 
 
 # ── Section 9: Control panel — Show Only Failed toggle ────────────────────────
+
 
 def _test_control_panel_failed_toggle() -> None:
     print("\n  ── Control panel: Show Only Failed toggle ────────────────")
@@ -304,6 +310,7 @@ def _test_control_panel_failed_toggle() -> None:
 
 
 # ── Section 10: Control panel — Tag filtering ────────────────────────────────
+
 
 def _test_control_panel_tag_filtering() -> None:
     print("\n  ── Control panel: Tag filtering ──────────────────────────")
@@ -334,13 +341,11 @@ def _test_control_panel_tag_filtering() -> None:
 
 # ── Section 11: No tags — graceful fallback ──────────────────────────────────
 
+
 def _test_no_tags_graceful() -> None:
     print("\n  ── No tags: graceful fallback ────────────────────────────")
 
-    m = MissionResult(
-        file="/tmp/bare.hunt", name="bare.hunt", status="pass",
-        steps=[StepResult(index=1, text="DONE.")]
-    )
+    m = MissionResult(file="/tmp/bare.hunt", name="bare.hunt", status="pass", steps=[StepResult(index=1, text="DONE.")])
     rs = RunSummary()
     rs.total = 1
     rs.passed = 1
@@ -355,13 +360,13 @@ def _test_no_tags_graceful() -> None:
 
     _assert("control-panel" in content, "control panel still rendered without tags")
     _assert('id="filter-failed"' in content, "failed toggle present without tags")
-    _assert('data-tag=' not in content, "no tag chip elements when missions have no tags")
-    _assert('<span class="tag-divider">' not in content,
-            "no tag divider element when no tags exist")
+    _assert("data-tag=" not in content, "no tag chip elements when missions have no tags")
+    _assert('<span class="tag-divider">' not in content, "no tag divider element when no tags exist")
     _assert('data-tags=""' in content, "data-tags is empty string when no tags")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
+
 
 async def run_suite() -> bool:
     global _PASS, _FAIL

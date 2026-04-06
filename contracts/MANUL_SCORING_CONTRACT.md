@@ -5,7 +5,7 @@
 
 ```json
 {
-  "version": "0.0.9.25",
+  "version": "0.0.9.26",
   "generatedFrom": "manul_engine/scoring.py :: DOMScorer, WEIGHTS, SCALE, score_elements(); manul_engine/js_scripts.py :: SNAPSHOT_JS",
 
   "constants": {

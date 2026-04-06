@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.25 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.26 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -26,16 +26,18 @@ ManulEngine/
 ├── manul.py                          Dev CLI entry point (run hunts from repo root without install)
 ├── run_tests.py                      Synthetic DOM test suite runner (dev only)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.25
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.26
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
-│   ├── __init__.py                   Public API — exports ManulEngine, ManulSession, EngineConfig
+│   ├── __init__.py                   Public API — exports ManulEngine, ManulSession, EngineConfig, all exception classes
+│   ├── exceptions.py                Structured exception hierarchy (ManulEngineError base, 7 concrete subclasses)
+│   ├── _types.py                    Shared type definitions — ElementSnapshot TypedDict
 │   ├── api.py                        ManulSession — public Python API facade (async context manager, Playwright lifecycle)
-│   ├── config.py                     EngineConfig frozen dataclass — injectable configuration (replaces module-global reads)
+│   ├── config.py                     EngineConfig frozen dataclass — injectable configuration; validate() method checks invariants
 │   ├── cli.py                        Installed CLI entry point (`manul` command + `manul scan` + `manul record` + `manul daemon` subcommands)
 │   ├── lifecycle.py                  Global Lifecycle Hook Registry (@before_all, @after_all, @before_group, @after_group)
-│   ├── hooks.py                      [SETUP] / [TEARDOWN] hook parser and executor
-│   ├── controls.py                   Custom Controls registry (@custom_control, get_custom_control, load_custom_controls)
+│   ├── hooks.py                      [SETUP] / [TEARDOWN] hook parser and executor; thread-safe _CACHE_LOCK; 30s CALL PYTHON timeout warning
+│   ├── controls.py                   Custom Controls registry (@custom_control, get_custom_control, load_custom_controls); thread-safe _REGISTRY_LOCK
 │   ├── recorder.py                   Semantic Test Recorder — JS injection, Python bridge, DSL generator
 │   ├── scheduler.py                  Built-in Scheduler — parse_schedule(), Schedule dataclass, daemon_main()
 │   ├── _test_runner.py               Dev-only synthetic test runner (not in public CLI)
@@ -53,7 +55,7 @@ ManulEngine/
 │   ├── reporting.py                  StepResult, MissionResult, RunSummary dataclasses; run_history + report-session state persistence
 │   ├── reporter.py                   Interactive HTML report generator (dark theme, control panel, tag chips, Run Session banner, base64 screenshots)
 │   ├── variables.py                  ScopedVariables — 5-level variable hierarchy (row, step, mission, global, import)
-│   ├── imports.py                   @import/@export/USE system — parse_import_directive(), resolve_imports(), expand_use_directives(), validate_exports()
+│   ├── imports.py                   @import/@export/USE system; _MAX_IMPORT_DEPTH=10 guard
 │   ├── packager.py                  Pack/install .huntlib archives — pack(), install(), _update_lockfile(), resolve_lockfile()
 │   └── test/
 │       ├── test_00_engine.py         Engine micro-suite (synthetic DOM via local HTML)
@@ -127,12 +129,16 @@ ManulEngine/
 │   ├── README.md                     Usage guide (Copilot, ChatGPT, Claude, Ollama)
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
+├── docs/
+│   └── adr/                          Architecture Decision Records (ADR-001 through ADR-004)
 ├── Dockerfile                        Multi-stage CI/CD runner image (ghcr.io/alexbeatnik/manul-engine)
 ├── .dockerignore                     Build-context exclusions for Docker
 ├── docker-compose.yml                Local dev/CI compose: manul, manul-daemon services
+├── .github/dependabot.yml            Automated dependency updates (pip + github-actions, weekly)
 └── .github/workflows/
     ├── synthetic-tests.yml            PR quality gate (synthetic test suite)
-    ├── release.yml                    Unified release: PyPI + GHCR + GitHub Release on v* tag
+    ├── lint.yml                       Ruff lint + format check on PR and push to main
+    ├── release.yml                    Unified release: PyPI + GHCR + GitHub Release on v* tag (includes lint gate)
     ├── docker-dev.yml                 Dev Docker image on main push (amd64-only)
     └── manul-ci.yml                   Reusable example workflow for downstream repos
 ```
@@ -591,7 +597,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.25
+pip install manul-engine==0.0.9.26
 playwright install chromium
 ```
 
@@ -714,7 +720,7 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.25 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.26 \
   --html-report --screenshot on-fail hunts/
 ```
 
@@ -804,9 +810,9 @@ Verify "Notes" element has value "treasure map"
 
 ---
 
-## 🐾 Chaos Chamber Verified (2731 Tests)
+## 🐾 Chaos Chamber Verified (2868 Tests)
 
-The engine is battle-tested with **2731** synthetic DOM/unit tests across 49 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, visibility edge cases, attribute-semantic icon matching, camelCase developer attributes, and contextual UI disambiguation across repeated controls.
+The engine is battle-tested with **2868** synthetic DOM/unit tests across 52 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, visibility edge cases, attribute-semantic icon matching, camelCase developer attributes, and contextual UI disambiguation across repeated controls.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py`.
@@ -842,6 +848,9 @@ The engine is battle-tested with **2731** synthetic DOM/unit tests across 49 tes
 * **Attribute-semantic heuristic suite:** `manul_engine/test/test_46_attribute_semantic.py`.
 * **Contextual navigator unit suite:** `manul_engine/test/test_47_contextual_proximity.py`.
 * **Prompts & Config unit suite:** `manul_engine/test/test_48_prompts_config.py`.
+* **Imports unit suite:** `manul_engine/test/test_50_imports.py`.
+* **Packager unit suite:** `manul_engine/test/test_51_packager.py`.
+* **Exports unit suite:** `manul_engine/test/test_52_exports.py`.
 * **Integration hunts:** Real-site E2E flows under `demo/tests/*.hunt` — run with `python demo/run_demo.py` (requires Playwright + network).
 
 Run the synthetic suite:
@@ -928,9 +937,18 @@ The published extension provides:
 
 ---
 
-## Release Notes: v0.0.9.25
+## Release Notes: v0.0.9.26
 
-- **`EngineConfig` frozen dataclass:** New `config.py` module with injectable `EngineConfig` replacing module-level globals. `ManulEngine.__init__` accepts an optional `config` parameter; all runtime settings are stored as instance attributes.
+- **`EngineConfig` frozen dataclass:** New `config.py` module with injectable `EngineConfig` replacing module-level globals. `ManulEngine.__init__` accepts an optional `config` parameter; all runtime settings are stored as instance attributes. `validate()` method checks invariants (browser enum, screenshot mode, channel+chromium compat, non-negative timeouts/retries, ai_always requires model).
+- **Structured exception hierarchy:** New `exceptions.py` with `ManulEngineError` base class and 7 concrete subclasses (`ConfigurationError`, `ElementResolutionError`, `HookExecutionError`, `HuntImportError`, `VerificationError`, `SessionError`, `ScheduleError`). Multi-inheritance preserves backward compatibility. All exceptions re-exported from `__init__.py`.
+- **Shared type definitions:** New `_types.py` with `ElementSnapshot` TypedDict describing the shape of element dicts returned by `SNAPSHOT_JS`. Used with `TYPE_CHECKING` imports in core, actions, and scoring.
+- **Thread safety:** `controls.py` wraps registry access with `_REGISTRY_LOCK`; `hooks.py` wraps `_module_cache` access with `_CACHE_LOCK`.
+- **Import depth guard:** `resolve_imports()` enforces `_MAX_IMPORT_DEPTH=10` to prevent runaway recursive imports.
+- **Scoring early exit:** `DOMScorer.score_all()` accepts `early_exit_score` parameter — skips remaining elements when threshold is exceeded (not active in explain mode).
+- **CALL PYTHON timeout warning:** `execute_hook_line()` warns when a function takes longer than 30 seconds.
+- **Static analysis:** Ruff + mypy config in `pyproject.toml`; new `lint.yml` CI workflow gates on `ruff check` + `ruff format --check`; lint gate added to `release.yml`.
+- **Dependabot:** `.github/dependabot.yml` for automated pip + github-actions dependency updates (weekly).
+- **ADR documents:** `docs/adr/` with 4 Architecture Decision Records (mixin pattern, custom test runner, TreeWalker snapshot, heuristics-first resolution).
 - **`run_mission()` decomposition:** Extracted `_launch_browser()` and `_parse_task()` from the 400-line `run_mission()` method.
 - **Demo directory restructure:** All integration hunts, scripts, controls, benchmarks, and pages.json moved to `demo/`. New `demo/run_demo.py` runner. Synthetic test suite extracted to standalone `run_tests.py`.
 - **Security hygiene:** Eliminated false-positive "shell access" alert from package security scanners (socket.dev).
@@ -945,7 +963,7 @@ The published extension provides:
 
 </details>
 
-**Version:** 0.0.9.25
+**Version:** 0.0.9.26
 
 **Codename:** Containerised Manul
 

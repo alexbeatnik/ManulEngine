@@ -32,71 +32,112 @@ from __future__ import annotations
 
 import math
 import re
+from typing import TYPE_CHECKING
 
 from .helpers import ContextualHint
+
+if TYPE_CHECKING:
+    from ._types import ElementSnapshot  # noqa: F401
 
 # ── Pre-compiled regex patterns (compiled once at module load) ────────────────
 
 _RE_WORD_BOUNDARY_3 = re.compile(r"\b[a-z0-9]{3,}\b")
-_RE_WORD_3          = re.compile(r"[a-z0-9]{3,}")
+_RE_WORD_3 = re.compile(r"[a-z0-9]{3,}")
 _RE_WORD_BOUNDARY_4 = re.compile(r"\b[a-z]{4,}\b")
-_RE_QUOTES          = re.compile(r"'[^']*'|\"[^\"]*\"")
-_RE_HIDDEN          = re.compile(r"\[hidden\]", re.IGNORECASE)
-_RE_SUFFIX          = re.compile(r"(\s*\[(hidden|above|shadow_dom)\])+$")
-_RE_INPUT_SUFFIX    = re.compile(r"\s+input\s+\w*$")
-_RE_BTN_DEV         = re.compile(r"\bbtn\b|-btn|btn-|button")
-_RE_INP_DEV         = re.compile(r"\binp\b|-inp|inp-|input|\btxt\b|-txt|txt-|field")
-_RE_CHK_DEV         = re.compile(r"\bchk\b|-chk|chk-|checkbox")
-_RE_RAD_DEV         = re.compile(r"\brad\b|-rad|rad-|radio")
-_RE_SEL_DEV         = re.compile(r"\bsel\b|-sel|sel-|select|\bdrop\b|-drop|drop-|\bcmb\b|-cmb|cmb-|combo")
-_RE_OPTIONS         = re.compile(r"\[(.*?)\]")
-_RE_DELIMITERS      = re.compile(r"[-_]")
-_RE_DEV_BOUNDARIES  = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])")
-_RE_BUTTON          = re.compile(r"\bbutton\b")
-_RE_LINK            = re.compile(r"\blink\b")
-_RE_IMAGE           = re.compile(r"\bimage\b|\bimg\b|\bpicture\b|\bphoto\b")
-_RE_WANTS_INPUT     = re.compile(r"\bfield\b|\binput\b|\btextarea\b|\btype\b|\bfill\b")
+_RE_QUOTES = re.compile(r"'[^']*'|\"[^\"]*\"")
+_RE_HIDDEN = re.compile(r"\[hidden\]", re.IGNORECASE)
+_RE_SUFFIX = re.compile(r"(\s*\[(hidden|above|shadow_dom)\])+$")
+_RE_INPUT_SUFFIX = re.compile(r"\s+input\s+\w*$")
+_RE_BTN_DEV = re.compile(r"\bbtn\b|-btn|btn-|button")
+_RE_INP_DEV = re.compile(r"\binp\b|-inp|inp-|input|\btxt\b|-txt|txt-|field")
+_RE_CHK_DEV = re.compile(r"\bchk\b|-chk|chk-|checkbox")
+_RE_RAD_DEV = re.compile(r"\brad\b|-rad|rad-|radio")
+_RE_SEL_DEV = re.compile(r"\bsel\b|-sel|sel-|select|\bdrop\b|-drop|drop-|\bcmb\b|-cmb|cmb-|combo")
+_RE_OPTIONS = re.compile(r"\[(.*?)\]")
+_RE_DELIMITERS = re.compile(r"[-_]")
+_RE_DEV_BOUNDARIES = re.compile(r"(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])")
+_RE_BUTTON = re.compile(r"\bbutton\b")
+_RE_LINK = re.compile(r"\blink\b")
+_RE_IMAGE = re.compile(r"\bimage\b|\bimg\b|\bpicture\b|\bphoto\b")
+_RE_WANTS_INPUT = re.compile(r"\bfield\b|\binput\b|\btextarea\b|\btype\b|\bfill\b")
 
 # Context words stripped when extracting step context
-_STOP_WORDS = frozenset({
-    "click", "fill", "type", "enter", "select", "choose", "check", "uncheck",
-    "hover", "button", "field", "input", "link", "checkbox", "radio",
-    "from", "with", "into", "the", "that", "this", "step", "double",
-    "image", "dropdown", "textarea", "optional", "exists", "shadow", "root",
-})
+_STOP_WORDS = frozenset(
+    {
+        "click",
+        "fill",
+        "type",
+        "enter",
+        "select",
+        "choose",
+        "check",
+        "uncheck",
+        "hover",
+        "button",
+        "field",
+        "input",
+        "link",
+        "checkbox",
+        "radio",
+        "from",
+        "with",
+        "into",
+        "the",
+        "that",
+        "this",
+        "step",
+        "double",
+        "image",
+        "dropdown",
+        "textarea",
+        "optional",
+        "exists",
+        "shadow",
+        "root",
+    }
+)
 
 
 # ── Pre-computed search term ──────────────────────────────────────────────────
 
+
 class _SearchTerm:
     """Pre-computed search-term data for efficient per-element matching."""
-    __slots__ = ("text", "dashed", "words", "id_variants")
+
+    __slots__ = ("dashed", "id_variants", "text", "words")
 
     def __init__(self, raw: str) -> None:
         self.text: str = raw.lower().strip()
         self.dashed: str = self.text.replace(" ", "-").replace("_", "-")
-        self.words: frozenset[str] = (
-            frozenset(_RE_WORD_3.findall(self.text)) if self.text else frozenset()
-        )
+        self.words: frozenset[str] = frozenset(_RE_WORD_3.findall(self.text)) if self.text else frozenset()
         # Variants for html_id matching (preserves original order, deduped)
         self.id_variants: tuple[str, ...] = (
-            tuple(dict.fromkeys(filter(None, (
-                self.text,
-                self.text.replace(" ", "_"),
-                self.text.replace(" ", "-"),
-                self.text.replace(" ", ""),
-            )))) if self.text else ()
+            tuple(
+                dict.fromkeys(
+                    filter(
+                        None,
+                        (
+                            self.text,
+                            self.text.replace(" ", "_"),
+                            self.text.replace(" ", "-"),
+                            self.text.replace(" ", ""),
+                        ),
+                    )
+                )
+            )
+            if self.text
+            else ()
         )
 
 
 # ── Weighting & scale constants ──────────────────────────────────────────────
 
 WEIGHTS: dict[str, float] = {
-    "cache":      2.0,
-    "text":       0.45,
+    "cache": 2.0,
+    "text": 0.45,
     "attributes": 0.25,
-    "semantics":  0.60,
-    "proximity":  0.10,
+    "semantics": 0.60,
+    "proximity": 0.10,
 }
 
 # Converts the weighted float into the integer range expected by
@@ -112,6 +153,7 @@ MAX_THEORETICAL_SCORE: int = SCALE
 
 
 # ── DOMScorer class ───────────────────────────────────────────────────────────
+
 
 class DOMScorer:
     """Heuristic DOM element scorer.
@@ -149,10 +191,11 @@ class DOMScorer:
 
         # Contextual proximity state
         self._hint = contextual_hint or ContextualHint(None, None, None)
-        self._anchor_rect = anchor_rect          # {"rect_top", "rect_left", "rect_bottom", "rect_right", "frame_index", "xpath"}
+        self._anchor_rect = (
+            anchor_rect  # {"rect_top", "rect_left", "rect_bottom", "rect_right", "frame_index", "xpath"}
+        )
         self._container_id_set = (
-            {(e.get("frame_index", 0), e["id"]) for e in container_elements}
-            if container_elements is not None else None
+            {(e.get("frame_index", 0), e["id"]) for e in container_elements} if container_elements is not None else None
         )
         self._viewport_h = viewport_height or 900
 
@@ -161,23 +204,23 @@ class DOMScorer:
         self._has_term_words: bool = any(term.words for term in self._terms)
 
         # Pre-compute step-level features (once per invocation)
-        self._target_words:   frozenset[str] = frozenset(_RE_WORD_BOUNDARY_3.findall(self._step_l))
-        self._anchor_words:   frozenset[str] = (
-            frozenset(_RE_WORD_BOUNDARY_3.findall(str(self._hint.anchor or "").lower())) - _STOP_WORDS
-        ) if self._hint.kind == "near" else frozenset()
-        self._wants_button:   bool = bool(_RE_BUTTON.search(self._step_l))
-        self._wants_link:     bool = bool(_RE_LINK.search(self._step_l))
-        self._wants_image:    bool = bool(_RE_IMAGE.search(self._step_l))
-        self._wants_input:    bool = bool(_RE_WANTS_INPUT.search(self._step_l))
+        self._target_words: frozenset[str] = frozenset(_RE_WORD_BOUNDARY_3.findall(self._step_l))
+        self._anchor_words: frozenset[str] = (
+            (frozenset(_RE_WORD_BOUNDARY_3.findall(str(self._hint.anchor or "").lower())) - _STOP_WORDS)
+            if self._hint.kind == "near"
+            else frozenset()
+        )
+        self._wants_button: bool = bool(_RE_BUTTON.search(self._step_l))
+        self._wants_link: bool = bool(_RE_LINK.search(self._step_l))
+        self._wants_image: bool = bool(_RE_IMAGE.search(self._step_l))
+        self._wants_input: bool = bool(_RE_WANTS_INPUT.search(self._step_l))
         self._wants_checkbox: bool = "checkbox" in self._step_l
-        self._wants_radio:    bool = "radio" in self._step_l
-        self._wants_select:   bool = "select" in self._step_l or "dropdown" in self._step_l
+        self._wants_radio: bool = "radio" in self._step_l
+        self._wants_select: bool = "select" in self._step_l or "dropdown" in self._step_l
 
         # Context words outside quoted strings
         step_no_quotes = _RE_QUOTES.sub("", self._step_l)
-        self._context_words: frozenset[str] = (
-            frozenset(_RE_WORD_BOUNDARY_4.findall(step_no_quotes)) - _STOP_WORDS
-        )
+        self._context_words: frozenset[str] = frozenset(_RE_WORD_BOUNDARY_4.findall(step_no_quotes)) - _STOP_WORDS
 
         # Semantic cache lookup
         context_qualifier = None
@@ -212,19 +255,19 @@ class DOMScorer:
         raw_html_id = str(el.get("html_id", ""))
         raw_class_name = str(el.get("class_name", ""))
 
-        el["_name"]       = sl(el.get("name", ""))
-        el["_tag"]        = el.get("tag_name", "")
-        el["_itype"]      = el.get("input_type", "")
-        el["_data_qa"]    = sl(raw_data_qa)
-        el["_html_id"]    = sl(raw_html_id)
+        el["_name"] = sl(el.get("name", ""))
+        el["_tag"] = el.get("tag_name", "")
+        el["_itype"] = el.get("input_type", "")
+        el["_data_qa"] = sl(raw_data_qa)
+        el["_html_id"] = sl(raw_html_id)
         el["_class_name"] = sl(raw_class_name)
-        el["_icons"]      = sl(el.get("icon_classes", ""))
-        el["_aria"]       = sl(el.get("aria_label", ""))
-        el["_role"]       = sl(el.get("role", ""))
-        el["_ph"]         = sl(el.get("placeholder", ""))
-        el["_name_attr"]  = str(el.get("name_attr", "")).lower()
-        el["_label_for"]  = str(el.get("label_for", "")).lower()
-        el["_dev_names"]  = f"{el['_html_id']} {el['_class_name']} {el['_data_qa']}"
+        el["_icons"] = sl(el.get("icon_classes", ""))
+        el["_aria"] = sl(el.get("aria_label", ""))
+        el["_role"] = sl(el.get("role", ""))
+        el["_ph"] = sl(el.get("placeholder", ""))
+        el["_name_attr"] = str(el.get("name_attr", "")).lower()
+        el["_label_for"] = str(el.get("label_for", "")).lower()
+        el["_dev_names"] = f"{el['_html_id']} {el['_class_name']} {el['_data_qa']}"
         if self._has_term_words:
             dev_pool = f"{raw_html_id} {raw_class_name} {raw_data_qa}"
             dev_pool = _RE_DEV_BOUNDARIES.sub(" ", dev_pool)
@@ -236,36 +279,34 @@ class DOMScorer:
         # Name decomposition
         name = el["_name"]
         if " -> " in name:
-            el["_name_core"]      = name.split(" -> ")[-1].strip()
+            el["_name_core"] = name.split(" -> ")[-1].strip()
             el["_context_prefix"] = name.split(" -> ")[0].strip().lower()
         else:
-            el["_name_core"]      = name
+            el["_name_core"] = name
             el["_context_prefix"] = ""
 
         # Hidden/suffix detection and stripping
-        el["_is_hidden"]       = bool(_RE_HIDDEN.search(el["_name_core"]))
-        el["_name_core"]       = _RE_SUFFIX.sub("", el["_name_core"]).strip()
+        el["_is_hidden"] = bool(_RE_HIDDEN.search(el["_name_core"]))
+        el["_name_core"] = _RE_SUFFIX.sub("", el["_name_core"]).strip()
         el["_name_core_clean"] = _RE_INPUT_SUFFIX.sub("", el["_name_core"]).strip()
-        el["_name_words"]      = frozenset(_RE_WORD_3.findall(el["_name"]))
+        el["_name_words"] = frozenset(_RE_WORD_3.findall(el["_name"]))
 
         # Element type classification
-        tag   = el["_tag"]
+        tag = el["_tag"]
         itype = el["_itype"]
 
-        el["_is_native_button"] = (
-            tag == "button"
-            or (tag == "input" and itype in ("submit", "button", "image", "reset"))
+        el["_is_native_button"] = tag == "button" or (
+            tag == "input" and itype in ("submit", "button", "image", "reset")
         )
-        el["_is_real_button"]   = el["_is_native_button"] or el["_role"] == "button"
-        el["_is_real_link"]     = tag == "a" or el["_role"] == "link"
-        el["_is_real_input"]    = (
-            (tag in ("input", "textarea")
-             and itype not in ("submit", "button", "image", "reset", "radio", "checkbox"))
+        el["_is_real_button"] = el["_is_native_button"] or el["_role"] == "button"
+        el["_is_real_link"] = tag == "a" or el["_role"] == "link"
+        el["_is_real_input"] = (
+            (tag in ("input", "textarea") and itype not in ("submit", "button", "image", "reset", "radio", "checkbox"))
             or el["_role"] in ("textbox", "searchbox", "spinbutton", "slider")
             or el.get("is_contenteditable", False)
         )
         el["_is_real_checkbox"] = (tag == "input" and itype == "checkbox") or el["_role"] == "checkbox"
-        el["_is_real_radio"]    = (tag == "input" and itype == "radio")    or el["_role"] == "radio"
+        el["_is_real_radio"] = (tag == "input" and itype == "radio") or el["_role"] == "radio"
 
     # ── Scoring methods (return normalised floats) ─────────────────────
 
@@ -297,16 +338,16 @@ class DOMScorer:
         score = 0.0
         is_perfect = False
 
-        name       = el["_name"]
-        name_core  = el["_name_core"]
-        name_cc    = el["_name_core_clean"]
+        name = el["_name"]
+        name_core = el["_name_core"]
+        name_cc = el["_name_core_clean"]
         ctx_prefix = el["_context_prefix"]
-        aria       = el["_aria"]
-        ph         = el["_ph"]
-        html_id    = el["_html_id"]
-        icons      = el["_icons"]
-        name_attr  = el["_name_attr"]
-        data_qa    = el["_data_qa"]
+        aria = el["_aria"]
+        ph = el["_ph"]
+        html_id = el["_html_id"]
+        icons = el["_icons"]
+        name_attr = el["_name_attr"]
+        data_qa = el["_data_qa"]
         name_words = el["_name_words"]
 
         for term in self._terms:
@@ -316,24 +357,24 @@ class DOMScorer:
 
             # ── Aria / placeholder exact match ────────────────────
             if tl == aria or tl == ph:
-                score += 0.625          # 50k / 80k
+                score += 0.625  # 50k / 80k
                 is_perfect = True
             elif len(tl) > 2 and aria.startswith(tl + " "):
-                score += 0.0375         # 3k / 80k
+                score += 0.0375  # 3k / 80k
 
             # ── data-qa match ─────────────────────────────────────
             if term.dashed == data_qa or tl == data_qa:
-                score += 1.0            # perfect data-qa
+                score += 1.0  # perfect data-qa
                 is_perfect = True
             elif term.dashed in data_qa:
-                score += 0.0625         # 5k / 80k
+                score += 0.0625  # 5k / 80k
 
             # ── Name matching ─────────────────────────────────────
             if tl == name_core or tl == name or tl == name_cc or tl == ctx_prefix:
-                score += 0.625          # 50k / 80k
+                score += 0.625  # 50k / 80k
                 is_perfect = True
             elif name_core.startswith(tl) or name_core.endswith(tl) or ctx_prefix.startswith(tl):
-                score += 0.025          # 2k / 80k
+                score += 0.025  # 2k / 80k
             elif tl in name_core or tl in ctx_prefix:
                 extra_words = max(0, len(name_core.split()) - len(tl.split()))
                 score += max(0.0025, 0.0125 - extra_words * 0.001875)
@@ -349,16 +390,16 @@ class DOMScorer:
 
             # ── html_id / icon substring ──────────────────────────
             if tl in html_id:
-                score += 0.0075         # 600 / 80k
+                score += 0.0075  # 600 / 80k
             if any(w in icons for w in tl.split() if len(w) > 3):
-                score += 0.00875        # 700 / 80k
+                score += 0.00875  # 700 / 80k
 
             # ── HTML name attribute ───────────────────────────────
             if name_attr:
                 if tl == name_attr:
-                    score += 0.0375     # 3k / 80k
+                    score += 0.0375  # 3k / 80k
                 elif len(name_attr) >= 3 and (tl in name_attr or name_attr in tl):
-                    score += 0.0125     # 1k / 80k
+                    score += 0.0125  # 1k / 80k
 
             # ── Attribute semantic keyword match ──────────────────
             # Strong signal when search-term words appear as discrete
@@ -382,19 +423,26 @@ class DOMScorer:
 
         Returns a normalised float (can exceed 1.0 with stacked signals).
         """
-        score   = 0.0
-        name    = el["_name"]
+        score = 0.0
+        name = el["_name"]
         html_id = el["_html_id"]
-        ph      = el["_ph"]
-        aria    = el["_aria"]
-        icons   = el["_icons"]
+        ph = el["_ph"]
+        aria = el["_aria"]
+        icons = el["_icons"]
 
         # ── target_field matching ─────────────────────────────────
         tf = self._target_field
         if tf and (tf in name or tf == ph):
             score += 0.2
-        if tf and html_id and html_id in (
-            tf.replace(" ", "_"), tf.replace(" ", "-"), tf.replace(" ", ""),
+        if (
+            tf
+            and html_id
+            and html_id
+            in (
+                tf.replace(" ", "_"),
+                tf.replace(" ", "-"),
+                tf.replace(" ", ""),
+            )
         ):
             score += 0.6
 
@@ -406,7 +454,7 @@ class DOMScorer:
         # ── Context words in developer names ──────────────────────
         if self._context_words:
             cls_n = _RE_DELIMITERS.sub(" ", el["_class_name"])
-            id_n  = _RE_DELIMITERS.sub(" ", html_id)
+            id_n = _RE_DELIMITERS.sub(" ", html_id)
             dqa_n = _RE_DELIMITERS.sub(" ", el["_data_qa"])
             dev_text = f"{cls_n} {id_n} {dqa_n}"
             ctx_hits = sum(1 for w in self._context_words if w in dev_text)
@@ -443,10 +491,10 @@ class DOMScorer:
 
         Returns a normalised float (negative = cross-mode penalty).
         """
-        score     = 0.0
-        tag       = el["_tag"]
-        itype     = el["_itype"]
-        role      = el["_role"]
+        score = 0.0
+        tag = el["_tag"]
+        itype = el["_itype"]
+        role = el["_role"]
         dev_names = el["_dev_names"]
 
         # ── Shadow DOM bonus ──────────────────────────────────────
@@ -521,22 +569,25 @@ class DOMScorer:
         # ── Mode synergy ──────────────────────────────────────────
         if is_perfect:
             if self._mode in ("clickable", "hover") and (
-                el["_is_real_button"] or el["_is_real_link"]
-                or role in ("button", "link", "menuitem", "tab", "switch")
+                el["_is_real_button"] or el["_is_real_link"] or role in ("button", "link", "menuitem", "tab", "switch")
             ):
                 score += 0.5
             elif self._mode == "input" and el["_is_real_input"]:
                 score += 0.5
             elif self._mode == "select" and (
-                el.get("is_select") or tag == "option"
+                el.get("is_select")
+                or tag == "option"
                 or role in ("option", "menuitem", "combobox", "button")
                 or tag == "li"
             ):
                 score += 0.5
         else:
             if self._mode in ("clickable", "hover"):
-                if (el["_is_real_button"] or el["_is_real_link"]
-                        or role in ("button", "link", "menuitem", "tab", "switch")):
+                if (
+                    el["_is_real_button"]
+                    or el["_is_real_link"]
+                    or role in ("button", "link", "menuitem", "tab", "switch")
+                ):
                     score += 0.02
                 elif tag in ("li", "summary", "td", "th", "tr"):
                     score += 0.01
@@ -569,17 +620,18 @@ class DOMScorer:
             label_for = el.get("_label_for", "")
             if label_for:
                 linked_el = next(
-                    (e for e in all_els
-                     if str(e.get("_html_id", "")) == label_for
-                     and str(e.get("input_type", "")).lower() == "file"),
+                    (
+                        e
+                        for e in all_els
+                        if str(e.get("_html_id", "")) == label_for and str(e.get("input_type", "")).lower() == "file"
+                    ),
                     None,
                 )
                 if linked_el:
                     score += 0.04
         if itype == "file":
             has_label = any(
-                str(e.get("tag_name", "")).lower() == "label"
-                and str(e.get("_label_for", "")) == el["_html_id"]
+                str(e.get("tag_name", "")).lower() == "label" and str(e.get("_label_for", "")) == el["_html_id"]
                 for e in all_els
             )
             if has_label:
@@ -725,7 +777,7 @@ class DOMScorer:
 
     # ── Orchestrator ──────────────────────────────────────────────────
 
-    def score_all(self, els: list[dict]) -> list[dict]:
+    def score_all(self, els: list[dict], early_exit_score: int | None = None) -> list[dict]:
         """Pre-process, score, and sort elements by score (descending).
 
         Combines normalised ``[0.0, 1.0]`` sub-scores via the ``WEIGHTS``
@@ -753,12 +805,12 @@ class DOMScorer:
 
         # Phase 2: score each element via modular methods
         for el in els:
-            cache_score            = self._score_cache_reuse(el)
+            cache_score = self._score_cache_reuse(el)
             text_score, is_perfect = self._score_text_match(el)
-            attr_score             = self._score_attributes(el)
-            sem_score              = self._score_semantics(el, is_perfect, els)
-            penalty_mult           = self._calculate_penalties(el)
-            prox_score             = self._score_proximity(el)
+            attr_score = self._score_attributes(el)
+            sem_score = self._score_semantics(el, is_perfect, els)
+            penalty_mult = self._calculate_penalties(el)
+            prox_score = self._score_proximity(el)
 
             base = (
                 text_score * w["text"]
@@ -772,27 +824,41 @@ class DOMScorer:
 
             if self._explain:
                 _max = MAX_THEORETICAL_SCORE
-                def _norm(weighted_channel: float) -> float:
+
+                def _norm(weighted_channel: float, _max: float = _max) -> float:
                     return round(min(weighted_channel * scale / _max, 1.0), 3)
 
                 explain_dict: dict = {
-                    "text":       _norm(text_score * w["text"]),
+                    "text": _norm(text_score * w["text"]),
                     "attributes": _norm(attr_score * w["attributes"]),
-                    "semantics":  _norm(sem_score * w["semantics"]),
-                    "proximity":  _norm(prox_score * w["proximity"]),
-                    "cache":      _norm(cache_score * w["cache"]),
-                    "penalty":    penalty_mult,
-                    "total":      round(min(el["score"] / _max, 1.0), 3),
+                    "semantics": _norm(sem_score * w["semantics"]),
+                    "proximity": _norm(prox_score * w["proximity"]),
+                    "cache": _norm(cache_score * w["cache"]),
+                    "penalty": penalty_mult,
+                    "total": round(min(el["score"] / _max, 1.0), 3),
                 }
                 if self._hint.kind:
                     explain_dict["ctx_kind"] = self._hint.kind
                     explain_dict["ctx_prox_raw"] = round(prox_score, 3)
                 el["_explain"] = explain_dict
 
+            # Early exit optimisation: when an element scores above the
+            # threshold, the remaining candidates are very unlikely to beat
+            # it (cache reuse or exact data-qa matches are near-unique).
+            # Skipping the rest avoids O(n) scoring on large DOMs.
+            # Note: explain mode always scores all elements for completeness.
+            if early_exit_score is not None and not self._explain and el["score"] >= early_exit_score:
+                # Move the winning element to the front; unscored elements
+                # keep their default score of 0 which is safe.
+                els.remove(el)
+                els.insert(0, el)
+                return els
+
         return sorted(els, key=lambda x: x.get("score", 0), reverse=True)
 
 
 # ── Backward-compatible public API ────────────────────────────────────────────
+
 
 def score_elements(
     els: list[dict],
@@ -802,24 +868,30 @@ def score_elements(
     target_field: str | None,
     is_blind: bool,
     learned_elements: dict,
-    last_xpath: "str | None",
+    last_xpath: str | None,
     explain: bool = False,
-    contextual_hint: "ContextualHint | None" = None,
-    anchor_rect: "dict | None" = None,
-    container_elements: "list[dict] | None" = None,
+    contextual_hint: ContextualHint | None = None,
+    anchor_rect: dict | None = None,
+    container_elements: list[dict] | None = None,
     viewport_height: int = 0,
+    early_exit_score: int | None = None,
 ) -> list[dict]:
     """Score and rank DOM elements against a given step.
 
     Backward-compatible entry point — delegates to :class:`DOMScorer`.
     """
     scorer = DOMScorer(
-        step, mode, search_texts, target_field,
-        is_blind, learned_elements, last_xpath,
+        step,
+        mode,
+        search_texts,
+        target_field,
+        is_blind,
+        learned_elements,
+        last_xpath,
         explain=explain,
         contextual_hint=contextual_hint,
         anchor_rect=anchor_rect,
         container_elements=container_elements,
         viewport_height=viewport_height,
     )
-    return scorer.score_all(els)
+    return scorer.score_all(els, early_exit_score=early_exit_score)

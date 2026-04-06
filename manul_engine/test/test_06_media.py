@@ -1,5 +1,6 @@
 import sys, os, asyncio
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from playwright.async_api import async_playwright
 from manul_engine import ManulEngine
 
@@ -169,63 +170,182 @@ MEDIA_DOM = """
 TESTS = [
     # Main Player Controls (1-10)
     {"n": "1", "step": "Click 'Play Video'", "m": "clickable", "st": ["Play Video"], "tf": None, "exp": "m1"},
-    {"n": "2", "step": "Click 'Pause Video' if exists", "m": "clickable", "st": ["Pause Video"], "tf": None, "exp": None}, # Hidden
-    {"n": "3", "step": "Click 'Rewind 10 seconds'", "m": "clickable", "st": ["Rewind 10 seconds"], "tf": None, "exp": "m3"},
-    {"n": "4", "step": "Click 'Forward 10 seconds'", "m": "clickable", "st": ["Forward 10 seconds"], "tf": None, "exp": "m4"},
+    {
+        "n": "2",
+        "step": "Click 'Pause Video' if exists",
+        "m": "clickable",
+        "st": ["Pause Video"],
+        "tf": None,
+        "exp": None,
+    },  # Hidden
+    {
+        "n": "3",
+        "step": "Click 'Rewind 10 seconds'",
+        "m": "clickable",
+        "st": ["Rewind 10 seconds"],
+        "tf": None,
+        "exp": "m3",
+    },
+    {
+        "n": "4",
+        "step": "Click 'Forward 10 seconds'",
+        "m": "clickable",
+        "st": ["Forward 10 seconds"],
+        "tf": None,
+        "exp": "m4",
+    },
     {"n": "5", "step": "Click 'Mute'", "m": "clickable", "st": ["Mute"], "tf": None, "exp": "m5"},
     {"n": "6", "step": "Fill 'Volume' slider with '80'", "m": "input", "st": ["Volume"], "tf": "volume", "exp": "m6"},
     {"n": "7", "step": "Fill 'Timeline' with '500'", "m": "input", "st": ["Timeline"], "tf": "timeline", "exp": "m7"},
     {"n": "8", "step": "EXTRACT timestamp into {time}", "ex": True, "var": "time", "val": "12:34 / 45:00"},
     {"n": "9", "step": "Click 'Next Video'", "m": "clickable", "st": ["Next Video"], "tf": None, "exp": "m9"},
     {"n": "10", "step": "Click 'Miniplayer'", "m": "clickable", "st": ["Miniplayer"], "tf": None, "exp": "m10"},
-
     # Player Settings (11-20)
     {"n": "11", "step": "Click 'Settings'", "m": "clickable", "st": ["Settings"], "tf": None, "exp": "m11"},
-    {"n": "12", "step": "Click 'Subtitles/closed captions'", "m": "clickable", "st": ["Subtitles/closed captions"], "tf": None, "exp": "m12"},
+    {
+        "n": "12",
+        "step": "Click 'Subtitles/closed captions'",
+        "m": "clickable",
+        "st": ["Subtitles/closed captions"],
+        "tf": None,
+        "exp": "m12",
+    },
     {"n": "13", "step": "Click 'Theater mode'", "m": "clickable", "st": ["Theater mode"], "tf": None, "exp": "m13"},
     {"n": "14", "step": "Click 'Fullscreen'", "m": "clickable", "st": ["Fullscreen"], "tf": None, "exp": "m14"},
-    {"n": "15", "step": "Select '4K' from 'Playback Quality'", "m": "select", "st": ["4K", "Playback Quality"], "tf": None, "exp": "m15"},
-    {"n": "16", "step": "Select '1.5x' from 'Playback Speed'", "m": "select", "st": ["1.5x", "Playback Speed"], "tf": None, "exp": "m16"},
-    {"n": "17", "step": "Click 'Report playback issue'", "m": "clickable", "st": ["Report playback issue"], "tf": None, "exp": "m17"},
-    {"n": "18", "step": "Click 'Annotations' switch", "m": "clickable", "st": ["Annotations"], "tf": None, "exp": "m18"},
+    {
+        "n": "15",
+        "step": "Select '4K' from 'Playback Quality'",
+        "m": "select",
+        "st": ["4K", "Playback Quality"],
+        "tf": None,
+        "exp": "m15",
+    },
+    {
+        "n": "16",
+        "step": "Select '1.5x' from 'Playback Speed'",
+        "m": "select",
+        "st": ["1.5x", "Playback Speed"],
+        "tf": None,
+        "exp": "m16",
+    },
+    {
+        "n": "17",
+        "step": "Click 'Report playback issue'",
+        "m": "clickable",
+        "st": ["Report playback issue"],
+        "tf": None,
+        "exp": "m17",
+    },
+    {
+        "n": "18",
+        "step": "Click 'Annotations' switch",
+        "m": "clickable",
+        "st": ["Annotations"],
+        "tf": None,
+        "exp": "m18",
+    },
     {"n": "19", "step": "Click 'Ambient Mode'", "m": "clickable", "st": ["Ambient Mode"], "tf": None, "exp": "m19"},
     {"n": "20", "step": "Click 'Loop video'", "m": "clickable", "st": ["Loop video"], "tf": None, "exp": "m20"},
-
     # Video Info & Actions (21-30)
-    {"n": "21", "step": "EXTRACT video title into {title}", "ex": True, "var": "title", "val": "10 Hours of Manul Cats Meowing"},
+    {
+        "n": "21",
+        "step": "EXTRACT video title into {title}",
+        "ex": True,
+        "var": "title",
+        "val": "10 Hours of Manul Cats Meowing",
+    },
     {"n": "22", "step": "EXTRACT views into {views}", "ex": True, "var": "views", "val": "1,500,000 views"},
-    {"n": "23", "step": "Click 'Like this video'", "m": "clickable", "st": ["Like this video"], "tf": None, "exp": "m23"},
-    {"n": "24", "step": "Click 'Dislike this video'", "m": "clickable", "st": ["Dislike this video"], "tf": None, "exp": "m24"},
+    {
+        "n": "23",
+        "step": "Click 'Like this video'",
+        "m": "clickable",
+        "st": ["Like this video"],
+        "tf": None,
+        "exp": "m23",
+    },
+    {
+        "n": "24",
+        "step": "Click 'Dislike this video'",
+        "m": "clickable",
+        "st": ["Dislike this video"],
+        "tf": None,
+        "exp": "m24",
+    },
     {"n": "25", "step": "Click 'Share'", "m": "clickable", "st": ["Share"], "tf": None, "exp": "m25"},
     {"n": "26", "step": "Click 'Download'", "m": "clickable", "st": ["Download"], "tf": None, "exp": "m26"},
-    {"n": "27", "step": "Click 'Save to playlist'", "m": "clickable", "st": ["Save to playlist"], "tf": None, "exp": "m27"},
+    {
+        "n": "27",
+        "step": "Click 'Save to playlist'",
+        "m": "clickable",
+        "st": ["Save to playlist"],
+        "tf": None,
+        "exp": "m27",
+    },
     {"n": "28", "step": "Click 'Subscribe'", "m": "clickable", "st": ["Subscribe"], "tf": None, "exp": "m28"},
     {"n": "29", "step": "Click 'Join channel'", "m": "clickable", "st": ["Join channel"], "tf": None, "exp": "m29"},
     {"n": "30", "step": "Click 'More actions'", "m": "clickable", "st": ["More actions"], "tf": None, "exp": "m30"},
-
     # Comments Section (31-40)
     {"n": "31", "step": "VERIFY '1,204 Comments' is present", "ver": True, "res": True},
     {"n": "32", "step": "Click 'Sort by'", "m": "clickable", "st": ["Sort by"], "tf": None, "exp": "m32"},
     {"n": "33", "step": "Click 'Top comments'", "m": "clickable", "st": ["Top comments"], "tf": None, "exp": "m33"},
     {"n": "34", "step": "Click 'Newest first'", "m": "clickable", "st": ["Newest first"], "tf": None, "exp": "m34"},
-    {"n": "35", "step": "Fill 'Add a comment...' with 'Awesome!'", "m": "input", "st": ["Add a comment..."], "tf": "add a comment...", "exp": "m35"},
-    {"n": "36", "step": "VERIFY 'Comment' is disabled", "ver": True, "step": "VERIFY that 'Comment' is disabled", "res": True},
+    {
+        "n": "35",
+        "step": "Fill 'Add a comment...' with 'Awesome!'",
+        "m": "input",
+        "st": ["Add a comment..."],
+        "tf": "add a comment...",
+        "exp": "m35",
+    },
+    {
+        "n": "36",
+        "step": "VERIFY 'Comment' is disabled",
+        "ver": True,
+        "step": "VERIFY that 'Comment' is disabled",
+        "res": True,
+    },
     {"n": "37", "step": "Click 'Cancel'", "m": "clickable", "st": ["Cancel"], "tf": None, "exp": "m37"},
     {"n": "38", "step": "Click 'Like comment'", "m": "clickable", "st": ["Like comment"], "tf": None, "exp": "m38"},
     {"n": "39", "step": "Click 'Reply'", "m": "clickable", "st": ["Reply"], "tf": None, "exp": "m39"},
     {"n": "40", "step": "Click 'View 5 replies'", "m": "clickable", "st": ["View 5 replies"], "tf": None, "exp": "m40"},
-
     # Sidebar & Up Next (41-49)
     {"n": "41", "step": "Click 'Autoplay' toggle", "m": "clickable", "st": ["Autoplay"], "tf": None, "exp": "m41"},
-    {"n": "42", "step": "Click 'Funny Dogs Compilation'", "m": "clickable", "st": ["Funny Dogs Compilation"], "tf": None, "exp": "m42"},
-    {"n": "43", "step": "Click 'Add to queue' (first)", "m": "clickable", "st": ["Add to queue"], "tf": None, "exp": "m43"},
-    {"n": "44", "step": "Click 'Nature Documentary'", "m": "clickable", "st": ["Nature Documentary"], "tf": None, "exp": "m44"},
+    {
+        "n": "42",
+        "step": "Click 'Funny Dogs Compilation'",
+        "m": "clickable",
+        "st": ["Funny Dogs Compilation"],
+        "tf": None,
+        "exp": "m42",
+    },
+    {
+        "n": "43",
+        "step": "Click 'Add to queue' (first)",
+        "m": "clickable",
+        "st": ["Add to queue"],
+        "tf": None,
+        "exp": "m43",
+    },
+    {
+        "n": "44",
+        "step": "Click 'Nature Documentary'",
+        "m": "clickable",
+        "st": ["Nature Documentary"],
+        "tf": None,
+        "exp": "m44",
+    },
     {"n": "45", "step": "Click 'Show more'", "m": "clickable", "st": ["Show more"], "tf": None, "exp": "m46"},
     {"n": "46", "step": "VERIFY 'Playlist: Favorites' is present", "ver": True, "res": True},
-    {"n": "47", "step": "Click 'Shuffle playlist'", "m": "clickable", "st": ["Shuffle playlist"], "tf": None, "exp": "m48"},
+    {
+        "n": "47",
+        "step": "Click 'Shuffle playlist'",
+        "m": "clickable",
+        "st": ["Shuffle playlist"],
+        "tf": None,
+        "exp": "m48",
+    },
     {"n": "48", "step": "Click 'Save playlist'", "m": "clickable", "st": ["Save playlist"], "tf": None, "exp": "m49"},
     {"n": "49", "step": "Click 'Hide playlist'", "m": "clickable", "st": ["Hide playlist"], "tf": None, "exp": "m50"},
-
     # Streaming Homepage (51-59)
     {"n": "51", "step": "VERIFY 'Stranger Manuls' is present", "ver": True, "res": True},
     {"n": "52", "step": "Click 'Play'", "m": "clickable", "st": ["Play"], "tf": None, "exp": "m52"},
@@ -236,21 +356,68 @@ TESTS = [
     {"n": "57", "step": "Click 'Movie 1'", "m": "clickable", "st": ["Movie 1"], "tf": None, "exp": "m57"},
     {"n": "58", "step": "Click 'Scroll Right'", "m": "clickable", "st": ["Scroll Right"], "tf": None, "exp": "m59"},
     {"n": "59", "step": "Click 'Add to My List'", "m": "clickable", "st": ["Add to My List"], "tf": None, "exp": "m60"},
-
     # Episode Selector (61-70)
-    {"n": "61", "step": "Select 'Season 2' from 'Season Selector'", "m": "select", "st": ["Season 2", "Season Selector"], "tf": None, "exp": "m61"},
+    {
+        "n": "61",
+        "step": "Select 'Season 2' from 'Season Selector'",
+        "m": "select",
+        "st": ["Season 2", "Season Selector"],
+        "tf": None,
+        "exp": "m61",
+    },
     {"n": "62", "step": "VERIFY 'The Beginning' is present", "ver": True, "res": True},
     {"n": "63", "step": "Click 'Play Episode 1'", "m": "clickable", "st": ["Play Episode 1"], "tf": None, "exp": "m63"},
-    {"n": "64", "step": "Click 'Download Episode 1'", "m": "clickable", "st": ["Download Episode 1"], "tf": None, "exp": "m64"},
+    {
+        "n": "64",
+        "step": "Click 'Download Episode 1'",
+        "m": "clickable",
+        "st": ["Download Episode 1"],
+        "tf": None,
+        "exp": "m64",
+    },
     {"n": "65", "step": "VERIFY 'The Middle' is present", "ver": True, "res": True},
     {"n": "66", "step": "Click 'Play Episode 2'", "m": "clickable", "st": ["Play Episode 2"], "tf": None, "exp": "m66"},
-    {"n": "67", "step": "Click 'Resume from 15:00'", "m": "clickable", "st": ["Resume from 15:00"], "tf": None, "exp": "m67"},
-    {"n": "68", "step": "Click 'Play from beginning'", "m": "clickable", "st": ["Play from beginning"], "tf": None, "exp": "m68"},
-    {"n": "69", "step": "Click 'Rate this title'", "m": "clickable", "st": ["Rate this title"], "tf": None, "exp": "m69"},
-    {"n": "70", "step": "Click 'Remove from My List'", "m": "clickable", "st": ["Remove from My List"], "tf": None, "exp": "m70"},
-
+    {
+        "n": "67",
+        "step": "Click 'Resume from 15:00'",
+        "m": "clickable",
+        "st": ["Resume from 15:00"],
+        "tf": None,
+        "exp": "m67",
+    },
+    {
+        "n": "68",
+        "step": "Click 'Play from beginning'",
+        "m": "clickable",
+        "st": ["Play from beginning"],
+        "tf": None,
+        "exp": "m68",
+    },
+    {
+        "n": "69",
+        "step": "Click 'Rate this title'",
+        "m": "clickable",
+        "st": ["Rate this title"],
+        "tf": None,
+        "exp": "m69",
+    },
+    {
+        "n": "70",
+        "step": "Click 'Remove from My List'",
+        "m": "clickable",
+        "st": ["Remove from My List"],
+        "tf": None,
+        "exp": "m70",
+    },
     # Audio Player (71-79)
-    {"n": "71", "step": "Click 'Save to Your Library'", "m": "clickable", "st": ["Save to Your Library"], "tf": None, "exp": "m72"},
+    {
+        "n": "71",
+        "step": "Click 'Save to Your Library'",
+        "m": "clickable",
+        "st": ["Save to Your Library"],
+        "tf": None,
+        "exp": "m72",
+    },
     {"n": "72", "step": "Click 'Enable shuffle'", "m": "clickable", "st": ["Enable shuffle"], "tf": None, "exp": "m73"},
     {"n": "73", "step": "Click 'Previous track'", "m": "clickable", "st": ["Previous track"], "tf": None, "exp": "m74"},
     {"n": "74", "step": "Click 'Pause/Play'", "m": "clickable", "st": ["Pause/Play"], "tf": None, "exp": "m75"},
@@ -258,32 +425,80 @@ TESTS = [
     {"n": "76", "step": "Click 'Enable repeat'", "m": "clickable", "st": ["Enable repeat"], "tf": None, "exp": "m77"},
     {"n": "77", "step": "Click 'Lyrics'", "m": "clickable", "st": ["Lyrics"], "tf": None, "exp": "m78"},
     {"n": "78", "step": "Click 'Queue'", "m": "clickable", "st": ["Queue"], "tf": None, "exp": "m79"},
-    {"n": "79", "step": "Click 'Connect to a device'", "m": "clickable", "st": ["Connect to a device"], "tf": None, "exp": "m80"},
-
+    {
+        "n": "79",
+        "step": "Click 'Connect to a device'",
+        "m": "clickable",
+        "st": ["Connect to a device"],
+        "tf": None,
+        "exp": "m80",
+    },
     # Search & Discovery (81-90)
-    {"n": "81", "step": "Fill 'Movies, shows, and more' with 'Matrix'", "m": "input", "st": ["Movies, shows, and more"], "tf": "movies, shows, and more", "exp": "m81"},
+    {
+        "n": "81",
+        "step": "Fill 'Movies, shows, and more' with 'Matrix'",
+        "m": "input",
+        "st": ["Movies, shows, and more"],
+        "tf": "movies, shows, and more",
+        "exp": "m81",
+    },
     {"n": "82", "step": "Click 'Clear Search'", "m": "clickable", "st": ["Clear Search"], "tf": None, "exp": "m82"},
-    {"n": "83", "step": "Click 'Filter by Genre'", "m": "clickable", "st": ["Filter by Genre"], "tf": None, "exp": "m83"},
-    {"n": "84", "step": "Click the checkbox for 'Action'", "m": "clickable", "st": ["Action"], "tf": None, "exp": "m84"},
+    {
+        "n": "83",
+        "step": "Click 'Filter by Genre'",
+        "m": "clickable",
+        "st": ["Filter by Genre"],
+        "tf": None,
+        "exp": "m83",
+    },
+    {
+        "n": "84",
+        "step": "Click the checkbox for 'Action'",
+        "m": "clickable",
+        "st": ["Action"],
+        "tf": None,
+        "exp": "m84",
+    },
     {"n": "85", "step": "Check 'Comedy'", "m": "clickable", "st": ["Comedy"], "tf": None, "exp": "m85"},
     {"n": "86", "step": "Check 'Sci-Fi'", "m": "clickable", "st": ["Sci-Fi"], "tf": None, "exp": "m86"},
     {"n": "87", "step": "Click 'Apply Filters'", "m": "clickable", "st": ["Apply Filters"], "tf": None, "exp": "m87"},
     {"n": "88", "step": "Click 'Podcasts'", "m": "clickable", "st": ["Podcasts"], "tf": None, "exp": "m88"},
     {"n": "89", "step": "Click 'Audiobooks'", "m": "clickable", "st": ["Audiobooks"], "tf": None, "exp": "m89"},
     {"n": "90", "step": "Click 'Live Radio'", "m": "clickable", "st": ["Live Radio"], "tf": None, "exp": "m90"},
-
     # Edge Cases, Ads & Popups (91-100)
     {"n": "91", "step": "VERIFY 'Ad ends in 5' is present", "ver": True, "res": True},
     {"n": "92", "step": "Click 'Skip Ad'", "m": "clickable", "st": ["Skip Ad"], "tf": None, "exp": "m92"},
     {"n": "93", "step": "Click 'Learn More'", "m": "clickable", "st": ["Learn More"], "tf": None, "exp": "m93"},
     {"n": "94", "step": "VERIFY 'Are you still watching?' is present", "ver": True, "res": True},
-    {"n": "95", "step": "Click 'Continue Watching'", "m": "clickable", "st": ["Continue Watching"], "tf": None, "exp": "m95"},
+    {
+        "n": "95",
+        "step": "Click 'Continue Watching'",
+        "m": "clickable",
+        "st": ["Continue Watching"],
+        "tf": None,
+        "exp": "m95",
+    },
     {"n": "96", "step": "Click 'Go to Homepage'", "m": "clickable", "st": ["Go to Homepage"], "tf": None, "exp": "m96"},
     {"n": "97", "step": "VERIFY 'inappropriate for some users' is present", "ver": True, "res": True},
-    {"n": "98", "step": "Click 'I understand and wish to proceed'", "m": "clickable", "st": ["I understand and wish to proceed"], "tf": None, "exp": "m98"},
+    {
+        "n": "98",
+        "step": "Click 'I understand and wish to proceed'",
+        "m": "clickable",
+        "st": ["I understand and wish to proceed"],
+        "tf": None,
+        "exp": "m98",
+    },
     {"n": "99", "step": "Click 'Go back'", "m": "clickable", "st": ["Go back"], "tf": None, "exp": "m99"},
-    {"n": "100", "step": "Click 'Claim Free Premium' if exists", "m": "clickable", "st": ["Claim Free Premium"], "tf": None, "exp": None}, # Hidden, should skip gracefully
+    {
+        "n": "100",
+        "step": "Click 'Claim Free Premium' if exists",
+        "m": "clickable",
+        "st": ["Claim Free Premium"],
+        "tf": None,
+        "exp": None,
+    },  # Hidden, should skip gracefully
 ]
+
 
 async def run_suite():
     print(f"\n{'=' * 70}")
@@ -376,6 +591,7 @@ async def run_suite():
         await browser.close()
 
     return passed == len(TESTS)
+
 
 if __name__ == "__main__":
     asyncio.run(run_suite())

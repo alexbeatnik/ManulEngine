@@ -27,12 +27,13 @@ import os
 import re
 from typing import Any
 
-from playwright.async_api import async_playwright, Playwright, Browser, BrowserContext, Page
+from playwright.async_api import Browser, BrowserContext, Page, Playwright, async_playwright
 
 from .core import ManulEngine
+from .exceptions import ConfigurationError, SessionError
 from .helpers import classify_step, substitute_memory
+from .reporting import MissionResult, StepResult
 from .variables import ScopedVariables
-from .reporting import StepResult, MissionResult
 
 
 def _quote_for_dsl(text: str) -> str:
@@ -44,8 +45,7 @@ def _quote_for_dsl(text: str) -> str:
     """
     if "'" in text and '"' in text:
         raise ValueError(
-            "ManulSession step text cannot contain both single and double "
-            "quotes; please simplify the target/text."
+            "ManulSession step text cannot contain both single and double quotes; please simplify the target/text."
         )
     if "'" in text:
         return f'"{text}"'
@@ -94,7 +94,7 @@ class ManulSession:
 
     # ── Lifecycle ─────────────────────────────────────────────────────────
 
-    async def start(self) -> "ManulSession":
+    async def start(self) -> ManulSession:
         """Launch the browser and open a page.  Called by ``__aenter__``."""
         eng = self._engine
         self._pw_cm = async_playwright()
@@ -103,9 +103,8 @@ class ManulSession:
 
         # Playwright 'channel' is only supported for Chromium.
         if eng.channel and eng.browser != "chromium":
-            raise ValueError(
-                f"Playwright 'channel' is only supported for browser='chromium'; "
-                f"got browser={eng.browser!r}"
+            raise ConfigurationError(
+                f"Playwright 'channel' is only supported for browser='chromium'; got browser={eng.browser!r}"
             )
 
         if eng.browser == "electron":
@@ -114,7 +113,7 @@ class ManulSession:
             try:
                 self._browser = await p.chromium.connect_over_cdp(_cdp_url)
             except Exception as exc:
-                raise RuntimeError(
+                raise SessionError(
                     f"Failed to connect to Electron app over CDP at {_cdp_url}. "
                     f"Ensure the target app is running with "
                     f"'--remote-debugging-port={_cdp_port}' enabled and that "
@@ -127,14 +126,8 @@ class ManulSession:
                 self._context = await self._browser.new_context()
                 self._page = await self._context.new_page()
         else:
-            _launch_args = (
-                ["--no-sandbox", "--start-maximized"]
-                if eng.browser == "chromium"
-                else []
-            )
-            _launch_args = _launch_args + [
-                a for a in eng.browser_args if a not in _launch_args
-            ]
+            _launch_args = ["--no-sandbox", "--start-maximized"] if eng.browser == "chromium" else []
+            _launch_args = _launch_args + [a for a in eng.browser_args if a not in _launch_args]
             _launch_opts: dict[str, Any] = dict(
                 headless=eng.headless,
                 args=_launch_args,
@@ -173,7 +166,7 @@ class ManulSession:
         self._context = None
         self._page = None
 
-    async def __aenter__(self) -> "ManulSession":
+    async def __aenter__(self) -> ManulSession:
         await self.start()
         return self
 
@@ -186,9 +179,8 @@ class ManulSession:
     def page(self) -> Page:
         """The active Playwright ``Page``.  Useful for advanced one-offs."""
         if self._page is None:
-            raise RuntimeError(
-                "ManulSession has no active page.  "
-                "Use 'async with ManulSession() as s:' or call start() first."
+            raise SessionError(
+                "ManulSession has no active page.  Use 'async with ManulSession() as s:' or call start() first."
             )
         return self._page
 
@@ -418,17 +410,16 @@ class ManulSession:
         skips browser launch/teardown — the session already owns the page.
         """
         import time
-        import traceback
+
         from .hooks import execute_hook_line
 
         eng = self._engine
         page = self.page
 
-        _has_step_markers = bool(
-            re.search(r'^\s*STEP\s*\d*\s*:', task, re.MULTILINE | re.IGNORECASE)
-        )
-        _is_numbered = bool(re.match(r'^\s*\d+\.', task))
+        _has_step_markers = bool(re.search(r"^\s*STEP\s*\d*\s*:", task, re.MULTILINE | re.IGNORECASE))
+        _is_numbered = bool(re.match(r"^\s*\d+\.", task))
         from .helpers import RE_SYSTEM_STEP
+
         _has_action_keywords = bool(RE_SYSTEM_STEP.search(task))
 
         # Strip comments, metadata headers, and hook blocks
@@ -504,7 +495,7 @@ class ManulSession:
                             _step_ok = False
 
                     elif step_kind == "wait":
-                        n = re.search(r'(\d+)', step)
+                        n = re.search(r"(\d+)", step)
                         await asyncio.sleep(int(n.group(1)) if n else 2)
 
                     elif step_kind == "scroll":
@@ -547,9 +538,9 @@ class ManulSession:
                             _step_ok = False
 
                     elif step_kind == "call_python":
-                        instruction = re.sub(r'^\s*\d+\.\s*', '', step).strip()
-                        if re.match(r'CALL\s+PYTHON\b', instruction.upper()):
-                            raw_instr = re.sub(r'^\s*\d+\.\s*', '', raw_step).strip()
+                        instruction = re.sub(r"^\s*\d+\.\s*", "", step).strip()
+                        if re.match(r"CALL\s+PYTHON\b", instruction.upper()):
+                            raw_instr = re.sub(r"^\s*\d+\.\s*", "", raw_step).strip()
                             result = execute_hook_line(raw_instr, variables=eng.memory)
                             if not result.success:
                                 _step_error = result.message
@@ -563,13 +554,15 @@ class ManulSession:
                     elif step_kind == "set_var":
                         _set_m = re.match(
                             r"(?:\d+\.\s*)?SET\s+\{?(\w+)\}?\s*=\s*(.+)",
-                            raw_step, re.IGNORECASE,
+                            raw_step,
+                            re.IGNORECASE,
                         )
                         if _set_m:
                             _sv_name = _set_m.group(1)
                             _rhs_m = re.match(
                                 r"(?:\d+\.\s*)?SET\s+\S+\s*=\s*(.+)",
-                                step, re.IGNORECASE,
+                                step,
+                                re.IGNORECASE,
                             )
                             _sv_raw = (_rhs_m.group(1) if _rhs_m else _set_m.group(2)).strip()
                             if len(_sv_raw) >= 2 and _sv_raw[0] in ("'", '"') and _sv_raw[-1] == _sv_raw[0]:
@@ -590,12 +583,10 @@ class ManulSession:
 
                 finally:
                     duration_ms = (time.perf_counter() - started_perf) * 1000
-                    _sr_status = "pass" if _step_ok else (
-                        "warning" if step_kind == "verify_softly" else "fail"
-                    )
+                    _sr_status = "pass" if _step_ok else ("warning" if step_kind == "verify_softly" else "fail")
                     _step_result = StepResult(
                         index=action_index,
-                        text=re.sub(r'^\s*\d+\.\s*', '', step),
+                        text=re.sub(r"^\s*\d+\.\s*", "", step),
                         status=_sr_status,
                         duration_ms=duration_ms,
                         error=_step_error,
@@ -613,13 +604,15 @@ class ManulSession:
                 if block_status == "fail" or done:
                     break
 
-            _block_results.append(BlockResult(
-                name=block.block_name,
-                status=block_status,
-                duration_ms=(time.perf_counter() - block_started_perf) * 1000,
-                error=block_error,
-                actions=list(block_steps),
-            ))
+            _block_results.append(
+                BlockResult(
+                    name=block.block_name,
+                    status=block_status,
+                    duration_ms=(time.perf_counter() - block_started_perf) * 1000,
+                    error=block_error,
+                    actions=list(block_steps),
+                )
+            )
             if block_status == "fail" or done:
                 break
 

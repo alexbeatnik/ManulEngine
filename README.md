@@ -274,7 +274,7 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.25
+pip install manul-engine==0.0.9.26
 playwright install
 ```
 
@@ -283,7 +283,7 @@ If you install standalone Python dependencies manually instead of using the pack
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.25"
+pip install "manul-engine[ai]==0.0.9.26"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -634,6 +634,9 @@ Representative coverage areas include:
 - iframe routing
 - visibility filtering and TreeWalker behavior
 - custom controls and lazy control loading
+- structured exception hierarchy
+- config validation
+- import depth guards
 
 ## Docker CI/CD Runner
 
@@ -643,7 +646,7 @@ ManulEngine ships an alpha-stage headless CI runner image for browser automation
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.25 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.26 \
   --html-report --screenshot on-fail hunts/
 ```
 
@@ -655,15 +658,20 @@ docker run --rm --shm-size=1g \
   -e MANUL_BROWSER=firefox \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.25 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.26 \
   hunts/
 ```
 
 The image runs as non-root user `manul` (UID 1000), includes `dumb-init` for proper signal handling, and sets `--no-sandbox --disable-dev-shm-usage` by default. Build with additional browsers via `--build-arg BROWSERS="chromium firefox"`. A `docker-compose.yml` is included for local development with `manul` and `manul-daemon` services.
 
-## What's New in v0.0.9.25
+## What's New in v0.0.9.26
 
-- **`EngineConfig` frozen dataclass:** New `config.py` module with injectable `EngineConfig` replacing module-level globals. `ManulEngine.__init__` accepts an optional `config` parameter; all runtime settings (timeouts, AI, auto-annotate) are stored as instance attributes.
+- **`EngineConfig` frozen dataclass:** New `config.py` module with injectable `EngineConfig` replacing module-level globals. `ManulEngine.__init__` accepts an optional `config` parameter; all runtime settings (timeouts, AI, auto-annotate) are stored as instance attributes. `validate()` method checks configuration invariants.
+- **Structured exception hierarchy:** New `exceptions.py` with `ManulEngineError` base and 7 concrete subclasses (`ConfigurationError`, `ElementResolutionError`, `HookExecutionError`, `HuntImportError`, `VerificationError`, `SessionError`, `ScheduleError`). All re-exported from `manul_engine`.
+- **Thread safety:** Registry and module-cache access guarded by locks in `controls.py` and `hooks.py`.
+- **Scoring early exit:** `DOMScorer.score_all()` can short-circuit when threshold is exceeded, reducing scoring time on large DOMs.
+- **Import depth guard:** Recursive `.hunt` imports capped at depth 10.
+- **CI quality gates:** Ruff lint + format check workflow; lint gate in release pipeline; Dependabot for automated dependency updates.
 - **`run_mission()` decomposition:** Extracted `_launch_browser()` and `_parse_task()` from the 400-line `run_mission()` method for testability and readability.
 - **Demo directory restructure:** All integration hunts, scripts, controls, benchmarks, and pages.json moved to `demo/`. New `demo/run_demo.py` runner script. Synthetic test suite extracted to standalone `run_tests.py`.
 - **Security hygiene:** Eliminated false-positive "shell access" alert from package security scanners (socket.dev).
@@ -680,6 +688,6 @@ The image runs as non-root user `manul` (UID 1000), includes `dumb-init` for pro
 
 ## License
 
-**Version:** 0.0.9.25
+**Version:** 0.0.9.26
 
 Apache-2.0.

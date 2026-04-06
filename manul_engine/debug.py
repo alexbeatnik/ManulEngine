@@ -37,12 +37,15 @@ class _DebugMixin:
                 ctx = frame or page
                 await ctx.evaluate("([id, c, b]) => window.manulHighlight(id, c, b)", [target, color, bg])
             else:
-                await target.evaluate("""(el, args) => {
+                await target.evaluate(
+                    """(el, args) => {
                     const [color, bg] = args;
                     const oB=el.style.border, oBg=el.style.backgroundColor;
                     el.style.border='4px solid '+color; el.style.backgroundColor=bg;
                     setTimeout(()=>{el.style.border=oB;el.style.backgroundColor=oBg;},2000);
-                }""", [color, bg])
+                }""",
+                    [color, bg],
+                )
             await asyncio.sleep(0.4)
         except (OSError, RuntimeError):
             _log.debug("highlight failed — page or element already destroyed")
@@ -54,12 +57,14 @@ class _DebugMixin:
         Uses ``<style id="manul-debug-style">`` + ``data-manul-debug-highlight``
         so it is safely removable without disturbing inline styles.
         """
-        _STYLE_ID  = "manul-debug-style"
-        _STYLE_CSS = ("[data-manul-debug-highlight='true']{"
-                      "outline:4px solid #ff00ff !important;"
-                      "box-shadow:0 0 15px #ff00ff !important;"
-                      "background:rgba(255,0,255,.12) !important;"
-                      "z-index:999999 !important;}")
+        _STYLE_ID = "manul-debug-style"
+        _STYLE_CSS = (
+            "[data-manul-debug-highlight='true']{"
+            "outline:4px solid #ff00ff !important;"
+            "box-shadow:0 0 15px #ff00ff !important;"
+            "background:rgba(255,0,255,.12) !important;"
+            "z-index:999999 !important;}"
+        )
         try:
             if by_js_id:
                 ctx = frame or page
@@ -181,7 +186,7 @@ class _DebugMixin:
                     try:
                         read_task = asyncio.create_task(asyncio.to_thread(sys.stdin.readline))
                         abort_wait = asyncio.create_task(abort_event.wait())
-                        done, pending = await asyncio.wait(
+                        _done, pending = await asyncio.wait(
                             [read_task, abort_wait], return_when=asyncio.FIRST_COMPLETED
                         )
                         for t in pending:
@@ -231,11 +236,9 @@ class _DebugMixin:
             )
             while True:
                 try:
-                    read_task   = asyncio.create_task(asyncio.to_thread(input, prompt_text))
-                    abort_wait  = asyncio.create_task(abort_event.wait())
-                    done, pending = await asyncio.wait(
-                        [read_task, abort_wait], return_when=asyncio.FIRST_COMPLETED
-                    )
+                    read_task = asyncio.create_task(asyncio.to_thread(input, prompt_text))
+                    abort_wait = asyncio.create_task(abort_event.wait())
+                    _done, pending = await asyncio.wait([read_task, abort_wait], return_when=asyncio.FIRST_COMPLETED)
                     for t in pending:
                         t.cancel()
                     if abort_event.is_set():

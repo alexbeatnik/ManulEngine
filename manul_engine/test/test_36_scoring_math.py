@@ -1,5 +1,6 @@
 import sys, os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from manul_engine.scoring import DOMScorer, WEIGHTS, SCALE
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -33,11 +34,21 @@ def _make_el(**overrides) -> dict:
     base = {
         "name": overrides.pop("name", "Submit button"),
         "xpath": overrides.pop("xpath", "/html/body/button[1]"),
-        "is_select": False, "is_shadow": False, "is_contenteditable": False,
-        "class_name": "", "tag_name": "button", "input_type": "",
-        "data_qa": "", "html_id": "", "icon_classes": "",
-        "aria_label": "", "placeholder": "", "role": "",
-        "disabled": False, "aria_disabled": "", "name_attr": "",
+        "is_select": False,
+        "is_shadow": False,
+        "is_contenteditable": False,
+        "class_name": "",
+        "tag_name": "button",
+        "input_type": "",
+        "data_qa": "",
+        "html_id": "",
+        "icon_classes": "",
+        "aria_label": "",
+        "placeholder": "",
+        "role": "",
+        "disabled": False,
+        "aria_disabled": "",
+        "name_attr": "",
         "id": 1,
     }
     base.update(overrides)
@@ -59,6 +70,7 @@ def _make_scorer(**overrides) -> DOMScorer:
 
 # ── Test 1: data-qa exact match produces ~80k score ──────────────────────────
 
+
 def _test_data_qa_exact_score():
     print("\n── data-qa exact match score ──")
     el = _make_el(name="Go button", data_qa="submit", html_id="dqa_btn")
@@ -75,6 +87,7 @@ def _test_data_qa_exact_score():
 
 # ── Test 2: text exact match produces ~50k score ─────────────────────────────
 
+
 def _test_text_exact_match_score():
     print("\n── text exact match score ──")
     # name_core after preprocessing must equal the search term for exact match
@@ -90,6 +103,7 @@ def _test_text_exact_match_score():
 
 # ── Test 3: disabled penalty zeroes the score ────────────────────────────────
 
+
 def _test_disabled_penalty_zeroes():
     print("\n── disabled penalty ──")
     el = _make_el(name="Submit button", disabled=True)
@@ -101,6 +115,7 @@ def _test_disabled_penalty_zeroes():
 
 
 # ── Test 4: hidden penalty reduces to ~10% ───────────────────────────────────
+
 
 def _test_hidden_penalty_tenth():
     print("\n── hidden penalty ──")
@@ -121,6 +136,7 @@ def _test_hidden_penalty_tenth():
 
 # ── Test 5: semantic cache reuse produces ≥200k ──────────────────────────────
 
+
 def _test_semantic_cache_score():
     print("\n── semantic cache reuse ──")
     el = _make_el(name="Submit button", tag_name="button", html_id="cached_btn")
@@ -137,11 +153,11 @@ def _test_semantic_cache_score():
 
 # ── Test 6: blind context reuse (last_xpath) ─────────────────────────────────
 
+
 def _test_blind_context_score():
     print("\n── blind context reuse ──")
     xpath = "/html/body/form/input[2]"
-    el = _make_el(name="Password input text", tag_name="input", input_type="password",
-                  xpath=xpath, html_id="ctx_inp")
+    el = _make_el(name="Password input text", tag_name="input", input_type="password", xpath=xpath, html_id="ctx_inp")
     scorer = DOMScorer(
         step="type 'secret' into that field",
         mode="input",
@@ -160,10 +176,12 @@ def _test_blind_context_score():
 
 # ── Test 7: aria-label exact match (+0.625 text) ─────────────────────────────
 
+
 def _test_aria_exact_match():
     print("\n── aria-label exact match ──")
-    el = _make_el(name="input text", tag_name="input", input_type="text",
-                  aria_label="Email Address", html_id="aria_inp")
+    el = _make_el(
+        name="input text", tag_name="input", input_type="text", aria_label="Email Address", html_id="aria_inp"
+    )
     scorer = _make_scorer(
         step="Fill 'Email Address' field with 'test@example.com'",
         mode="input",
@@ -179,10 +197,10 @@ def _test_aria_exact_match():
 
 # ── Test 8: placeholder exact match (+0.625 text) ────────────────────────────
 
+
 def _test_placeholder_exact_match():
     print("\n── placeholder exact match ──")
-    el = _make_el(name="input text", tag_name="input", input_type="text",
-                  placeholder="Search Query", html_id="ph_inp")
+    el = _make_el(name="input text", tag_name="input", input_type="text", placeholder="Search Query", html_id="ph_inp")
     scorer = _make_scorer(
         step="Fill 'Search Query' field with 'cats'",
         mode="input",
@@ -197,10 +215,10 @@ def _test_placeholder_exact_match():
 
 # ── Test 9: name_attr exact match (+0.0375 text) ─────────────────────────────
 
+
 def _test_name_attr_exact():
     print("\n── name_attr exact match ──")
-    el = _make_el(name="input text", tag_name="input", input_type="text",
-                  name_attr="username", html_id="na_inp")
+    el = _make_el(name="input text", tag_name="input", input_type="text", name_attr="username", html_id="na_inp")
     scorer = _make_scorer(
         step="Fill 'username' field with 'admin'",
         mode="input",
@@ -216,6 +234,7 @@ def _test_name_attr_exact():
 
 # ── Test 10: SCALE constant derivation ────────────────────────────────────────
 
+
 def _test_scale_derivation():
     print("\n── SCALE derivation ──")
     # SCALE = 3000 / (name_attr_exact × W_text) = 3000 / (0.0375 × 0.45)
@@ -225,6 +244,7 @@ def _test_scale_derivation():
 
 
 # ── Test 11: WEIGHTS ordering ────────────────────────────────────────────────
+
 
 def _test_weights_ordering():
     print("\n── WEIGHTS ordering ──")
@@ -237,6 +257,7 @@ def _test_weights_ordering():
 
 
 # ── Test 12: checkbox mode penalty on non-checkbox ────────────────────────────
+
 
 def _test_checkbox_penalty():
     print("\n── checkbox penalty on non-checkbox element ──")
@@ -256,10 +277,10 @@ def _test_checkbox_penalty():
 
 # ── Test 13: real checkbox gets bonus ─────────────────────────────────────────
 
+
 def _test_checkbox_bonus():
     print("\n── real checkbox semantic bonus ──")
-    el = _make_el(name="Newsletter checkbox", tag_name="input", input_type="checkbox",
-                  html_id="chk_real")
+    el = _make_el(name="Newsletter checkbox", tag_name="input", input_type="checkbox", html_id="chk_real")
     scorer = _make_scorer(
         step="Check the 'Newsletter' checkbox",
         mode="clickable",
@@ -274,30 +295,30 @@ def _test_checkbox_bonus():
 
 # ── Test 14: proximity bonus with shared xpath ───────────────────────────────
 
+
 def _test_proximity_bonus():
     print("\n── proximity bonus ──")
     last = "/html/body/form/div[1]/input[1]"
-    el_close = _make_el(name="Submit button", xpath="/html/body/form/div[1]/button[1]",
-                        html_id="close_btn")
-    el_far   = _make_el(name="Submit button", xpath="/html/body/footer/button[1]",
-                        html_id="far_btn", id=2)
+    el_close = _make_el(name="Submit button", xpath="/html/body/form/div[1]/button[1]", html_id="close_btn")
+    el_far = _make_el(name="Submit button", xpath="/html/body/footer/button[1]", html_id="far_btn", id=2)
     scorer = _make_scorer(last_xpath=last)
     results = scorer.score_all([dict(el_close), dict(el_far)])
 
     close_score = next(e["score"] for e in results if e["html_id"] == "close_btn")
-    far_score   = next(e["score"] for e in results if e["html_id"] == "far_btn")
+    far_score = next(e["score"] for e in results if e["html_id"] == "far_btn")
 
     _assert(close_score > far_score, f"close ({close_score}) > far ({far_score})")
 
 
 # ── Test 15: mode synergy for input mode ──────────────────────────────────────
 
+
 def _test_input_mode_synergy():
     print("\n── input mode synergy ──")
-    el_input  = _make_el(name="Query input text", tag_name="input", input_type="text",
-                         placeholder="Query", html_id="real_inp")
-    el_button = _make_el(name="Query button", tag_name="button",
-                         html_id="btn_decoy", id=2)
+    el_input = _make_el(
+        name="Query input text", tag_name="input", input_type="text", placeholder="Query", html_id="real_inp"
+    )
+    el_button = _make_el(name="Query button", tag_name="button", html_id="btn_decoy", id=2)
     scorer = _make_scorer(
         step="Fill 'Query' field with 'test'",
         mode="input",
@@ -314,16 +335,25 @@ def _test_input_mode_synergy():
 
 # ── Test 16: stacked data-qa + aria + placeholder ────────────────────────────
 
+
 def _test_stacked_signals():
     print("\n── stacked signals ──")
     el_stack = _make_el(
-        name="Promo input text", tag_name="input", input_type="text",
-        data_qa="promo-code", placeholder="Promo Code", aria_label="Promo Code",
+        name="Promo input text",
+        tag_name="input",
+        input_type="text",
+        data_qa="promo-code",
+        placeholder="Promo Code",
+        aria_label="Promo Code",
         html_id="stacked",
     )
     el_weak = _make_el(
-        name="Enter code input text", tag_name="input", input_type="text",
-        placeholder="Enter code", html_id="weak", id=2,
+        name="Enter code input text",
+        tag_name="input",
+        input_type="text",
+        placeholder="Enter code",
+        html_id="weak",
+        id=2,
     )
     scorer = _make_scorer(
         step="Fill 'Promo Code' field with 'SAVE20'",
@@ -334,7 +364,7 @@ def _test_stacked_signals():
     results = scorer.score_all([dict(el_stack), dict(el_weak)])
 
     stack_score = next(e["score"] for e in results if e["html_id"] == "stacked")
-    weak_score  = next(e["score"] for e in results if e["html_id"] == "weak")
+    weak_score = next(e["score"] for e in results if e["html_id"] == "weak")
 
     _assert(stack_score > weak_score, f"stacked ({stack_score}) >> weak ({weak_score})")
     _assert(stack_score >= 80_000, f"stacked ≥ 80k (data-qa + aria + ph), got {stack_score}")
@@ -342,10 +372,10 @@ def _test_stacked_signals():
 
 # ── Test 17: target_field exact html_id match (+0.6 attr) ─────────────────────
 
+
 def _test_target_field_html_id():
     print("\n── target_field → html_id exact match ──")
-    el = _make_el(name="input text", tag_name="input", input_type="text",
-                  html_id="shipping_address")
+    el = _make_el(name="input text", tag_name="input", input_type="text", html_id="shipping_address")
     scorer = _make_scorer(
         step="Fill 'Shipping Address' field with '123 Main St'",
         mode="input",
@@ -361,6 +391,7 @@ def _test_target_field_html_id():
 
 # ── Test 18: aria-disabled penalty ────────────────────────────────────────────
 
+
 def _test_aria_disabled_penalty():
     print("\n── aria-disabled penalty ──")
     el = _make_el(name="Submit button", aria_disabled="true", html_id="aria_dis")
@@ -372,6 +403,7 @@ def _test_aria_disabled_penalty():
 
 
 # ── Run all tests ─────────────────────────────────────────────────────────────
+
 
 async def run_suite():
     global _PASS, _FAIL
@@ -414,4 +446,5 @@ async def run_suite():
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(run_suite())
