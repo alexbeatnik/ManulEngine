@@ -61,7 +61,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 manul.py                   Dev CLI entry point (run hunts from repo root without install)
 run_tests.py               Synthetic DOM test suite runner (dev only)
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.26
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.27
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession, EngineConfig, all exception classes
   exceptions.py            Structured exception hierarchy (ManulEngineError base, ConfigurationError, ElementResolutionError, HookExecutionError, HuntImportError, VerificationError, SessionError, ScheduleError)
@@ -70,7 +70,8 @@ manul_engine/
   config.py                EngineConfig frozen dataclass — injectable configuration (replaces module-global reads); validate() method checks invariants
   core.py                  ManulEngine class (resolution, run_mission, self-healing)
   cache.py                 _ControlsCacheMixin (persistent per-site controls cache)
-  debug.py                 _DebugMixin (element highlighting, debug prompt, breakpoint protocol)
+  debug.py                 _DebugMixin (element highlighting, debug prompt, breakpoint protocol, What-If REPL integration)
+  explain_next.py          ExplainNextDebugger — interactive What-If Analysis REPL (PageContext, WhatIfResult, heuristic pre-check, LLM dry-run)
   llm.py                   LLMProvider protocol + OllamaProvider / NullProvider (JSON fence-stripping)
   logging_config.py        Centralized logging under ``manul_engine`` hierarchy (stderr, MANUL_LOG_LEVEL)
   actions.py               _ActionsMixin (navigate, scroll, explicit waits, extract, verify, drag, press, right_click, upload, _execute_step, scan_page)
@@ -132,6 +133,7 @@ manul_engine/
     test_50_imports.py         @import/@export/USE directive system (84 assertions, no browser)
     test_51_packager.py        Pack/install .huntlib archives and lockfile (21 assertions, no browser)
     test_52_exports.py         @export validation, wildcard exports, access control (19 assertions, no browser)
+    test_53_explain_next.py   ExplainNextDebugger What-If Analysis REPL (83 assertions, no browser)
 demo/
   run_demo.py              Runner script for integration hunts (sets CWD, calls manul CLI)
   manul_engine_configuration.json  Demo-specific config (heuristics-only)
@@ -522,7 +524,7 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.26 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.27 \
   --html-report --screenshot on-fail hunts/
 ```
 

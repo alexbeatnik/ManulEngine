@@ -6,9 +6,9 @@ services:
     build:
       context: .
       args:
-        MANUL_VERSION: "0.0.9.26"
+        MANUL_VERSION: "0.0.9.27"
         BROWSERS: "chromium"
-    image: ghcr.io/alexbeatnik/manul-engine:0.0.9.26
+    image: ghcr.io/alexbeatnik/manul-engine:0.0.9.27
     shm_size: "1gb"
     volumes:
       - ./hunts:/workspace/hunts:ro

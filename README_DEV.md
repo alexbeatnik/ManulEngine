@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.26 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.27 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -26,7 +26,7 @@ ManulEngine/
 ├── manul.py                          Dev CLI entry point (run hunts from repo root without install)
 ├── run_tests.py                      Synthetic DOM test suite runner (dev only)
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.26
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.27
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession, EngineConfig, all exception classes
@@ -597,7 +597,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.26
+pip install manul-engine==0.0.9.27
 playwright install chromium
 ```
 
@@ -720,7 +720,7 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.26 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.27 \
   --html-report --screenshot on-fail hunts/
 ```
 
@@ -937,7 +937,7 @@ The published extension provides:
 
 ---
 
-## Release Notes: v0.0.9.26
+## Release Notes: v0.0.9.27
 
 - **`EngineConfig` frozen dataclass:** New `config.py` module with injectable `EngineConfig` replacing module-level globals. `ManulEngine.__init__` accepts an optional `config` parameter; all runtime settings are stored as instance attributes. `validate()` method checks invariants (browser enum, screenshot mode, channel+chromium compat, non-negative timeouts/retries, ai_always requires model).
 - **Structured exception hierarchy:** New `exceptions.py` with `ManulEngineError` base class and 7 concrete subclasses (`ConfigurationError`, `ElementResolutionError`, `HookExecutionError`, `HuntImportError`, `VerificationError`, `SessionError`, `ScheduleError`). Multi-inheritance preserves backward compatibility. All exceptions re-exported from `__init__.py`.
@@ -963,7 +963,7 @@ The published extension provides:
 
 </details>
 
-**Version:** 0.0.9.26
+**Version:** 0.0.9.27
 
 **Codename:** Containerised Manul
 
