@@ -1,0 +1,30 @@
+# Example docker-compose for running ManulEngine in Docker.
+# This is a reference template — mount your own hunts/ directory.
+# To run the shipped demo hunts, use: python demo/run_demo.py
+services:
+  manul:
+    build:
+      context: .
+      args:
+        MANUL_VERSION: "0.0.9.25"
+        BROWSERS: "chromium"
+    image: ghcr.io/alexbeatnik/manul-engine:0.0.9.25
+    shm_size: "1gb"
+    volumes:
+      - ./hunts:/workspace/hunts:ro
+      - ./reports:/workspace/reports
+      - ./cache:/workspace/cache
+      - ./controls:/workspace/controls:ro
+      - ./scripts:/workspace/scripts:ro
+    environment:
+      MANUL_HEADLESS: "true"
+      MANUL_HTML_REPORT: "true"
+      MANUL_SCREENSHOT: "on-fail"
+      MANUL_WORKERS: "2"
+    command: ["--html-report", "--screenshot", "on-fail", "hunts/"]
+
+  manul-daemon:
+    extends:
+      service: manul
+    command: ["daemon", "hunts/"]
+    restart: unless-stopped

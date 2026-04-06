@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "manul-engine"
+version = "0.0.9.25"
+description = "Deterministic DSL-first browser automation platform powered by Playwright heuristics with optional local AI self-healing (Ollama)"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+authors = [{ name = "ManulEngine Contributors" }]
+keywords = [
+    "browser-automation",
+    "playwright",
+    "e2e-testing",
+    "web-testing",
+    "heuristics",
+    "dsl",
+    "ollama",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Testing",
+    "Topic :: Internet :: WWW/HTTP :: Browsers",
+    "Typing :: Typed",
+]
+dependencies = [
+    "playwright>=1.58.0",
+]
+
+[project.optional-dependencies]
+ai = [
+    "ollama>=0.6.1",
+]
+dev = [
+    "build",
+    "twine",
+    "ollama>=0.6.1",
+]
+
+[project.scripts]
+manul = "manul_engine.cli:sync_main"
+
+[project.urls]
+Homepage = "https://github.com/alexbeatnik/ManulEngine"
+Repository = "https://github.com/alexbeatnik/ManulEngine"
+"Bug Tracker" = "https://github.com/alexbeatnik/ManulEngine/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["manul_engine*"]
+exclude = ["manul_engine.test*"]
+
+[tool.setuptools.package-data]
+manul_engine = ["py.typed"]

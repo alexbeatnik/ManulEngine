@@ -1,0 +1,130 @@
+# ManulEngine Repository - AI Assistant Guidelines
+
+You are assisting a Principal SDET and Software Architect working on:
+
+- ManulEngine runtime: Python and Playwright backend
+
+If Manul Studio is mentioned, treat it as a separate repository rather than the IDE surface of this one.
+
+Follow these rules before generating code, documentation, architecture notes, or setup instructions.
+
+## 1. Architectural Boundaries
+
+### Electron security (Manul Studio Electron app — separate repo)
+
+- These rules apply only to the Manul Studio Electron app in a separate repository.
+
+- Never use Node.js built-in modules such as `fs`, `path`, or `child_process` directly inside React components.
+- All system-level operations must go through IPC channels exposed in `preload.ts` and handled in `main.ts`.
+- If a frontend feature needs filesystem, process, shell, or OS access, route it through preload and main-process IPC.
+
+### Execution logic
+
+- When running the Python engine with `child_process.spawn`, never generate fake, mocked, or simulated logs.
+- Always attach to `stdout` and `stderr` and stream the real process output to the frontend.
+- UI log viewers, debug panels, and run-status indicators must reflect the actual engine process state.
+
+## 2. Engine and Scoring Rules
+
+### Heuristic math
+
+- The `DOMScorer` uses a strict normalized confidence scale from `0.0` to `1.0`.
+- Never generate code, logs, screenshots, or UI copy that present resolver confidence as raw integer scores such as `11529`.
+- Any user-facing explainability output must use normalized float confidence values.
+
+### Explain mode
+
+- `--explain` is a core feature.
+- Any UI feature built around explain mode, including hover tooltips in debug mode, must parse and display the real engine output.
+- Do not invent explanation payloads, simulated debug traces, or mock scoring breakdowns.
+
+### Desktop automation
+
+- Playwright is used for both web automation and local Electron app automation.
+- Always preserve support for the `executable_path` configuration when implementing launch flows, config UIs, docs, or integration code.
+
+## 3. Versioning and Dependencies
+
+- Treat `0.0.9.25` as the current engine version for this documentation and release line.
+- When version metadata is required in config examples or integration code, use:
+
+```json
+{
+  "manulEngineVersion": "0.0.9.25"
+}
+```
+
+- When generating `pip install` commands, pin the exact version, for example:
+
+```bash
+pip install manul-engine==0.0.9.25
+```
+
+- If the AI extra is needed, pin that exact version too:
+
+```bash
+pip install "manul-engine[ai]==0.0.9.25"
+```
+
+- When standalone Python dependencies must be installed manually for this release line, pin them explicitly too:
+
+```bash
+pip install playwright==1.58.0
+pip install ollama==0.6.1
+```
+
+- Do not suggest floating installs such as `pip install manul-engine` when version pinning is required by context.
+
+## 4. Product Philosophy and Tone
+
+### Status
+
+- Treat the product as Alpha.
+- Treat the product as solo-developed and experimental.
+- Never imply a team scale, support commitment, or stability guarantee that does not exist.
+- In documentation, be explicit that there are no promises or guarantees of stability.
+- Do not use marketing fluff such as `zero flakiness`, `mathematically provable`, or similar hype language.
+- Prefer direct, engineering-focused, transparent wording.
+
+### Documentation
+
+- When updating `README.md`, keep the `What's New` or changelog section at the very bottom of the document, immediately before `License`.
+- Do not clutter the introduction with version history.
+- Do not hide heuristic behavior behind vague `AI magic` framing when the implementation is deterministic and explainable.
+- When documenting HTML reporting, state that `reports/manul_report.html` aggregates recent CLI/Test Explorer invocations via `reports/manul_report_state.json`, and that the report header shows `Run Session` plus `Merged invocations`.
+
+## 5. Preferred Framing
+
+- Emphasize determinism, explainability, and developer experience.
+- Treat the DSL as the primary authoring layer for QA-facing flows.
+- Treat Python hooks, lifecycle hooks, and custom controls as the explicit SDET escape hatch for complex UI or backend-integrated cases.
+- Promise transparency when things fail, not unrealistic perfection.
+- Preserve the "single developer, alpha, no promises" context in user-facing docs whenever project status is discussed.
+
+## 6. DSL Step Rules
+
+- Document explicit waits as first-class DSL steps, not as ad hoc examples or sleep-based workarounds.
+- When documenting typing syntax, keep the argument order exact: `Type 'Value' into 'Target'` is value-first because `into` marks the target, while `Fill 'Target' field with 'Value'` remains target-first/value-last.
+- Document lifecycle hooks with bracket-only syntax: `[SETUP]` / `[END SETUP]` and `[TEARDOWN]` / `[END TEARDOWN]`. Do not introduce `SETUP:` / `TEARDOWN:` aliases.
+- When documenting hooks, mention that `PRINT "..."`, `CALL PYTHON ... into {var}`, optional `with args:`, `@script: {alias} = package.module`, `@script: {callable_alias} = package.module.function`, and the `hunt dir → CWD → sys.path` resolution order are supported.
+- When documenting failure semantics, state that setup-hook failures mark the mission as `broken` and skip browser steps.
+- When documenting `SCAN PAGE`, mention that checkbox/radio identifiers should come from associated labels when available, and that fillable controls may surface current non-empty values for downstream tooling.
+- Supported syntax:
+  - `Wait for "Welcome, User" to be visible`
+  - `Wait for 'Loading...' to disappear`
+  - `Wait for "Submit" to be hidden`
+  - `Verify "save" button has text "Save me"`
+  - `Verify 'Login' field has placeholder "Login/Email"`
+  - `Verify "Email" field has value "captain@manul.com"`
+- When documenting repeated controls, prefer contextual qualifiers:
+  - `Click the 'Delete' button NEAR 'John Doe'`
+  - `Click the 'Login' button ON HEADER`
+  - `Click the 'Privacy Policy' link ON FOOTER`
+  - `Click the 'Delete' button INSIDE 'Actions' row with 'John Doe'`
+- When describing engine behavior, state that `disappear` maps to Playwright's `hidden` state.
+- Prefer explicit waits over recommending `WAIT [seconds]` when the goal is to wait for async rendering, spinners, or deferred UI state changes.
+- After every generated `Fill` or `Type` step, immediately emit `Verify "{element_name}" field/input has value "{expected_value}"` before moving to the next logical action.
+- When the user asks for exact text or placeholder verification, generate only `Verify "{element_name}" {type} has text "{expected_text}"` or `Verify "{element_name}" field/input has placeholder "{expected_placeholder}"`.
+- When the user asks for exact current field content or textarea value verification, generate only `Verify "{element_name}" field/input has value "{expected_value}"`.
+- Do not invent alternate text assertion verbs such as `Check if text is`.
+- When documenting import directives, use `@import: Block1, Block2 from source.hunt` and `@export: Block1`. `USE BlockName` expands an imported block inline. `@import: * from lib.hunt` is wildcard import; `@import: Login as AuthLogin from lib.hunt` is aliased import. Imported `@var:` declarations inherit at the lowest (import) scope.

@@ -1,0 +1,26 @@
+{
+  "model": null,
+  "headless": false,
+  "browser": "chromium",
+  "browser_args": [],
+  "executable_path": null,
+  "timeout": 5000,
+  "nav_timeout": 30000,
+  "ai_always": false,
+  "ai_policy": "prior",
+  "ai_threshold": null,
+  "controls_cache_enabled": false,
+  "controls_cache_dir": "cache",
+  "semantic_cache_enabled": true,
+  "log_name_maxlen": 0,
+  "log_thought_maxlen": 0,
+  "tests_home": "tests",
+  "auto_annotate": false,
+  "custom_controls_dirs": [
+    "controls"
+  ],
+  "retries": 0,
+  "screenshot": "on-fail",
+  "html_report": true,
+  "verify_max_retries": 15
+}

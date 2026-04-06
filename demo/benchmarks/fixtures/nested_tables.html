@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head><title>Deeply Nested Table Test</title></head>
+<body>
+  <h1>Deeply Nested Tables Without IDs</h1>
+
+  <div class="app-wrapper">
+    <div class="main-content">
+      <div class="panel">
+        <div class="panel-body">
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Price</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Laptop Pro 15</td>
+                <td>$1,299.00</td>
+                <td><button type="button" class="btn-sm">Buy Now</button></td>
+              </tr>
+              <tr>
+                <td>Wireless Mouse</td>
+                <td>$49.99</td>
+                <td><button type="button" class="btn-sm">Buy Now</button></td>
+              </tr>
+              <tr>
+                <td>USB-C Hub</td>
+                <td>$89.00</td>
+                <td><button type="button" class="btn-sm">Buy Now</button></td>
+              </tr>
+              <tr>
+                <td>Mechanical Keyboard</td>
+                <td>$159.99</td>
+                <td><button type="button" class="btn-sm">Buy Now</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- A second table with form elements and no semantic labels -->
+  <div class="form-section">
+    <table>
+      <tr>
+        <td>First Name</td>
+        <td><input type="text" name="first_name" placeholder="John"></td>
+      </tr>
+      <tr>
+        <td>Last Name</td>
+        <td><input type="text" name="last_name" placeholder="Doe"></td>
+      </tr>
+      <tr>
+        <td>Country</td>
+        <td>
+          <select name="country">
+            <option value="">-- Select --</option>
+            <option value="us">United States</option>
+            <option value="uk">United Kingdom</option>
+            <option value="de">Germany</option>
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <td colspan="2"><button type="submit">Register</button></td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>

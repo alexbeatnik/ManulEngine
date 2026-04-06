@@ -1,0 +1,193 @@
+@context: Automation Practice Gauntlet (testautomationpractice.blogspot.com). Includes text inputs, radio/checkboxes, dropdowns, date pickers, drag-and-drop, dynamic tables with pagination, and Shadow DOM.
+@title: complex_ui_full_inspection
+
+# 🐾 THE MEGA HUNT: Ultimate Automation Challenge
+# Validation of all possible element types on a single page.
+#
+# --------------------------------------------------------------------------
+# FEATURES DEMONSTRATED:
+#
+#   @context / @title   — Metadata headers. @context is strategic context
+#                         passed to the engine for LLM prompts (optional).
+#                         @title is a short label used in logs and reports.
+#
+#   STEP N: label       — Logical grouping. Each STEP becomes a collapsible
+#                         accordion in the HTML report. Actions under a STEP
+#                         execute with fail-fast semantics: if one fails,
+#                         the rest of the block is skipped.
+#
+#   Fill / Click / Select / DOUBLE CLICK / Drag & Drop / HOVER
+#                       — Standard interaction verbs. The engine detects
+#                         the interaction mode from keywords and resolves
+#                         the target element via DOMScorer heuristics.
+#
+#   VERIFY ... is present / is checked
+#                       — Assertion keywords. "is present" checks visible
+#                         text (including Shadow DOM and input values).
+#                         "is checked" verifies checkbox/radio state.
+#
+#   EXTRACT ... into {var}
+#                       — Captures text into a runtime variable. The value
+#                         can be reused in later steps via {var} placeholders.
+#
+#   SCROLL DOWN / SCROLL DOWN inside the list
+#                       — Scrolls the main viewport or a container element.
+#                         "inside the list" targets dropdown scroll containers.
+#
+#   Shadow DOM           — The engine's TreeWalker + JS fallback
+#                         (window.manulClick, window.manulType) can interact
+#                         with elements inside open Shadow Roots.
+#
+#   DONE.               — Explicitly ends the mission.
+# --------------------------------------------------------------------------
+#
+# --------------------------------------------------------------------------
+# CUSTOM CONTROLS (not used here, but relevant for complex widgets):
+#
+# When a UI widget is too complex for plain DSL steps (e.g. React
+# datepicker, canvas widget, virtual table), write a Python handler
+# in the controls/ directory using @custom_control.
+#
+# PREREQUISITE: pages.json must map the target URL to a page name.
+#
+# Example pages.json entry:
+#   {
+#     "https://example-shop.com/": {
+#       "Domain": "Example Shop",
+#       "https://example-shop.com/checkout": "Checkout Page"
+#     }
+#   }
+#
+# The custom handler lives in e.g. controls/demo_custom.py.
+# The engine loads it at startup via load_custom_controls(CWD).
+# When the engine sees the quoted target, get_custom_control() returns
+# the Python handler and standard DOM heuristics are bypassed entirely.
+#
+# Example .hunt step:   Fill 'React Datepicker' with '2026-12-25'
+# Example handler:      @custom_control(page="Checkout Page",
+#                                        target="React Datepicker")
+# See controls/demo_custom.py for a full working example.
+# --------------------------------------------------------------------------
+#
+# LIFECYCLE HOOK EXAMPLE (commented out so this shared demo stays runnable
+# without local Python helpers):
+# @script: {demo} = scripts.demo_helpers
+# @script: {seed_mega_fixture} = scripts.demo_helpers.seed_mega_fixture
+#
+# [SETUP]
+#     PRINT "Preparing mega demo data"
+#     CALL PYTHON {seed_mega_fixture} with args: "shadow" "table"
+#     CALL PYTHON {demo}.issue_debug_token into {debug_token}
+# [END SETUP]
+#
+# STEP X: Backend-assisted prep
+#     CALL PYTHON {demo}.fetch_runtime_label with args: "{debug_token}" into {runtime_label}
+#     VERIFY that '{runtime_label}' is present
+#
+# [TEARDOWN]
+#     PRINT "Cleaning mega demo fixture"
+#     CALL PYTHON {demo}.cleanup_mega_fixture
+# [END TEARDOWN]
+#
+# Notes:
+# - Hook syntax is bracket-only.
+# - A failing [SETUP] marks the mission as BROKEN and skips browser steps.
+# - File-based helpers are also searched under a sibling scripts/ folder.
+
+STEP 1: Navigate to practice page
+    NAVIGATE to https://testautomationpractice.blogspot.com/
+
+STEP 2: Text inputs
+    # Fill detects the "input" interaction mode from keywords like
+    # "fill", "type", "enter". The engine resolves the target by
+    # heuristic scoring — quoted text gets the strongest signal.
+    Fill "Name" field with "Mega Manul"
+    Fill "Email" field with "mega@manul.ai"
+    Fill "Phone" field with "9876543210"
+    # Adding "textarea" outside the quotes acts as an element-type hint,
+    # boosting the score for <textarea> tags over <input> tags.
+    Fill 'Address' field with 'Selenium Avenue, 42, AI City'
+    VERIFY that 'Mega Manul' is present
+
+STEP 3: Radio button and checkboxes
+    # Including "radio button" or "checkbox" outside the target quotes
+    # triggers strict mode scoring: non-matching element types get a
+    # heavy penalty (-50,000), preventing accidental clicks on <td> or
+    # <label> elements that share the same text.
+    Click the radio button for "Male"
+    VERIFY that 'Male' is checked
+    Check the checkbox for 'Monday'
+    VERIFY that 'Monday' is checked
+    Check the checkbox for 'Tuesday'
+    VERIFY that 'Tuesday' is checked
+    Check the checkbox for 'Thursday'
+    VERIFY that 'Thursday' is checked
+
+STEP 4: Selection lists
+    # "Select ... from ... dropdown" uses Playwright's select_option()
+    # for native <select> elements. If the target is a custom div-based
+    # dropdown, the engine gracefully falls back to click().
+    Select "Japan" from the "Country" dropdown
+    VERIFY that 'Japan' is present
+    Select 'Blue' from the 'Colors' dropdown
+
+STEP 5: Date picker and interactive buttons
+    Fill "Date Picker 1" field with "12/31/2026"
+    SCROLL DOWN
+    Click the "START" button
+    # DOUBLE CLICK is detected as a "clickable" mode and uses
+    # Playwright's dblclick() instead of click().
+    DOUBLE CLICK the 'Copy Text' button
+    VERIFY that 'Hello World!' is present
+
+STEP 6: Drag and drop
+    # Drag-and-drop resolves two elements (source and destination)
+    # and uses Playwright's drag_to(). Both targets are quoted.
+    Drag the element "Drag me to my target" and drop it into "Drop here"
+    VERIFY that 'Dropped!' is present
+
+STEP 7: Data extraction from web table
+    SCROLL DOWN
+    # EXTRACT captures text into runtime variables {chrome_cpu}, etc.
+    # These variables live in engine memory and can be referenced in
+    # later steps with {placeholder} syntax.
+    EXTRACT the 'CPU of Chrome' into {chrome_cpu}
+    EXTRACT the 'CPU of Firefox' into {firefox_cpu}
+    EXTRACT the 'Price of Master In Selenium' into {book_price}
+    EXTRACT the 'Price of Selenium' into {selenium_price}
+    VERIFY that '3000' is present
+
+STEP 8: Paginated table interaction
+    SCROLL DOWN
+    Click on the '2' link
+    Check the checkbox for '7'
+    Click on the '4' link
+    Check the checkbox for '17'
+
+STEP 9: Scrolling dropdown
+    SCROLL DOWN
+    Click the 'Scrolling DropDown' element
+    # "SCROLL DOWN inside the list" targets the first dropdown-style
+    # scroll container and sets scrollTop = scrollHeight.
+    SCROLL DOWN inside the list
+    Click the 'Item 100' element
+    VERIFY that 'Item 100' is present
+
+STEP 10: Shadow DOM input
+    # Shadow DOM elements are discovered by the TreeWalker in
+    # SNAPSHOT_JS. Interactions use JS fallback helpers
+    # (window.manulClick, window.manulType) when Playwright's
+    # native locators cannot reach inside the shadow root.
+    SCROLL DOWN
+    Type 'Shadow Boss' into the 'Shadow Root' field
+    VERIFY that 'Shadow Boss' is present
+
+STEP 11: Final validation
+    # A multi-assertion VERIFY — all quoted tokens must be present
+    # in the visible page text for this step to pass.
+    VERIFY that 'Mega Manul' is present
+    VERIFY that 'Japan' is present
+    VERIFY that 'Dropped!' is present
+    VERIFY that 'Item 100' is present
+    VERIFY that 'Shadow Boss' is present
+DONE.

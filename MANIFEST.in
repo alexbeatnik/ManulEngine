@@ -1,0 +1,6 @@
+include LICENSE
+include README.md
+include manul_engine_configuration.json
+recursive-include manul_engine *.py
+include manul_engine/py.typed
+recursive-exclude manul_engine/test *
