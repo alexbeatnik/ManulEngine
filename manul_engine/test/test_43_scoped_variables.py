@@ -45,6 +45,7 @@ def _assert(condition: bool, name: str, detail: str = "") -> None:
 
 # ── Section 1: Precedence hierarchy ──────────────────────────────────────────
 
+
 def _test_precedence() -> None:
     print("\n  ── Precedence hierarchy ─────────────────────────────────────")
 
@@ -54,27 +55,23 @@ def _test_precedence() -> None:
     sv.set("email", "step@test.com", ScopedVariables.LEVEL_STEP)
     sv.set("email", "row@test.com", ScopedVariables.LEVEL_ROW)
 
-    _assert(sv.resolve("email") == "row@test.com",
-            "Row vars (L1) have highest precedence")
+    _assert(sv.resolve("email") == "row@test.com", "Row vars (L1) have highest precedence")
 
     sv.clear_level(ScopedVariables.LEVEL_ROW)
-    _assert(sv.resolve("email") == "step@test.com",
-            "Step vars (L2) shadow mission after row cleared")
+    _assert(sv.resolve("email") == "step@test.com", "Step vars (L2) shadow mission after row cleared")
 
     sv.clear_level(ScopedVariables.LEVEL_STEP)
-    _assert(sv.resolve("email") == "mission@test.com",
-            "Mission vars (L3) shadow global after step cleared")
+    _assert(sv.resolve("email") == "mission@test.com", "Mission vars (L3) shadow global after step cleared")
 
     sv.clear_level(ScopedVariables.LEVEL_MISSION)
-    _assert(sv.resolve("email") == "global@test.com",
-            "Global vars (L4) used when all higher levels cleared")
+    _assert(sv.resolve("email") == "global@test.com", "Global vars (L4) used when all higher levels cleared")
 
     sv.clear_level(ScopedVariables.LEVEL_GLOBAL)
-    _assert(sv.resolve("email") is None,
-            "Returns None when variable not found at any level")
+    _assert(sv.resolve("email") is None, "Returns None when variable not found at any level")
 
 
 # ── Section 2: resolve_level ─────────────────────────────────────────────────
+
 
 def _test_resolve_level() -> None:
     print("\n  ── resolve_level ────────────────────────────────────────────")
@@ -92,6 +89,7 @@ def _test_resolve_level() -> None:
 
 
 # ── Section 3: as_flat_dict ──────────────────────────────────────────────────
+
 
 def _test_flat_dict() -> None:
     print("\n  ── as_flat_dict ─────────────────────────────────────────────")
@@ -111,6 +109,7 @@ def _test_flat_dict() -> None:
 
 # ── Section 4: substitute ────────────────────────────────────────────────────
 
+
 def _test_substitute() -> None:
     print("\n  ── substitute ───────────────────────────────────────────────")
 
@@ -120,27 +119,24 @@ def _test_substitute() -> None:
     sv.set("age", "30", ScopedVariables.LEVEL_STEP)
 
     result = sv.substitute("Hello {name}, age {age}")
-    _assert(result == "Hello Bob, age 30",
-            "substitute uses highest-priority values")
+    _assert(result == "Hello Bob, age 30", "substitute uses highest-priority values")
 
     result2 = sv.substitute("No placeholders here")
-    _assert(result2 == "No placeholders here",
-            "substitute returns unchanged text when no placeholders")
+    _assert(result2 == "No placeholders here", "substitute returns unchanged text when no placeholders")
 
     result3 = sv.substitute("{missing} stays")
-    _assert(result3 == "{missing} stays",
-            "substitute leaves unresolved placeholders intact")
+    _assert(result3 == "{missing} stays", "substitute leaves unresolved placeholders intact")
 
 
 # ── Section 5: set_many / clear_runtime ──────────────────────────────────────
+
 
 def _test_set_many_clear() -> None:
     print("\n  ── set_many / clear_runtime ──────────────────────────────────")
 
     sv = ScopedVariables()
     sv.set_many({"x": "1", "y": "2"}, ScopedVariables.LEVEL_GLOBAL)
-    _assert(sv.resolve("x") == "1" and sv.resolve("y") == "2",
-            "set_many populates multiple vars at once")
+    _assert(sv.resolve("x") == "1" and sv.resolve("y") == "2", "set_many populates multiple vars at once")
 
     sv.set("r", "row", ScopedVariables.LEVEL_ROW)
     sv.set("s", "step", ScopedVariables.LEVEL_STEP)
@@ -151,6 +147,7 @@ def _test_set_many_clear() -> None:
 
 
 # ── Section 6: dict-like interface ───────────────────────────────────────────
+
 
 def _test_dict_interface() -> None:
     print("\n  ── dict-like interface ───────────────────────────────────────")
@@ -183,6 +180,7 @@ def _test_dict_interface() -> None:
 
 # ── Section 7: dump ──────────────────────────────────────────────────────────
 
+
 def _test_dump() -> None:
     print("\n  ── dump (DEBUG VARS) ─────────────────────────────────────────")
 
@@ -205,20 +203,18 @@ def _test_dump() -> None:
 
 # ── Section 8: classify_step for DEBUG VARS ──────────────────────────────────
 
+
 def _test_classify_debug_vars() -> None:
     print("\n  ── classify_step: DEBUG VARS ─────────────────────────────────")
 
-    _assert(classify_step("DEBUG VARS") == "debug_vars",
-            "classify_step('DEBUG VARS') returns 'debug_vars'")
-    _assert(classify_step("4. DEBUG VARS") == "debug_vars",
-            "classify_step('4. DEBUG VARS') returns 'debug_vars'")
-    _assert(classify_step("DEBUG") == "debug",
-            "classify_step('DEBUG') still returns 'debug'")
-    _assert(classify_step("PAUSE") == "debug",
-            "classify_step('PAUSE') still returns 'debug'")
+    _assert(classify_step("DEBUG VARS") == "debug_vars", "classify_step('DEBUG VARS') returns 'debug_vars'")
+    _assert(classify_step("4. DEBUG VARS") == "debug_vars", "classify_step('4. DEBUG VARS') returns 'debug_vars'")
+    _assert(classify_step("DEBUG") == "debug", "classify_step('DEBUG') still returns 'debug'")
+    _assert(classify_step("PAUSE") == "debug", "classify_step('PAUSE') still returns 'debug'")
 
 
 # ── Section 9: clear_all ─────────────────────────────────────────────────────
+
 
 def _test_clear_all() -> None:
     print("\n  ── clear_all ─────────────────────────────────────────────────")
@@ -233,6 +229,7 @@ def _test_clear_all() -> None:
 
 
 # ── Section 10: invalid level raises ValueError ─────────────────────────────
+
 
 def _test_invalid_level() -> None:
     print("\n  ── invalid level error ───────────────────────────────────────")
@@ -252,6 +249,7 @@ def _test_invalid_level() -> None:
 
 
 # ── Run ───────────────────────────────────────────────────────────────────────
+
 
 async def run_suite() -> None:
     global _PASS, _FAIL

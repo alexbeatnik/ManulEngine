@@ -1,5 +1,6 @@
 import sys, os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from manul_engine.actions import _ActionsMixin
 from manul_engine.scoring import DOMScorer, WEIGHTS, SCALE
 from manul_engine.helpers import parse_contextual_hint, ContextualHint
@@ -43,13 +44,28 @@ def _make_el(**overrides) -> dict:
     base = {
         "name": overrides.pop("name", "Save button"),
         "xpath": overrides.pop("xpath", "/html/body/button[1]"),
-        "is_select": False, "is_shadow": False, "is_contenteditable": False,
-        "class_name": "", "tag_name": "button", "input_type": "",
-        "data_qa": "", "html_id": "", "icon_classes": "",
-        "aria_label": "", "placeholder": "", "role": "",
-        "disabled": False, "aria_disabled": "", "name_attr": "",
-        "label_for": "", "id": 1, "frame_index": 0,
-        "rect_top": 100, "rect_left": 200, "rect_bottom": 130, "rect_right": 300,
+        "is_select": False,
+        "is_shadow": False,
+        "is_contenteditable": False,
+        "class_name": "",
+        "tag_name": "button",
+        "input_type": "",
+        "data_qa": "",
+        "html_id": "",
+        "icon_classes": "",
+        "aria_label": "",
+        "placeholder": "",
+        "role": "",
+        "disabled": False,
+        "aria_disabled": "",
+        "name_attr": "",
+        "label_for": "",
+        "id": 1,
+        "frame_index": 0,
+        "rect_top": 100,
+        "rect_left": 200,
+        "rect_bottom": 130,
+        "rect_right": 300,
         "ancestors": ["div", "body", "html"],
     }
     base.update(overrides)
@@ -59,6 +75,7 @@ def _make_el(**overrides) -> dict:
 # =====================================
 # SECTION 1: parse_contextual_hint()
 # =====================================
+
 
 def _test_parse_near():
     print("\n── parse_contextual_hint: NEAR ──")
@@ -75,7 +92,9 @@ def _test_parse_near_double_quotes():
     hint, cleaned = parse_contextual_hint('Click "Delete" near "Row 3"')
     _assert(hint.kind == "near", f"kind='near', got {hint.kind!r}")
     _assert(hint.anchor == "Row 3", f"anchor='Row 3', got {hint.anchor!r}")
-    _assert("near" not in cleaned.lower() or "near" in cleaned.lower().split("'")[1::2], f"near removed, got {cleaned!r}")
+    _assert(
+        "near" not in cleaned.lower() or "near" in cleaned.lower().split("'")[1::2], f"near removed, got {cleaned!r}"
+    )
 
 
 def _test_parse_on_header():
@@ -132,6 +151,7 @@ def _test_parse_inside_double_quotes():
 # SECTION 2: DOMScorer NEAR proximity
 # =====================================
 
+
 def _test_near_closest_wins():
     print("\n── NEAR: closest element wins ──")
     # Anchor at (200, 100). Element A at (250, 120) = close. Element B at (800, 600) = far.
@@ -141,15 +161,22 @@ def _test_near_closest_wins():
 
     hint = ContextualHint("near", "Anchor", None)
     scorer = DOMScorer(
-        step="Click the 'Save' button", mode="clickable",
-        search_texts=["Save"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
-        contextual_hint=hint, anchor_rect=anchor_rect,
+        step="Click the 'Save' button",
+        mode="clickable",
+        search_texts=["Save"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        anchor_rect=anchor_rect,
     )
     results = scorer.score_all([el_close, el_far])
     _assert(results[0]["id"] == 1, f"closest element wins, got id={results[0]['id']}")
-    _assert(results[0]["score"] > results[1]["score"],
-            f"close score ({results[0]['score']}) > far score ({results[1]['score']})")
+    _assert(
+        results[0]["score"] > results[1]["score"],
+        f"close score ({results[0]['score']}) > far score ({results[1]['score']})",
+    )
 
 
 def _test_near_distance_scoring():
@@ -159,10 +186,15 @@ def _test_near_distance_scoring():
     el_on_top = _make_el(id=1, name="Save", rect_top=100, rect_left=100, rect_bottom=130, rect_right=200)
     hint = ContextualHint("near", "Anchor", None)
     scorer = DOMScorer(
-        step="Click the 'Save' button", mode="clickable",
-        search_texts=["Save"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
-        contextual_hint=hint, anchor_rect=anchor_rect,
+        step="Click the 'Save' button",
+        mode="clickable",
+        search_texts=["Save"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        anchor_rect=anchor_rect,
     )
     scorer._preprocess(el_on_top)
     prox = scorer._score_proximity(el_on_top)
@@ -172,7 +204,10 @@ def _test_near_distance_scoring():
 def _test_near_same_container_beats_closer_neighbor_card():
     print("\n── NEAR: same container beats slightly closer neighbor card ──")
     anchor_rect = {
-        "rect_top": 100, "rect_left": 420, "rect_bottom": 130, "rect_right": 560,
+        "rect_top": 100,
+        "rect_left": 420,
+        "rect_bottom": 130,
+        "rect_right": 560,
         "frame_index": 0,
         "xpath": "/html/body/div/div[1]/div[4]/div[1]/a/div",
     }
@@ -180,13 +215,19 @@ def _test_near_same_container_beats_closer_neighbor_card():
         id=1,
         name="Add to cart",
         xpath="/html/body/div/div[1]/div[4]/div[2]/button",
-        rect_top=112, rect_left=565, rect_bottom=142, rect_right=670,
+        rect_top=112,
+        rect_left=565,
+        rect_bottom=142,
+        rect_right=670,
     )
     el_neighbor_card = _make_el(
         id=2,
         name="Add to cart",
         xpath="/html/body/div/div[1]/div[3]/div[2]/button",
-        rect_top=106, rect_left=360, rect_bottom=136, rect_right=465,
+        rect_top=106,
+        rect_left=360,
+        rect_bottom=136,
+        rect_right=465,
     )
     hint = ContextualHint("near", "Sauce Labs Fleece Jacket", None)
     scorer = DOMScorer(
@@ -212,10 +253,15 @@ def _test_near_beyond_threshold():
     el_far = _make_el(id=1, name="Save", rect_top=1400, rect_left=1400, rect_bottom=1430, rect_right=1500)
     hint = ContextualHint("near", "Anchor", None)
     scorer = DOMScorer(
-        step="Click the 'Save' button", mode="clickable",
-        search_texts=["Save"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
-        contextual_hint=hint, anchor_rect=anchor_rect,
+        step="Click the 'Save' button",
+        mode="clickable",
+        search_texts=["Save"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        anchor_rect=anchor_rect,
     )
     scorer._preprocess(el_far)
     prox = scorer._score_proximity(el_far)
@@ -225,19 +271,32 @@ def _test_near_beyond_threshold():
 def _test_near_cross_frame_rejected():
     print("\n── NEAR: cross-frame candidate gets 0 ──")
     anchor_rect = {
-        "rect_top": 100, "rect_left": 100, "rect_bottom": 130, "rect_right": 200,
+        "rect_top": 100,
+        "rect_left": 100,
+        "rect_bottom": 130,
+        "rect_right": 200,
         "frame_index": 0,
     }
     el_other_frame = _make_el(
-        id=1, name="Save", frame_index=1,
-        rect_top=110, rect_left=120, rect_bottom=140, rect_right=220,
+        id=1,
+        name="Save",
+        frame_index=1,
+        rect_top=110,
+        rect_left=120,
+        rect_bottom=140,
+        rect_right=220,
     )
     hint = ContextualHint("near", "Anchor", None)
     scorer = DOMScorer(
-        step="Click the 'Save' button", mode="clickable",
-        search_texts=["Save"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
-        contextual_hint=hint, anchor_rect=anchor_rect,
+        step="Click the 'Save' button",
+        mode="clickable",
+        search_texts=["Save"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        anchor_rect=anchor_rect,
     )
     scorer._preprocess(el_other_frame)
     prox = scorer._score_proximity(el_other_frame)
@@ -249,10 +308,15 @@ def _test_near_no_anchor_rect():
     hint = ContextualHint("near", "Anchor", None)
     el = _make_el(id=1, name="Save", xpath="/html/body/div/button[1]")
     scorer = DOMScorer(
-        step="Click the 'Save' button", mode="clickable",
-        search_texts=["Save"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath="/html/body/div/button[2]",
-        contextual_hint=hint, anchor_rect=None,  # no anchor found
+        step="Click the 'Save' button",
+        mode="clickable",
+        search_texts=["Save"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath="/html/body/div/button[2]",
+        contextual_hint=hint,
+        anchor_rect=None,  # no anchor found
     )
     scorer._preprocess(el)
     prox = scorer._score_proximity(el)
@@ -286,7 +350,10 @@ def _test_near_anchor_picker_prefers_text_over_image():
 def _test_near_anchor_dev_attr_affinity_beats_same_column_neighbor():
     print("\n── NEAR: anchor dev-attr affinity beats same-column neighbor ──")
     anchor_rect = {
-        "rect_top": 427, "rect_left": 916, "rect_bottom": 447, "rect_right": 1215,
+        "rect_top": 427,
+        "rect_left": 916,
+        "rect_bottom": 447,
+        "rect_right": 1215,
         "frame_index": 0,
         "xpath": '//*[@id="item_5_title_link"]',
     }
@@ -296,7 +363,10 @@ def _test_near_anchor_dev_attr_affinity_beats_same_column_neighbor():
         html_id="add-to-cart-sauce-labs-bike-light",
         data_qa="add-to-cart-sauce-labs-bike-light",
         xpath='//*[@id="add-to-cart-sauce-labs-bike-light"]',
-        rect_top=339, rect_left=1055, rect_bottom=373, rect_right=1215,
+        rect_top=339,
+        rect_left=1055,
+        rect_bottom=373,
+        rect_right=1215,
     )
     fleece = _make_el(
         id=28,
@@ -304,7 +374,10 @@ def _test_near_anchor_dev_attr_affinity_beats_same_column_neighbor():
         html_id="add-to-cart-sauce-labs-fleece-jacket",
         data_qa="add-to-cart-sauce-labs-fleece-jacket",
         xpath='//*[@id="add-to-cart-sauce-labs-fleece-jacket"]',
-        rect_top=591, rect_left=1055, rect_bottom=625, rect_right=1215,
+        rect_top=591,
+        rect_left=1055,
+        rect_bottom=625,
+        rect_right=1215,
     )
     hint = ContextualHint("near", "Sauce Labs Fleece Jacket", None)
     scorer = DOMScorer(
@@ -327,15 +400,21 @@ def _test_near_anchor_dev_attr_affinity_beats_same_column_neighbor():
 # SECTION 3: ON HEADER / ON FOOTER
 # =====================================
 
+
 def _test_on_header_ancestor():
     print("\n── ON HEADER: element inside <header> ancestor ──")
     el = _make_el(id=1, name="Login", ancestors=["header", "body", "html"], rect_top=500)
     hint = ContextualHint("on_header", None, None)
     scorer = DOMScorer(
-        step="Click 'Login' ON HEADER", mode="clickable",
-        search_texts=["Login"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
-        contextual_hint=hint, viewport_height=1000,
+        step="Click 'Login' ON HEADER",
+        mode="clickable",
+        search_texts=["Login"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        viewport_height=1000,
     )
     scorer._preprocess(el)
     prox = scorer._score_proximity(el)
@@ -347,10 +426,15 @@ def _test_on_header_nav_ancestor():
     el = _make_el(id=1, name="Home", ancestors=["nav", "div", "body", "html"], rect_top=50)
     hint = ContextualHint("on_header", None, None)
     scorer = DOMScorer(
-        step="Click 'Home' ON HEADER", mode="clickable",
-        search_texts=["Home"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
-        contextual_hint=hint, viewport_height=1000,
+        step="Click 'Home' ON HEADER",
+        mode="clickable",
+        search_texts=["Home"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        viewport_height=1000,
     )
     scorer._preprocess(el)
     prox = scorer._score_proximity(el)
@@ -362,10 +446,15 @@ def _test_on_header_top_15_percent():
     el = _make_el(id=1, name="Cart", ancestors=["div", "body"], rect_top=100)
     hint = ContextualHint("on_header", None, None)
     scorer = DOMScorer(
-        step="Click 'Cart' ON HEADER", mode="clickable",
-        search_texts=["Cart"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
-        contextual_hint=hint, viewport_height=1000,
+        step="Click 'Cart' ON HEADER",
+        mode="clickable",
+        search_texts=["Cart"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        viewport_height=1000,
     )
     scorer._preprocess(el)
     prox = scorer._score_proximity(el)
@@ -377,10 +466,15 @@ def _test_on_header_bottom_element_rejected():
     el = _make_el(id=1, name="Login", ancestors=["div", "body"], rect_top=800)
     hint = ContextualHint("on_header", None, None)
     scorer = DOMScorer(
-        step="Click 'Login' ON HEADER", mode="clickable",
-        search_texts=["Login"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
-        contextual_hint=hint, viewport_height=1000,
+        step="Click 'Login' ON HEADER",
+        mode="clickable",
+        search_texts=["Login"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        viewport_height=1000,
     )
     scorer._preprocess(el)
     prox = scorer._score_proximity(el)
@@ -392,10 +486,15 @@ def _test_on_footer_ancestor():
     el = _make_el(id=1, name="Privacy", ancestors=["footer", "body"], rect_top=50)
     hint = ContextualHint("on_footer", None, None)
     scorer = DOMScorer(
-        step="Click 'Privacy' ON FOOTER", mode="clickable",
-        search_texts=["Privacy"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
-        contextual_hint=hint, viewport_height=1000,
+        step="Click 'Privacy' ON FOOTER",
+        mode="clickable",
+        search_texts=["Privacy"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        viewport_height=1000,
     )
     scorer._preprocess(el)
     prox = scorer._score_proximity(el)
@@ -407,10 +506,15 @@ def _test_on_footer_bottom_15_percent():
     el = _make_el(id=1, name="Terms", ancestors=["div", "body"], rect_top=870, rect_bottom=900)
     hint = ContextualHint("on_footer", None, None)
     scorer = DOMScorer(
-        step="Click 'Terms' ON FOOTER", mode="clickable",
-        search_texts=["Terms"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
-        contextual_hint=hint, viewport_height=1000,
+        step="Click 'Terms' ON FOOTER",
+        mode="clickable",
+        search_texts=["Terms"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        viewport_height=1000,
     )
     scorer._preprocess(el)
     prox = scorer._score_proximity(el)
@@ -422,10 +526,15 @@ def _test_on_footer_top_element_rejected():
     el = _make_el(id=1, name="Terms", ancestors=["div", "body"], rect_top=50, rect_bottom=80)
     hint = ContextualHint("on_footer", None, None)
     scorer = DOMScorer(
-        step="Click 'Terms' ON FOOTER", mode="clickable",
-        search_texts=["Terms"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
-        contextual_hint=hint, viewport_height=1000,
+        step="Click 'Terms' ON FOOTER",
+        mode="clickable",
+        search_texts=["Terms"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        viewport_height=1000,
     )
     scorer._preprocess(el)
     prox = scorer._score_proximity(el)
@@ -437,10 +546,15 @@ def _test_on_header_iframe_rejected():
     el = _make_el(id=1, name="Login", frame_index=1, ancestors=["header", "body"], rect_top=10)
     hint = ContextualHint("on_header", None, None)
     scorer = DOMScorer(
-        step="Click 'Login' ON HEADER", mode="clickable",
-        search_texts=["Login"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
-        contextual_hint=hint, viewport_height=1000,
+        step="Click 'Login' ON HEADER",
+        mode="clickable",
+        search_texts=["Login"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        viewport_height=1000,
     )
     scorer._preprocess(el)
     prox = scorer._score_proximity(el)
@@ -452,10 +566,15 @@ def _test_on_footer_iframe_rejected():
     el = _make_el(id=1, name="Privacy", frame_index=1, ancestors=["footer", "body"], rect_bottom=990)
     hint = ContextualHint("on_footer", None, None)
     scorer = DOMScorer(
-        step="Click 'Privacy' ON FOOTER", mode="clickable",
-        search_texts=["Privacy"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
-        contextual_hint=hint, viewport_height=1000,
+        step="Click 'Privacy' ON FOOTER",
+        mode="clickable",
+        search_texts=["Privacy"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        viewport_height=1000,
     )
     scorer._preprocess(el)
     prox = scorer._score_proximity(el)
@@ -465,6 +584,7 @@ def _test_on_footer_iframe_rejected():
 # =====================================
 # SECTION 4: INSIDE container filtering
 # =====================================
+
 
 def _test_inside_container_match():
     print("\n── INSIDE: element in the container subtree ──")
@@ -477,15 +597,21 @@ def _test_inside_container_match():
 
     hint = ContextualHint("inside", "Actions", "John Doe")
     scorer = DOMScorer(
-        step="Click 'Delete'", mode="clickable",
-        search_texts=["Delete"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
-        contextual_hint=hint, container_elements=container_els,
+        step="Click 'Delete'",
+        mode="clickable",
+        search_texts=["Delete"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        container_elements=container_els,
     )
     results = scorer.score_all([el_in, el_out])
     _assert(results[0]["id"] == 10, f"inside-container wins, got id={results[0]['id']}")
-    _assert(results[0]["score"] > results[1]["score"],
-            f"inside ({results[0]['score']}) > outside ({results[1]['score']})")
+    _assert(
+        results[0]["score"] > results[1]["score"], f"inside ({results[0]['score']}) > outside ({results[1]['score']})"
+    )
 
 
 def _test_inside_empty_container():
@@ -493,10 +619,15 @@ def _test_inside_empty_container():
     el = _make_el(id=1, name="Delete")
     hint = ContextualHint("inside", "Actions", "Nobody")
     scorer = DOMScorer(
-        step="Click 'Delete'", mode="clickable",
-        search_texts=["Delete"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
-        contextual_hint=hint, container_elements=[],
+        step="Click 'Delete'",
+        mode="clickable",
+        search_texts=["Delete"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        container_elements=[],
     )
     scorer._preprocess(el)
     prox = scorer._score_proximity(el)
@@ -507,6 +638,7 @@ def _test_inside_empty_container():
 # SECTION 5: Weight boost & scoring
 # =====================================
 
+
 def _test_proximity_weight_boosted():
     print("\n── Proximity WEIGHTS boosted to 1.5 when hint active ──")
     hint = ContextualHint("near", "Anchor", None)
@@ -516,26 +648,38 @@ def _test_proximity_weight_boosted():
 
     # With hint → boosted proximity
     scorer_hint = DOMScorer(
-        step="Click 'Save'", mode="clickable",
-        search_texts=["Save"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
-        contextual_hint=hint, anchor_rect=anchor_rect,
+        step="Click 'Save'",
+        mode="clickable",
+        search_texts=["Save"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        anchor_rect=anchor_rect,
     )
-    results_hint = scorer_hint.score_all([_make_el(id=1, name="Save", rect_top=100, rect_left=100, rect_bottom=130, rect_right=200)])
+    results_hint = scorer_hint.score_all(
+        [_make_el(id=1, name="Save", rect_top=100, rect_left=100, rect_bottom=130, rect_right=200)]
+    )
     score_with_hint = results_hint[0]["score"]
 
     # Without hint → normal proximity (0.10)
     scorer_no_hint = DOMScorer(
-        step="Click 'Save'", mode="clickable",
-        search_texts=["Save"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
+        step="Click 'Save'",
+        mode="clickable",
+        search_texts=["Save"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
     )
-    results_no_hint = scorer_no_hint.score_all([_make_el(id=3, name="Save", rect_top=100, rect_left=100, rect_bottom=130, rect_right=200)])
+    results_no_hint = scorer_no_hint.score_all(
+        [_make_el(id=3, name="Save", rect_top=100, rect_left=100, rect_bottom=130, rect_right=200)]
+    )
     score_no_hint = results_no_hint[0]["score"]
 
     # With the huge proximity boost for a close element, the hint score should be higher
-    _assert(score_with_hint > score_no_hint,
-            f"hint score ({score_with_hint}) > no-hint score ({score_no_hint})")
+    _assert(score_with_hint > score_no_hint, f"hint score ({score_with_hint}) > no-hint score ({score_no_hint})")
 
 
 def _test_ineffective_near_keeps_default_weight():
@@ -544,23 +688,29 @@ def _test_ineffective_near_keeps_default_weight():
     hint = ContextualHint("near", "Missing Anchor", None)
 
     scorer_hint = DOMScorer(
-        step="Click 'Save'", mode="clickable",
-        search_texts=["Save"], target_field=None,
-        is_blind=False, learned_elements={},
+        step="Click 'Save'",
+        mode="clickable",
+        search_texts=["Save"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
         last_xpath="/html/body/div[1]/form[1]/button[2]",
-        contextual_hint=hint, anchor_rect=None,
+        contextual_hint=hint,
+        anchor_rect=None,
     )
     scorer_no_hint = DOMScorer(
-        step="Click 'Save'", mode="clickable",
-        search_texts=["Save"], target_field=None,
-        is_blind=False, learned_elements={},
+        step="Click 'Save'",
+        mode="clickable",
+        search_texts=["Save"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
         last_xpath="/html/body/div[1]/form[1]/button[2]",
     )
 
     score_hint = scorer_hint.score_all([dict(el)])[0]["score"]
     score_no_hint = scorer_no_hint.score_all([dict(el)])[0]["score"]
-    _assert(score_hint == score_no_hint,
-            f"missing anchor keeps default weight: {score_hint} == {score_no_hint}")
+    _assert(score_hint == score_no_hint, f"missing anchor keeps default weight: {score_hint} == {score_no_hint}")
 
 
 def _test_near_ranking_multiple_candidates():
@@ -569,17 +719,29 @@ def _test_near_ranking_multiple_candidates():
     # Create 5 elements at increasing distances
     els = []
     for i, (x, y) in enumerate([(310, 210), (500, 400), (100, 50), (700, 700), (350, 250)]):
-        els.append(_make_el(
-            id=i+1, name="Save", tag_name="button",
-            rect_top=y, rect_left=x, rect_bottom=y+30, rect_right=x+100,
-        ))
+        els.append(
+            _make_el(
+                id=i + 1,
+                name="Save",
+                tag_name="button",
+                rect_top=y,
+                rect_left=x,
+                rect_bottom=y + 30,
+                rect_right=x + 100,
+            )
+        )
 
     hint = ContextualHint("near", "Anchor", None)
     scorer = DOMScorer(
-        step="Click 'Save'", mode="clickable",
-        search_texts=["Save"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
-        contextual_hint=hint, anchor_rect=anchor_rect,
+        step="Click 'Save'",
+        mode="clickable",
+        search_texts=["Save"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        anchor_rect=anchor_rect,
     )
     results = scorer.score_all(els)
 
@@ -594,17 +756,23 @@ def _test_near_ranking_multiple_candidates():
 # SECTION 6: Explain mode with context
 # =====================================
 
+
 def _test_explain_includes_contextual_info():
     print("\n── Explain mode includes contextual hint info ──")
     anchor_rect = {"rect_top": 100, "rect_left": 100, "rect_bottom": 130, "rect_right": 200}
     el = _make_el(id=1, name="Save", rect_top=110, rect_left=120, rect_bottom=140, rect_right=220)
     hint = ContextualHint("near", "Cancel", None)
     scorer = DOMScorer(
-        step="Click 'Save'", mode="clickable",
-        search_texts=["Save"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
+        step="Click 'Save'",
+        mode="clickable",
+        search_texts=["Save"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
         explain=True,
-        contextual_hint=hint, anchor_rect=anchor_rect,
+        contextual_hint=hint,
+        anchor_rect=anchor_rect,
     )
     results = scorer.score_all([el])
     expl = results[0].get("_explain", {})
@@ -619,25 +787,32 @@ def _test_explain_contextual_channels_clamped():
     anchor_rect = {"rect_top": 100, "rect_left": 100, "rect_bottom": 130, "rect_right": 200}
     el = _make_el(id=1, name="Save", rect_top=100, rect_left=100, rect_bottom=130, rect_right=200)
     scorer = DOMScorer(
-        step="Click 'Save'", mode="clickable",
-        search_texts=["Save"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
+        step="Click 'Save'",
+        mode="clickable",
+        search_texts=["Save"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
         explain=True,
         contextual_hint=ContextualHint("near", "Anchor", None),
         anchor_rect=anchor_rect,
     )
     expl = scorer.score_all([el])[0]["_explain"]
-    _assert(0.0 <= expl["proximity"] <= 1.0,
-            f"contextual proximity explain stays in [0,1], got {expl['proximity']}")
+    _assert(0.0 <= expl["proximity"] <= 1.0, f"contextual proximity explain stays in [0,1], got {expl['proximity']}")
 
 
 def _test_explain_no_context():
     print("\n── Explain mode without contextual hint ──")
     el = _make_el(id=1, name="Save")
     scorer = DOMScorer(
-        step="Click 'Save'", mode="clickable",
-        search_texts=["Save"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
+        step="Click 'Save'",
+        mode="clickable",
+        search_texts=["Save"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
         explain=True,
     )
     results = scorer.score_all([el])
@@ -649,12 +824,17 @@ def _test_explain_no_context():
 # SECTION 7: Default fallback (no hint)
 # =====================================
 
+
 def _test_default_xpath_proximity():
     print("\n── Default xpath proximity (no hint) ──")
     el = _make_el(id=1, xpath="/html/body/div[1]/form[1]/input[1]")
     scorer = DOMScorer(
-        step="Fill 'Email'", mode="input", search_texts=["Email"],
-        target_field=None, is_blind=False, learned_elements={},
+        step="Fill 'Email'",
+        mode="input",
+        search_texts=["Email"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
         last_xpath="/html/body/div[1]/form[1]/input[2]",
     )
     scorer._preprocess(el)
@@ -667,8 +847,12 @@ def _test_default_no_last_xpath():
     print("\n── Default: no last_xpath → prox=0 ──")
     el = _make_el(id=1, xpath="/html/body/button[1]")
     scorer = DOMScorer(
-        step="Click 'Save'", mode="clickable", search_texts=["Save"],
-        target_field=None, is_blind=False, learned_elements={},
+        step="Click 'Save'",
+        mode="clickable",
+        search_texts=["Save"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
         last_xpath=None,
     )
     scorer._preprocess(el)
@@ -680,19 +864,25 @@ def _test_default_no_last_xpath():
 # SECTION 8: Edge cases
 # =====================================
 
+
 def _test_near_identical_positions():
     print("\n── NEAR: two elements at identical positions ──")
     anchor_rect = {"rect_top": 200, "rect_left": 300, "rect_bottom": 230, "rect_right": 400}
-    el1 = _make_el(id=1, name="Save", data_qa="save-primary",
-                   rect_top=250, rect_left=350, rect_bottom=280, rect_right=450)
-    el2 = _make_el(id=2, name="Save",
-                   rect_top=250, rect_left=350, rect_bottom=280, rect_right=450)
+    el1 = _make_el(
+        id=1, name="Save", data_qa="save-primary", rect_top=250, rect_left=350, rect_bottom=280, rect_right=450
+    )
+    el2 = _make_el(id=2, name="Save", rect_top=250, rect_left=350, rect_bottom=280, rect_right=450)
     hint = ContextualHint("near", "Anchor", None)
     scorer = DOMScorer(
-        step="Click 'Save'", mode="clickable",
-        search_texts=["Save"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
-        contextual_hint=hint, anchor_rect=anchor_rect,
+        step="Click 'Save'",
+        mode="clickable",
+        search_texts=["Save"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        anchor_rect=anchor_rect,
     )
     results = scorer.score_all([el1, el2])
     # Both should have the same proximity score; data-qa breaks the tie
@@ -704,10 +894,15 @@ def _test_on_header_boundary():
     el = _make_el(id=1, name="Logo", ancestors=["div", "body"], rect_top=150)
     hint = ContextualHint("on_header", None, None)
     scorer = DOMScorer(
-        step="Click 'Logo' ON HEADER", mode="clickable",
-        search_texts=["Logo"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
-        contextual_hint=hint, viewport_height=1000,
+        step="Click 'Logo' ON HEADER",
+        mode="clickable",
+        search_texts=["Logo"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        viewport_height=1000,
     )
     scorer._preprocess(el)
     prox = scorer._score_proximity(el)
@@ -720,10 +915,15 @@ def _test_on_header_negative_rect():
     el = _make_el(id=1, name="Banner", ancestors=["div", "body"], rect_top=-50)
     hint = ContextualHint("on_header", None, None)
     scorer = DOMScorer(
-        step="Click 'Banner' ON HEADER", mode="clickable",
-        search_texts=["Banner"], target_field=None,
-        is_blind=False, learned_elements={}, last_xpath=None,
-        contextual_hint=hint, viewport_height=1000,
+        step="Click 'Banner' ON HEADER",
+        mode="clickable",
+        search_texts=["Banner"],
+        target_field=None,
+        is_blind=False,
+        learned_elements={},
+        last_xpath=None,
+        contextual_hint=hint,
+        viewport_height=1000,
     )
     scorer._preprocess(el)
     prox = scorer._score_proximity(el)
@@ -750,6 +950,7 @@ def _test_parse_hint_preserves_quotes_in_main_step():
 
 
 # ── Runner ────────────────────────────────────────────────────────────────────
+
 
 def run_all():
     print("\n╔══════════════════════════════════════════════════════════════════╗")
@@ -811,10 +1012,10 @@ def run_all():
     _test_contextual_hint_namedtuple()
     _test_parse_hint_preserves_quotes_in_main_step()
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"📊 SCORE: {_PASS}/{_PASS + _FAIL} passed")
     print(f"  TOTAL: {_PASS + _FAIL} assertions — ✅ {_PASS} passed, ❌ {_FAIL} failed")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     return _FAIL == 0
 

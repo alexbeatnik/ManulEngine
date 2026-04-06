@@ -1,5 +1,6 @@
 import sys, os, asyncio
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from playwright.async_api import async_playwright
 from manul_engine import ManulEngine
 
@@ -172,101 +173,399 @@ MESS_DOM = """
 # ─────────────────────────────────────────────────────────────────────────────
 TESTS = [
     # Cookies & Privacy
-    {"n": "1", "step": "Click 'ACCEPT ALL COOKIES'", "m": "clickable", "st": ["ACCEPT ALL COOKIES"], "tf": None, "exp": "x1"},
-    {"n": "2", "step": "Click 'Manage Preferences'", "m": "clickable", "st": ["Manage Preferences"], "tf": None, "exp": "x2"},
-    {"n": "3", "step": "VERIFY that 'Strictly Necessary' is present", "ver": True, "res": True}, # Move VERIFY *BEFORE* closing modal
-    {"n": "4", "step": "Click 'Reject All'", "m": "clickable", "st": ["Reject All"], "tf": None, "exp": "x3"}, # Click closes modal
-    {"n": "5", "step": "Check 'Marketing Cookies'", "m": "clickable", "st": ["Marketing Cookies"], "tf": None, "exp": "x5"},
-    {"n": "6", "step": "Check 'Analytics Cookies'", "m": "clickable", "st": ["Analytics Cookies"], "tf": None, "exp": "x6"},
-    {"n": "7", "step": "Click 'Save Preferences'", "m": "clickable", "st": ["Save Preferences"], "tf": None, "exp": "x7"},
-    {"n": "8", "step": "Click the 'Privacy Policy' link", "m": "clickable", "st": ["Privacy Policy"], "tf": None, "exp": "x8"},
-    {"n": "9", "step": "Click 'Close Cookie Banner'", "m": "clickable", "st": ["Close Cookie Banner"], "tf": None, "exp": "x9"},
+    {
+        "n": "1",
+        "step": "Click 'ACCEPT ALL COOKIES'",
+        "m": "clickable",
+        "st": ["ACCEPT ALL COOKIES"],
+        "tf": None,
+        "exp": "x1",
+    },
+    {
+        "n": "2",
+        "step": "Click 'Manage Preferences'",
+        "m": "clickable",
+        "st": ["Manage Preferences"],
+        "tf": None,
+        "exp": "x2",
+    },
+    {
+        "n": "3",
+        "step": "VERIFY that 'Strictly Necessary' is present",
+        "ver": True,
+        "res": True,
+    },  # Move VERIFY *BEFORE* closing modal
+    {
+        "n": "4",
+        "step": "Click 'Reject All'",
+        "m": "clickable",
+        "st": ["Reject All"],
+        "tf": None,
+        "exp": "x3",
+    },  # Click closes modal
+    {
+        "n": "5",
+        "step": "Check 'Marketing Cookies'",
+        "m": "clickable",
+        "st": ["Marketing Cookies"],
+        "tf": None,
+        "exp": "x5",
+    },
+    {
+        "n": "6",
+        "step": "Check 'Analytics Cookies'",
+        "m": "clickable",
+        "st": ["Analytics Cookies"],
+        "tf": None,
+        "exp": "x6",
+    },
+    {
+        "n": "7",
+        "step": "Click 'Save Preferences'",
+        "m": "clickable",
+        "st": ["Save Preferences"],
+        "tf": None,
+        "exp": "x7",
+    },
+    {
+        "n": "8",
+        "step": "Click the 'Privacy Policy' link",
+        "m": "clickable",
+        "st": ["Privacy Policy"],
+        "tf": None,
+        "exp": "x8",
+    },
+    {
+        "n": "9",
+        "step": "Click 'Close Cookie Banner'",
+        "m": "clickable",
+        "st": ["Close Cookie Banner"],
+        "tf": None,
+        "exp": "x9",
+    },
     {"n": "10", "step": "VERIFY 'Consent saved.' is present", "ver": True, "res": True},
-
     # Captcha & Anti-Bot
     {"n": "11", "step": "Check 'I am human'", "m": "clickable", "st": ["I am human"], "tf": None, "exp": "x11"},
-    {"n": "12", "step": "Click 'Reload Captcha Image'", "m": "clickable", "st": ["Reload Captcha Image"], "tf": None, "exp": "x12"},
-    {"n": "13", "step": "Click 'Play Audio Challenge'", "m": "clickable", "st": ["Play Audio Challenge"], "tf": None, "exp": "x13"},
-    {"n": "14", "step": "Fill 'Type the distorted text' with 'smudge'", "m": "input", "st": ["Type the distorted text"], "tf": "type the distorted text", "exp": "x14"},
-    {"n": "15", "step": "Fill 'Do not fill this' optional", "m": "input", "st": ["Do not fill this"], "tf": "do not fill this", "exp": "x15_honeypot"}, # Testing ability to hit honeypot if explicitly asked
-    {"n": "16", "step": "Click 'Admin bypass'", "m": "clickable", "st": ["Admin bypass"], "tf": None, "exp": "x16_honeypot"},
-    {"n": "17", "step": "Click 'Traffic Light' image", "m": "clickable", "st": ["Traffic Light"], "tf": None, "exp": "x17"},
+    {
+        "n": "12",
+        "step": "Click 'Reload Captcha Image'",
+        "m": "clickable",
+        "st": ["Reload Captcha Image"],
+        "tf": None,
+        "exp": "x12",
+    },
+    {
+        "n": "13",
+        "step": "Click 'Play Audio Challenge'",
+        "m": "clickable",
+        "st": ["Play Audio Challenge"],
+        "tf": None,
+        "exp": "x13",
+    },
+    {
+        "n": "14",
+        "step": "Fill 'Type the distorted text' with 'smudge'",
+        "m": "input",
+        "st": ["Type the distorted text"],
+        "tf": "type the distorted text",
+        "exp": "x14",
+    },
+    {
+        "n": "15",
+        "step": "Fill 'Do not fill this' optional",
+        "m": "input",
+        "st": ["Do not fill this"],
+        "tf": "do not fill this",
+        "exp": "x15_honeypot",
+    },  # Testing ability to hit honeypot if explicitly asked
+    {
+        "n": "16",
+        "step": "Click 'Admin bypass'",
+        "m": "clickable",
+        "st": ["Admin bypass"],
+        "tf": None,
+        "exp": "x16_honeypot",
+    },
+    {
+        "n": "17",
+        "step": "Click 'Traffic Light' image",
+        "m": "clickable",
+        "st": ["Traffic Light"],
+        "tf": None,
+        "exp": "x17",
+    },
     {"n": "18", "step": "Click 'Verify Images'", "m": "clickable", "st": ["Verify Images"], "tf": None, "exp": "x18"},
     {"n": "19", "step": "VERIFY 'Please try again.' is present", "ver": True, "res": True},
-    {"n": "20", "step": "Click 'Report CAPTCHA issue'", "m": "clickable", "st": ["Report CAPTCHA issue"], "tf": None, "exp": "x20"},
-
+    {
+        "n": "20",
+        "step": "Click 'Report CAPTCHA issue'",
+        "m": "clickable",
+        "st": ["Report CAPTCHA issue"],
+        "tf": None,
+        "exp": "x20",
+    },
     # Dark Patterns
-    {"n": "21", "step": "Click 'Yes, upgrade me now!'", "m": "clickable", "st": ["Yes, upgrade me now!"], "tf": None, "exp": "x21"},
-    {"n": "22", "step": "Click 'I hate saving money'", "m": "clickable", "st": ["I hate saving money"], "tf": None, "exp": "x22"},
-    {"n": "23", "step": "Uncheck 'Subscribe to spam newsletter'", "m": "clickable", "st": ["Subscribe to spam newsletter"], "tf": None, "exp": "x23"},
-    {"n": "24", "step": "Uncheck 'sell your soul'", "m": "clickable", "st": ["sell your soul"], "tf": None, "exp": "x24"},
-    {"n": "25", "step": "Click 'Continue without upgrading'", "m": "clickable", "st": ["Continue without upgrading"], "tf": None, "exp": "x25"},
+    {
+        "n": "21",
+        "step": "Click 'Yes, upgrade me now!'",
+        "m": "clickable",
+        "st": ["Yes, upgrade me now!"],
+        "tf": None,
+        "exp": "x21",
+    },
+    {
+        "n": "22",
+        "step": "Click 'I hate saving money'",
+        "m": "clickable",
+        "st": ["I hate saving money"],
+        "tf": None,
+        "exp": "x22",
+    },
+    {
+        "n": "23",
+        "step": "Uncheck 'Subscribe to spam newsletter'",
+        "m": "clickable",
+        "st": ["Subscribe to spam newsletter"],
+        "tf": None,
+        "exp": "x23",
+    },
+    {
+        "n": "24",
+        "step": "Uncheck 'sell your soul'",
+        "m": "clickable",
+        "st": ["sell your soul"],
+        "tf": None,
+        "exp": "x24",
+    },
+    {
+        "n": "25",
+        "step": "Click 'Continue without upgrading'",
+        "m": "clickable",
+        "st": ["Continue without upgrading"],
+        "tf": None,
+        "exp": "x25",
+    },
     {"n": "26", "step": "VERIFY that 'Wait, don't leave!' is NOT present", "ver": True, "res": True},
-    {"n": "27", "step": "Click 'Claim 50% Discount' if exists", "m": "clickable", "st": ["Claim 50% Discount"], "tf": None, "exp": None},
+    {
+        "n": "27",
+        "step": "Click 'Claim 50% Discount' if exists",
+        "m": "clickable",
+        "st": ["Claim 50% Discount"],
+        "tf": None,
+        "exp": None,
+    },
     {"n": "28", "step": "EXTRACT time into {t}", "ex": True, "var": "t", "val": "Sale ends in 00:59"},
     {"n": "29", "step": "Click 'Read Terms'", "m": "clickable", "st": ["Read Terms"], "tf": None, "exp": "x29"},
     {"n": "30", "step": "Click 'Close Upsell'", "m": "clickable", "st": ["Close Upsell"], "tf": None, "exp": "x30"},
-
     # Overlaps & Floating
     {"n": "31", "step": "Click 'Close Ad'", "m": "clickable", "st": ["Close Ad"], "tf": None, "exp": "x31"},
     {"n": "32", "step": "Click 'free iPad'", "m": "clickable", "st": ["free iPad"], "tf": None, "exp": "x32"},
     {"n": "33", "step": "Click 'Chat Support'", "m": "clickable", "st": ["Chat Support"], "tf": None, "exp": "x33"},
     {"n": "34", "step": "VERIFY 'How can we help?' is present", "ver": True, "res": True},
-    {"n": "35", "step": "Fill 'Type message...' with 'Help'", "m": "input", "st": ["Type message..."], "tf": "type message...", "exp": "x35"},
+    {
+        "n": "35",
+        "step": "Fill 'Type message...' with 'Help'",
+        "m": "input",
+        "st": ["Type message..."],
+        "tf": "type message...",
+        "exp": "x35",
+    },
     {"n": "36", "step": "Click 'Send Message'", "m": "clickable", "st": ["Send Message"], "tf": None, "exp": "x36"},
     {"n": "37", "step": "Click 'Minimize Chat'", "m": "clickable", "st": ["Minimize Chat"], "tf": None, "exp": "x37"},
-    {"n": "38", "step": "Click 'End Chat Session'", "m": "clickable", "st": ["End Chat Session"], "tf": None, "exp": "x38"},
-    {"n": "39", "step": "Click 'Sticky Header Menu'", "m": "clickable", "st": ["Sticky Header Menu"], "tf": None, "exp": "x39"},
-    {"n": "40", "step": "Fill 'Global Search' with 'Manul'", "m": "input", "st": ["Global Search"], "tf": "global search", "exp": "x40"},
-
+    {
+        "n": "38",
+        "step": "Click 'End Chat Session'",
+        "m": "clickable",
+        "st": ["End Chat Session"],
+        "tf": None,
+        "exp": "x38",
+    },
+    {
+        "n": "39",
+        "step": "Click 'Sticky Header Menu'",
+        "m": "clickable",
+        "st": ["Sticky Header Menu"],
+        "tf": None,
+        "exp": "x39",
+    },
+    {
+        "n": "40",
+        "step": "Fill 'Global Search' with 'Manul'",
+        "m": "input",
+        "st": ["Global Search"],
+        "tf": "global search",
+        "exp": "x40",
+    },
     # Rich Text
     {"n": "41", "step": "Click 'Bold (Ctrl+B)'", "m": "clickable", "st": ["Bold (Ctrl+B)"], "tf": None, "exp": "x41"},
-    {"n": "42", "step": "Click 'Italic (Ctrl+I)'", "m": "clickable", "st": ["Italic (Ctrl+I)"], "tf": None, "exp": "x42"},
+    {
+        "n": "42",
+        "step": "Click 'Italic (Ctrl+I)'",
+        "m": "clickable",
+        "st": ["Italic (Ctrl+I)"],
+        "tf": None,
+        "exp": "x42",
+    },
     {"n": "43", "step": "Click 'Underline'", "m": "clickable", "st": ["Underline"], "tf": None, "exp": "x43"},
     {"n": "44", "step": "Click 'Insert Link'", "m": "clickable", "st": ["Insert Link"], "tf": None, "exp": "x44"},
     {"n": "45", "step": "Click 'Insert Image'", "m": "clickable", "st": ["Insert Image"], "tf": None, "exp": "x45"},
-    {"n": "46", "step": "Select '14pt' from 'Font Size'", "m": "select", "st": ["14pt", "Font Size"], "tf": None, "exp": "x46"},
-    {"n": "47", "step": "Click 'View Source (HTML)'", "m": "clickable", "st": ["View Source (HTML)"], "tf": None, "exp": "x47"},
-    {"n": "48", "step": "Fill 'Rich Text Area' with 'Hello'", "m": "input", "st": ["Rich Text Area"], "tf": "rich text area", "exp": "x48"},
+    {
+        "n": "46",
+        "step": "Select '14pt' from 'Font Size'",
+        "m": "select",
+        "st": ["14pt", "Font Size"],
+        "tf": None,
+        "exp": "x46",
+    },
+    {
+        "n": "47",
+        "step": "Click 'View Source (HTML)'",
+        "m": "clickable",
+        "st": ["View Source (HTML)"],
+        "tf": None,
+        "exp": "x47",
+    },
+    {
+        "n": "48",
+        "step": "Fill 'Rich Text Area' with 'Hello'",
+        "m": "input",
+        "st": ["Rich Text Area"],
+        "tf": "rich text area",
+        "exp": "x48",
+    },
     {"n": "49", "step": "Click 'Publish Post'", "m": "clickable", "st": ["Publish Post"], "tf": None, "exp": "x49"},
     {"n": "50", "step": "Click 'Save as Draft'", "m": "clickable", "st": ["Save as Draft"], "tf": None, "exp": "x50"},
-
     # Exotic Inputs
-    {"n": "51", "step": "Fill 'Pick a color' with '#00ff00'", "m": "input", "st": ["Pick a color"], "tf": "pick a color", "exp": "x51"},
-    {"n": "52", "step": "Fill 'Alarm Time' with '08:00'", "m": "input", "st": ["Alarm Time"], "tf": "alarm time", "exp": "x52"},
-    {"n": "53", "step": "Fill 'Expiration Month' with '2026-10'", "m": "input", "st": ["Expiration Month"], "tf": "expiration month", "exp": "x53"},
-    {"n": "54", "step": "Fill 'Intensity' with '8'", "m": "input", "st": ["Intensity"], "tf": "intensity", "exp": "x54"},
-    {"n": "55", "step": "Fill 'Secret Key' with 'override'", "m": "input", "st": ["Secret Key"], "tf": "secret key", "exp": "x55", "execute_step": True}, # Need to remove readonly
+    {
+        "n": "51",
+        "step": "Fill 'Pick a color' with '#00ff00'",
+        "m": "input",
+        "st": ["Pick a color"],
+        "tf": "pick a color",
+        "exp": "x51",
+    },
+    {
+        "n": "52",
+        "step": "Fill 'Alarm Time' with '08:00'",
+        "m": "input",
+        "st": ["Alarm Time"],
+        "tf": "alarm time",
+        "exp": "x52",
+    },
+    {
+        "n": "53",
+        "step": "Fill 'Expiration Month' with '2026-10'",
+        "m": "input",
+        "st": ["Expiration Month"],
+        "tf": "expiration month",
+        "exp": "x53",
+    },
+    {
+        "n": "54",
+        "step": "Fill 'Intensity' with '8'",
+        "m": "input",
+        "st": ["Intensity"],
+        "tf": "intensity",
+        "exp": "x54",
+    },
+    {
+        "n": "55",
+        "step": "Fill 'Secret Key' with 'override'",
+        "m": "input",
+        "st": ["Secret Key"],
+        "tf": "secret key",
+        "exp": "x55",
+        "execute_step": True,
+    },  # Need to remove readonly
     {"n": "56", "step": "Click 'Unlock Key'", "m": "clickable", "st": ["Unlock Key"], "tf": None, "exp": "x56"},
     {"n": "57", "step": "Click 'Avatar Upload'", "m": "clickable", "st": ["Avatar Upload"], "tf": None, "exp": "x57"},
     {"n": "58", "step": "Click 'Clear File'", "m": "clickable", "st": ["Clear File"], "tf": None, "exp": "x58"},
-    {"n": "59", "step": "Fill 'Volume Knob' with '90'", "m": "input", "st": ["Volume Knob"], "tf": "volume knob", "exp": "x59"}, # Using role=slider
+    {
+        "n": "59",
+        "step": "Fill 'Volume Knob' with '90'",
+        "m": "input",
+        "st": ["Volume Knob"],
+        "tf": "volume knob",
+        "exp": "x59",
+    },  # Using role=slider
     {"n": "60", "step": "Click 'Reset Defaults'", "m": "clickable", "st": ["Reset Defaults"], "tf": None, "exp": "x60"},
-
     # Tooltips & Dynamic
-    {"n": "61", "step": "HOVER over 'Hover me'", "m": "hover", "st": ["Hover me"], "tf": None, "exp": "x61", "execute_step": True},
+    {
+        "n": "61",
+        "step": "HOVER over 'Hover me'",
+        "m": "hover",
+        "st": ["Hover me"],
+        "tf": None,
+        "exp": "x61",
+        "execute_step": True,
+    },
     {"n": "62", "step": "Click 'Submit' button", "m": "clickable", "st": ["Submit"], "tf": None, "exp": "x62"},
-    {"n": "63", "step": "Click 'Click for more info'", "m": "clickable", "st": ["Click for more info"], "tf": None, "exp": "x63"},
-    {"n": "64", "step": "VERIFY that 'Here is the secret info' is NOT present", "ver": True, "res": True}, # Hidden initially
+    {
+        "n": "63",
+        "step": "Click 'Click for more info'",
+        "m": "clickable",
+        "st": ["Click for more info"],
+        "tf": None,
+        "exp": "x63",
+    },
+    {
+        "n": "64",
+        "step": "VERIFY that 'Here is the secret info' is NOT present",
+        "ver": True,
+        "res": True,
+    },  # Hidden initially
     {"n": "65", "step": "Click 'Close Popover'", "m": "clickable", "st": ["Close Popover"], "tf": None, "exp": "x65"},
     {"n": "66", "step": "Click 'Help' icon", "m": "clickable", "st": ["Help"], "tf": None, "exp": "x66"},
-    {"n": "67", "step": "Fill 'Hover to reveal' with 'Test'", "m": "input", "st": ["Hover to reveal"], "tf": "hover to reveal", "exp": "x67"},
+    {
+        "n": "67",
+        "step": "Fill 'Hover to reveal' with 'Test'",
+        "m": "input",
+        "st": ["Hover to reveal"],
+        "tf": "hover to reveal",
+        "exp": "x67",
+    },
     {"n": "68", "step": "Click 'Ghost Action'", "m": "clickable", "st": ["Ghost Action"], "tf": None, "exp": "x68"},
     {"n": "69", "step": "VERIFY 'Loading...' is present", "ver": True, "res": True},
     {"n": "70", "step": "Click 'Load Data'", "m": "clickable", "st": ["Load Data"], "tf": None, "exp": "x70"},
-
     # Nested & ARIA
     {"n": "71", "step": "Click 'Facebook' icon", "m": "clickable", "st": ["Facebook"], "tf": None, "exp": "x71"},
     {"n": "72", "step": "Click 'Twitter' icon", "m": "clickable", "st": ["Twitter"], "tf": None, "exp": "x72"},
     {"n": "73", "step": "Click 'LinkedIn' icon", "m": "clickable", "st": ["LinkedIn"], "tf": None, "exp": "x73"},
     {"n": "74", "step": "Click 'Actual Action'", "m": "clickable", "st": ["Actual Action"], "tf": None, "exp": "x74"},
-    {"n": "75", "step": "Click 'Looks clickable'", "m": "clickable", "st": ["Looks clickable"], "tf": None, "exp": "x75"},
+    {
+        "n": "75",
+        "step": "Click 'Looks clickable'",
+        "m": "clickable",
+        "st": ["Looks clickable"],
+        "tf": None,
+        "exp": "x75",
+    },
     {"n": "76", "step": "Click 'Go to Target'", "m": "clickable", "st": ["Go to Target"], "tf": None, "exp": "x76"},
-    {"n": "77", "step": "Fill 'Fake Input' with 'Hacked'", "m": "input", "st": ["Fake Input"], "tf": "fake input", "exp": "x77"},
-    {"n": "78", "step": "Click 'Clear Fake Input'", "m": "clickable", "st": ["Clear Fake Input"], "tf": None, "exp": "x78"},
+    {
+        "n": "77",
+        "step": "Fill 'Fake Input' with 'Hacked'",
+        "m": "input",
+        "st": ["Fake Input"],
+        "tf": "fake input",
+        "exp": "x77",
+    },
+    {
+        "n": "78",
+        "step": "Click 'Clear Fake Input'",
+        "m": "clickable",
+        "st": ["Clear Fake Input"],
+        "tf": None,
+        "exp": "x78",
+    },
     {"n": "79", "step": "VERIFY 'Warning' is present", "ver": True, "res": True},
-    {"n": "80", "step": "Click 'Dismiss Warning'", "m": "clickable", "st": ["Dismiss Warning"], "tf": None, "exp": "x80"},
-
+    {
+        "n": "80",
+        "step": "Click 'Dismiss Warning'",
+        "m": "clickable",
+        "st": ["Dismiss Warning"],
+        "tf": None,
+        "exp": "x80",
+    },
     # Data Extraction Chaos
     {"n": "81", "step": "EXTRACT Name into {n}", "ex": True, "var": "n", "val": "Manul"},
     {"n": "82", "step": "EXTRACT Age into {a}", "ex": True, "var": "a", "val": "3 years"},
@@ -274,23 +573,86 @@ TESTS = [
     {"n": "84", "step": "EXTRACT Status into {s}", "ex": True, "var": "s", "val": "Operational"},
     {"n": "85", "step": "EXTRACT Ping into {p}", "ex": True, "var": "p", "val": "42ms"},
     {"n": "86", "step": "EXTRACT Deep Text into {dt}", "ex": True, "var": "dt", "val": "Deep Text"},
-    {"n": "87", "step": "Click 'Extract Everything'", "m": "clickable", "st": ["Extract Everything"], "tf": None, "exp": "x87"},
-    {"n": "88", "step": "Fill 'Pre-filled data' with 'New Data'", "m": "input", "st": ["Pre-filled data"], "tf": "pre-filled data", "exp": "x88"},
-    {"n": "89", "step": "Fill 'Pre-filled textarea' with 'Empty'", "m": "input", "st": ["Pre-filled textarea"], "tf": "pre-filled textarea", "exp": "x89"},
+    {
+        "n": "87",
+        "step": "Click 'Extract Everything'",
+        "m": "clickable",
+        "st": ["Extract Everything"],
+        "tf": None,
+        "exp": "x87",
+    },
+    {
+        "n": "88",
+        "step": "Fill 'Pre-filled data' with 'New Data'",
+        "m": "input",
+        "st": ["Pre-filled data"],
+        "tf": "pre-filled data",
+        "exp": "x88",
+    },
+    {
+        "n": "89",
+        "step": "Fill 'Pre-filled textarea' with 'Empty'",
+        "m": "input",
+        "st": ["Pre-filled textarea"],
+        "tf": "pre-filled textarea",
+        "exp": "x89",
+    },
     {"n": "90", "step": "Click 'Wipe Data'", "m": "clickable", "st": ["Wipe Data"], "tf": None, "exp": "x90"},
-
     # FINAL BOSS
     {"n": "91", "step": "Click 'Shadow Strike'", "m": "clickable", "st": ["Shadow Strike"], "tf": None, "exp": "x91"},
-    {"n": "92", "step": "Fill 'Shadow Input' with 'Pierced'", "m": "input", "st": ["Shadow Input"], "tf": "shadow input", "exp": "x92"},
-    {"n": "93", "step": "Click 'Zero Pixel Trap' optional", "m": "clickable", "st": ["Zero Pixel Trap"], "tf": None, "exp": None}, # Ignore invisibles
-    {"n": "94", "step": "Click 'Clipped Trap' optional", "m": "clickable", "st": ["Clipped Trap"], "tf": None, "exp": None}, # Ignore clipped
-    {"n": "95", "step": "Check 'Custom Span Checkbox'", "m": "clickable", "st": ["Custom Span Checkbox"], "tf": None, "exp": "x95"},
-    {"n": "96", "step": "Click 'Submit'", "m": "clickable", "st": ["Submit"], "tf": None, "exp": "x62"}, # Ambiguous 'Submit' matches first best (x62 is native button)
+    {
+        "n": "92",
+        "step": "Fill 'Shadow Input' with 'Pierced'",
+        "m": "input",
+        "st": ["Shadow Input"],
+        "tf": "shadow input",
+        "exp": "x92",
+    },
+    {
+        "n": "93",
+        "step": "Click 'Zero Pixel Trap' optional",
+        "m": "clickable",
+        "st": ["Zero Pixel Trap"],
+        "tf": None,
+        "exp": None,
+    },  # Ignore invisibles
+    {
+        "n": "94",
+        "step": "Click 'Clipped Trap' optional",
+        "m": "clickable",
+        "st": ["Clipped Trap"],
+        "tf": None,
+        "exp": None,
+    },  # Ignore clipped
+    {
+        "n": "95",
+        "step": "Check 'Custom Span Checkbox'",
+        "m": "clickable",
+        "st": ["Custom Span Checkbox"],
+        "tf": None,
+        "exp": "x95",
+    },
+    {
+        "n": "96",
+        "step": "Click 'Submit'",
+        "m": "clickable",
+        "st": ["Submit"],
+        "tf": None,
+        "exp": "x62",
+    },  # Ambiguous 'Submit' matches first best (x62 is native button)
     {"n": "97", "step": "Click 'Submit Final'", "m": "clickable", "st": ["Submit Final"], "tf": None, "exp": "x97"},
     {"n": "98", "step": "VERIFY 'Test Complete' is present", "ver": True, "res": True},
-    {"n": "99", "step": "Click 'Hidden Hover Button' optional", "m": "clickable", "st": ["Hidden Hover Button"], "tf": None, "exp": None}, # Hidden, skipped
+    {
+        "n": "99",
+        "step": "Click 'Hidden Hover Button' optional",
+        "m": "clickable",
+        "st": ["Hidden Hover Button"],
+        "tf": None,
+        "exp": None,
+    },  # Hidden, skipped
     {"n": "100", "step": "Click 'FINISH LAB'", "m": "clickable", "st": ["FINISH LAB"], "tf": None, "exp": "x100"},
 ]
+
 
 async def run_suite():
     print(f"\n{'=' * 70}")
@@ -383,6 +745,7 @@ async def run_suite():
         await browser.close()
 
     return passed == len(TESTS)
+
 
 if __name__ == "__main__":
     asyncio.run(run_suite())

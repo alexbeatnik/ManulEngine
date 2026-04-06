@@ -33,28 +33,28 @@ if not _CONFIG_PATH.exists():
 
 # Maps JSON config keys → corresponding MANUL_* environment variable names.
 _KEY_MAP: dict[str, str] = {
-    "model":                  "MANUL_MODEL",
-    "headless":               "MANUL_HEADLESS",
-    "browser":                "MANUL_BROWSER",
-    "timeout":                "MANUL_TIMEOUT",
-    "nav_timeout":            "MANUL_NAV_TIMEOUT",
-    "ai_threshold":           "MANUL_AI_THRESHOLD",
-    "ai_always":              "MANUL_AI_ALWAYS",
-    "ai_policy":              "MANUL_AI_POLICY",
+    "model": "MANUL_MODEL",
+    "headless": "MANUL_HEADLESS",
+    "browser": "MANUL_BROWSER",
+    "timeout": "MANUL_TIMEOUT",
+    "nav_timeout": "MANUL_NAV_TIMEOUT",
+    "ai_threshold": "MANUL_AI_THRESHOLD",
+    "ai_always": "MANUL_AI_ALWAYS",
+    "ai_policy": "MANUL_AI_POLICY",
     "controls_cache_enabled": "MANUL_CONTROLS_CACHE_ENABLED",
-    "controls_cache_dir":     "MANUL_CONTROLS_CACHE_DIR",
+    "controls_cache_dir": "MANUL_CONTROLS_CACHE_DIR",
     "semantic_cache_enabled": "MANUL_SEMANTIC_CACHE_ENABLED",
-    "log_name_maxlen":        "MANUL_LOG_NAME_MAXLEN",
-    "log_thought_maxlen":     "MANUL_LOG_THOUGHT_MAXLEN",
-    "workers":                "MANUL_WORKERS",
-    "auto_annotate":          "MANUL_AUTO_ANNOTATE",
-    "channel":                "MANUL_CHANNEL",
-    "executable_path":        "MANUL_EXECUTABLE_PATH",
-    "retries":                "MANUL_RETRIES",
-    "screenshot":             "MANUL_SCREENSHOT",
-    "html_report":            "MANUL_HTML_REPORT",
-    "explain_mode":           "MANUL_EXPLAIN",
-    "verify_max_retries":     "MANUL_VERIFY_MAX_RETRIES",
+    "log_name_maxlen": "MANUL_LOG_NAME_MAXLEN",
+    "log_thought_maxlen": "MANUL_LOG_THOUGHT_MAXLEN",
+    "workers": "MANUL_WORKERS",
+    "auto_annotate": "MANUL_AUTO_ANNOTATE",
+    "channel": "MANUL_CHANNEL",
+    "executable_path": "MANUL_EXECUTABLE_PATH",
+    "retries": "MANUL_RETRIES",
+    "screenshot": "MANUL_SCREENSHOT",
+    "html_report": "MANUL_HTML_REPORT",
+    "explain_mode": "MANUL_EXPLAIN",
+    "verify_max_retries": "MANUL_VERIFY_MAX_RETRIES",
 }
 
 # browser_args is a list and cannot be round-tripped through a plain env string
@@ -81,9 +81,12 @@ if _CONFIG_PATH.exists():
         if isinstance(_json_cfg.get("custom_modules_dirs"), list):
             _json_cfg_custom_modules_dirs = [str(d).strip() for d in _json_cfg["custom_modules_dirs"] if str(d).strip()]
         if isinstance(_json_cfg.get("custom_controls_dirs"), list):
-            _json_cfg_custom_controls_dirs = [str(d).strip() for d in _json_cfg["custom_controls_dirs"] if str(d).strip()]
+            _json_cfg_custom_controls_dirs = [
+                str(d).strip() for d in _json_cfg["custom_controls_dirs"] if str(d).strip()
+            ]
     except (json.JSONDecodeError, OSError) as _cfg_err:
         import warnings
+
         warnings.warn(f"ManulEngine: could not load config file '{_CONFIG_PATH}': {_cfg_err}", stacklevel=2)
 
 # ── Core ──────────────────────────────────────────────────────────────────────
@@ -99,6 +102,7 @@ if "MANUL_BROWSER_ARGS" in os.environ:
     _env_browser_args = os.environ["MANUL_BROWSER_ARGS"].strip()
     if _env_browser_args:
         import re as _re_args
+
         BROWSER_ARGS: "list[str]" = [a.strip() for a in _re_args.split(r"[,\s]+", _env_browser_args) if a.strip()]
     else:
         # Explicitly set but empty → clear any JSON browser_args.
@@ -114,8 +118,8 @@ CHANNEL: "str | None" = _raw_channel or None
 _raw_executable_path = (os.getenv("MANUL_EXECUTABLE_PATH") or "").strip()
 EXECUTABLE_PATH: "str | None" = _raw_executable_path or None
 
-TIMEOUT       = int(os.getenv("MANUL_TIMEOUT",     "5000"))
-NAV_TIMEOUT   = int(os.getenv("MANUL_NAV_TIMEOUT", "30000"))
+TIMEOUT = int(os.getenv("MANUL_TIMEOUT", "5000"))
+NAV_TIMEOUT = int(os.getenv("MANUL_NAV_TIMEOUT", "30000"))
 
 # ── Persistent controls cache ────────────────────────────────────────────────
 CONTROLS_CACHE_ENABLED = env_bool("MANUL_CONTROLS_CACHE_ENABLED", "True")
@@ -142,9 +146,7 @@ SEMANTIC_CACHE_ENABLED = env_bool("MANUL_SEMANTIC_CACHE_ENABLED", "True")
 # _PAGES_READ_PATH  — CWD/pages.json when it exists, otherwise the package root
 #   (useful when running from the ManulEngine dev repo without a local copy).
 _PAGES_WRITE_PATH: Path = Path.cwd() / "pages.json"
-_PAGES_READ_PATH:  Path = (
-    _PAGES_WRITE_PATH if _PAGES_WRITE_PATH.exists() else _REPO_ROOT / "pages.json"
-)
+_PAGES_READ_PATH: Path = _PAGES_WRITE_PATH if _PAGES_WRITE_PATH.exists() else _REPO_ROOT / "pages.json"
 
 # PAGE_REGISTRY: nested dict — { site_root_url: { pattern_or_"Domain": name } }
 # Supports multiple sites.  The top-level key is the site root URL (prefix match).
@@ -162,6 +164,7 @@ if _PAGES_READ_PATH.exists():
                     PAGE_REGISTRY[_site_key] = {str(k): str(v) for k, v in _site_val.items()}
     except (json.JSONDecodeError, OSError) as _pages_err:
         import warnings as _warnings
+
         _warnings.warn(f"ManulEngine: could not load pages file '{_PAGES_READ_PATH}': {_pages_err}", stacklevel=2)
 
 # Auto-create pages.json in CWD if it doesn't exist anywhere, so the user has
@@ -196,13 +199,13 @@ except ValueError:
 # custom_controls_dirs is the canonical config key. custom_modules_dirs remains
 # as a backward-compatible alias for existing projects.
 _raw_custom_controls_dirs = os.getenv("MANUL_CUSTOM_CONTROLS_DIRS", "").strip()
-_env_custom_controls_dirs: "list[str]" = [
-    part.strip() for part in _raw_custom_controls_dirs.split(",") if part.strip()
-] if _raw_custom_controls_dirs else []
+_env_custom_controls_dirs: "list[str]" = (
+    [part.strip() for part in _raw_custom_controls_dirs.split(",") if part.strip()] if _raw_custom_controls_dirs else []
+)
 _raw_custom_modules_dirs = os.getenv("MANUL_CUSTOM_MODULES_DIRS", "").strip()
-_env_custom_modules_dirs: "list[str]" = [
-    part.strip() for part in _raw_custom_modules_dirs.split(",") if part.strip()
-] if _raw_custom_modules_dirs else []
+_env_custom_modules_dirs: "list[str]" = (
+    [part.strip() for part in _raw_custom_modules_dirs.split(",") if part.strip()] if _raw_custom_modules_dirs else []
+)
 CUSTOM_CONTROLS_DIRS: "list[str]" = (
     _env_custom_controls_dirs
     or _env_custom_modules_dirs
@@ -224,6 +227,7 @@ def _auto_populate_registry(url: str) -> str:
     Returns the placeholder string generated for *url*.
     """
     from urllib.parse import urlparse as _urlparse_ap
+
     _up = _urlparse_ap(url)
     netloc = _up.netloc
     _slug = (netloc + _up.path).rstrip("/")
@@ -325,10 +329,7 @@ def lookup_page_name(url: str) -> str:
     def _belongs_to_site(candidate_url: str, site_root: str) -> bool:
         candidate_parts = _urlparse(candidate_url)
         site_parts = _urlparse(site_root)
-        if (
-            candidate_parts.scheme != site_parts.scheme
-            or candidate_parts.netloc != site_parts.netloc
-        ):
+        if candidate_parts.scheme != site_parts.scheme or candidate_parts.netloc != site_parts.netloc:
             return False
 
         candidate_path = candidate_parts.path.rstrip("/")
@@ -401,6 +402,7 @@ def lookup_page_name(url: str) -> str:
     # ── 4. No site block matched — delegate to safe read-modify-write helper ─
     return _auto_populate_registry(url)
 
+
 # ── AI control switches ──────────────────────────────────────────────────────
 # When enabled, ALL element resolution decisions go through the LLM picker.
 AI_ALWAYS = env_bool("MANUL_AI_ALWAYS")
@@ -414,7 +416,7 @@ if AI_POLICY not in ("prior", "strict"):
 
 # ── Confidence threshold ───────────────────────────────────────────────────────
 
-_env_threshold  = os.getenv("MANUL_AI_THRESHOLD")
+_env_threshold = os.getenv("MANUL_AI_THRESHOLD")
 ENV_AI_THRESHOLD: "int | None" = int(_env_threshold) if _env_threshold else None
 
 
@@ -432,15 +434,20 @@ def _threshold_for_model(model_name: "str | None") -> int:
     """
     if not model_name:
         return 0
-    m = _re.search(r'(\d+(?:\.\d+)?)\s*b', model_name.lower())
+    m = _re.search(r"(\d+(?:\.\d+)?)\s*b", model_name.lower())
     if not m:
         return 500
     size = float(m.group(1))
-    if   size < 1:    return 500
-    elif size < 5:    return 750
-    elif size < 10:   return 1_000
-    elif size < 20:   return 1_500
-    else:             return 2_000
+    if size < 1:
+        return 500
+    elif size < 5:
+        return 750
+    elif size < 10:
+        return 1_000
+    elif size < 20:
+        return 1_500
+    else:
+        return 2_000
 
 
 def get_threshold(model_name: "str | None", custom_threshold: "int | None" = None) -> int:
@@ -541,33 +548,44 @@ CRITICAL RULES (Apply strictly in this order):
 """
 
 # Tiny (< 1 b) — minimal tokens
-EXECUTOR_PROMPT_TINY = """\
+EXECUTOR_PROMPT_TINY = (
+    """\
 You are a UI element picker for browser automation.
 CONTEXT: {strategic_context}
 
-""" + _RULES_CORE + """
+"""
+    + _RULES_CORE
+    + """
 Return ONLY: {"id": <integer or null>, "thought": "<one sentence>"}
 """
+)
 
 # Small (1–6 b)
-EXECUTOR_PROMPT_SMALL = """\
+EXECUTOR_PROMPT_SMALL = (
+    """\
 You are a precise UI Element Selector for a browser automation agent.
 CONTEXT: {strategic_context}
 
 Given a browser STEP and a list of UI ELEMENTS, return the id of the best match.
 
-""" + _RULES_CORE + """
+"""
+    + _RULES_CORE
+    + """
 OUTPUT (nothing else): {"id": <integer or null>, "thought": "one sentence"}
 """
+)
 
 # Large (7 b+) — with worked examples
-EXECUTOR_PROMPT_LARGE = """\
+EXECUTOR_PROMPT_LARGE = (
+    """\
 You are a precise UI Element Selector for a browser automation agent.
 CONTEXT: {strategic_context}
 
 Given a browser STEP and a list of UI ELEMENTS, return the `id` of the best match.
 
-""" + _RULES_CORE + """
+"""
+    + _RULES_CORE
+    + """
 EXAMPLES:
   Step: "Fill 'Email' in Billing" → Pick element with name "Billing -> Email input text", NOT "Shipping -> Email".
   Step: "Check 'I agree'" → Pick type=checkbox, or class_name containing 'chk'.
@@ -582,16 +600,21 @@ EXAMPLES:
 OUTPUT (strictly valid JSON, no markdown):
 {"id": <integer or null>, "thought": "one sentence"}
 """
+)
+
 
 def get_executor_prompt(model_name: "str | None") -> str:
     """Return executor prompt sized for the model's parameter count."""
     if not model_name:
         return EXECUTOR_PROMPT_TINY  # fallback; won't be called in heuristics-only mode
-    m = _re.search(r'(\d+(?:\.\d+)?)\s*b', model_name.lower())
+    m = _re.search(r"(\d+(?:\.\d+)?)\s*b", model_name.lower())
     size = float(m.group(1)) if m else 0.5
-    if   size < 1:  return EXECUTOR_PROMPT_TINY
-    elif size < 7:  return EXECUTOR_PROMPT_SMALL
-    else:           return EXECUTOR_PROMPT_LARGE
+    if size < 1:
+        return EXECUTOR_PROMPT_TINY
+    elif size < 7:
+        return EXECUTOR_PROMPT_SMALL
+    else:
+        return EXECUTOR_PROMPT_LARGE
 
 
 # Legacy alias

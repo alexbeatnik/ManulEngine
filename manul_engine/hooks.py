@@ -45,16 +45,16 @@ _module_cache: dict[str, ModuleType] = {}
 _CACHE_LOCK = threading.Lock()
 
 # ── Block-marker patterns (also imported by cli.parse_hunt_file) ──────────────
-RE_SETUP        = re.compile(r"^\[SETUP\]$",          re.IGNORECASE)
-RE_END_SETUP    = re.compile(r"^\[END\s+SETUP\]$",    re.IGNORECASE)
-RE_TEARDOWN     = re.compile(r"^\[TEARDOWN\]$",       re.IGNORECASE)
+RE_SETUP = re.compile(r"^\[SETUP\]$", re.IGNORECASE)
+RE_END_SETUP = re.compile(r"^\[END\s+SETUP\]$", re.IGNORECASE)
+RE_TEARDOWN = re.compile(r"^\[TEARDOWN\]$", re.IGNORECASE)
 RE_END_TEARDOWN = re.compile(r"^\[END\s+TEARDOWN\]$", re.IGNORECASE)
 
 _RE_CALL_PYTHON = re.compile(
     r"^CALL\s+PYTHON\s+([{}\w.]+)(.*?)$",
     re.IGNORECASE,
 )
-_RE_PRINT = re.compile(r'^PRINT\s+(.+)$', re.IGNORECASE)
+_RE_PRINT = re.compile(r"^PRINT\s+(.+)$", re.IGNORECASE)
 
 _RE_INTO_VAR = re.compile(r"(?:^|\s+)(?:into|to)\s+\{(\w+)\}\s*$", re.IGNORECASE)
 _RE_WITH_ARGS = re.compile(r"^with\s+args\s*:\s*(.*)$", re.IGNORECASE)
@@ -63,6 +63,7 @@ _RE_VAR_PLACEHOLDER = re.compile(r"\{(\w+)\}")
 
 
 # ── Result type ───────────────────────────────────────────────────────────────
+
 
 @dataclass(frozen=True)
 class HookResult:
@@ -117,6 +118,7 @@ def bind_hook_result(result: HookResult, variables: dict[str, str] | None) -> No
 
 # ── Block extraction ──────────────────────────────────────────────────────────
 
+
 def extract_hook_blocks(raw_text: str) -> tuple[list[str], list[str], str]:
     """Strip ``[SETUP]`` and ``[TEARDOWN]`` blocks from *raw_text*.
 
@@ -127,10 +129,10 @@ def extract_hook_blocks(raw_text: str) -> tuple[list[str], list[str], str]:
         ``(setup_lines, teardown_lines, mission_body)`` where *mission_body* is
         the original text with hook blocks removed.
     """
-    setup_lines:    list[str] = []
+    setup_lines: list[str] = []
     teardown_lines: list[str] = []
-    mission_lines:  list[str] = []
-    in_setup    = False
+    mission_lines: list[str] = []
+    in_setup = False
     in_teardown = False
 
     for raw_line in raw_text.splitlines(keepends=True):
@@ -163,6 +165,7 @@ def extract_hook_blocks(raw_text: str) -> tuple[list[str], list[str], str]:
 
 # ── Module resolution ─────────────────────────────────────────────────────────
 
+
 def _resolve_module(module_path: str, hunt_dir: str | None) -> tuple[ModuleType, bool]:
     """Locate and load *module_path*, returning ``(module, from_cache)``.
 
@@ -191,7 +194,7 @@ def _resolve_module(module_path: str, hunt_dir: str | None) -> tuple[ModuleType,
     # Convert dotted module path to a relative filesystem path.
     # "test_data_helpers"   → test_data_helpers.py
     # "utils.db.helpers"    → utils/db/helpers.py
-    parts  = module_path.split(".")
+    parts = module_path.split(".")
     rel_py = Path(*parts).with_suffix(".py")
 
     search_roots: list[Path] = []
@@ -238,6 +241,7 @@ def clear_module_cache() -> None:
 
 # ── Single-line executor ──────────────────────────────────────────────────────
 
+
 def _parse_call_args(raw_args: str | None, variables: dict[str, str] | None = None) -> list[str]:
     """Parse and resolve positional arguments from a CALL PYTHON instruction.
 
@@ -264,11 +268,7 @@ def _parse_call_args(raw_args: str | None, variables: dict[str, str] | None = No
     if variables:
         resolved: list[str] = []
         for tok in tokens:
-            resolved.append(
-                _RE_VAR_PLACEHOLDER.sub(
-                    lambda m: variables.get(m.group(1), m.group(0)), tok
-                )
-            )
+            resolved.append(_RE_VAR_PLACEHOLDER.sub(lambda m: variables.get(m.group(1), m.group(0)), tok))
         return resolved
     return tokens
 
@@ -311,7 +311,7 @@ def execute_hook_line(
             message=(
                 f"ManulEngine Error: Unrecognised hook instruction: '{line}'\n"
                 f"  Supported syntax:  CALL PYTHON <module>.<function>\n"
-                f"                      PRINT \"message with {{vars}}\"\n"
+                f'                      PRINT "message with {{vars}}"\n'
                 f"  With capture:      CALL PYTHON <module>.<function> into {{var_name}}"
             ),
         )
@@ -335,7 +335,7 @@ def execute_hook_line(
     into_m = _RE_INTO_VAR.search(remainder)
     if into_m:
         var_name = into_m.group(1)
-        remainder = remainder[:into_m.start()].strip()  # args without 'into {var}'
+        remainder = remainder[: into_m.start()].strip()  # args without 'into {var}'
     with_args_m = _RE_WITH_ARGS.match(remainder)
     if with_args_m:
         remainder = with_args_m.group(1).strip()
@@ -366,10 +366,7 @@ def execute_hook_line(
         # inside an already-found helper (e.g. a missing dependency), so
         # surface the original exception details instead.
         if getattr(exc, "name", None) == module_path:
-            hint = (
-                f"'{module_path}.py'" if "." not in module_path
-                else f"'{module_path}' package"
-            )
+            hint = f"'{module_path}.py'" if "." not in module_path else f"'{module_path}' package"
             return HookResult(
                 success=False,
                 message=(
@@ -390,10 +387,7 @@ def execute_hook_line(
     except Exception as exc:
         return HookResult(
             success=False,
-            message=(
-                f"ManulEngine Error: Unexpected error loading '{module_path}': "
-                f"{type(exc).__name__}: {exc}"
-            ),
+            message=(f"ManulEngine Error: Unexpected error loading '{module_path}': {type(exc).__name__}: {exc}"),
         )
 
     # ── Resolve the callable ──────────────────────────────────────────────────
@@ -413,12 +407,12 @@ def execute_hook_line(
         return HookResult(
             success=False,
             message=(
-                f"ManulEngine Error: '{func_name}' in '{module_path}.py' is not "
-                f"callable (found {type(func).__name__})."
+                f"ManulEngine Error: '{func_name}' in '{module_path}.py' is not callable (found {type(func).__name__})."
             ),
         )
 
     import asyncio as _asyncio
+
     if _asyncio.iscoroutinefunction(func):
         return HookResult(
             success=False,
@@ -437,22 +431,16 @@ def execute_hook_line(
     _CALL_PYTHON_WARN_SECONDS = 30
     try:
         import time as _time
+
         _t0 = _time.monotonic()
         ret = func(*call_args)
         _elapsed = _time.monotonic() - _t0
         if _elapsed > _CALL_PYTHON_WARN_SECONDS:
-            print(
-                f"    ⚠️  CALL PYTHON {dotted}() took {_elapsed:.1f}s "
-                f"(>{_CALL_PYTHON_WARN_SECONDS}s threshold)"
-            )
+            print(f"    ⚠️  CALL PYTHON {dotted}() took {_elapsed:.1f}s (>{_CALL_PYTHON_WARN_SECONDS}s threshold)")
         ret_str: str | None = None
         ret_mapping: dict[str, str] = {}
         if isinstance(ret, dict):
-            ret_mapping = {
-                str(key): str(value)
-                for key, value in ret.items()
-                if str(key).strip()
-            }
+            ret_mapping = {str(key): str(value) for key, value in ret.items() if str(key).strip()}
         if var_name is not None:
             # Always stringify — even None → "None" — so that a variable binding
             # is guaranteed when 'into {var}' / 'to {var}' was explicitly requested.
@@ -470,14 +458,12 @@ def execute_hook_line(
     except Exception as exc:
         return HookResult(
             success=False,
-            message=(
-                f"ManulEngine Error: '{dotted}({args_repr})' raised "
-                f"{type(exc).__name__}: {exc}"
-            ),
+            message=(f"ManulEngine Error: '{dotted}({args_repr})' raised {type(exc).__name__}: {exc}"),
         )
 
 
 # ── Block runner ──────────────────────────────────────────────────────────────
+
 
 def run_hooks(
     lines: list[str],

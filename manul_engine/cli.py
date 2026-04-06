@@ -139,6 +139,7 @@ Notes:
   or the MANUL_WORKERS environment variable.
 """
 
+
 # ── Tee stdout → log file ─────────────────────────────────────────────────────
 class _Tee:
     def __init__(self, path: str) -> None:
@@ -174,6 +175,7 @@ class ParsedHunt(NamedTuple):
     (positional indexing and unpacking both work), but also
     supports named attribute access.
     """
+
     mission: str
     context: str
     title: str
@@ -183,7 +185,7 @@ class ParsedHunt(NamedTuple):
     parsed_vars: dict[str, str]
     tags: list[str]
     data_file: str  # @data: path (empty string if not declared)
-    schedule: str   # @schedule: expression (empty string if not declared)
+    schedule: str  # @schedule: expression (empty string if not declared)
     exports: list[str]  # @export: block names (empty list if none declared)
     imports: list[ImportDirective]  # @import: directives (empty list if none declared)
 
@@ -284,11 +286,11 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
     schedule: str = ""
     exports: list[str] = []
     import_directives: list[ImportDirective] = []
-    mission_lines:  list[str] = []
+    mission_lines: list[str] = []
     step_file_lines: list[int] = []
-    setup_lines:    list[str] = []
+    setup_lines: list[str] = []
     teardown_lines: list[str] = []
-    in_setup    = False
+    in_setup = False
     in_teardown = False
 
     with open(filepath, encoding="utf-8") as fh:
@@ -387,7 +389,9 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
         if import_directives:
             hunt_dir = os.path.dirname(os.path.abspath(filepath))
             imported_blocks, import_vars = resolve_imports(
-                import_directives, hunt_dir, filepath,
+                import_directives,
+                hunt_dir,
+                filepath,
             )
             # Merge imported @var: at lowest priority (don't overwrite local declarations)
             for k, v in import_vars.items():
@@ -397,7 +401,9 @@ def parse_hunt_file(filepath: str) -> ParsedHunt:
         # Expand USE <BlockName> directives in mission body
         if mission_lines:
             mission_lines, step_file_lines = expand_use_directives(
-                mission_lines, step_file_lines, imported_blocks,
+                mission_lines,
+                step_file_lines,
+                imported_blocks,
             )
     except HuntImportError:
         raise  # Callers (_run_hunt_file, daemon_main) catch and return controlled error
@@ -461,9 +467,9 @@ async def _run_hunt_file(
     executable_path: "str | None" = None,
 ) -> MissionResult:
     filename = os.path.basename(path)
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"📜 EXECUTING MANUL HUNT: {filename}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     try:
         hunt = parse_hunt_file(path)
@@ -512,9 +518,18 @@ async def _run_hunt_file(
     # ── Pre-flight: lazy-load only the custom control modules needed ──────
     from manul_engine.controls import extract_required_controls
     from manul_engine.prompts import CUSTOM_CONTROLS_DIRS as _custom_dirs
+
     _required_controls = extract_required_controls(hunt.mission, os.getcwd(), custom_modules_dirs=_custom_dirs)
 
-    manul = ManulEngine(headless=headless, browser=browser, debug_mode=debug, break_steps=break_steps, explain_mode=explain, required_controls=_required_controls or None, executable_path=executable_path)
+    manul = ManulEngine(
+        headless=headless,
+        browser=browser,
+        debug_mode=debug,
+        break_steps=break_steps,
+        explain_mode=explain,
+        required_controls=_required_controls or None,
+        executable_path=executable_path,
+    )
     mission_result = MissionResult(file=path, name=filename, status="fail")
     # Feed global lifecycle vars and per-file @var: declarations as separate scopes
     # so the engine can enforce strict precedence.
@@ -551,9 +566,9 @@ async def _run_hunt_file(
         first_fail_error: str | None = None
         for row_idx, row_data in enumerate(data_rows):
             if len(data_rows) > 1:
-                print(f"\n{'─'*40}")
+                print(f"\n{'─' * 40}")
                 print(f"📊 Data row {row_idx + 1}/{len(data_rows)}: {row_data}")
-                print(f"{'─'*40}")
+                print(f"{'─' * 40}")
             row_vars = {str(k): str(v) for k, v in row_data.items()}
             manul.reset_session_state()
             mission_result = await manul.run_mission(
@@ -569,9 +584,7 @@ async def _run_hunt_file(
                 screenshot_mode=screenshot_mode,
             )
             all_step_results.extend(mission_result.steps)
-            all_soft_errors.extend(
-                [f"Data row {row_idx + 1}: {msg}" for msg in mission_result.soft_errors]
-            )
+            all_soft_errors.extend([f"Data row {row_idx + 1}: {msg}" for msg in mission_result.soft_errors])
             if mission_result.status == "fail":
                 overall_ok = False
                 if first_fail_error is None and mission_result.error:
@@ -591,6 +604,7 @@ async def _run_hunt_file(
     except Exception as exc:
         print(f"\n💥 CRASH: {exc}")
         import traceback
+
         traceback.print_exc(file=sys.stdout)
         mission_result.error = str(exc)
         return mission_result
@@ -663,11 +677,7 @@ def _collect(path: str) -> list[str]:
         return [abs_path]
 
     if os.path.isdir(abs_path):
-        files = sorted(
-            os.path.join(abs_path, f)
-            for f in os.listdir(abs_path)
-            if f.endswith(".hunt")
-        )
+        files = sorted(os.path.join(abs_path, f) for f in os.listdir(abs_path) if f.endswith(".hunt"))
         return files
 
     print(f"❌ Path not found: {path}")
@@ -694,35 +704,63 @@ async def main() -> "int | None":
     # Strip leading flags (--headless / --browser) before checking for "scan"
     # so that `manul --headless scan https://…` also works.
     _non_flag_args = [
-        a for i, a in enumerate(args)
+        a
+        for i, a in enumerate(args)
         if a not in ("--headless", "--debug", "--html-report", "--explain", "--global")
-        and not (i > 0 and args[i - 1] in ("--browser", "--workers", "--output", "--break-lines", "--tags", "--retries", "--screenshot", "--executable-path"))
-        and a not in ("--browser", "--workers", "--output", "--break-lines", "--tags", "--retries", "--screenshot", "--executable-path")
+        and not (
+            i > 0
+            and args[i - 1]
+            in (
+                "--browser",
+                "--workers",
+                "--output",
+                "--break-lines",
+                "--tags",
+                "--retries",
+                "--screenshot",
+                "--executable-path",
+            )
+        )
+        and a
+        not in (
+            "--browser",
+            "--workers",
+            "--output",
+            "--break-lines",
+            "--tags",
+            "--retries",
+            "--screenshot",
+            "--executable-path",
+        )
     ]
     if _non_flag_args and _non_flag_args[0] == "scan":
         from manul_engine.scanner import scan_main
+
         # Pass everything before and after 'scan' (flags and their values).
         scan_idx = args.index("scan")
-        scan_args = args[:scan_idx] + args[scan_idx + 1:]
+        scan_args = args[:scan_idx] + args[scan_idx + 1 :]
         await scan_main(scan_args)
         return
 
     if _non_flag_args and _non_flag_args[0] == "record":
         from manul_engine.recorder import record_main
+
         record_idx = args.index("record")
-        record_args = args[:record_idx] + args[record_idx + 1:]
+        record_args = args[:record_idx] + args[record_idx + 1 :]
         await record_main(record_args)
         return
 
     if _non_flag_args and _non_flag_args[0] == "daemon":
         from manul_engine.scheduler import daemon_main
+
         daemon_idx = args.index("daemon")
-        daemon_args = args[:daemon_idx] + args[daemon_idx + 1:]
+        daemon_args = args[:daemon_idx] + args[daemon_idx + 1 :]
         await daemon_main(daemon_args)
         return
 
     if _non_flag_args and _non_flag_args[0] == "pack":
         from manul_engine.packager import pack
+
         source_dir = _non_flag_args[1] if len(_non_flag_args) > 1 else os.getcwd()
         _output_dir, args = _pop_flag(args, "--output")
         archive = pack(source_dir, output_dir=_output_dir)
@@ -731,6 +769,7 @@ async def main() -> "int | None":
 
     if _non_flag_args and _non_flag_args[0] == "install":
         from manul_engine.packager import install as _install_pkg
+
         if len(_non_flag_args) < 2:
             print("Error: manul install requires a source path.", file=sys.stderr)
             sys.exit(1)
@@ -783,6 +822,7 @@ async def main() -> "int | None":
     # point, so read 'workers' from the JSON config file directly.
     import json as _json
     import pathlib as _pathlib
+
     _cfg_path = _pathlib.Path.cwd() / "manul_engine_configuration.json"
     if not _cfg_path.exists():
         _cfg_path = _pathlib.Path(__file__).resolve().parents[1] / "manul_engine_configuration.json"
@@ -810,8 +850,7 @@ async def main() -> "int | None":
     # workers=1 automatically and warn the user if they requested more.
     if (debug or break_lines) and workers > 1:
         print(
-            f"⚠️  --debug / --break-lines require sequential execution; forcing --workers 1"
-            f" (was {workers}).",
+            f"⚠️  --debug / --break-lines require sequential execution; forcing --workers 1 (was {workers}).",
             file=sys.stderr,
         )
         workers = 1
@@ -854,6 +893,7 @@ async def main() -> "int | None":
 
     # ── Hunt files ────────────────────────────────────────────────────────
     import datetime as _dt
+
     _reports_dir = os.path.join(os.getcwd(), "reports")
     os.makedirs(_reports_dir, exist_ok=True)
     log_file = os.path.join(_reports_dir, "last_run.log")
@@ -892,7 +932,8 @@ async def main() -> "int | None":
         # ── Global lifecycle hooks ─────────────────────────────────────────────
         from .lifecycle import GlobalContext, deserialize_global_vars, load_hooks_file, serialize_global_vars
         from .lifecycle import registry as _lc_registry
-        _lc_registry.clear()          # reset any stale registrations from a previous run
+
+        _lc_registry.clear()  # reset any stale registrations from a previous run
         _lc_ctx = GlobalContext()
         # Inherit variables serialised by the orchestrator for parallel workers.
         _lc_ctx.variables.update(deserialize_global_vars())
@@ -945,7 +986,11 @@ async def main() -> "int | None":
 
                 t0 = time.perf_counter()
                 mission_result = await _run_hunt_file(
-                    path, headless, browser, debug, break_lines,
+                    path,
+                    headless,
+                    browser,
+                    debug,
+                    break_lines,
                     screenshot_mode=screenshot_mode,
                     global_vars=_lc_ctx.variables,
                     explain=explain,
@@ -957,7 +1002,11 @@ async def main() -> "int | None":
                     for attempt in range(2, retries + 2):
                         print(f"\n🔄 RETRY {attempt - 1}/{retries} for {mission_result.name}")
                         mission_result = await _run_hunt_file(
-                            path, headless, browser, debug, break_lines,
+                            path,
+                            headless,
+                            browser,
+                            debug,
+                            break_lines,
                             screenshot_mode=screenshot_mode,
                             global_vars=_lc_ctx.variables,
                             explain=explain,
@@ -985,7 +1034,9 @@ async def main() -> "int | None":
             # event loop) and stdout is captured cleanly without interleaving.
             print(f"\u2699\ufe0f  Running with up to {workers} parallel worker(s)\n")
             if _hooks_loaded and not _lc_registry.is_empty:
-                print("⚠️  WARNING: When --workers > 1, lifecycle hooks (@before_all, @before_group) are run independently by each worker for every file. They are not evaluated 'once per suite'.\n")
+                print(
+                    "⚠️  WARNING: When --workers > 1, lifecycle hooks (@before_all, @before_group) are run independently by each worker for every file. They are not evaluated 'once per suite'.\n"
+                )
 
             sem = asyncio.Semaphore(workers)
             manul_exe = _find_manul_exe()
@@ -1029,13 +1080,20 @@ async def main() -> "int | None":
                     )
                     try:
                         raw, _ = await asyncio.wait_for(
-                            proc.communicate(), timeout=_worker_timeout,
+                            proc.communicate(),
+                            timeout=_worker_timeout,
                         )
                     except TimeoutError:
                         proc.kill()
                         await proc.wait()
                         elapsed = time.perf_counter() - t0
-                        return os.path.basename(path), "FAIL", elapsed, f"⏰ TIMEOUT after {_worker_timeout}s: {path}\n", path
+                        return (
+                            os.path.basename(path),
+                            "FAIL",
+                            elapsed,
+                            f"⏰ TIMEOUT after {_worker_timeout}s: {path}\n",
+                            path,
+                        )
                     elapsed = time.perf_counter() - t0
                     output = raw.decode("utf-8", errors="replace")
                     status = "PASS" if proc.returncode == 0 else "FAIL"
@@ -1060,7 +1118,8 @@ async def main() -> "int | None":
                 else:
                     _child_status = "pass" if status == "PASS" else "fail"
                 _mr = MissionResult(
-                    file=fpath, name=name,
+                    file=fpath,
+                    name=name,
                     status=_child_status,
                     duration_ms=elapsed * 1000,
                     tags=_read_tags(fpath),
@@ -1077,11 +1136,11 @@ async def main() -> "int | None":
         run_summary.passed = sum(1 for _, s, _ in results if s == "PASS")
         run_summary.failed = sum(1 for _, s, _ in results if s == "FAIL")
         run_summary.broken = sum(1 for _, s, _ in results if s == "BROKEN")
-        run_summary.flaky  = sum(1 for _, s, _ in results if s == "FLAKY")
+        run_summary.flaky = sum(1 for _, s, _ in results if s == "FLAKY")
         run_summary.warning = sum(1 for _, s, _ in results if s == "WARNING")
         passed = run_summary.passed + run_summary.flaky + run_summary.warning  # flaky/warning count as passed overall
 
-        print(f"\n\n{'='*20} HUNT SUMMARY {'='*20}")
+        print(f"\n\n{'=' * 20} HUNT SUMMARY {'=' * 20}")
         for name, status, secs in results:
             if status == "PASS":
                 icon = "✅"
@@ -1121,11 +1180,12 @@ async def main() -> "int | None":
                 run_summary.passed = sum(1 for _, s, _ in results if s == "PASS")
                 run_summary.failed = sum(1 for _, s, _ in results if s == "FAIL")
                 run_summary.broken = sum(1 for _, s, _ in results if s == "BROKEN")
-                run_summary.flaky  = sum(1 for _, s, _ in results if s == "FLAKY")
+                run_summary.flaky = sum(1 for _, s, _ in results if s == "FLAKY")
                 run_summary.warning = sum(1 for _, s, _ in results if s == "WARNING")
             try:
                 from .reporter import generate_report
                 from .reporting import load_report_state, merge_report_summaries, save_report_state
+
                 report_path = os.path.join(_reports_dir, "manul_report.html")
                 abs_report = _pathlib.Path(report_path).resolve().as_uri()
                 report_summary = merge_report_summaries(load_report_state(), run_summary)

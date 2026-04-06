@@ -56,6 +56,7 @@ def _assert(condition: bool, name: str, detail: str = "") -> None:
 
 # ── Section 1: StepResult defaults ────────────────────────────────────────────
 
+
 def _test_step_result() -> None:
     print("\n  ── StepResult data model ──────────────────────────────────")
 
@@ -74,6 +75,7 @@ def _test_step_result() -> None:
 
 
 # ── Section 2: MissionResult defaults + truthiness ────────────────────────────
+
 
 def _test_mission_result() -> None:
     print("\n  ── MissionResult data model + truthiness ─────────────────")
@@ -125,6 +127,7 @@ def _test_block_result() -> None:
 
 
 # ── Section 3: RunSummary defaults ────────────────────────────────────────────
+
 
 def _test_run_summary() -> None:
     print("\n  ── RunSummary data model ──────────────────────────────────")
@@ -197,74 +200,79 @@ def _test_report_state_merge() -> None:
 
 # ── Section 4: Config defaults (prompts.py) ──────────────────────────────────
 
+
 def _test_config_defaults() -> None:
     print("\n  ── Config defaults (prompts.py) ──────────────────────────")
 
     from manul_engine import prompts
 
     _assert(hasattr(prompts, "RETRIES"), "prompts.RETRIES attribute exists")
-    _assert(isinstance(prompts.RETRIES, int), "prompts.RETRIES is int",
-            f"type={type(prompts.RETRIES).__name__}")
+    _assert(isinstance(prompts.RETRIES, int), "prompts.RETRIES is int", f"type={type(prompts.RETRIES).__name__}")
     _assert(prompts.RETRIES >= 0, "prompts.RETRIES >= 0")
 
     _assert(hasattr(prompts, "SCREENSHOT"), "prompts.SCREENSHOT attribute exists")
-    _assert(prompts.SCREENSHOT in ("on-fail", "always", "none"),
-            "prompts.SCREENSHOT is valid mode",
-            f"value={prompts.SCREENSHOT!r}")
+    _assert(
+        prompts.SCREENSHOT in ("on-fail", "always", "none"),
+        "prompts.SCREENSHOT is valid mode",
+        f"value={prompts.SCREENSHOT!r}",
+    )
 
     _assert(hasattr(prompts, "HTML_REPORT"), "prompts.HTML_REPORT attribute exists")
-    _assert(isinstance(prompts.HTML_REPORT, bool), "prompts.HTML_REPORT is bool",
-            f"type={type(prompts.HTML_REPORT).__name__}")
+    _assert(
+        isinstance(prompts.HTML_REPORT, bool),
+        "prompts.HTML_REPORT is bool",
+        f"type={type(prompts.HTML_REPORT).__name__}",
+    )
 
 
 # ── Section 5: run_mission signature accepts screenshot_mode ──────────────────
+
 
 def _test_run_mission_signature() -> None:
     print("\n  ── run_mission signature ─────────────────────────────────")
 
     from manul_engine.core import ManulEngine
+
     sig = inspect.signature(ManulEngine.run_mission)
     params = list(sig.parameters.keys())
-    _assert("screenshot_mode" in params,
-            "run_mission accepts 'screenshot_mode' parameter",
-            f"params={params}")
+    _assert("screenshot_mode" in params, "run_mission accepts 'screenshot_mode' parameter", f"params={params}")
     # Check default value
     default = sig.parameters["screenshot_mode"].default
-    _assert(default == "none",
-            "screenshot_mode defaults to 'none'",
-            f"default={default!r}")
+    _assert(default == "none", "screenshot_mode defaults to 'none'", f"default={default!r}")
 
     # Return type annotation should be MissionResult
     ret_annotation = sig.return_annotation
     # may be string or class depending on from __future__ annotations
-    _assert("MissionResult" in str(ret_annotation),
-            "run_mission return annotation mentions MissionResult",
-            f"annotation={ret_annotation!r}")
+    _assert(
+        "MissionResult" in str(ret_annotation),
+        "run_mission return annotation mentions MissionResult",
+        f"annotation={ret_annotation!r}",
+    )
 
 
 # ── Section 6: _run_hunt_file signature accepts screenshot_mode ───────────────
+
 
 def _test_run_hunt_file_signature() -> None:
     print("\n  ── _run_hunt_file signature ──────────────────────────────")
 
     from manul_engine.cli import _run_hunt_file
+
     sig = inspect.signature(_run_hunt_file)
     params = list(sig.parameters.keys())
-    _assert("screenshot_mode" in params,
-            "_run_hunt_file accepts 'screenshot_mode' parameter",
-            f"params={params}")
+    _assert("screenshot_mode" in params, "_run_hunt_file accepts 'screenshot_mode' parameter", f"params={params}")
     default = sig.parameters["screenshot_mode"].default
-    _assert(default == "none",
-            "_run_hunt_file screenshot_mode defaults to 'none'",
-            f"default={default!r}")
+    _assert(default == "none", "_run_hunt_file screenshot_mode defaults to 'none'", f"default={default!r}")
 
 
 # ── Section 7: CLI _USAGE includes new flags ─────────────────────────────────
+
 
 def _test_cli_usage() -> None:
     print("\n  ── CLI _USAGE string ─────────────────────────────────────")
 
     from manul_engine.cli import _USAGE
+
     _assert("--retries" in _USAGE, "_USAGE mentions --retries flag")
     _assert("--screenshot" in _USAGE, "_USAGE mentions --screenshot flag")
     _assert("--html-report" in _USAGE, "_USAGE mentions --html-report flag")
@@ -273,6 +281,7 @@ def _test_cli_usage() -> None:
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
+
 
 async def run_suite() -> bool:
     global _PASS, _FAIL

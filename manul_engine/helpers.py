@@ -11,10 +11,11 @@ from typing import NamedTuple
 # ── Timing constants ──────────────────────────────────────────────────────────
 SCROLL_WAIT = 1.5
 ACTION_WAIT = 2.0
-NAV_WAIT    = 2.0
+NAV_WAIT = 2.0
 
 
 # ── Mode detection ────────────────────────────────────────────────────────────
+
 
 def detect_mode(step: str) -> str:
     """Detect the interaction mode from a step's verb keywords.
@@ -22,7 +23,7 @@ def detect_mode(step: str) -> str:
     Returns one of: ``"drag"``, ``"select"``, ``"input"``,
     ``"clickable"``, ``"hover"``, or ``"locate"`` (fallback).
     """
-    words = set(re.findall(r'\b[a-z]+\b', step.lower()))
+    words = set(re.findall(r"\b[a-z]+\b", step.lower()))
     if "drag" in words and "drop" in words:
         return "drag"
     if "select" in words or "choose" in words:
@@ -42,28 +43,28 @@ def detect_mode(step: str) -> str:
 _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
     # STEP must precede other keywords so "STEP 1: NAVIGATE..." is classified correctly.
     # Anchored to line start so that STEP inside quoted labels is not matched.
-    ("logical_step", re.compile(r'^\s*(?:\d+\.\s*)?STEP\s*\d*\s*:')),
-    ("navigate",    re.compile(r'\bNAVIGATE\b')),
-    ("open_app",    re.compile(r'\bOPEN\s+APP\b')),
-    ("mock",        re.compile(r'\bMOCK\s+(?:GET|POST|PUT|PATCH|DELETE)\b')),
-    ("wait_for_response", re.compile(r'\bWAIT\s+FOR\s+RESPONSE\b')),
-    ("wait",        re.compile(r'\bWAIT\b')),
-    ("scroll",      re.compile(r'\bSCROLL\b')),
-    ("extract",     re.compile(r'\bEXTRACT\b')),
-    ("verify_visual",  re.compile(r'\bVERIFY\s+VISUAL\b')),
-    ("verify_softly",  re.compile(r'\bVERIFY\s+SOFTLY\b')),
-    ("verify",      re.compile(r'\bVERIFY\b')),
-    ("press_enter", re.compile(r'^\s*(?:\d+\.\s*)?PRESS\s+ENTER\b')),
-    ("press",       re.compile(r'^\s*(?:\d+\.\s*)?PRESS\b')),
-    ("right_click", re.compile(r'\bRIGHT\s+CLICK\b')),
-    ("upload",      re.compile(r'\bUPLOAD\b')),
-    ("scan_page",   re.compile(r'\bSCAN\s+PAGE\b')),
-    ("call_python", re.compile(r'\bCALL\s+PYTHON\b')),
-    ("set_var",     re.compile(r'^\s*(?:\d+\.\s*)?SET\b')),
-    ("debug_vars",  re.compile(r'\bDEBUG\s+VARS\b')),
-    ("debug",       re.compile(r'\b(?:DEBUG|PAUSE)\b')),
-    ("done",        re.compile(r'\bDONE\b')),
-    ("use_import",  re.compile(r'^\s*(?:\d+\.\s*)?USE\b')),
+    ("logical_step", re.compile(r"^\s*(?:\d+\.\s*)?STEP\s*\d*\s*:")),
+    ("navigate", re.compile(r"\bNAVIGATE\b")),
+    ("open_app", re.compile(r"\bOPEN\s+APP\b")),
+    ("mock", re.compile(r"\bMOCK\s+(?:GET|POST|PUT|PATCH|DELETE)\b")),
+    ("wait_for_response", re.compile(r"\bWAIT\s+FOR\s+RESPONSE\b")),
+    ("wait", re.compile(r"\bWAIT\b")),
+    ("scroll", re.compile(r"\bSCROLL\b")),
+    ("extract", re.compile(r"\bEXTRACT\b")),
+    ("verify_visual", re.compile(r"\bVERIFY\s+VISUAL\b")),
+    ("verify_softly", re.compile(r"\bVERIFY\s+SOFTLY\b")),
+    ("verify", re.compile(r"\bVERIFY\b")),
+    ("press_enter", re.compile(r"^\s*(?:\d+\.\s*)?PRESS\s+ENTER\b")),
+    ("press", re.compile(r"^\s*(?:\d+\.\s*)?PRESS\b")),
+    ("right_click", re.compile(r"\bRIGHT\s+CLICK\b")),
+    ("upload", re.compile(r"\bUPLOAD\b")),
+    ("scan_page", re.compile(r"\bSCAN\s+PAGE\b")),
+    ("call_python", re.compile(r"\bCALL\s+PYTHON\b")),
+    ("set_var", re.compile(r"^\s*(?:\d+\.\s*)?SET\b")),
+    ("debug_vars", re.compile(r"\bDEBUG\s+VARS\b")),
+    ("debug", re.compile(r"\b(?:DEBUG|PAUSE)\b")),
+    ("done", re.compile(r"\bDONE\b")),
+    ("use_import", re.compile(r"^\s*(?:\d+\.\s*)?USE\b")),
 ]
 
 # Legacy pre-compiled system-step pattern kept for backwards compatibility.
@@ -76,27 +77,27 @@ RE_SYSTEM_STEP = re.compile(
 # Extracts the description from a STEP marker line.
 # Matches: "STEP 1: Description" and "STEP: Description" (case-insensitive).
 # The stripped 1-based numbering prefix is handled by the caller.
-_RE_LOGICAL_STEP = re.compile(r'\bSTEP\s*(\d*)\s*:\s*(.*)', re.IGNORECASE)
+_RE_LOGICAL_STEP = re.compile(r"\bSTEP\s*(\d*)\s*:\s*(.*)", re.IGNORECASE)
 _RE_EXPLICIT_WAIT = re.compile(
     r'^\s*(?:\d+\.\s*)?WAIT\s+FOR\s+(?P<quote>["\'])(?P<target>.+?)(?P=quote)\s+TO\s+'
-    r'(?:(?:BE\s+(?P<state_be>VISIBLE|HIDDEN))|(?P<state_disappear>DISAPPEAR))\s*$',
+    r"(?:(?:BE\s+(?P<state_be>VISIBLE|HIDDEN))|(?P<state_disappear>DISAPPEAR))\s*$",
     re.IGNORECASE,
 )
 _RE_VERIFY_STRICT_TEXT = re.compile(
     r'^\s*(?:\d+\.\s*)?VERIFY\s+(?P<target_quote>["\'])(?P<target>.+?)(?P=target_quote)\s+'
-    r'(?P<element_type>button|field|element|input)\s+HAS\s+TEXT\s+'
+    r"(?P<element_type>button|field|element|input)\s+HAS\s+TEXT\s+"
     r'(?P<expected_quote>["\'])(?P<expected>.*?)(?P=expected_quote)\s*\.?\s*$',
     re.IGNORECASE,
 )
 _RE_VERIFY_STRICT_PLACEHOLDER = re.compile(
     r'^\s*(?:\d+\.\s*)?VERIFY\s+(?P<target_quote>["\'])(?P<target>.+?)(?P=target_quote)\s+'
-    r'(?P<element_type>button|field|element|input)\s+HAS\s+PLACEHOLDER\s+'
+    r"(?P<element_type>button|field|element|input)\s+HAS\s+PLACEHOLDER\s+"
     r'(?P<expected_quote>["\'])(?P<expected>.*?)(?P=expected_quote)\s*\.?\s*$',
     re.IGNORECASE,
 )
 _RE_VERIFY_STRICT_VALUE = re.compile(
     r'^\s*(?:\d+\.\s*)?VERIFY\s+(?P<target_quote>["\'])(?P<target>.+?)(?P=target_quote)\s+'
-    r'(?P<element_type>button|field|element|input)\s+HAS\s+VALUE\s+'
+    r"(?P<element_type>button|field|element|input)\s+HAS\s+VALUE\s+"
     r'(?P<expected_quote>["\'])(?P<expected>.*?)(?P=expected_quote)\s*\.?\s*$',
     re.IGNORECASE,
 )
@@ -145,7 +146,7 @@ def normalize_logical_step(step: str) -> str:
     """Return a canonical STEP label without any leading legacy numbering."""
     num, desc = parse_logical_step(step)
     if desc is None:
-        return re.sub(r'^\s*\d+\.\s*', '', step).strip()
+        return re.sub(r"^\s*\d+\.\s*", "", step).strip()
     if num is None:
         return f"STEP: {desc}"
     return f"STEP {num}: {desc}"
@@ -272,6 +273,7 @@ def classify_step(step: str) -> str:
 
 # ── Pure helpers ──────────────────────────────────────────────────────────────
 
+
 def substitute_memory(text: str, memory: dict) -> str:
     """Replace all {var} placeholders with values from memory."""
     for k, v in memory.items():
@@ -311,6 +313,7 @@ def compact_log_field(raw_value: object, env_var: str, default_max_len: int = 0)
 
 # ── Contextual proximity hints ────────────────────────────────────────────────
 
+
 class ContextualHint(NamedTuple):
     """Parsed contextual proximity hint from a DSL step.
 
@@ -323,6 +326,7 @@ class ContextualHint(NamedTuple):
         row_text: For ``INSIDE 'X' row with 'Y'`` — the row-identifying
           text ``'Y'``. ``None`` otherwise.
     """
+
     kind: "str | None"
     anchor: "str | None"
     row_text: "str | None"
@@ -364,13 +368,13 @@ def parse_contextual_hint(step: str) -> "tuple[ContextualHint, str]":
     # INSIDE (most specific — must be checked first)
     m = _RE_INSIDE.search(step)
     if m:
-        cleaned = step[:m.start()] + step[m.end():]
+        cleaned = step[: m.start()] + step[m.end() :]
         return ContextualHint("inside", m.group("target"), m.group("row")), cleaned.strip()
 
     # NEAR
     m = _RE_NEAR.search(step)
     if m:
-        cleaned = step[:m.start()] + step[m.end():]
+        cleaned = step[: m.start()] + step[m.end() :]
         return ContextualHint("near", m.group("anchor"), None), cleaned.strip()
 
     masked = _mask_quoted(step)
@@ -378,13 +382,13 @@ def parse_contextual_hint(step: str) -> "tuple[ContextualHint, str]":
     # ON HEADER
     m = _RE_ON_HEADER.search(masked)
     if m:
-        cleaned = step[:m.start()] + step[m.end():]
+        cleaned = step[: m.start()] + step[m.end() :]
         return ContextualHint("on_header", None, None), cleaned.strip()
 
     # ON FOOTER
     m = _RE_ON_FOOTER.search(masked)
     if m:
-        cleaned = step[:m.start()] + step[m.end():]
+        cleaned = step[: m.start()] + step[m.end() :]
         return ContextualHint("on_footer", None, None), cleaned.strip()
 
     return ContextualHint(None, None, None), step

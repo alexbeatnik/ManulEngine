@@ -43,6 +43,7 @@ def _assert(condition: bool, name: str, detail: str = "") -> None:
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
+
 async def run_suite() -> bool:
     global _PASS, _FAIL
     _PASS = 0
@@ -52,71 +53,67 @@ async def run_suite() -> bool:
 
     # ── 1. Click action ───────────────────────────────────────────────────
     result = _event_to_dsl({"action": "click", "target": "Login", "value": ""})
-    _assert(result is not None and "Click" in result and "'Login'" in result,
-            "click → Click the 'Login' button")
+    _assert(result is not None and "Click" in result and "'Login'" in result, "click → Click the 'Login' button")
 
     result = _event_to_dsl({"action": "click", "target": "Submit Form", "value": ""})
-    _assert(result is not None and "'Submit Form'" in result,
-            "click preserves multi-word target")
+    _assert(result is not None and "'Submit Form'" in result, "click preserves multi-word target")
 
     # ── 2. Fill action ────────────────────────────────────────────────────
     result = _event_to_dsl({"action": "fill", "target": "Email", "value": "test@manul.ai"})
-    _assert(result is not None and "Fill 'Email' with 'test@manul.ai'" in result,
-            "fill → Fill 'Email' with 'test@manul.ai'")
+    _assert(
+        result is not None and "Fill 'Email' with 'test@manul.ai'" in result, "fill → Fill 'Email' with 'test@manul.ai'"
+    )
 
     result = _event_to_dsl({"action": "fill", "target": "Password", "value": "secret"})
-    _assert(result is not None and "'Password'" in result and "'secret'" in result,
-            "fill maps target and value correctly")
+    _assert(
+        result is not None and "'Password'" in result and "'secret'" in result, "fill maps target and value correctly"
+    )
 
     # ── 3. Select action ─────────────────────────────────────────────────
     result = _event_to_dsl({"action": "select", "target": "Country", "value": "Japan"})
-    _assert(result is not None and "Select 'Japan' from the 'Country' dropdown" in result,
-            "select → Select 'Japan' from the 'Country' dropdown")
+    _assert(
+        result is not None and "Select 'Japan' from the 'Country' dropdown" in result,
+        "select → Select 'Japan' from the 'Country' dropdown",
+    )
 
     # ── 4. Check / Uncheck / Radio actions ────────────────────────────────
     result = _event_to_dsl({"action": "check", "target": "Terms", "value": ""})
-    _assert(result is not None and "Check the checkbox for 'Terms'" in result,
-            "check → Check the checkbox for 'Terms'")
+    _assert(result is not None and "Check the checkbox for 'Terms'" in result, "check → Check the checkbox for 'Terms'")
 
     result = _event_to_dsl({"action": "uncheck", "target": "Newsletter", "value": ""})
-    _assert(result is not None and "Uncheck the checkbox for 'Newsletter'" in result,
-            "uncheck → Uncheck the checkbox for 'Newsletter'")
+    _assert(
+        result is not None and "Uncheck the checkbox for 'Newsletter'" in result,
+        "uncheck → Uncheck the checkbox for 'Newsletter'",
+    )
 
     result = _event_to_dsl({"action": "radio", "target": "Male", "value": ""})
-    _assert(result is not None and "Click the radio button for 'Male'" in result,
-            "radio → Click the radio button for 'Male'")
+    _assert(
+        result is not None and "Click the radio button for 'Male'" in result,
+        "radio → Click the radio button for 'Male'",
+    )
 
     # ── 5. Press Enter ────────────────────────────────────────────────────
     result = _event_to_dsl({"action": "press", "target": "", "value": "Enter"})
-    _assert(result is not None and "PRESS ENTER" in result,
-            "press Enter → PRESS ENTER")
+    _assert(result is not None and "PRESS ENTER" in result, "press Enter → PRESS ENTER")
 
     result = _event_to_dsl({"action": "press", "target": "", "value": "Escape"})
-    _assert(result is None,
-            "press non-Enter key → None (ignored)")
+    _assert(result is None, "press non-Enter key → None (ignored)")
 
     # ── 6. Unknown/empty actions ──────────────────────────────────────────
-    _assert(_event_to_dsl({"action": "unknown", "target": "X", "value": ""}) is None,
-            "unknown action → None")
+    _assert(_event_to_dsl({"action": "unknown", "target": "X", "value": ""}) is None, "unknown action → None")
 
-    _assert(_event_to_dsl({"action": "click", "target": "", "value": ""}) is None,
-            "click with empty target → None")
+    _assert(_event_to_dsl({"action": "click", "target": "", "value": ""}) is None, "click with empty target → None")
 
-    _assert(_event_to_dsl({"action": "fill", "target": "", "value": "text"}) is None,
-            "fill with empty target → None")
+    _assert(_event_to_dsl({"action": "fill", "target": "", "value": "text"}) is None, "fill with empty target → None")
 
-    _assert(_event_to_dsl({"action": "select", "target": "", "value": "x"}) is None,
-            "select with empty target → None")
+    _assert(_event_to_dsl({"action": "select", "target": "", "value": "x"}) is None, "select with empty target → None")
 
-    _assert(_event_to_dsl({}) is None,
-            "empty event dict → None")
+    _assert(_event_to_dsl({}) is None, "empty event dict → None")
 
     # Quote escaping: single quotes in target/value are escaped
     result = _event_to_dsl({"action": "click", "target": "John's", "value": ""})
-    _assert(result is not None and "John\\'s" in result,
-            "single quote in target is escaped")
-    _assert(_escape_dsl("it's a test") == "it\\'s a test",
-            "_escape_dsl escapes single quotes")
+    _assert(result is not None and "John\\'s" in result, "single quote in target is escaped")
+    _assert(_escape_dsl("it's a test") == "it\\'s a test", "_escape_dsl escapes single quotes")
 
     # ── 7. _write_hunt_file produces valid output ─────────────────────────
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -128,34 +125,25 @@ async def run_suite() -> bool:
         ]
         _write_hunt_file(out_path, "https://example.com", lines)
 
-        _assert(os.path.exists(out_path),
-                "hunt file created on disk")
+        _assert(os.path.exists(out_path), "hunt file created on disk")
 
         content = open(out_path, "r", encoding="utf-8").read()
 
-        _assert("@context: Recorded session" in content,
-                "hunt file contains @context header")
+        _assert("@context: Recorded session" in content, "hunt file contains @context header")
 
-        _assert("@title: example.com" in content,
-                "hunt file contains @title from URL netloc")
+        _assert("@title: example.com" in content, "hunt file contains @title from URL netloc")
 
-        _assert("STEP 1: Recorded interactions" in content,
-                "hunt file contains STEP 1 header")
+        _assert("STEP 1: Recorded interactions" in content, "hunt file contains STEP 1 header")
 
-        _assert("NAVIGATE to https://example.com" in content,
-                "hunt file contains NAVIGATE step")
+        _assert("NAVIGATE to https://example.com" in content, "hunt file contains NAVIGATE step")
 
-        _assert("Click the 'Login' button" in content,
-                "hunt file contains recorded click step")
+        _assert("Click the 'Login' button" in content, "hunt file contains recorded click step")
 
-        _assert("Fill 'Username' with 'admin'" in content,
-                "hunt file contains recorded fill step")
+        _assert("Fill 'Username' with 'admin'" in content, "hunt file contains recorded fill step")
 
-        _assert("PRESS ENTER" in content,
-                "hunt file contains recorded press step")
+        _assert("PRESS ENTER" in content, "hunt file contains recorded press step")
 
-        _assert(content.strip().endswith("DONE."),
-                "hunt file ends with DONE.")
+        _assert(content.strip().endswith("DONE."), "hunt file ends with DONE.")
 
         # Verify 4-space indentation for action lines
         for line in content.splitlines():
@@ -163,8 +151,7 @@ async def run_suite() -> bool:
             if stripped and not stripped.startswith("@") and not stripped.startswith("STEP") and stripped != "":
                 if stripped in ("DONE.", ""):
                     continue
-                _assert(line.startswith("    "),
-                        f"4-space indent: '{stripped[:40]}...'")
+                _assert(line.startswith("    "), f"4-space indent: '{stripped[:40]}...'")
                 break  # just check one action line
 
     # ── 8. _write_hunt_file with empty recorded lines ─────────────────────
@@ -172,84 +159,69 @@ async def run_suite() -> bool:
         out_path = os.path.join(tmpdir, "empty.hunt")
         _write_hunt_file(out_path, "https://blank.test", [])
         content = open(out_path, "r", encoding="utf-8").read()
-        _assert("NAVIGATE to https://blank.test" in content,
-                "empty recording still has NAVIGATE")
-        _assert(content.strip().endswith("DONE."),
-                "empty recording still ends with DONE.")
+        _assert("NAVIGATE to https://blank.test" in content, "empty recording still has NAVIGATE")
+        _assert(content.strip().endswith("DONE."), "empty recording still ends with DONE.")
 
     # ── 9. _write_hunt_file creates parent directories ────────────────────
     with tempfile.TemporaryDirectory() as tmpdir:
         deep_path = os.path.join(tmpdir, "sub", "dir", "test.hunt")
         _write_hunt_file(deep_path, "https://deep.test", ["    Click the 'OK' button"])
-        _assert(os.path.exists(deep_path),
-                "nested directories created automatically")
+        _assert(os.path.exists(deep_path), "nested directories created automatically")
 
     # ── 10. JS injection script structure ─────────────────────────────────
-    _assert("__manulRecorderInjected" in _RECORDER_JS,
-            "JS has double-injection guard")
+    _assert("__manulRecorderInjected" in _RECORDER_JS, "JS has double-injection guard")
 
-    _assert("bestLabel" in _RECORDER_JS,
-            "JS has bestLabel semantic extraction function")
+    _assert("bestLabel" in _RECORDER_JS, "JS has bestLabel semantic extraction function")
 
-    _assert("data-qa" in _RECORDER_JS,
-            "JS checks data-qa attribute")
+    _assert("data-qa" in _RECORDER_JS, "JS checks data-qa attribute")
 
-    _assert("aria-label" in _RECORDER_JS,
-            "JS checks aria-label attribute")
+    _assert("aria-label" in _RECORDER_JS, "JS checks aria-label attribute")
 
-    _assert("aria-labelledby" in _RECORDER_JS,
-            "JS checks aria-labelledby attribute")
+    _assert("aria-labelledby" in _RECORDER_JS, "JS checks aria-labelledby attribute")
 
-    _assert("placeholder" in _RECORDER_JS,
-            "JS checks placeholder attribute")
+    _assert("placeholder" in _RECORDER_JS, "JS checks placeholder attribute")
 
-    _assert("recordManulEvent" in _RECORDER_JS,
-            "JS calls recordManulEvent bridge")
+    _assert("recordManulEvent" in _RECORDER_JS, "JS calls recordManulEvent bridge")
 
-    _assert("addEventListener" in _RECORDER_JS and "'click'" in _RECORDER_JS,
-            "JS listens to click events")
+    _assert("addEventListener" in _RECORDER_JS and "'click'" in _RECORDER_JS, "JS listens to click events")
 
-    _assert("'input'" in _RECORDER_JS,
-            "JS listens to input events")
+    _assert("'input'" in _RECORDER_JS, "JS listens to input events")
 
-    _assert("'change'" in _RECORDER_JS,
-            "JS listens to change events")
+    _assert("'change'" in _RECORDER_JS, "JS listens to change events")
 
-    _assert("'keydown'" in _RECORDER_JS,
-            "JS listens to keydown events")
+    _assert("'keydown'" in _RECORDER_JS, "JS listens to keydown events")
 
     # ── 10b. Click handler skips <select> and <option> elements ───────────
     # The guard must appear BEFORE the closest() call so that clicks on
     # a <select> wrapped in [role="button"] are still suppressed.
-    _assert("=== 'select'" in _RECORDER_JS and "return" in _RECORDER_JS,
-            "JS click handler has explicit <select> skip guard")
+    _assert(
+        "=== 'select'" in _RECORDER_JS and "return" in _RECORDER_JS, "JS click handler has explicit <select> skip guard"
+    )
 
-    _assert("=== 'option'" in _RECORDER_JS and ".closest('select')" in _RECORDER_JS,
-            "JS click handler skips <option> inside <select>")
+    _assert(
+        "=== 'option'" in _RECORDER_JS and ".closest('select')" in _RECORDER_JS,
+        "JS click handler skips <option> inside <select>",
+    )
 
     # ── 10c. Change handler uses .text for option text ────────────────────
-    _assert("selected.text" in _RECORDER_JS,
-            "JS change handler uses HTMLOptionElement.text property")
+    _assert("selected.text" in _RECORDER_JS, "JS change handler uses HTMLOptionElement.text property")
 
-    _assert("debounce" in _RECORDER_JS.lower(),
-            "JS has input debouncing logic")
+    _assert("debounce" in _RECORDER_JS.lower(), "JS has input debouncing logic")
 
-    _assert("'Enter'" in _RECORDER_JS,
-            "JS detects Enter key")
+    _assert("'Enter'" in _RECORDER_JS, "JS detects Enter key")
 
     # ── 11. DSL indentation correctness ───────────────────────────────────
     for action, event in [
-        ("click",   {"action": "click", "target": "Save", "value": ""}),
-        ("fill",    {"action": "fill", "target": "Name", "value": "John"}),
-        ("select",  {"action": "select", "target": "Size", "value": "Large"}),
-        ("check",   {"action": "check", "target": "Agree", "value": ""}),
+        ("click", {"action": "click", "target": "Save", "value": ""}),
+        ("fill", {"action": "fill", "target": "Name", "value": "John"}),
+        ("select", {"action": "select", "target": "Size", "value": "Large"}),
+        ("check", {"action": "check", "target": "Agree", "value": ""}),
         ("uncheck", {"action": "uncheck", "target": "Promo", "value": ""}),
-        ("radio",   {"action": "radio", "target": "Color", "value": ""}),
-        ("press",   {"action": "press", "target": "", "value": "Enter"}),
+        ("radio", {"action": "radio", "target": "Color", "value": ""}),
+        ("press", {"action": "press", "target": "", "value": "Enter"}),
     ]:
         dsl = _event_to_dsl(event)
-        _assert(dsl is not None and dsl.startswith("    "),
-                f"{action} DSL has 4-space indent")
+        _assert(dsl is not None and dsl.startswith("    "), f"{action} DSL has 4-space indent")
 
     # ── 12. Step aggregation — consecutive fills on same target collapse ──
     print("\n  🔄 Step aggregation (consecutive fill collapsing)")
@@ -275,8 +247,7 @@ async def run_suite() -> bool:
     # ── 13. Aggregation resets when target changes ────────────────────────
     _aggregate_event({"action": "fill", "target": "pass", "value": "p"}, lines, lft)
     _assert(len(lines) == 2, "fill on different target appends (len=2)")
-    _assert("'pass'" in lines[1] and "'p'" in lines[1],
-            "new target step has correct target and value")
+    _assert("'pass'" in lines[1] and "'p'" in lines[1], "new target step has correct target and value")
 
     _aggregate_event({"action": "fill", "target": "pass", "value": "password"}, lines, lft)
     _assert(len(lines) == 2, "consecutive fill on 'pass' replaces (len=2)")
@@ -316,14 +287,10 @@ async def run_suite() -> bool:
     for ev in events:
         _aggregate_event(ev, full_lines, full_lft)
 
-    _assert(len(full_lines) == 3,
-            "7 raw events collapse to 3 clean steps")
-    _assert("'login'" in full_lines[0],
-            "email fill collapsed to final value 'login'")
-    _assert("'password'" in full_lines[1],
-            "pass fill collapsed to final value 'password'")
-    _assert("'Log In'" in full_lines[2],
-            "click step preserved")
+    _assert(len(full_lines) == 3, "7 raw events collapse to 3 clean steps")
+    _assert("'login'" in full_lines[0], "email fill collapsed to final value 'login'")
+    _assert("'password'" in full_lines[1], "pass fill collapsed to final value 'password'")
+    _assert("'Log In'" in full_lines[2], "click step preserved")
 
     # ── 17. Write aggregated output to file ───────────────────────────────
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -331,26 +298,21 @@ async def run_suite() -> bool:
         _write_hunt_file(out_path, "https://www.facebook.com/", full_lines)
         content = open(out_path, "r", encoding="utf-8").read()
         # Should contain exactly one email fill and one pass fill
-        _assert(content.count("Fill 'email'") == 1,
-                "aggregated file has exactly 1 email fill")
-        _assert(content.count("Fill 'pass'") == 1,
-                "aggregated file has exactly 1 pass fill")
-        _assert("'login'" in content,
-                "aggregated file has final email value")
-        _assert("'password'" in content,
-                "aggregated file has final pass value")
-        _assert("Click the 'Log In' button" in content,
-                "aggregated file has click step")
+        _assert(content.count("Fill 'email'") == 1, "aggregated file has exactly 1 email fill")
+        _assert(content.count("Fill 'pass'") == 1, "aggregated file has exactly 1 pass fill")
+        _assert("'login'" in content, "aggregated file has final email value")
+        _assert("'password'" in content, "aggregated file has final pass value")
+        _assert("Click the 'Log In' button" in content, "aggregated file has click step")
 
     # ── Summary ───────────────────────────────────────────────────────────
     total = _PASS + _FAIL
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"📊 SCORE: {_PASS}/{total} passed")
     if _FAIL:
         print(f"\n🙀 {_FAIL} assertion(s) failed")
     else:
         print("\n🏆 FLAWLESS VICTORY!")
-    print(f"{'='*70}")
+    print(f"{'=' * 70}")
 
     return _FAIL == 0
 

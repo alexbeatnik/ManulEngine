@@ -18,10 +18,25 @@ from .js_scripts import SCAN_JS
 
 # ── Element → hunt step mapping ───────────────────────────────────────────────
 
-_SKIP_LABELS = frozenset({
-    "", "click", "button", "submit", "link", "go", "close", "×", "✕", "✖",
-    "menu", "toggle", "show", "hide",
-})
+_SKIP_LABELS = frozenset(
+    {
+        "",
+        "click",
+        "button",
+        "submit",
+        "link",
+        "go",
+        "close",
+        "×",
+        "✕",
+        "✖",
+        "menu",
+        "toggle",
+        "show",
+        "hide",
+    }
+)
+
 
 def _is_useful(identifier: str, kind: str) -> bool:
     """Filter out labels that produce useless / ambiguous steps."""
@@ -106,6 +121,7 @@ def build_hunt(url: str, elements: list[dict]) -> str:
 
 # ── Playwright execution ───────────────────────────────────────────────────────
 
+
 async def scan_page(
     url: str,
     output_file: str = "draft.hunt",
@@ -177,15 +193,16 @@ async def scan_page(
         fh.write(hunt_text)
 
     print(f"\n✅ Draft saved → {output_abs}")
-    print(f"\n{'─'*60}")
+    print(f"\n{'─' * 60}")
     print(hunt_text)
-    print(f"{'─'*60}\n")
+    print(f"{'─' * 60}\n")
 
 
 def _default_output(filename: str = "draft.hunt") -> str:
     """Return tests_home/filename, reading tests_home from the project config."""
     import json
     import pathlib
+
     cfg_path = pathlib.Path.cwd() / "manul_engine_configuration.json"
     if not cfg_path.exists():
         cfg_path = pathlib.Path(__file__).resolve().parents[1] / "manul_engine_configuration.json"
@@ -217,7 +234,7 @@ async def scan_main(args: list[str]) -> None:
             if candidate in _VALID_BROWSERS:
                 browser = candidate
             else:
-                print(f"Error: unsupported browser '{args[idx+1]}'.", file=sys.stderr)
+                print(f"Error: unsupported browser '{args[idx + 1]}'.", file=sys.stderr)
                 sys.exit(1)
             args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
         else:

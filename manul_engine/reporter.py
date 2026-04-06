@@ -541,6 +541,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 # ── HTML template helpers ─────────────────────────────────────────────────────
 
+
 def _esc(text: str | None) -> str:
     """HTML-escape a string (or return empty string for None)."""
     if text is None:
@@ -574,7 +575,7 @@ def _render_step_row(step: StepResult, local_index: int | None = None) -> str:
 
     # Strip any legacy numbered prefix ("2. ") from the step text so it is
     # never shown in the report regardless of the source hunt file format.
-    display_text = re.sub(r'^\s*\d+\.\s*', '', step.text)
+    display_text = re.sub(r"^\s*\d+\.\s*", "", step.text)
 
     content_html = f'<div class="step-text">{_esc(display_text)}</div>'
     if step.healed:
@@ -586,7 +587,7 @@ def _render_step_row(step: StepResult, local_index: int | None = None) -> str:
             f'\n<div class="step-screenshot">'
             f'<img src="data:image/png;base64,{step.screenshot}" '
             f'alt="Screenshot step {display_index}" title="Click to expand" />'
-            f'</div>'
+            f"</div>"
         )
 
     return (
@@ -595,7 +596,7 @@ def _render_step_row(step: StepResult, local_index: int | None = None) -> str:
         f'<div class="step-content">{content_html}</div>'
         f'<div class="step-status {status_class}">{status_label}</div>'
         f'<div class="step-duration">{_fmt_duration(step.duration_ms)}</div>'
-        f'</div>'
+        f"</div>"
     )
 
 
@@ -654,16 +655,22 @@ def _render_lstep_group(label: str | None, steps: list[StepResult], index: int) 
         f'    <span class="lstep-label">{display_label}</span>'
         f'    <span class="lstep-count">{len(steps)} action{"s" if len(steps) != 1 else ""}</span>'
         f'    <span class="lstep-status {status_class}">{status_text}</span>{healed_marker}'
-        f'  </summary>'
+        f"  </summary>"
         f'  <div class="lstep-body"><div class="steps-list">{rows}</div></div>'
-        f'</details>'
+        f"</details>"
     )
 
 
 def _render_mission(mission: MissionResult) -> str:
     """Render one mission accordion block, with optional logical-step grouping."""
     status = mission.status
-    icon = {"pass": "\u2705", "fail": "\u274c", "broken": "\U0001f4a5", "flaky": "\u26a0\ufe0f", "warning": "\u26a0\ufe0f"}.get(status, "\u2753")
+    icon = {
+        "pass": "\u2705",
+        "fail": "\u274c",
+        "broken": "\U0001f4a5",
+        "flaky": "\u26a0\ufe0f",
+        "warning": "\u26a0\ufe0f",
+    }.get(status, "\u2753")
     badge_class = f"badge-{status}"
     tags_attr = _esc(",".join(mission.tags)) if mission.tags else ""
 
@@ -677,16 +684,10 @@ def _render_mission(mission: MissionResult) -> str:
         groups = _group_steps(mission.steps)
         # Use flat rendering when no STEP markers were used (single None group).
         if len(groups) == 1 and groups[0][0] is None:
-            rows = "\n".join(
-                _render_step_row(s, local_index=i)
-                for i, s in enumerate(groups[0][1], 1)
-            )
+            rows = "\n".join(_render_step_row(s, local_index=i) for i, s in enumerate(groups[0][1], 1))
             steps_html = f'<div class="steps-list">{rows}</div>'
         else:
-            steps_html = "\n".join(
-                _render_lstep_group(label, grp, i)
-                for i, (label, grp) in enumerate(groups)
-            )
+            steps_html = "\n".join(_render_lstep_group(label, grp, i) for i, (label, grp) in enumerate(groups))
         if mission.attempts > 1:
             label_txt = "passed on retry" if status == "flaky" else "after retries"
             steps_html += f'<div class="attempts-note">\U0001f504 {label_txt} (attempt {mission.attempts})</div>'
@@ -696,8 +697,8 @@ def _render_mission(mission: MissionResult) -> str:
             steps_html += (
                 f'<div class="soft-errors">'
                 f'<div class="soft-errors-title">\u26a0\ufe0f Soft Assertion Warnings ({len(mission.soft_errors)})</div>'
-                f'<ul>{items}</ul>'
-                f'</div>'
+                f"<ul>{items}</ul>"
+                f"</div>"
             )
     elif mission.error:
         steps_html = f'<div class="step-error" style="margin:12px 16px;">{_esc(mission.error)}</div>'
@@ -710,9 +711,9 @@ def _render_mission(mission: MissionResult) -> str:
         f'    <span class="name">{_esc(mission.name)}</span>'
         f'    <span class="badge {badge_class}">{status}</span>'
         f'    <span class="meta">{meta_text}</span>'
-        f'  </div>'
+        f"  </div>"
         f'  <div class="mission-body">{steps_html}</div>'
-        f'</div>'
+        f"</div>"
     )
 
 
@@ -735,8 +736,7 @@ def _render_html(summary: RunSummary) -> str:
     tag_chips_html = ""
     if all_tags:
         chips = "".join(
-            f'<button type="button" class="tag-chip" data-tag="{_esc(t)}">{_esc(t)}</button>'
-            for t in all_tags
+            f'<button type="button" class="tag-chip" data-tag="{_esc(t)}">{_esc(t)}</button>' for t in all_tags
         )
         tag_chips_html = f'<span class="tag-divider"></span><div class="tag-chips">{chips}</div>'
 
@@ -744,15 +744,15 @@ def _render_html(summary: RunSummary) -> str:
         f'<div class="control-panel">'
         f'<label><input type="checkbox" id="filter-failed"> Show only failed</label>'
         f'<label><input type="checkbox" id="filter-warnings"> Show warnings</label>'
-        f'{tag_chips_html}'
-        f'</div>'
+        f"{tag_chips_html}"
+        f"</div>"
     )
 
     session_banner_html = (
-      f'<div class="session-banner">'
-      f'  <div class="session-chip"><strong>Run Session</strong> {_esc(summary.session_id)}</div>'
-      f'  <div class="session-chip">Merged invocations: {max(1, int(summary.invocation_count or 1))}</div>'
-      f'</div>'
+        f'<div class="session-banner">'
+        f'  <div class="session-chip"><strong>Run Session</strong> {_esc(summary.session_id)}</div>'
+        f'  <div class="session-chip">Merged invocations: {max(1, int(summary.invocation_count or 1))}</div>'
+        f"</div>"
     )
 
     return f"""<!DOCTYPE html>
@@ -837,6 +837,7 @@ def _render_html(summary: RunSummary) -> str:
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
+
 
 def generate_report(summary: RunSummary, output_path: str) -> str:
     """Generate a self-contained HTML report and write it to *output_path*.

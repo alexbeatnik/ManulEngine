@@ -1,5 +1,6 @@
 import sys, os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 from manul_engine.scoring import DOMScorer
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -35,11 +36,21 @@ def _make_el(**overrides) -> dict:
     base = {
         "name": overrides.pop("name", ""),
         "xpath": overrides.pop("xpath", "/html/body/a[1]"),
-        "is_select": False, "is_shadow": False, "is_contenteditable": False,
-        "class_name": "", "tag_name": "a", "input_type": "",
-        "data_qa": "", "html_id": "", "icon_classes": "",
-        "aria_label": "", "placeholder": "", "role": "",
-        "disabled": False, "aria_disabled": "", "name_attr": "",
+        "is_select": False,
+        "is_shadow": False,
+        "is_contenteditable": False,
+        "class_name": "",
+        "tag_name": "a",
+        "input_type": "",
+        "data_qa": "",
+        "html_id": "",
+        "icon_classes": "",
+        "aria_label": "",
+        "placeholder": "",
+        "role": "",
+        "disabled": False,
+        "aria_disabled": "",
+        "name_attr": "",
         "id": 1,
     }
     base.update(overrides)
@@ -60,6 +71,7 @@ def _make_scorer(**kw) -> DOMScorer:
 
 # ── 1: Shopping cart link with class_name, visible text is badge count ────────
 
+
 def _test_cart_class_badge_text():
     print("\n── Cart icon: class_name match, visible text '2' ──")
     el = _make_el(
@@ -74,6 +86,7 @@ def _test_cart_class_badge_text():
 
 
 # ── 2: Shopping cart container by html_id ─────────────────────────────────────
+
 
 def _test_cart_id():
     print("\n── Cart icon: html_id match ──")
@@ -90,6 +103,7 @@ def _test_cart_id():
 
 # ── 3: Cart with data_qa ─────────────────────────────────────────────────────
 
+
 def _test_cart_data_qa():
     print("\n── Cart icon: data_qa match ──")
     el = _make_el(
@@ -104,6 +118,7 @@ def _test_cart_data_qa():
 
 
 # ── 4: Single-word "Cart" search against class ───────────────────────────────
+
 
 def _test_single_word_cart():
     print("\n── Single word 'Cart' vs class with cart ──")
@@ -122,6 +137,7 @@ def _test_single_word_cart():
 
 
 # ── 5: "Basket" keyword in class ─────────────────────────────────────────────
+
 
 def _test_basket_keyword():
     print("\n── 'Basket' keyword in class_name ──")
@@ -142,6 +158,7 @@ def _test_basket_keyword():
 
 # ── 6: Notification bell icon ─────────────────────────────────────────────────
 
+
 def _test_notification_bell():
     print("\n── Notification bell: class + badge ──")
     el = _make_el(
@@ -160,6 +177,7 @@ def _test_notification_bell():
 
 
 # ── 7: Hamburger menu icon ───────────────────────────────────────────────────
+
 
 def _test_hamburger_menu():
     print("\n── Hamburger menu: id=nav_menu, text '☰' ──")
@@ -181,6 +199,7 @@ def _test_hamburger_menu():
 
 # ── 8: User profile icon ─────────────────────────────────────────────────────
 
+
 def _test_user_profile():
     print("\n── User profile: class=user_profile_icon, text '👤' ──")
     el = _make_el(
@@ -198,6 +217,7 @@ def _test_user_profile():
 
 
 # ── 9: Cart link BEATS plain text element ─────────────────────────────────────
+
 
 def _test_cart_beats_plain_number():
     print("\n── Cart link must outscore a plain <span> with same text ──")
@@ -218,6 +238,7 @@ def _test_cart_beats_plain_number():
 
 
 # ── 10: Cart beats disabled cart ──────────────────────────────────────────────
+
 
 def _test_cart_beats_disabled():
     print("\n── Enabled cart link beats disabled cart ──")
@@ -241,6 +262,7 @@ def _test_cart_beats_disabled():
 
 # ── 11: Multi-class element with cart keyword ─────────────────────────────────
 
+
 def _test_multi_class():
     print("\n── Multi-class: 'btn primary shopping_cart_action' ──")
     el = _make_el(
@@ -256,6 +278,7 @@ def _test_multi_class():
 
 
 # ── 12: Partial coverage — 1 of 2 words match ────────────────────────────────
+
 
 def _test_partial_coverage():
     print("\n── Partial: 'shopping' in class but no 'cart' ──")
@@ -278,6 +301,7 @@ def _test_partial_coverage():
 
 # ── 13: Search icon with no visible text ──────────────────────────────────────
 
+
 def _test_search_icon():
     print("\n── Search icon: class=search_btn, no text ──")
     el = _make_el(
@@ -296,6 +320,7 @@ def _test_search_icon():
 
 
 # ── 14: Checkout button vs cart icon — both have "cart" context ───────────────
+
 
 def _test_checkout_vs_cart():
     print("\n── 'Shopping cart' should prefer shopping_cart class over checkout ──")
@@ -319,6 +344,7 @@ def _test_checkout_vs_cart():
 
 # ── 15: data-qa with dashes matches search term with spaces ──────────────────
 
+
 def _test_data_qa_dashes():
     print("\n── data-qa='shopping-cart' matches 'Shopping cart' ──")
     el = _make_el(
@@ -335,6 +361,7 @@ def _test_data_qa_dashes():
 
 # ── 16: html_id with underscores matches multi-word search ────────────────────
 
+
 def _test_id_underscores():
     print("\n── html_id='shopping_cart' attr semantic match ──")
     el = _make_el(
@@ -349,6 +376,7 @@ def _test_id_underscores():
 
 
 # ── 17: camelCase class_name matches multi-word search ───────────────────────
+
 
 def _test_camel_case_class():
     print("\n── className='shoppingCartLink' semantic match ──")
@@ -365,6 +393,7 @@ def _test_camel_case_class():
 
 # ── 18: False positive resistance — unrelated class ──────────────────────────
 
+
 def _test_false_positive_unrelated():
     print("\n── Unrelated class 'footer_links' should NOT score high ──")
     el = _make_el(
@@ -379,6 +408,7 @@ def _test_false_positive_unrelated():
 
 
 # ── 19: False positive — "cart" as substring of unrelated word ────────────────
+
 
 def _test_false_positive_substring():
     print("\n── 'cartography_section' should not get full cart boost ──")
@@ -399,6 +429,7 @@ def _test_false_positive_substring():
 
 
 # ── 20: Hidden cart element gets penalty ──────────────────────────────────────
+
 
 def _test_hidden_cart():
     print("\n── Hidden cart gets ×0.1 penalty ──")
@@ -422,6 +453,7 @@ def _test_hidden_cart():
 
 
 # ── 21: SauceDemo-style cart — realistic scenario ─────────────────────────────
+
 
 def _test_saucedemo_cart():
     print("\n── SauceDemo: <a class='shopping_cart_link'><span class='shopping_cart_badge'>2</span></a> ──")
@@ -447,6 +479,7 @@ def _test_saucedemo_cart():
 
 # ── 22: Wishlist icon — "wish_list" class ─────────────────────────────────────
 
+
 def _test_wishlist():
     print("\n── Wishlist: class=wish_list_icon ──")
     el = _make_el(
@@ -466,6 +499,7 @@ def _test_wishlist():
 
 # ── 23: Close button — "close_modal_btn" ─────────────────────────────────────
 
+
 def _test_close_modal():
     print("\n── Close button: id=close_modal_btn, text 'X' ──")
     el = _make_el(
@@ -484,6 +518,7 @@ def _test_close_modal():
 
 
 # ── 24: Add-to-cart button with data-qa and competing text ───────────────────
+
 
 def _test_add_to_cart_data_qa_wins():
     print("\n── data-qa='add-to-cart' beats text-only match ──")
@@ -511,6 +546,7 @@ def _test_add_to_cart_data_qa_wins():
 
 # ── 25: Attribute match + mode synergy compound ──────────────────────────────
 
+
 def _test_attr_plus_mode_synergy():
     print("\n── Attribute match + link mode synergy compound ──")
     cart_link = _make_el(
@@ -533,6 +569,7 @@ def _test_attr_plus_mode_synergy():
 
 # ── 26: Three-word search term — "add to cart" ───────────────────────────────
 
+
 def _test_three_word_class():
     print("\n── 3-word: 'Add to cart' vs class 'add_to_cart_btn' ──")
     el = _make_el(
@@ -553,6 +590,7 @@ def _test_three_word_class():
 
 # ── 27: Attribute match should NOT set is_perfect ─────────────────────────────
 
+
 def _test_not_perfect_text():
     print("\n── Attribute semantic match does not trigger is_perfect ──")
     el = _make_el(
@@ -568,6 +606,7 @@ def _test_not_perfect_text():
 
 
 # ── 28: Class with only one matching word gives partial coverage ──────────────
+
 
 def _test_single_word_partial():
     print("\n── Partial: class='shopping_deals' vs 'Shopping cart' ──")
@@ -589,6 +628,7 @@ def _test_single_word_partial():
 
 
 # ── 29: Both ID and class match — stacking ───────────────────────────────────
+
 
 def _test_id_and_class_stack():
     print("\n── ID + class both contain keywords — score stacks ──")
@@ -621,6 +661,7 @@ def _test_id_and_class_stack():
 
 # ── 30: Checkout keyword — single word in class ──────────────────────────────
 
+
 def _test_checkout_class():
     print("\n── 'Checkout' in class='checkout_proceed_btn' ──")
     el = _make_el(
@@ -639,6 +680,7 @@ def _test_checkout_class():
 
 
 # ── 31: "Login" in input mode — class="login_form_email" ─────────────────────
+
 
 def _test_login_input_class():
     print("\n── Input mode: class='login_email_field' vs 'Login email' ──")
@@ -661,6 +703,7 @@ def _test_login_input_class():
 
 # ── Runner ────────────────────────────────────────────────────────────────────
 
+
 async def run_suite() -> None:
     _run()
 
@@ -669,45 +712,45 @@ def _run() -> tuple[int, int]:
     global _PASS, _FAIL
     _PASS = _FAIL = 0
     print("\n🧪 ATTRIBUTE SEMANTIC KEYWORD MATCH LAB (31 scenarios / 34 assertions)")
-    _test_cart_class_badge_text()            # 1
-    _test_cart_id()                          # 2
-    _test_cart_data_qa()                     # 3
-    _test_single_word_cart()                 # 4
-    _test_basket_keyword()                   # 5
-    _test_notification_bell()                # 6
-    _test_hamburger_menu()                   # 7
-    _test_user_profile()                     # 8
-    _test_cart_beats_plain_number()           # 9
-    _test_cart_beats_disabled()               # 10
-    _test_multi_class()                       # 11
-    _test_partial_coverage()                  # 12
-    _test_search_icon()                       # 13
-    _test_checkout_vs_cart()                   # 14
-    _test_data_qa_dashes()                    # 15
-    _test_id_underscores()                    # 16
-    _test_camel_case_class()                  # 17
-    _test_false_positive_unrelated()          # 18
-    _test_false_positive_substring()          # 19
-    _test_hidden_cart()                       # 20
-    _test_saucedemo_cart()                    # 21
-    _test_wishlist()                          # 22
-    _test_close_modal()                       # 23
-    _test_add_to_cart_data_qa_wins()          # 24
-    _test_attr_plus_mode_synergy()            # 25
-    _test_three_word_class()                  # 26
-    _test_not_perfect_text()                  # 27
-    _test_single_word_partial()               # 28
-    _test_id_and_class_stack()                # 29
-    _test_checkout_class()                    # 30
-    _test_login_input_class()                 # 31
+    _test_cart_class_badge_text()  # 1
+    _test_cart_id()  # 2
+    _test_cart_data_qa()  # 3
+    _test_single_word_cart()  # 4
+    _test_basket_keyword()  # 5
+    _test_notification_bell()  # 6
+    _test_hamburger_menu()  # 7
+    _test_user_profile()  # 8
+    _test_cart_beats_plain_number()  # 9
+    _test_cart_beats_disabled()  # 10
+    _test_multi_class()  # 11
+    _test_partial_coverage()  # 12
+    _test_search_icon()  # 13
+    _test_checkout_vs_cart()  # 14
+    _test_data_qa_dashes()  # 15
+    _test_id_underscores()  # 16
+    _test_camel_case_class()  # 17
+    _test_false_positive_unrelated()  # 18
+    _test_false_positive_substring()  # 19
+    _test_hidden_cart()  # 20
+    _test_saucedemo_cart()  # 21
+    _test_wishlist()  # 22
+    _test_close_modal()  # 23
+    _test_add_to_cart_data_qa_wins()  # 24
+    _test_attr_plus_mode_synergy()  # 25
+    _test_three_word_class()  # 26
+    _test_not_perfect_text()  # 27
+    _test_single_word_partial()  # 28
+    _test_id_and_class_stack()  # 29
+    _test_checkout_class()  # 30
+    _test_login_input_class()  # 31
     total = _PASS + _FAIL
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"📊 SCORE: {_PASS}/{total} passed")
     if _FAIL:
         print(f"\n🙀 {_FAIL} failure(s)")
     if _PASS == total:
         print("\n🏆 ATTRIBUTE SEMANTIC FLAWLESS!")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     return _PASS, _FAIL
 
 

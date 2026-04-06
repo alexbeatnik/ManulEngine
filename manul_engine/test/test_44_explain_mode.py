@@ -46,11 +46,21 @@ def _make_el(**overrides) -> dict:
     base = {
         "name": overrides.pop("name", "Login button"),
         "xpath": overrides.pop("xpath", "/html/body/button[1]"),
-        "is_select": False, "is_shadow": False, "is_contenteditable": False,
-        "class_name": "", "tag_name": "button", "input_type": "",
-        "data_qa": "", "html_id": "", "icon_classes": "",
-        "aria_label": "", "placeholder": "", "role": "",
-        "disabled": False, "aria_disabled": "", "name_attr": "",
+        "is_select": False,
+        "is_shadow": False,
+        "is_contenteditable": False,
+        "class_name": "",
+        "tag_name": "button",
+        "input_type": "",
+        "data_qa": "",
+        "html_id": "",
+        "icon_classes": "",
+        "aria_label": "",
+        "placeholder": "",
+        "role": "",
+        "disabled": False,
+        "aria_disabled": "",
+        "name_attr": "",
         "id": 1,
     }
     base.update(overrides)
@@ -72,6 +82,7 @@ def _make_scorer(explain: bool = True, **overrides) -> DOMScorer:
 
 # ── Section 1: _explain dict is attached when explain=True ───────────────────
 
+
 def _test_explain_attached() -> None:
     print("\n  ── _explain dict attached ────────────────────────────────────")
 
@@ -85,6 +96,7 @@ def _test_explain_attached() -> None:
 
 # ── Section 2: _explain has all 7 keys ───────────────────────────────────────
 
+
 def _test_explain_keys() -> None:
     print("\n  ── _explain key set ──────────────────────────────────────────")
 
@@ -94,8 +106,7 @@ def _test_explain_keys() -> None:
     expl = results[0]["_explain"]
 
     expected_keys = {"text", "attributes", "semantics", "proximity", "cache", "penalty", "total"}
-    _assert(set(expl.keys()) == expected_keys,
-            f"All 7 keys present: {sorted(expl.keys())}")
+    _assert(set(expl.keys()) == expected_keys, f"All 7 keys present: {sorted(expl.keys())}")
 
     _assert(isinstance(expl["text"], float), "text is float")
     _assert(isinstance(expl["attributes"], float), "attributes is float")
@@ -112,6 +123,7 @@ def _test_explain_keys() -> None:
 
 # ── Section 3: Channel scores sum to total (no penalty) ─────────────────────
 
+
 def _test_channel_sum() -> None:
     print("\n  ── Channel sum → total ──────────────────────────────────────")
 
@@ -123,18 +135,24 @@ def _test_channel_sum() -> None:
     channel_sum = sum(expl[k] for k in ("text", "attributes", "semantics", "proximity", "cache"))
 
     if expl["penalty"] == 1.0:
-        _assert(abs(expl["total"] - channel_sum) < 0.01,
-                f"total ({expl['total']}) ≈ sum of channels ({channel_sum:.3f})")
+        _assert(
+            abs(expl["total"] - channel_sum) < 0.01, f"total ({expl['total']}) ≈ sum of channels ({channel_sum:.3f})"
+        )
     else:
         # With penalty, total < channel_sum
-        _assert(expl["total"] < channel_sum + 0.001,
-                f"total ({expl['total']}) < sum ({channel_sum:.3f}) due to penalty {expl['penalty']}")
+        _assert(
+            expl["total"] < channel_sum + 0.001,
+            f"total ({expl['total']}) < sum ({channel_sum:.3f}) due to penalty {expl['penalty']}",
+        )
 
-    _assert(expl["total"] == round(min(results[0]["score"] / MAX_THEORETICAL_SCORE, 1.0), 3),
-            "total matches normalized el['score']")
+    _assert(
+        expl["total"] == round(min(results[0]["score"] / MAX_THEORETICAL_SCORE, 1.0), 3),
+        "total matches normalized el['score']",
+    )
 
 
 # ── Section 4: Penalty multiplier for disabled elements ──────────────────────
+
 
 def _test_penalty_disabled() -> None:
     print("\n  ── Penalty: disabled element ─────────────────────────────────")
@@ -144,13 +162,12 @@ def _test_penalty_disabled() -> None:
     results = scorer.score_all([el])
     expl = results[0]["_explain"]
 
-    _assert(expl["penalty"] == 0.0,
-            f"Disabled penalty = 0.0, got {expl['penalty']}")
-    _assert(expl["total"] == 0.0,
-            f"Disabled element total = 0.0, got {expl['total']}")
+    _assert(expl["penalty"] == 0.0, f"Disabled penalty = 0.0, got {expl['penalty']}")
+    _assert(expl["total"] == 0.0, f"Disabled element total = 0.0, got {expl['total']}")
 
 
 # ── Section 5: explain=False does NOT attach _explain ────────────────────────
+
 
 def _test_no_explain_by_default() -> None:
     print("\n  ── No _explain when explain=False ────────────────────────────")
@@ -159,11 +176,11 @@ def _test_no_explain_by_default() -> None:
     scorer = _make_scorer(explain=False)
     results = scorer.score_all([el])
 
-    _assert("_explain" not in results[0],
-            "_explain absent when explain=False")
+    _assert("_explain" not in results[0], "_explain absent when explain=False")
 
 
 # ── Section 6: score_elements() passes explain through ──────────────────────
+
 
 def _test_score_elements_explain() -> None:
     print("\n  ── score_elements() explain passthrough ──────────────────────")
@@ -181,8 +198,7 @@ def _test_score_elements_explain() -> None:
         explain=True,
     )
 
-    _assert("_explain" in results[0],
-            "score_elements with explain=True attaches _explain")
+    _assert("_explain" in results[0], "score_elements with explain=True attaches _explain")
 
     results2 = score_elements(
         els=[_make_el(name="Login button")],
@@ -195,11 +211,11 @@ def _test_score_elements_explain() -> None:
         last_xpath=None,
         explain=False,
     )
-    _assert("_explain" not in results2[0],
-            "score_elements with explain=False omits _explain")
+    _assert("_explain" not in results2[0], "score_elements with explain=False omits _explain")
 
 
 # ── Section 7: _print_explain output format ──────────────────────────────────
+
 
 def _test_print_explain_format() -> None:
     print("\n  ── _print_explain output format ──────────────────────────────")
@@ -239,6 +255,7 @@ def _test_print_explain_format() -> None:
 
 # ── Section 8: Multiple elements — explain on each ──────────────────────────
 
+
 def _test_explain_multiple_elements() -> None:
     print("\n  ── Explain on multiple elements ──────────────────────────────")
 
@@ -254,13 +271,13 @@ def _test_explain_multiple_elements() -> None:
     _assert(all_have_explain, "All scored elements have _explain when explain=True")
 
     all_have_total = all(
-        r["_explain"]["total"] == round(min(r["score"] / MAX_THEORETICAL_SCORE, 1.0), 3)
-        for r in results
+        r["_explain"]["total"] == round(min(r["score"] / MAX_THEORETICAL_SCORE, 1.0), 3) for r in results
     )
     _assert(all_have_total, "All _explain.total match normalized el.score")
 
 
 # ── Run ───────────────────────────────────────────────────────────────────────
+
 
 async def run_suite() -> None:
     global _PASS, _FAIL
