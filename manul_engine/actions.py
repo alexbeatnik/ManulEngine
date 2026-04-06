@@ -910,7 +910,16 @@ class _ActionsMixin:
 
                 elif mode == "select":
                     if is_sel:
-                        opts = [expected[0]] if expected else [next(iter(set(re.findall(r'\b[a-z0-9]{3,}\b', step_l))))]
+                        if expected:
+                            opts = [expected[0]]
+                        else:
+                            _tokens = list(dict.fromkeys(re.findall(r'\b[a-z0-9]{3,}\b', step_l)))
+                            if not _tokens:
+                                raise ValueError(
+                                    "Native <select> step could not infer an option from the step text; "
+                                    "provide an explicit expected option in quotes."
+                                )
+                            opts = [_tokens[0]]
                         try: await loc.select_option(label=opts, timeout=3000)
                         except Exception as exc:
                             _log.debug("select_option(label=) failed, trying value: %s", exc)
