@@ -103,21 +103,27 @@
       "condition": "stdin is NOT a TTY (piped by VS Code extension)",
       "pauseMarker": "\\x00MANUL_DEBUG_PAUSE\\x00{\"step\":\"...\",\"idx\":N}\\n",
       "stdinTokens": [
-        { "token": "highlight",  "action": "Re-scroll to currently highlighted element via data-manul-debug-highlight attribute.", "continues": true },
-        { "token": "explain",    "action": "Print heuristic score breakdown from _last_explain_data.", "continues": true },
-        { "token": "what-if",    "action": "Enter ExplainNextDebugger REPL. If user picks !execute, sets _what_if_execute_step and breaks.", "continues": "conditional" },
-        { "token": "continue",   "action": "Reset break_steps to _user_break_steps (original gutter breakpoints). Proceeds.", "continues": false },
-        { "token": "next",       "action": "Add idx+1 to break_steps (pause at immediately following step). Proceeds.", "continues": false },
-        { "token": "debug-stop", "action": "Clear both _user_break_steps and break_steps. Run to end without any further pauses.", "continues": false },
-        { "token": "abort",      "action": "Raise Exception('Test intentionally aborted by user via debug modal').", "continues": false }
-      ]
+        { "token": "highlight",     "action": "Re-scroll to currently highlighted element via data-manul-debug-highlight attribute.", "continues": true },
+        { "token": "explain",       "action": "Print heuristic score breakdown from _last_explain_data.", "continues": true },
+        { "token": "explain-next",  "action": "Evaluate upcoming step via ExplainNextDebugger.evaluate(). Emits \\x00MANUL_EXPLAIN_NEXT\\x00{json}\\n marker to stdout with serialized WhatIfResult (via _result_to_dict). Accepts optional JSON payload: explain-next {\"step\":\"...\"} to evaluate overridden step text.", "continues": true },
+        { "token": "what-if",       "action": "Disabled in extension protocol mode (stdin reserved for debug control tokens). Prints informational message and stays paused.", "continues": true },
+        { "token": "continue",      "action": "Reset break_steps to _user_break_steps (original gutter breakpoints). Proceeds.", "continues": false },
+        { "token": "next",          "action": "Add idx+1 to break_steps (pause at immediately following step). Proceeds.", "continues": false },
+        { "token": "debug-stop",    "action": "Clear both _user_break_steps and break_steps. Run to end without any further pauses.", "continues": false },
+        { "token": "abort",         "action": "Raise Exception('Test intentionally aborted by user via debug modal').", "continues": false }
+      ],
+      "explainNextMarker": {
+        "format": "\\x00MANUL_EXPLAIN_NEXT\\x00{json}\\n",
+        "json": "Serialized WhatIfResult via _result_to_dict(): step, score, confidence_label, target_found, target_element, explanation, risk, suggestion, heuristic_score, heuristic_match"
+      }
     },
 
     "terminalMode": {
       "condition": "stdin IS a TTY (interactive terminal)",
-      "prompt": "[DEBUG] Next step: {step}\\n        ENTER/n = execute · h = re-highlight · w = what-if · pause = Inspector · c = continue all…",
+      "prompt": "[DEBUG] Next step: {step}\\n        ENTER/n = execute \u00b7 e = explain-next \u00b7 h = re-highlight \u00b7 w = what-if \u00b7 pause = Inspector \u00b7 c = continue all\u2026",
       "inputCommands": [
         { "input": "ENTER or n or any",  "action": "Execute the current step." },
+        { "input": "e or explain-next",  "action": "One-shot What-If evaluation of the current step (prints format_report, stays paused)." },
         { "input": "h",                  "action": "Re-scroll to highlighted element." },
         { "input": "w or what-if",       "action": "Enter ExplainNextDebugger REPL." },
         { "input": "pause",              "action": "Open Playwright Inspector (page.pause())." },
@@ -136,15 +142,15 @@
   "whatIfExecuteStepInjection": {
     "location": "manul_engine/core.py :: run_mission() main loop",
     "attribute": "_what_if_execute_step",
-    "mechanism": "After _debug_prompt returns, if _what_if_execute_step is not None, the current action text is replaced with the value, and the attribute is reset to None.",
+    "mechanism": "After _debug_prompt returns, if _what_if_execute_step is not None, the injected step is run through substitute_memory() to resolve {var} placeholders, the action text is replaced, and the attribute is reset to None.",
     "flow": [
       "1. _debug_prompt pauses execution",
-      "2. User enters 'what-if' (extension) or 'w' (terminal)",
+      "2. User enters 'w' (terminal) to open the What-If REPL",
       "3. ExplainNextDebugger.run_repl() opens",
       "4. User evaluates hypothetical steps, then types '!execute [N]'",
       "5. run_repl() returns the chosen step string",
       "6. _debug_prompt sets self._what_if_execute_step = chosen",
-      "7. core.py detects non-None value, replaces current action, resets to None",
+      "7. core.py detects non-None value, runs substitute_memory(), replaces current action, resets to None",
       "8. Execution continues with the substituted step"
     ]
   },
@@ -324,8 +330,8 @@
 
   "testCoverage": {
     "file": "manul_engine/test/test_53_explain_next.py",
-    "assertions": 83,
-    "testCount": 28,
+    "assertions": 112,
+    "testCount": 36,
     "categories": [
       "PageContext construction and to_prompt_text()",
       "WhatIfResult confidence_label property",
@@ -336,7 +342,11 @@
       "System step type overrides",
       "ExplainNextDebugger.history accumulation",
       "_HeuristicHit dataclass",
-      "WHAT_IF_SYSTEM_PROMPT content validation"
+      "WHAT_IF_SYSTEM_PROMPT content validation",
+      "_DebugMixin._EXPLAIN_NEXT_MARKER wire format",
+      "_DebugMixin._result_to_dict() serialization",
+      "Extension protocol explain-next token (current step, overridden step, malformed JSON, multiple calls)",
+      "Terminal mode explain-next (e command)"
     ]
   }
 }
@@ -350,8 +360,10 @@
 
 | Mode | Trigger | Protocol |
 |------|---------|----------|
-| Terminal | Type `w` or `what-if` at the debug prompt | stdin/stdout (TTY) |
-| Extension | Send `what-if\n` on stdin | Pause marker protocol (piped) |
+| Terminal (one-shot) | Type `e` or `explain-next` at the debug prompt | Prints format_report(), stays paused |
+| Terminal (REPL) | Type `w` or `what-if` at the debug prompt | stdin/stdout (TTY) |
+| Extension (one-shot) | Send `explain-next\n` on stdin | Emits `\x00MANUL_EXPLAIN_NEXT\x00{json}\n` marker, stays paused |
+| Extension (REPL) | N/A — disabled in extension protocol mode | stdin reserved for control tokens |
 
 ### REPL Commands
 

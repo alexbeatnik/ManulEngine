@@ -147,13 +147,15 @@ Run a hunt in Debug mode through Test Explorer, then hover over any resolved ste
 
 ### What-If Analysis REPL (Explain Next)
 
-During a debug pause — either in the terminal (`--debug`) or through the VS Code extension (`--break-lines`) — type `w` or send the `what-if` token to enter the interactive What-If Analysis REPL.
+During a debug pause — either in the terminal (`--debug`) or through the VS Code extension (`--break-lines`) — type `w` or send the `what-if` token to enter the interactive What-If Analysis REPL (terminal only — the REPL is unavailable in extension protocol mode because stdin is reserved for debug control tokens).
 
-The REPL evaluates hypothetical steps against the live browser state **without executing them**. It captures a read-only DOM snapshot, runs DOMScorer heuristics in-memory, optionally queries the configured LLM, and returns a 0–10 confidence score with an explanation.
+For a **one-shot evaluation** without entering the REPL, type `e` (terminal) or send the `explain-next` token (extension protocol). The extension protocol also accepts an optional JSON payload to evaluate a different step: `explain-next {"step":"Click the 'Cancel' button"}`.
+
+The REPL and one-shot mode both evaluate hypothetical steps against the live browser state **without executing them**. They capture a read-only DOM snapshot, run DOMScorer heuristics in-memory, optionally query the configured LLM, and return a 0–10 confidence score with an explanation.
 
 ```text
 [DEBUG] Next step: Click the 'Submit' button
-        ENTER/n = execute · h = re-highlight · w = what-if · pause = Inspector · c = continue all…  w
+        ENTER/n = execute · e = explain-next · h = re-highlight · w = what-if · pause = Inspector · c = continue all…  w
 
   🔮 explain-next> Click the 'Cancel' button
 
@@ -704,7 +706,8 @@ The image runs as non-root user `manul` (UID 1000), includes `dumb-init` for pro
 
 ## What's New in v0.0.9.27
 
-- **What-If Analysis REPL (`ExplainNextDebugger`):** Interactive debug REPL for hypothetical step evaluation. During a debug pause, type `w` (terminal) or send `what-if` (extension protocol) to evaluate DSL steps against the live page without executing them. Combines DOMScorer heuristic scoring with optional LLM analysis to produce a 0–10 confidence rating, element match info, risk assessment, and corrective suggestions. The best heuristic match is highlighted with a persistent magenta outline on the live page. REPL commands: `!execute`, `!history`, `!context`, `!quit`. New module: `explain_next.py` with `PageContext`, `WhatIfResult`, `ExplainNextDebugger` classes. 83-assertion test suite (`test_53_explain_next.py`).
+- **What-If Analysis REPL (`ExplainNextDebugger`):** Interactive debug REPL for hypothetical step evaluation. During a debug pause, type `w` (terminal) to enter the REPL or `e` / send `explain-next` (extension protocol) for one-shot evaluation. Combines DOMScorer heuristic scoring with optional LLM analysis to produce a 0–10 confidence rating, element match info, risk assessment, and corrective suggestions. The best heuristic match is highlighted with a persistent magenta outline on the live page. REPL commands: `!execute`, `!history`, `!context`, `!quit`. Extension protocol: `explain-next` emits `\x00MANUL_EXPLAIN_NEXT\x00{json}` marker with serialized `WhatIfResult`; accepts optional `explain-next {"step":"..."}` for overridden step text. New module: `explain_next.py` with `PageContext`, `WhatIfResult`, `ExplainNextDebugger` classes. 112-assertion test suite (`test_53_explain_next.py`).
+- **What-If execute bug fixes:** `_execute_step()` recursive call now passes `strategic_context` and `step_idx` by keyword (was misordered as positional args). Injected What-If steps in `core.py` now run through `substitute_memory()` so `{var}` placeholders are resolved before execution.
 - **LLM JSON fence-stripping:** `_parse_llm_json()` in `llm.py` now strips markdown code fences before JSON parsing, improving robustness with models that wrap JSON responses in triple-backtick blocks.
 
 <details>
@@ -719,15 +722,6 @@ The image runs as non-root user `manul` (UID 1000), includes `dumb-init` for pro
 - **`run_mission()` decomposition:** Extracted `_launch_browser()` and `_parse_task()` from the 400-line `run_mission()` method for testability and readability.
 - **Demo directory restructure:** All integration hunts, scripts, controls, benchmarks, and pages.json moved to `demo/`. New `demo/run_demo.py` runner script. Synthetic test suite extracted to standalone `run_tests.py`.
 - **Security hygiene:** Eliminated false-positive "shell access" alert from package security scanners (socket.dev).
-
-</details>
-
-<details>
-<summary>v0.0.9.22</summary>
-
-- **`manul pack` / `manul install` CLI:** Pack `.hunt` libraries into distributable `.huntlib` archives and install them locally or globally (`~/.manul/hunt_libs/`). Lockfile (`huntlib-lock.json`) tracks installed versions.
-- **Docker CI/CD runner:** Multi-stage `Dockerfile` packaging ManulEngine as a headless CI runner image (`ghcr.io/alexbeatnik/manul-engine`). Non-root `manul` user (UID 1000), `dumb-init` PID 1, Chromium-only by default (configurable via `BROWSERS` build arg). Includes `docker-compose.yml` with `manul` and `manul-daemon` services.
-- **GitHub Actions workflows:** `release.yml` handles unified release automation (PyPI + GHCR + GitHub Release on `v*` tags), `docker-dev.yml` pushes dev images on `main` merge, and `manul-ci.yml` provides a reusable example workflow for downstream repositories.
 
 </details>
 
