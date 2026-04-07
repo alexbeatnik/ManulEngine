@@ -99,7 +99,21 @@ def _make_el(**overrides) -> dict:
 
 
 def _run(coro):
-    """Run an async coroutine synchronously."""
+    """Run an async coroutine synchronously.
+
+    When called from inside an already-running event loop (e.g. from the
+    async ``run_suite`` via ``_test_runner.py``), falls back to creating
+    a new thread-based event loop to avoid ``asyncio.run()`` nesting.
+    """
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop is not None:
+        # Already inside an event loop — run in a fresh loop on a new thread.
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(asyncio.run, coro).result()
     return asyncio.run(coro)
 
 
@@ -889,6 +903,13 @@ def run_all() -> tuple[int, int]:
     return _PASS, _FAIL
 
 
+async def run_suite() -> bool:
+    passed, failed = run_all()
+    total = passed + failed
+    print(f"SCORE: {passed}/{total}")
+    return failed == 0
+
+
 if __name__ == "__main__":
-    _, fails = run_all()
-    sys.exit(1 if fails else 0)
+    ok = asyncio.run(run_suite())
+    sys.exit(0 if ok else 1)

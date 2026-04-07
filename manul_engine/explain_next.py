@@ -26,6 +26,7 @@ Architecture:
 from __future__ import annotations
 
 import asyncio
+import re
 import textwrap
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
@@ -381,20 +382,33 @@ class ExplainNextDebugger:
         """
         ctx = await capture_page_context(page)
 
-        # Extract quoted targets for heuristic scoring
-        search_texts = extract_quoted(hypothetical_step)
+        # Extract quoted targets for heuristic scoring — mirror
+        # _ActionsMixin._execute_step so cache keys and scorer inputs match.
         step_class = classify_step(hypothetical_step)
         mode = detect_mode(hypothetical_step)
-        target_field = search_texts[0] if search_texts else None
-        # Value-first DSL forms: "Type 'VALUE' into 'TARGET'",
-        # "Select 'OPTION' from 'TARGET'" — the actionable element is
-        # the second quoted string, not the first.
+        preserve = mode in ("input", "select")
+        expected = extract_quoted(hypothetical_step, preserve_case=preserve)
+        target_field = None
+        search_texts = expected
+
         step_lower = hypothetical_step.lower()
-        if len(search_texts) >= 2:
-            if mode == "input" and " into " in f" {step_lower} ":
-                target_field = search_texts[1]
-            elif mode == "select" and " from " in f" {step_lower} ":
-                target_field = search_texts[1]
+        if mode == "input" and expected:
+            # Strip value from search_texts exactly like _execute_step.
+            step_l_unquoted = re.sub(
+                r"""(['"])(?:\\.|(?!\1).)*\1""", " ", step_lower,
+            )
+            if re.search(r"\binto\b", step_l_unquoted):
+                search_texts = expected[1:]   # value-first: target is rest
+            else:
+                search_texts = expected[:-1]  # Fill … with: target is head
+        elif mode == "select" and len(expected) >= 2:
+            step_l_unquoted = re.sub(
+                r"""(['"])(?:\\.|(?!\1).)*\1""", " ", step_lower,
+            )
+            if re.search(r"\bfrom\b", step_l_unquoted):
+                search_texts = expected[1:]
+
+        target_field = search_texts[0] if search_texts else None
 
         # Heuristic pre-check (deterministic, no page interaction)
         hit = _heuristic_pre_check(
@@ -469,8 +483,8 @@ class ExplainNextDebugger:
             loc = frame.locator(f"xpath={hit.xpath}").first
             await loc.scroll_into_view_if_needed(timeout=2000)
             await eng._debug_highlight(page, loc)  # type: ignore[attr-defined]
-        except (OSError, RuntimeError, TimeoutError):
-            _log.debug("highlight_match: could not highlight element")
+        except Exception as exc:
+            _log.debug("highlight_match: could not highlight element: %s", exc)
 
     def _heuristic_only_result(
         self,
