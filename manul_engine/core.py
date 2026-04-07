@@ -957,11 +957,19 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
 
                         # What-If REPL: if the debugger chose a step to execute,
                         # replace the current step and re-classify it.
+                        # Temporarily suppress debug so the injected step does
+                        # not trigger a second pause.
+                        _what_if_active = False
                         if self._what_if_execute_step is not None:
                             injected_step = self._what_if_execute_step
                             step = substitute_memory(injected_step, self.memory)
                             step_kind = classify_step(step)
                             self._what_if_execute_step = None
+                            _what_if_active = True
+                            _saved_debug = self.debug_mode
+                            _saved_break = self.break_steps
+                            self.debug_mode = False
+                            self.break_steps = set()
                             if step != injected_step:
                                 print(f"  [🔮 WHAT-IF EXECUTE] {injected_step} -> {step}")
                             else:
@@ -1177,6 +1185,9 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                             _step_error = traceback.format_exc()
                             _log.debug("Step execution failed: %s", exc)
                         finally:
+                            if _what_if_active:
+                                self.debug_mode = _saved_debug
+                                self.break_steps = _saved_break
                             duration_s = time.perf_counter() - started_perf
                             duration_ms = duration_s * 1000
                             _ss_b64: str | None = None

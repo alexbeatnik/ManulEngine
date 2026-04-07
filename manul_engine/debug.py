@@ -260,6 +260,8 @@ class _DebugMixin:
                         if json_part:
                             try:
                                 payload = json.loads(json_part)
+                                if not isinstance(payload, dict):
+                                    raise TypeError("expected JSON object")
                                 eval_step = payload.get("step", step)
                             except (json.JSONDecodeError, TypeError):
                                 print(f"    ⚠️  Invalid JSON payload: {json_part}")

@@ -360,11 +360,12 @@ class ExplainNextDebugger:
     ) -> WhatIfResult:
         """Evaluate a hypothetical step against the current page state.
 
-        This method is guaranteed to be **read-only** — it captures a
-        snapshot, runs heuristic scoring in-memory, and optionally
-        queries the LLM.  The Playwright ``page`` object is never
-        mutated (no clicks, fills, navigations, or evaluate calls that
-        change DOM state).
+        This method captures a snapshot, runs heuristic scoring
+        in-memory, and optionally queries the LLM.  The page is not
+        navigated, clicked, or filled — however ``_highlight_match``
+        applies a reversible debug highlight and scrolls the best
+        candidate into view (cosmetic DOM mutation, cleaned up
+        automatically).
 
         Parameters
         ----------
