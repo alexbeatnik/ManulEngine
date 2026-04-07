@@ -266,7 +266,7 @@ class _DebugMixin:
                                 continue
                         try:
                             dbg = self._get_explain_next()
-                            result = await dbg.evaluate(page, eval_step, last_step=step)
+                            result = await dbg.evaluate(page, eval_step)
                             sys.stdout.write(f"{self._EXPLAIN_NEXT_MARKER}{json.dumps(self._result_to_dict(result))}\n")
                             sys.stdout.flush()
                             print(result.format_report())
@@ -328,7 +328,7 @@ class _DebugMixin:
                     elif user_in in ("e", "explain-next"):
                         try:
                             dbg = self._get_explain_next()
-                            result = await dbg.evaluate(page, step, last_step=step)
+                            result = await dbg.evaluate(page, step)
                             print(result.format_report())
                         except Exception as exc:
                             _log.debug("explain-next evaluation failed: %s", exc)

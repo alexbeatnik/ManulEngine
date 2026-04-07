@@ -135,6 +135,7 @@ VISIBLE_TEXT_JS = """() => {
             el.getAttribute('role') === 'alert'
         );
         if (isHidden && !isAlert) return;
+        if (el.closest('[data-manul-debug]')) return;
         if (el.title)       t += el.title + " ";
         if (el.value && typeof el.value === 'string') t += el.value + " ";
         if (el.placeholder) t += el.placeholder + " ";
