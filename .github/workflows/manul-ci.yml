@@ -30,7 +30,7 @@ jobs:
             -e MANUL_HTML_REPORT=true \
             -e MANUL_SCREENSHOT=on-fail \
             -e MANUL_WORKERS=2 \
-            ghcr.io/alexbeatnik/manul-engine:0.0.9.26 \
+            ghcr.io/alexbeatnik/manul-engine:0.0.9.27 \
             --html-report --screenshot on-fail --workers 2 hunts/
 
       - name: Upload test report

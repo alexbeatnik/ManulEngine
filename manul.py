@@ -24,6 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 def main() -> None:
     from manul_engine.cli import sync_main
+
     sync_main()
 
 

@@ -37,6 +37,8 @@ Follow these rules before generating code, documentation, architecture notes, or
 - `--explain` is a core feature.
 - Any UI feature built around explain mode, including hover tooltips in debug mode, must parse and display the real engine output.
 - Do not invent explanation payloads, simulated debug traces, or mock scoring breakdowns.
+- The `explain-next` extension protocol token emits `\x00MANUL_EXPLAIN_NEXT\x00{json}\n` with a serialized `WhatIfResult`. Extension integrations must parse this wire marker; do not simulate or mock the response.
+- The `what-if` interactive REPL is unavailable in extension protocol mode (stdin reserved for control tokens). Only `explain-next` one-shot evaluation is supported over the piped protocol.
 
 ### Desktop automation
 
@@ -62,25 +64,25 @@ Follow these rules before generating code, documentation, architecture notes, or
 
 ## 3. Versioning and Dependencies
 
-- Treat `0.0.9.26` as the current engine version for this documentation and release line.
+- Treat `0.0.9.27` as the current engine version for this documentation and release line.
 - When version metadata is required in config examples or integration code, use:
 
 ```json
 {
-  "manulEngineVersion": "0.0.9.26"
+  "manulEngineVersion": "0.0.9.27"
 }
 ```
 
 - When generating `pip install` commands, pin the exact version, for example:
 
 ```bash
-pip install manul-engine==0.0.9.26
+pip install manul-engine==0.0.9.27
 ```
 
 - If the AI extra is needed, pin that exact version too:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.26"
+pip install "manul-engine[ai]==0.0.9.27"
 ```
 
 - When standalone Python dependencies must be installed manually for this release line, pin them explicitly too:

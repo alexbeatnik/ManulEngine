@@ -53,6 +53,7 @@ from .exceptions import (
     SessionError,
     VerificationError,
 )
+from .explain_next import ExplainNextDebugger, WhatIfResult
 from .lifecycle import (
     GlobalContext,
     after_all,
@@ -66,6 +67,7 @@ __all__ = [
     "ConfigurationError",
     "ElementResolutionError",
     "EngineConfig",
+    "ExplainNextDebugger",
     "GlobalContext",
     "HookExecutionError",
     "HuntImportError",
@@ -76,6 +78,7 @@ __all__ = [
     "ScopedVariables",
     "SessionError",
     "VerificationError",
+    "WhatIfResult",
     "after_all",
     "after_group",
     "before_all",

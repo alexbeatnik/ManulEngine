@@ -20,6 +20,7 @@ from .helpers import (
     parse_contextual_hint,
     parse_explicit_wait,
     parse_verify_strict_assertion,
+    substitute_memory,
 )
 from .js_scripts import (
     DEEP_TEXT_JS,
@@ -959,6 +960,30 @@ class _ActionsMixin:
             if _in_debug:
                 await self._debug_prompt(page, step, step_idx)
                 await self._clear_debug_highlight(page)
+                # What-If REPL: if the debugger chose a replacement step,
+                # resolve {var} placeholders and execute it instead of the
+                # paused action.  Temporarily disable debug so the
+                # replacement does not trigger a second pause.
+                replacement_step = getattr(self, "_what_if_execute_step", None)
+                if replacement_step:
+                    self._what_if_execute_step = None
+                    resolved = substitute_memory(replacement_step, self.memory)
+                    if resolved != replacement_step:
+                        _log.debug("What-If substitute_memory: %s -> %s", replacement_step, resolved)
+                    _saved_break = self.break_steps
+                    _saved_debug = self.debug_mode
+                    self.break_steps = set()
+                    self.debug_mode = False
+                    try:
+                        return await self._execute_step(
+                            page,
+                            resolved,
+                            strategic_context=strategic_context,
+                            step_idx=step_idx,
+                        )
+                    finally:
+                        self.break_steps = _saved_break
+                        self.debug_mode = _saved_debug
 
             try:
                 if mode == "input":

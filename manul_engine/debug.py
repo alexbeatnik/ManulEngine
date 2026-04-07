@@ -19,6 +19,7 @@ import asyncio
 import json
 import sys
 
+from .explain_next import ExplainNextDebugger, WhatIfResult
 from .js_scripts import DEBUG_MODAL_JS, DEBUG_REMOVE_MODAL_JS
 from .logging_config import logger
 
@@ -27,6 +28,22 @@ _log = logger.getChild("debug")
 
 class _DebugMixin:
     """Mixin providing interactive debugging capabilities for ManulEngine."""
+
+    _explain_next_debugger: ExplainNextDebugger | None = None
+
+    def _get_explain_next(self) -> ExplainNextDebugger:
+        """Lazily create the ExplainNextDebugger for what-if analysis."""
+        current_last_xpath = getattr(self, "last_xpath", None)
+        if self._explain_next_debugger is None:
+            self._explain_next_debugger = ExplainNextDebugger(
+                llm=self._llm,  # type: ignore[attr-defined]
+                learned_elements=getattr(self, "learned_elements", None),
+                last_xpath=current_last_xpath,
+                engine=self,
+            )
+        else:
+            self._explain_next_debugger._last_xpath = current_last_xpath
+        return self._explain_next_debugger
 
     # ── Visual feedback ───────────────────────
 
@@ -119,6 +136,23 @@ class _DebugMixin:
             _log.debug("clear_debug_highlight failed — page already destroyed")
 
     _DEBUG_PAUSE_MARKER = "\x00MANUL_DEBUG_PAUSE\x00"
+    _EXPLAIN_NEXT_MARKER = "\x00MANUL_EXPLAIN_NEXT\x00"
+
+    @staticmethod
+    def _result_to_dict(r: WhatIfResult) -> dict:
+        """Serialize a WhatIfResult to a plain dict for the extension protocol."""
+        return {
+            "step": r.step,
+            "score": r.score,
+            "confidence_label": r.confidence_label,
+            "target_found": r.target_found,
+            "target_element": r.target_element,
+            "explanation": r.explanation,
+            "risk": r.risk,
+            "suggestion": r.suggestion,
+            "heuristic_score": r.heuristic_score,
+            "heuristic_match": r.heuristic_match,
+        }
 
     async def _inject_debug_modal(self, page, step: str) -> None:
         """Inject the floating debug panel with an Abort button into the browser."""
@@ -155,12 +189,18 @@ class _DebugMixin:
         1. **Extension protocol mode** (stdin is not a TTY, i.e. piped by the
            VS Code extension): writes a JSON pause marker to stdout, then reads
            tokens from stdin in a loop.  Accepted tokens:
-             - ``'highlight'`` : re-scroll to the currently highlighted element
-             - ``'explain'``   : print heuristic score breakdown
-             - ``'continue'``  : reset to original gutter breakpoints, proceed
-             - ``'next'``      : also pause at the immediately following step
-             - ``'debug-stop'``: clear all breakpoints, run to end
-             - ``'abort'``     : abort the test immediately
+             - ``'highlight'``     : re-scroll to the currently highlighted element
+             - ``'explain'``       : print heuristic score breakdown
+             - ``'explain-next'``  : evaluate upcoming step via ExplainNextDebugger,
+               emit ``\\x00MANUL_EXPLAIN_NEXT\\x00{json}\\n`` marker, stay paused.
+               Optionally ``explain-next {"step":"..."}`` to evaluate overridden text.
+             - ``'what-if'``       : disabled in extension protocol mode (stdin
+               reserved for control tokens); prints an informational message
+               and stays paused.  The interactive REPL is terminal-only.
+             - ``'continue'``      : reset to original gutter breakpoints, proceed
+             - ``'next'``          : also pause at the immediately following step
+             - ``'debug-stop'``    : clear all breakpoints, run to end
+             - ``'abort'``         : abort the test immediately
 
         2. **Terminal mode** (stdin is a TTY): prints a human-readable prompt and
            waits for input.
@@ -193,7 +233,8 @@ class _DebugMixin:
                             t.cancel()
                         if abort_event.is_set():
                             raise Exception("Test intentionally aborted by user via debug modal")
-                        resp = read_task.result().strip().lower()
+                        resp_raw = read_task.result().strip()
+                        resp = resp_raw.lower()
                     except (EOFError, KeyboardInterrupt):
                         return
                     if resp == "abort":
@@ -216,6 +257,34 @@ class _DebugMixin:
                         else:
                             print("    ℹ️  No element resolution data for this step.")
                         continue  # loop: re-emit the marker
+                    elif resp == "explain-next" or resp.startswith("explain-next "):
+                        json_part = resp_raw[len("explain-next") :].strip()
+                        eval_step = step
+                        if json_part:
+                            try:
+                                payload = json.loads(json_part)
+                                if not isinstance(payload, dict):
+                                    raise TypeError("expected JSON object")
+                                eval_step = payload.get("step", step)
+                            except (json.JSONDecodeError, TypeError):
+                                print(f"    ⚠️  Invalid JSON payload: {json_part}")
+                                continue
+                        try:
+                            dbg = self._get_explain_next()
+                            result = await dbg.evaluate(page, eval_step)
+                            sys.stdout.write(f"{self._EXPLAIN_NEXT_MARKER}{json.dumps(self._result_to_dict(result))}\n")
+                            sys.stdout.flush()
+                            print(result.format_report())
+                        except Exception as exc:
+                            _log.debug("explain-next evaluation failed: %s", exc)
+                            print(f"    ❌ Explain-next evaluation failed: {exc}")
+                        continue  # stay in the pause loop
+                    elif resp == "what-if":
+                        print(
+                            "    ℹ️  'what-if' interactive REPL is unavailable in extension "
+                            "protocol mode because stdin is reserved for debug control tokens."
+                        )
+                        continue  # loop: re-emit the marker
                     elif resp == "debug-stop":
                         self._user_break_steps = set()
                         self.break_steps = set()
@@ -232,7 +301,7 @@ class _DebugMixin:
             sys.stdout.flush()
             prompt_text = (
                 f"\n[DEBUG] Next step: {step}\n"
-                f"        ENTER/n = execute · h = re-highlight · pause = Inspector · c = continue all… "
+                f"        ENTER/n = execute · e = explain-next · h = re-highlight · w = what-if · pause = Inspector · c = continue all… "
             )
             while True:
                 try:
@@ -261,6 +330,22 @@ class _DebugMixin:
                         print("    🔎 Opening Playwright Inspector…")
                         await page.pause()
                         continue  # re-show the prompt after closing Inspector
+                    elif user_in in ("e", "explain-next"):
+                        try:
+                            dbg = self._get_explain_next()
+                            result = await dbg.evaluate(page, step)
+                            print(result.format_report())
+                        except Exception as exc:
+                            _log.debug("explain-next evaluation failed: %s", exc)
+                            print(f"    ❌ Explain-next evaluation failed: {exc}")
+                        continue  # stay in the pause loop
+                    elif user_in in ("w", "what-if"):
+                        dbg = self._get_explain_next()
+                        chosen = await dbg.run_repl(page, current_step=step)
+                        if chosen is not None:
+                            self._what_if_execute_step = chosen
+                            break
+                        continue  # user quit REPL, back to debug prompt
                     elif user_in in ("c", "continue"):
                         self._debug_continue = True
                         print("    ▶ Continuing all steps without further pauses…")

@@ -99,6 +99,15 @@ VISIBILITY_DOM = """
     shadow.innerHTML = '<button id="shadow_btn">Shadow Action</button>';
 </script>
 
+<!-- Group 13: data-manul-debug overlay — must be pruned by TreeWalker -->
+<div id="manul-debug-modal" data-manul-debug="true"
+     style="position:fixed;top:12px;right:12px;z-index:2147483647;">
+    <div>🐾 MANUL DEBUG PAUSE</div>
+    <div>Fill "Name" field with "Mega Manul"</div>
+    <button id="manul-debug-abort">✕</button>
+</div>
+<button id="real_after_debug">Name</button>
+
 </body></html>
 """
 
@@ -256,6 +265,27 @@ async def _test_snapshot_filtering(page, manul):
         print("    ❌  <noscript> elements FOUND in snapshot (should be pruned)")
         f += 1
         failures.append("noscript elements in snapshot")
+
+    # 2b. data-manul-debug overlay must be pruned (no child elements in snapshot)
+    debug_ids = {"manul-debug-modal", "manul-debug-abort"}
+    debug_leaked = debug_ids & all_ids
+    debug_name_leaked = any("MANUL DEBUG PAUSE" in str(el.get("name", "")) for el in all_els)
+    if not debug_leaked and not debug_name_leaked:
+        print("    ✅  data-manul-debug overlay excluded from snapshot")
+        p += 1
+    else:
+        print(f"    ❌  debug overlay elements FOUND in snapshot (leaked ids={debug_leaked})")
+        f += 1
+        failures.append("data-manul-debug overlay in snapshot")
+
+    # 2c. Real element after debug overlay is still discoverable
+    if "real_after_debug" in all_ids:
+        print("    ✅  Element after debug overlay still in snapshot")
+        p += 1
+    else:
+        print("    ❌  Element after debug overlay missing from snapshot")
+        f += 1
+        failures.append("real_after_debug missing")
 
     # 3. Hidden elements may appear but with [HIDDEN] tag
     hidden_els = [

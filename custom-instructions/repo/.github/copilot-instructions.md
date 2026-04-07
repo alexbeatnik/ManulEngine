@@ -60,8 +60,9 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 ```text
 manul.py                   Dev CLI entry point (run hunts from repo root without install)
 run_tests.py               Synthetic DOM test suite runner (dev only)
+bump_version.py            Version bumper — updates all 18 files from pyproject.toml
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.26
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.27
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession, EngineConfig, all exception classes
   exceptions.py            Structured exception hierarchy (ManulEngineError base, ConfigurationError, ElementResolutionError, HookExecutionError, HuntImportError, VerificationError, SessionError, ScheduleError)
@@ -70,7 +71,8 @@ manul_engine/
   config.py                EngineConfig frozen dataclass — injectable configuration (replaces module-global reads); validate() method checks invariants
   core.py                  ManulEngine class (resolution, run_mission, self-healing)
   cache.py                 _ControlsCacheMixin (persistent per-site controls cache)
-  debug.py                 _DebugMixin (element highlighting, debug prompt, breakpoint protocol)
+  debug.py                 _DebugMixin (element highlighting, debug prompt, breakpoint protocol, What-If REPL integration)
+  explain_next.py          ExplainNextDebugger — interactive What-If Analysis REPL (PageContext, WhatIfResult, heuristic pre-check, LLM dry-run)
   llm.py                   LLMProvider protocol + OllamaProvider / NullProvider (JSON fence-stripping)
   logging_config.py        Centralized logging under ``manul_engine`` hierarchy (stderr, MANUL_LOG_LEVEL)
   actions.py               _ActionsMixin (navigate, scroll, explicit waits, extract, verify, drag, press, right_click, upload, _execute_step, scan_page)
@@ -132,6 +134,7 @@ manul_engine/
     test_50_imports.py         @import/@export/USE directive system (84 assertions, no browser)
     test_51_packager.py        Pack/install .huntlib archives and lockfile (21 assertions, no browser)
     test_52_exports.py         @export validation, wildcard exports, access control (19 assertions, no browser)
+    test_53_explain_next.py   ExplainNextDebugger What-If Analysis REPL + debug protocol (112 assertions, no browser)
 demo/
   run_demo.py              Runner script for integration hunts (sets CWD, calls manul CLI)
   manul_engine_configuration.json  Demo-specific config (heuristics-only)
@@ -457,6 +460,8 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * **Auto-Nav annotation:** When `auto_annotate` is enabled, `run_mission()` captures `url_before = page.url` before every action. For `NAVIGATE` actions, the annotation is written above the action itself. For all other actions, `url_after` is checked in the `finally` block — if the URL changed, `_auto_annotate_navigate(page, hunt_file, action_file_lines, action_idx+1)` is called to insert a comment above the next action line. The comment uses the mapped page name when found in `pages.json`, or the full URL when the lookup returns an `"Auto:"` placeholder.
 * **`pages.json` — nested per-site format:** `{ "<site_root_url>": { "Domain": "<display_name>", "<regex_or_exact_url>": "<page_name>" } }`. `lookup_page_name(url)` in `prompts.py` re-reads this file from disk on **every call** (live edits take effect immediately with no restart). Resolution order: exact URL key → regex/substring patterns (skipping `"Domain"` key) → `"Domain"` fallback. When no site block matches, a new nested entry is auto-generated. The longest-prefix site block wins when multiple blocks could match.
 * **`_debug_prompt()` `debug-stop` token:** When Python receives `"debug-stop"` on stdin from the VS Code extension (user pressed ⏹ Debug Stop), it clears **both** `self._user_break_steps = set()` and `self.break_steps = set()`, then breaks the pause loop. The test run continues to completion without any further pauses.
+* **`_debug_prompt()` `explain-next` token:** When Python receives `"explain-next"` (or `"explain-next {\"step\":\"...\"}"` with optional JSON payload) on stdin, it evaluates the step via `ExplainNextDebugger.evaluate()`, emits `\x00MANUL_EXPLAIN_NEXT\x00{json}\n` to stdout (JSON contains all `WhatIfResult` fields serialized by `_result_to_dict()`), prints `format_report()`, and stays in the pause loop (`continues: true`). In terminal mode, `e` or `explain-next` triggers the same evaluation but without the wire marker.
+* **`_debug_prompt()` `what-if` token in extension mode:** The `what-if` interactive REPL is **disabled** in extension protocol mode (stdin is not a TTY) because stdin is reserved for debug control tokens. Sending `what-if` prints an informational message and stays paused. In terminal mode, `w` or `what-if` enters the full `ExplainNextDebugger.run_repl()`.
 * **Reporting & HTML reports:** `reporting.py` owns `StepResult`, `BlockResult`, `MissionResult` (with `__bool__` — truthy if status != `"fail"`; has `tags: list[str]` for `@tags` from `.hunt` files and `blocks: list[BlockResult]` for hierarchical execution), plus `RunSummary` fields `session_id` and `invocation_count` for recent cross-invocation HTML-report aggregation. `append_run_history(mission)` appends JSON Lines to `reports/run_history.json` (keys: `file`, `name`, `timestamp`, `status`, `duration_ms`). Separate HTML-report session state is persisted in `reports/manul_report_state.json` so repeated CLI or VS Code Test Explorer invocations can merge into the same `reports/manul_report.html` instead of overwriting it with only the last run. History is appended by `cli.py` (sequential, parallel, and failure paths) and `scheduler.py` (`_run_scheduled_job()`). `reporter.py` owns `generate_report(summary, output_path)` — produces a self-contained dark-themed HTML file with dashboard stats, native `<details>/<summary>` accordions (collapsed by default, auto-expanded on failure), Flexbox step rows, inline base64 screenshots, a **control panel** with "Show Only Failed" checkbox toggle, **tag filter chips** (dynamically collected from all missions' `tags`), and a visible **Run Session / Merged invocations** banner. Each `<div class="mission">` carries `data-status` and `data-tags` attributes for JS filtering. All artifacts (logs, HTML reports, persisted report state) are saved to `reports/` (auto-created by `cli.py`). The `reports/` directory is `.gitignored`.
 * **Scoring early exit:** `DOMScorer.score_all()` accepts an optional `early_exit_score: int | None` parameter. When a scored element exceeds the threshold and explain mode is off, remaining elements are skipped. This reduces O(n) scoring on large DOMs.
 * **Screenshot capture:** `run_mission()` accepts `screenshot_mode` (`"none"`, `"on-fail"`, `"always"`). Screenshots are stored as base64 PNGs in `StepResult.screenshot`.
@@ -522,7 +527,7 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.26 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.27 \
   --html-report --screenshot on-fail hunts/
 ```
 
@@ -829,16 +834,16 @@ The companion extension is published separately from this runtime repository. Wh
 * **Docs/install rule:** when writing **public-facing docs for end users**, prefer the published Marketplace install path for the extension. Only document local `npm` / `vsce` / `F5` build workflows when the user is explicitly asking about extension development.
 * **Dev build rule:** when you are actually editing extension source code in its separate repository, run `npm install` and `npm run compile` from that repository's root folder. Use `npx vsce package` only when packaging is explicitly relevant. Press `F5` in VS Code with the extension folder open only for extension-development workflows.
 
-## Version Bump Checklist
+## Version Bump
 
-When the version changes, **ALL** of the following files must be updated:
+The repository ships `bump_version.py` at the project root. It reads the canonical version from `pyproject.toml` and updates **every** file that embeds the version string (34 occurrences across 18 files: pyproject.toml, Dockerfile, docker-compose.yml, README.md, README_DEV.md, .cursorrules, .github/copilot-instructions.md, custom-instructions mirror, 8 contracts, CI workflows).
 
-| File | What to change |
-|------|----------------|
-| `pyproject.toml` | `version = "X.Y.Z"` under `[project]` |
-| `README.md` | `**Version:** X.Y.Z` in the footer |
-| `README_DEV.md` | Title `# 😼 ManulEngine vX.Y.Z`, pyproject.toml ref, lifecycle/test suite lists, footer `**Version:** X.Y.Z` |
-| `.github/copilot-instructions.md` | Version in the repo layout section (this file) |
-| `.cursorrules` | Version examples and pinned `pip install` commands under `## 3. Versioning and Dependencies` |
+```bash
+python bump_version.py 0.0.9.28 --dry-run   # preview changes
+python bump_version.py 0.0.9.28             # apply
+python bump_version.py --show                # print current version
+```
+
+**MANDATORY:** When the version changes, always use `bump_version.py` instead of editing files manually. Never edit version strings by hand — the script ensures all files stay in sync.
 
 Companion Manul Engine Extension for VS Code versioning and Marketplace release notes are maintained in the separate extension repository.

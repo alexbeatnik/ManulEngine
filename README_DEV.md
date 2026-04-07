@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.26 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.27 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -25,8 +25,9 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (run hunts from repo root without install)
 ├── run_tests.py                      Synthetic DOM test suite runner (dev only)
+├── bump_version.py                   Version bumper — updates all 18 files from pyproject.toml
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.26
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.27
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession, EngineConfig, all exception classes
@@ -48,7 +49,8 @@ ManulEngine/
 │   ├── scanner.py                    Smart Page Scanner: scan_page(), build_hunt(), scan_main()
 │   ├── core.py                       ManulEngine class (resolution, mission runner)
 │   ├── cache.py                      Persistent per-site controls cache mixin
-│   ├── debug.py                      _DebugMixin (element highlighting, debug prompt, breakpoint protocol)
+│   ├── debug.py                      _DebugMixin (element highlighting, debug prompt, breakpoint protocol, What-If REPL integration)
+│   ├── explain_next.py               ExplainNextDebugger — interactive What-If Analysis REPL (PageContext, WhatIfResult, heuristic pre-check, LLM dry-run)
 │   ├── llm.py                        LLMProvider protocol + OllamaProvider / NullProvider
 │   ├── logging_config.py             Centralized logging hierarchy (stderr, MANUL_LOG_LEVEL)
 │   ├── actions.py                    Action execution mixin (click, type, select, hover, drag, scan_page)
@@ -100,7 +102,8 @@ ManulEngine/
 │       ├── test_48_prompts_config.py  Unit: Configuration loading, threshold derivation, page-name lookup, _KEY_MAP, env_bool (83 assertions, no browser)
 │       ├── test_50_imports.py         Unit: @import/@export/USE directive system (84 assertions, no browser)
 │       ├── test_51_packager.py        Unit: Pack/install .huntlib archives and lockfile (21 assertions, no browser)
-│       └── test_52_exports.py         Unit: @export validation, wildcard exports, access control (19 assertions, no browser)
+│       ├── test_52_exports.py         Unit: @export validation, wildcard exports, access control (19 assertions, no browser)
+│       └── test_53_explain_next.py    Unit: ExplainNextDebugger What-If Analysis REPL + debug protocol (112 assertions, no browser)
 ├── demo/                             Integration demo hunts and supporting assets
 │   ├── run_demo.py                   Runner script (sets CWD, calls manul CLI)
 │   ├── manul_engine_configuration.json Demo-specific config (heuristics-only)
@@ -597,7 +600,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.26
+pip install manul-engine==0.0.9.27
 playwright install chromium
 ```
 
@@ -720,7 +723,7 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.26 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.27 \
   --html-report --screenshot on-fail hunts/
 ```
 
@@ -937,7 +940,30 @@ The published extension provides:
 
 ---
 
-## Release Notes: v0.0.9.26
+## 🔖 Version Bump
+
+The repository ships `bump_version.py` at the project root. It reads the canonical version from `pyproject.toml` and updates **every** file that embeds the version string (34 occurrences across 18 files).
+
+```bash
+python bump_version.py 0.0.9.28 --dry-run   # preview changes (no files written)
+python bump_version.py 0.0.9.28             # apply to all files
+python bump_version.py --show                # print current version
+```
+
+Covered files: `pyproject.toml`, `Dockerfile`, `docker-compose.yml`, `README.md`, `README_DEV.md`, `.cursorrules`, `.github/copilot-instructions.md`, custom-instructions mirror, all 8 contracts, and CI workflows.
+
+> **Rule:** never edit version strings by hand — always use `bump_version.py` to keep all files in sync.
+
+---
+
+## Release Notes: v0.0.9.27
+
+- **What-If Analysis REPL (`ExplainNextDebugger`):** New `explain_next.py` module with interactive debug REPL for hypothetical step evaluation. During a debug pause, type `w` (terminal) to enter the REPL or `e` / send `explain-next` (extension protocol) for one-shot evaluation. Combines DOMScorer heuristic scoring with optional LLM analysis to produce a 0–10 confidence rating, element match info, risk assessment, and corrective suggestions. The best heuristic match is highlighted with a persistent magenta outline on the live page via the engine's `_debug_highlight` / `_clear_debug_highlight` methods. Classes: `PageContext` (read-only snapshot), `WhatIfResult` (structured result with `confidence_label` property and `format_report()`), `_HeuristicHit` (best candidate from scoring), `ExplainNextDebugger` (REPL controller). REPL commands: `!execute [N]`, `!history`, `!context`, `!quit`. Extension protocol: `explain-next` token emits `\x00MANUL_EXPLAIN_NEXT\x00{json}` marker with serialized `WhatIfResult` via `_result_to_dict()`; the `what-if` interactive REPL is disabled in extension protocol mode (stdin reserved for control tokens). Hooked into `debug.py` via `_get_explain_next()` lazy factory and `_what_if_execute_step` attribute in `core.py`. 112-assertion test suite (`test_53_explain_next.py`).
+- **What-If execute bug fixes:** `_execute_step()` recursive call for What-If replacement now passes `strategic_context` and `step_idx` by keyword (was misordered as positional args, breaking debug/breakpoint behavior). Injected What-If steps in `core.py` now run through `substitute_memory()` so `{var}` placeholders are resolved before execution.
+- **LLM JSON fence-stripping:** `_parse_llm_json()` in `llm.py` now strips markdown code fences (```` ``` ````) before JSON parsing, improving robustness with models that wrap JSON responses in triple-backtick blocks.
+
+<details>
+<summary>v0.0.9.26</summary>
 
 - **`EngineConfig` frozen dataclass:** New `config.py` module with injectable `EngineConfig` replacing module-level globals. `ManulEngine.__init__` accepts an optional `config` parameter; all runtime settings are stored as instance attributes. `validate()` method checks invariants (browser enum, screenshot mode, channel+chromium compat, non-negative timeouts/retries, ai_always requires model).
 - **Structured exception hierarchy:** New `exceptions.py` with `ManulEngineError` base class and 7 concrete subclasses (`ConfigurationError`, `ElementResolutionError`, `HookExecutionError`, `HuntImportError`, `VerificationError`, `SessionError`, `ScheduleError`). Multi-inheritance preserves backward compatibility. All exceptions re-exported from `__init__.py`.
@@ -953,17 +979,9 @@ The published extension provides:
 - **Demo directory restructure:** All integration hunts, scripts, controls, benchmarks, and pages.json moved to `demo/`. New `demo/run_demo.py` runner. Synthetic test suite extracted to standalone `run_tests.py`.
 - **Security hygiene:** Eliminated false-positive "shell access" alert from package security scanners (socket.dev).
 
-<details>
-<summary>v0.0.9.22</summary>
-
-- **Docker CI/CD runner:** Multi-stage `Dockerfile` packaging ManulEngine as a headless CI runner image (`ghcr.io/alexbeatnik/manul-engine`). Two-stage build: `builder` (pip install + Playwright browsers) → `runtime` (slim image). Non-root `manul` user (UID 1000), `dumb-init` PID 1, Chromium-only by default (configurable via `BROWSERS` build arg). Includes `docker-compose.yml` with `manul` and `manul-daemon` services.
-- **GitHub Actions workflows:** `release.yml` handles unified release automation (PyPI + GHCR + GitHub Release on `v*` tags). `docker-dev.yml` pushes dev images to GHCR on `main` merge. `manul-ci.yml` is a reusable example workflow for downstream repositories.
-- **`.dockerignore`:** Excludes common repository-only artifacts such as `.git`, `reports/`, `cache/`, and `__pycache__` from the build context.
-- **CI defaults baked into image:** `MANUL_HEADLESS=true`, `MANUL_BROWSER_ARGS="--no-sandbox --disable-dev-shm-usage"`, `TZ=UTC`, `LANG=C.UTF-8`, `PYTHONUNBUFFERED=1`.
-
 </details>
 
-**Version:** 0.0.9.26
+**Version:** 0.0.9.27
 
 **Codename:** Containerised Manul
 

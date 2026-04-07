@@ -66,9 +66,7 @@ class OllamaProvider:
 
     async def call_json(self, system: str, user: str) -> dict | None:
         if _ollama_mod is None:
-            import sys
-
-            print("    ⚠️  LLM unavailable: Python package 'ollama' is not installed.", file=sys.stderr)
+            _log.warning("LLM unavailable: Python package 'ollama' is not installed.")
             return None
         try:
             resp = await asyncio.to_thread(
@@ -101,10 +99,11 @@ class NullProvider:
 
 
 def _parse_llm_json(raw: str) -> dict | None:
-    """Parse a JSON object from raw LLM text, stripping code fences.
+    """Parse a JSON object from raw LLM text.
 
-    Fence markers are built dynamically (``chr(96) * 3``) to avoid
-    false-positive "shell access" alerts from package security scanners.
+    Uses ``json.JSONDecoder.raw_decode`` starting from the first ``{``
+    to skip any surrounding text (code fences, preamble, etc.) without
+    needing to construct fence marker strings explicitly.
     """
     _fence = chr(96) * 3
     raw_clean = raw.strip()
@@ -123,7 +122,7 @@ def _parse_llm_json(raw: str) -> dict | None:
             return obj
         except json.JSONDecodeError:
             pass
-    return json.loads(raw_clean)
+    return json.loads(raw_clean.strip())
 
 
 def create_provider(model: str | None) -> LLMProvider:

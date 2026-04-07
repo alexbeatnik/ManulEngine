@@ -145,6 +145,46 @@ During a debug pause, the extension exposes `Explain Current Step` in the editor
 
 Run a hunt in Debug mode through Test Explorer, then hover over any resolved step line in the `.hunt` file. The extension shows the stored per-channel breakdown directly on that line.
 
+### What-If Analysis REPL (Explain Next)
+
+During a debug pause in the terminal (`--debug`), type `w` to enter the interactive What-If Analysis REPL. This REPL is terminal-only; it is unavailable in VS Code extension protocol mode (`--break-lines`) because stdin is reserved for debug control tokens.
+
+For a **one-shot evaluation** without entering the REPL, type `e` in terminal mode or use the `explain-next` token in extension protocol mode. The extension protocol also accepts an optional JSON payload to evaluate a different step: `explain-next {"step":"Click the 'Cancel' button"}`.
+
+The REPL and one-shot mode both evaluate hypothetical steps against the live browser state **without executing them**. They capture a read-only DOM snapshot, run DOMScorer heuristics in-memory, optionally query the configured LLM, and return a 0–10 confidence score with an explanation.
+
+```text
+[DEBUG] Next step: Click the 'Submit' button
+        ENTER/n = execute · e = explain-next · h = re-highlight · w = what-if · pause = Inspector · c = continue all…  w
+
+  🔮 explain-next> Click the 'Cancel' button
+
+    ┌─ 🔮 WHAT-IF ANALYSIS: "Click the 'Cancel' button"
+    │  Confidence: 9/10 (HIGH)
+    │  Heuristic Score: 0.587 (raw 104382)
+    │  Best Heuristic Match: "Cancel"
+    │  Target Element: <button> "Cancel"
+    │  Explanation: Button found and enabled, would navigate back to the form list.
+    │  Risk: Unsaved form data would be lost.
+    └─ 🔮 END
+
+  🔮 explain-next> !execute
+    ✅ Executing: "Click the 'Cancel' button"
+```
+
+REPL commands:
+
+| Command | Action |
+|---|---|
+| `<any DSL step>` | Evaluate hypothetically — no page mutation |
+| `!execute` | Accept the last evaluated step and resume execution |
+| `!execute N` | Accept evaluation #N from history |
+| `!history` | Show all evaluations from this session |
+| `!context` | Show current page URL and title |
+| `!quit` | Exit REPL without executing anything |
+
+The best heuristic match is highlighted with a persistent magenta outline on the live page so you can visually confirm the target before committing.
+
 ### Desktop and Electron automation via `executable_path`
 
 ManulEngine is not limited to browser tabs. Because it runs on Playwright, it can also drive Electron-based desktop applications.
@@ -274,7 +314,7 @@ The repo ships with both synthetic tests and adversarial fixtures. The point is 
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.26
+pip install manul-engine==0.0.9.27
 playwright install
 ```
 
@@ -283,7 +323,7 @@ If you install standalone Python dependencies manually instead of using the pack
 Optional local AI fallback:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.26"
+pip install "manul-engine[ai]==0.0.9.27"
 ollama pull qwen2.5:0.5b
 ollama serve
 ```
@@ -646,7 +686,7 @@ ManulEngine ships an alpha-stage headless CI runner image for browser automation
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.26 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.27 \
   --html-report --screenshot on-fail hunts/
 ```
 
@@ -658,13 +698,20 @@ docker run --rm --shm-size=1g \
   -e MANUL_BROWSER=firefox \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.26 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.27 \
   hunts/
 ```
 
 The image runs as non-root user `manul` (UID 1000), includes `dumb-init` for proper signal handling, and sets `--no-sandbox --disable-dev-shm-usage` by default. Build with additional browsers via `--build-arg BROWSERS="chromium firefox"`. A `docker-compose.yml` is included for local development with `manul` and `manul-daemon` services.
 
-## What's New in v0.0.9.26
+## What's New in v0.0.9.27
+
+- **What-If Analysis REPL (`ExplainNextDebugger`):** Interactive debug REPL for hypothetical step evaluation. During a debug pause, type `w` (terminal) to enter the REPL or `e` / send `explain-next` (extension protocol) for one-shot evaluation. Combines DOMScorer heuristic scoring with optional LLM analysis to produce a 0–10 confidence rating, element match info, risk assessment, and corrective suggestions. The best heuristic match is highlighted with a persistent magenta outline on the live page. REPL commands: `!execute`, `!history`, `!context`, `!quit`. Extension protocol: `explain-next` emits `\x00MANUL_EXPLAIN_NEXT\x00{json}` marker with serialized `WhatIfResult`; accepts optional `explain-next {"step":"..."}` for overridden step text. New module: `explain_next.py` with `PageContext`, `WhatIfResult`, `ExplainNextDebugger` classes. 112-assertion test suite (`test_53_explain_next.py`).
+- **What-If execute bug fixes:** `_execute_step()` recursive call now passes `strategic_context` and `step_idx` by keyword (was misordered as positional args). Injected What-If steps in `core.py` now run through `substitute_memory()` so `{var}` placeholders are resolved before execution.
+- **LLM JSON fence-stripping:** `_parse_llm_json()` in `llm.py` now strips markdown code fences before JSON parsing, improving robustness with models that wrap JSON responses in triple-backtick blocks.
+
+<details>
+<summary>v0.0.9.26</summary>
 
 - **`EngineConfig` frozen dataclass:** New `config.py` module with injectable `EngineConfig` replacing module-level globals. `ManulEngine.__init__` accepts an optional `config` parameter; all runtime settings (timeouts, AI, auto-annotate) are stored as instance attributes. `validate()` method checks configuration invariants.
 - **Structured exception hierarchy:** New `exceptions.py` with `ManulEngineError` base and 7 concrete subclasses (`ConfigurationError`, `ElementResolutionError`, `HookExecutionError`, `HuntImportError`, `VerificationError`, `SessionError`, `ScheduleError`). All re-exported from `manul_engine`.
@@ -676,18 +723,10 @@ The image runs as non-root user `manul` (UID 1000), includes `dumb-init` for pro
 - **Demo directory restructure:** All integration hunts, scripts, controls, benchmarks, and pages.json moved to `demo/`. New `demo/run_demo.py` runner script. Synthetic test suite extracted to standalone `run_tests.py`.
 - **Security hygiene:** Eliminated false-positive "shell access" alert from package security scanners (socket.dev).
 
-<details>
-<summary>v0.0.9.22</summary>
-
-- **@import / @export / USE system:** Reusable `.hunt` libraries. `@import: Login from lib/auth.hunt` pulls named STEP blocks, `USE Login` expands them inline, and `@export:` controls visibility. `@var:` from source files inherit at the lowest (import) scope. Wildcard imports, aliases (`@import: Login as AuthLogin`), and package-style sources (`@import: Login from @my-lib`) are all supported.
-- **`manul pack` / `manul install` CLI:** Pack `.hunt` libraries into distributable `.huntlib` archives and install them locally or globally (`~/.manul/hunt_libs/`). Lockfile (`huntlib-lock.json`) tracks installed versions.
-- **Docker CI/CD runner:** Multi-stage `Dockerfile` packaging ManulEngine as a headless CI runner image (`ghcr.io/alexbeatnik/manul-engine`). Non-root `manul` user (UID 1000), `dumb-init` PID 1, Chromium-only by default (configurable via `BROWSERS` build arg). Includes `docker-compose.yml` with `manul` and `manul-daemon` services.
-- **GitHub Actions workflows:** `release.yml` handles unified release automation (PyPI + GHCR + GitHub Release on `v*` tags), `docker-dev.yml` pushes dev images on `main` merge, and `manul-ci.yml` provides a reusable example workflow for downstream repositories.
-
 </details>
 
 ## License
 
-**Version:** 0.0.9.26
+**Version:** 0.0.9.27
 
 Apache-2.0.
