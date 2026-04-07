@@ -33,13 +33,16 @@ class _DebugMixin:
 
     def _get_explain_next(self) -> ExplainNextDebugger:
         """Lazily create the ExplainNextDebugger for what-if analysis."""
+        current_last_xpath = getattr(self, "last_xpath", None)
         if self._explain_next_debugger is None:
             self._explain_next_debugger = ExplainNextDebugger(
                 llm=self._llm,  # type: ignore[attr-defined]
                 learned_elements=getattr(self, "learned_elements", None),
-                last_xpath=getattr(self, "last_xpath", None),
+                last_xpath=current_last_xpath,
                 engine=self,
             )
+        else:
+            self._explain_next_debugger._last_xpath = current_last_xpath
         return self._explain_next_debugger
 
     # ── Visual feedback ───────────────────────

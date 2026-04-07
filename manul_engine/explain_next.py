@@ -527,15 +527,17 @@ class ExplainNextDebugger:
                 f"The step appears viable based on element matching."
             )
 
-        # System steps (NAVIGATE, WAIT, etc.) don't need element resolution
+        # System steps (NAVIGATE, WAIT, explicit waits, etc.) don't need
+        # element resolution.
         if step_class in (
             "navigate",
             "wait",
+            "wait_for_element",
             "scroll",
             "press_enter",
             "done",
             "logical_step",
-            "set_variable",
+            "set_var",
             "scan_page",
         ):
             score = max(score, 8)
