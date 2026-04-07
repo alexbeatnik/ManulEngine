@@ -25,6 +25,7 @@ ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtim
 ManulEngine/
 ├── manul.py                          Dev CLI entry point (run hunts from repo root without install)
 ├── run_tests.py                      Synthetic DOM test suite runner (dev only)
+├── bump_version.py                   Version bumper — updates all 18 files from pyproject.toml
 ├── manul_engine_configuration.json   Project configuration (JSON)
 ├── pyproject.toml                    Build config — package: manul-engine 0.0.9.27
 ├── requirements.txt                  Python dependencies
@@ -936,6 +937,22 @@ The published extension provides:
 * **`pages.json` format:** Nested two-level dict — `{ "site_root_url": { "Domain": "display name", "regex_or_exact_url": "Page Name", ... } }`.
 * **`ai_always` guard:** The config panel forces `ai_always` to `false` when no model is selected.
 * **Ollama discovery:** On panel open the extension fetches `http://localhost:11434/api/tags` and populates a `<select>` with installed model names when available.
+
+---
+
+## 🔖 Version Bump
+
+The repository ships `bump_version.py` at the project root. It reads the canonical version from `pyproject.toml` and updates **every** file that embeds the version string (34 occurrences across 18 files).
+
+```bash
+python bump_version.py 0.0.9.28 --dry-run   # preview changes (no files written)
+python bump_version.py 0.0.9.28             # apply to all files
+python bump_version.py --show                # print current version
+```
+
+Covered files: `pyproject.toml`, `Dockerfile`, `docker-compose.yml`, `README.md`, `README_DEV.md`, `.cursorrules`, `.github/copilot-instructions.md`, custom-instructions mirror, all 8 contracts, and CI workflows.
+
+> **Rule:** never edit version strings by hand — always use `bump_version.py` to keep all files in sync.
 
 ---
 

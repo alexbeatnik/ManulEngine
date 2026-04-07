@@ -112,6 +112,7 @@ def _run(coro):
     if loop is not None:
         # Already inside an event loop — run in a fresh loop on a new thread.
         import concurrent.futures
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             return pool.submit(asyncio.run, coro).result()
     return asyncio.run(coro)

@@ -38,6 +38,7 @@ FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 
 # ── Local HTTP server ─────────────────────────────────────────────────────────
 
+
 def _start_server(directory: str, port: int) -> http.server.HTTPServer:
     """Start a threaded HTTP server serving *directory* on *port*."""
     handler = http.server.SimpleHTTPRequestHandler
@@ -57,8 +58,10 @@ def _start_server(directory: str, port: int) -> http.server.HTTPServer:
 
 # ── Task definitions ──────────────────────────────────────────────────────────
 
+
 class Task:
     """A single resolution task to benchmark."""
+
     __slots__ = ("fixture", "step", "pw_locator", "expected_tag", "expected_text")
 
     def __init__(
@@ -71,7 +74,7 @@ class Task:
     ) -> None:
         self.fixture = fixture
         self.step = step
-        self.pw_locator = pw_locator          # Playwright locator string
+        self.pw_locator = pw_locator  # Playwright locator string
         self.expected_tag = expected_tag.lower()
         self.expected_text = expected_text.lower()
 
@@ -99,7 +102,6 @@ TASKS: list[Task] = [
         expected_tag="a",
         expected_text="dashboard",
     ),
-
     # ── overlapping.html ──────────────────────────────────────────────
     Task(
         fixture="overlapping.html",
@@ -129,7 +131,6 @@ TASKS: list[Task] = [
         expected_tag="a",
         expected_text="contact us",
     ),
-
     # ── nested_tables.html ────────────────────────────────────────────
     Task(
         fixture="nested_tables.html",
@@ -152,7 +153,6 @@ TASKS: list[Task] = [
         expected_tag="select",
         expected_text="country",
     ),
-
     # ── custom_dropdown.html ──────────────────────────────────────────
     Task(
         fixture="custom_dropdown.html",
@@ -172,6 +172,7 @@ TASKS: list[Task] = [
 
 
 # ── Benchmark runners ─────────────────────────────────────────────────────────
+
 
 async def _run_playwright_task(page, task: Task) -> tuple[bool, float]:
     """Attempt to resolve the element using a raw Playwright locator.
@@ -222,10 +223,7 @@ async def _run_manul_task(page, task: Task) -> tuple[bool, float]:
 
         # Validate: the resolved element should match expected signals
         tag_ok = not task.expected_tag or best_tag == task.expected_tag
-        text_ok = not task.expected_text or (
-            task.expected_text in best_name
-            or task.expected_text in best_aria
-        )
+        text_ok = not task.expected_text or (task.expected_text in best_name or task.expected_text in best_aria)
         return tag_ok and text_ok, elapsed
     except Exception:
         return False, (time.perf_counter() - t0) * 1000
@@ -233,11 +231,13 @@ async def _run_manul_task(page, task: Task) -> tuple[bool, float]:
 
 # ── Table printer ─────────────────────────────────────────────────────────────
 
+
 def _print_table(results: list[dict]) -> None:
     """Print a formatted comparison table."""
     try:
         from rich.console import Console
         from rich.table import Table
+
         console = Console()
         table = Table(title="ManulEngine vs Raw Playwright — Benchmark Results")
         table.add_column("Fixture", style="cyan")
@@ -276,9 +276,9 @@ def _print_table(results: list[dict]) -> None:
     except ImportError:
         # Fallback: plain text table
         header = f"{'Fixture':<24} {'Task':<45} {'PW':>6} {'PW ms':>8} {'Manul':>6} {'Manul ms':>9}"
-        print(f"\n{'='*len(header)}")
+        print(f"\n{'=' * len(header)}")
         print("ManulEngine vs Raw Playwright — Benchmark Results")
-        print(f"{'='*len(header)}")
+        print(f"{'=' * len(header)}")
         print(header)
         print("-" * len(header))
         for r in results:
@@ -295,14 +295,15 @@ def _print_table(results: list[dict]) -> None:
         pw_avg = sum(r["pw_ms"] for r in results) / len(results) if results else 0
         mn_avg = sum(r["mn_ms"] for r in results) / len(results) if results else 0
         print(
-            f"{'TOTAL':<24} {len(results)} tasks{' '*37}"
+            f"{'TOTAL':<24} {len(results)} tasks{' ' * 37}"
             f"{pw_total}/{len(results):>3} avg {pw_avg:>5.1f}ms "
             f"{mn_total}/{len(results):>3} avg {mn_avg:>6.1f}ms"
         )
-        print(f"{'='*len(header)}\n")
+        print(f"{'=' * len(header)}\n")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
+
 
 async def main() -> None:
     port = 18932  # unlikely to collide
@@ -329,14 +330,16 @@ async def main() -> None:
             icon = "✅" if mn_ok else "❌"
             print(f"  {icon} [{task.fixture}] {task.step[:50]}")
 
-            results.append({
-                "fixture": task.fixture,
-                "step": task.step,
-                "pw_ok": pw_ok,
-                "pw_ms": pw_ms,
-                "mn_ok": mn_ok,
-                "mn_ms": mn_ms,
-            })
+            results.append(
+                {
+                    "fixture": task.fixture,
+                    "step": task.step,
+                    "pw_ok": pw_ok,
+                    "pw_ms": pw_ms,
+                    "mn_ok": mn_ok,
+                    "mn_ms": mn_ms,
+                }
+            )
 
         await browser.close()
 

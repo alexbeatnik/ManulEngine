@@ -74,8 +74,18 @@ async def handle_react_datepicker(page, action_type: str, value: str | None) -> 
         # Navigate month / year until the calendar shows the target month.
         # The header text looks like "December 2026".
         _MONTH_NAMES = [
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December",
+            "January",
+            "February",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "August",
+            "September",
+            "October",
+            "November",
+            "December",
         ]
         target_header = f"{_MONTH_NAMES[target_month - 1]} {target_year}"
         header_loc = page.locator(".react-datepicker__current-month").first

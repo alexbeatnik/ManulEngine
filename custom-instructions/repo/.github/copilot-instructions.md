@@ -60,6 +60,7 @@ Current operating mode in this repo is typically **heuristics-only** (recommende
 ```text
 manul.py                   Dev CLI entry point (run hunts from repo root without install)
 run_tests.py               Synthetic DOM test suite runner (dev only)
+bump_version.py            Version bumper — updates all 18 files from pyproject.toml
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
 pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.27
 manul_engine/
@@ -833,16 +834,16 @@ The companion extension is published separately from this runtime repository. Wh
 * **Docs/install rule:** when writing **public-facing docs for end users**, prefer the published Marketplace install path for the extension. Only document local `npm` / `vsce` / `F5` build workflows when the user is explicitly asking about extension development.
 * **Dev build rule:** when you are actually editing extension source code in its separate repository, run `npm install` and `npm run compile` from that repository's root folder. Use `npx vsce package` only when packaging is explicitly relevant. Press `F5` in VS Code with the extension folder open only for extension-development workflows.
 
-## Version Bump Checklist
+## Version Bump
 
-When the version changes, **ALL** of the following files must be updated:
+The repository ships `bump_version.py` at the project root. It reads the canonical version from `pyproject.toml` and updates **every** file that embeds the version string (34 occurrences across 18 files: pyproject.toml, Dockerfile, docker-compose.yml, README.md, README_DEV.md, .cursorrules, .github/copilot-instructions.md, custom-instructions mirror, 8 contracts, CI workflows).
 
-| File | What to change |
-|------|----------------|
-| `pyproject.toml` | `version = "X.Y.Z"` under `[project]` |
-| `README.md` | `**Version:** X.Y.Z` in the footer |
-| `README_DEV.md` | Title `# 😼 ManulEngine vX.Y.Z`, pyproject.toml ref, lifecycle/test suite lists, footer `**Version:** X.Y.Z` |
-| `.github/copilot-instructions.md` | Version in the repo layout section (this file) |
-| `.cursorrules` | Version examples and pinned `pip install` commands under `## 3. Versioning and Dependencies` |
+```bash
+python bump_version.py 0.0.9.28 --dry-run   # preview changes
+python bump_version.py 0.0.9.28             # apply
+python bump_version.py --show                # print current version
+```
+
+**MANDATORY:** When the version changes, always use `bump_version.py` instead of editing files manually. Never edit version strings by hand — the script ensures all files stay in sync.
 
 Companion Manul Engine Extension for VS Code versioning and Marketplace release notes are maintained in the separate extension repository.

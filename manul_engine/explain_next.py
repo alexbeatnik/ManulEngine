@@ -395,15 +395,19 @@ class ExplainNextDebugger:
         if mode == "input" and expected:
             # Strip value from search_texts exactly like _execute_step.
             step_l_unquoted = re.sub(
-                r"""(['"])(?:\\.|(?!\1).)*\1""", " ", step_lower,
+                r"""(['"])(?:\\.|(?!\1).)*\1""",
+                " ",
+                step_lower,
             )
             if re.search(r"\binto\b", step_l_unquoted):
-                search_texts = expected[1:]   # value-first: target is rest
+                search_texts = expected[1:]  # value-first: target is rest
             else:
                 search_texts = expected[:-1]  # Fill … with: target is head
         elif mode == "select" and len(expected) >= 2:
             step_l_unquoted = re.sub(
-                r"""(['"])(?:\\.|(?!\1).)*\1""", " ", step_lower,
+                r"""(['"])(?:\\.|(?!\1).)*\1""",
+                " ",
+                step_lower,
             )
             if re.search(r"\bfrom\b", step_l_unquoted):
                 search_texts = expected[1:]
