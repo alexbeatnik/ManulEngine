@@ -16,6 +16,7 @@ DEBUG_MODAL_JS: str = """(stepText) => {
 
     const modal = document.createElement('div');
     modal.id = 'manul-debug-modal';
+    modal.setAttribute('data-manul-debug', 'true');
     modal.style.cssText = [
         'position:fixed', 'top:12px', 'right:12px', 'z-index:2147483647',
         'background:#1e1e2e', 'color:#cdd6f4',
@@ -286,9 +287,9 @@ SNAPSHOT_JS = r"""([mode, expected_texts]) => {
     const walk = (root, inShadow) => {
         const tw = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
             acceptNode(n) {
-                return PRUNE.has(n.tagName)
-                    ? NodeFilter.FILTER_REJECT
-                    : NodeFilter.FILTER_ACCEPT;
+                if (PRUNE.has(n.tagName)) return NodeFilter.FILTER_REJECT;
+                if (n.hasAttribute && n.hasAttribute('data-manul-debug')) return NodeFilter.FILTER_REJECT;
+                return NodeFilter.FILTER_ACCEPT;
             }
         });
         let n;
