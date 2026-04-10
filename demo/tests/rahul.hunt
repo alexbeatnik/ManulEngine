@@ -40,39 +40,39 @@ STEP 1: Navigate to practice page
 
 STEP 2: Radio buttons
     # "radio button for" triggers strict radio-mode scoring.
-    Click the radio button for 'Radio1'
+    CLICK the radio button for 'Radio1'
     VERIFY that 'Radio1' is checked
-    Click the radio button for 'Radio3'
+    CLICK the radio button for 'Radio3'
     VERIFY that 'Radio3' is checked
 
 STEP 3: Autocomplete field
     # Type partial text, then click the matching suggestion.
-    Fill 'Suggession Class' field with 'Ukra'
-    Click the 'Ukraine' element
+    FILL 'Suggession Class' field with 'Ukra'
+    CLICK the 'Ukraine' element
     VERIFY that 'Ukraine' is present
 
 STEP 4: Dropdown
     # Sequential dropdown selections on the same <select> element.
-    Select 'Option1' from the 'Dropdown' dropdown
-    Select 'Option2' from the 'Dropdown' dropdown
-    Select 'Option3' from the 'Dropdown' dropdown
+    SELECT 'Option1' from the 'Dropdown' dropdown
+    SELECT 'Option2' from the 'Dropdown' dropdown
+    SELECT 'Option3' from the 'Dropdown' dropdown
 
 STEP 5: Checkboxes
     # Toggle pattern: check → verify checked → uncheck → verify not checked.
-    Check the checkbox for 'Option1'
+    CHECK the checkbox for 'Option1'
     VERIFY that 'Option1' is checked
-    Check the checkbox for 'Option2'
+    CHECK the checkbox for 'Option2'
     VERIFY that 'Option2' is checked
-    Check the checkbox for 'Option3'
+    CHECK the checkbox for 'Option3'
     VERIFY that 'Option3' is checked
-    Uncheck the checkbox for 'Option1'
+    UNCHECK the checkbox for 'Option1'
     VERIFY that 'Option1' is NOT checked
 
 STEP 6: Name field and alert
-    Fill 'Enter Your Name' field with 'Cyber Manul'
+    FILL 'Enter Your Name' field with 'Cyber Manul'
     VERIFY that 'Cyber Manul' is present
     # The Confirm button triggers a browser alert that clears the field.
-    Click the 'Confirm' button
+    CLICK the 'Confirm' button
     # Negative assertion: the text should no longer be visible.
     VERIFY that 'Cyber Manul' is NOT present
 
@@ -85,12 +85,12 @@ STEP 7: Scroll and extract prices
     VERIFY that '25' is present
 
 STEP 8: Hide / Show element
-    Fill 'Hide/Show Example' field with 'Ghost Mode'
+    FILL 'Hide/Show Example' field with 'Ghost Mode'
     VERIFY that 'Ghost Mode' is present
-    Click the 'Hide' button
+    CLICK the 'Hide' button
     # After hiding, the text should NOT be present.
     VERIFY that 'Ghost Mode' is NOT present
-    Click the 'Show' button
+    CLICK the 'Show' button
     VERIFY that 'Ghost Mode' is present
 
 STEP 9: Dynamic table extraction
@@ -107,6 +107,6 @@ STEP 10: Mouse hover
     VERIFY that 'Top' is present
 
 STEP 11: Back to top
-    Click on the 'Top' link
+    CLICK on the 'Top' link
     VERIFY that 'Practice Page' is present
 DONE.
