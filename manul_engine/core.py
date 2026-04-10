@@ -920,11 +920,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             elif isinstance(ba, str):
                 action_index += 1
                 # File-line breakpoint check for conditional body actions.
-                if (
-                    self._break_file_lines
-                    and ba_line
-                    and ba_line in self._break_file_lines
-                ):
+                if self._break_file_lines and ba_line and ba_line in self._break_file_lines:
                     import sys as _sys
 
                     step_kind = classify_step(ba)
