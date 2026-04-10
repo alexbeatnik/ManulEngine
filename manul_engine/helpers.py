@@ -144,8 +144,8 @@ def collect_ifblock_lines(if_block: "IfBlock") -> list[int]:
     """
     lines: list[int] = []
     for branch in if_block.branches:
-        if branch.branch_line:
-            lines.append(branch.branch_line)
+        # Skip branch header lines (IF/ELIF/ELSE) — the runtime does not
+        # assign action indices to conditional headers.
         for action, line_no in zip(branch.actions, branch.action_lines):
             if isinstance(action, IfBlock):
                 lines.extend(collect_ifblock_lines(action))

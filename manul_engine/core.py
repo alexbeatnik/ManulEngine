@@ -858,9 +858,11 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             try:
                 result = await evaluate_condition(branch.condition, page, self.memory)
             except ValueError as exc:
-                _log.warning("Condition evaluation error: %s", exc)
-                print(f"    ⚠️  [CONDITIONAL] Error evaluating '{branch.condition}': {exc}")
-                result = False
+                from .exceptions import ConditionalSyntaxError
+
+                raise ConditionalSyntaxError(
+                    f"Invalid condition '{branch.condition}': {exc}"
+                ) from exc
 
             if result:
                 print(f"    🔀 [CONDITIONAL] '{branch.kind} {branch.condition}' → True — executing branch")
@@ -920,6 +922,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             elif isinstance(ba, str):
                 action_index += 1
                 # File-line breakpoint check for conditional body actions.
+                _temp_break_added = False
                 if self._break_file_lines and ba_line and ba_line in self._break_file_lines:
                     import sys as _sys
 
@@ -930,29 +933,41 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     elif step_kind != "action":
                         print(f"    🔴 BREAKPOINT at line {ba_line} — opening Playwright Inspector…")
                         await page.pause()
+                    else:
+                        # Action step (click/fill/etc.) — inject into break_steps
+                        # so the debug pause inside _execute_step() fires.
+                        if self.break_steps is None:
+                            self.break_steps = set()
+                        if action_index not in self.break_steps:
+                            self.break_steps.add(action_index)
+                            _temp_break_added = True
 
                 ba = substitute_memory(ba, self.memory)
-                outcome = await self._dispatch_step(
-                    ba,
-                    page,
-                    ctx,
-                    strategic_context,
-                    action_index,
-                    hunt_dir,
-                    hunt_file,
-                    _action_file_lines,
-                    block,
-                    block_steps,
-                    _step_results,
-                    _soft_errors,
-                    _screenshot_mode,
-                    raw_step=ba,
-                )
-                page = outcome[1]
-                if outcome[3]:  # done
-                    return outcome[0], page, True, action_index
-                if not outcome[0]:
-                    return False, page, False, action_index
+                try:
+                    outcome = await self._dispatch_step(
+                        ba,
+                        page,
+                        ctx,
+                        strategic_context,
+                        action_index,
+                        hunt_dir,
+                        hunt_file,
+                        _action_file_lines,
+                        block,
+                        block_steps,
+                        _step_results,
+                        _soft_errors,
+                        _screenshot_mode,
+                        raw_step=ba,
+                    )
+                    page = outcome[1]
+                    if outcome[3]:  # done
+                        return outcome[0], page, True, action_index
+                    if not outcome[0]:
+                        return False, page, False, action_index
+                finally:
+                    if _temp_break_added:
+                        self.break_steps.discard(action_index)
         return True, page, done, action_index
 
     async def _dispatch_step(
@@ -1294,7 +1309,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
 
                     print(f"\n[📦 BLOCK START] {block.block_name}")
 
-                    for raw_step in block.actions:
+                    for _ba_idx, raw_step in enumerate(block.actions):
                         # ── Conditional block (IfBlock) ──
                         if isinstance(raw_step, IfBlock):
                             started_perf = time.perf_counter()
@@ -1338,6 +1353,25 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                             continue
 
                         action_index += 1
+                        # ── File-line breakpoint fallback ──
+                        # When the index-based break_steps mapping is stale
+                        # (e.g. after a conditional whose branch count differs
+                        # from the static estimate), fall back to the file-line
+                        # set which always matches.
+                        _file_line = (
+                            block.action_lines[_ba_idx]
+                            if _ba_idx < len(block.action_lines)
+                            else 0
+                        )
+                        _temp_break_added = False
+                        _should_break = (
+                            (self.break_steps and action_index in self.break_steps)
+                            or (
+                                self._break_file_lines
+                                and _file_line
+                                and _file_line in self._break_file_lines
+                            )
+                        )
                         step = substitute_memory(raw_step, self.memory)
                         started_perf = time.perf_counter()
                         step_kind = classify_step(step)
@@ -1357,12 +1391,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
 
                         if self.debug_mode and _is_system_step:
                             await self._debug_prompt(page, step, action_index)
-                        elif (
-                            not self.debug_mode
-                            and self.break_steps
-                            and action_index in self.break_steps
-                            and _is_system_step
-                        ):
+                        elif not self.debug_mode and _should_break and _is_system_step:
                             import sys as _sys
 
                             if not _sys.stdin.isatty():
@@ -1371,6 +1400,12 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                             else:
                                 print(f"    🔴 BREAKPOINT at action {action_index} — opening Playwright Inspector…")
                                 await page.pause()
+                        elif not self.debug_mode and _should_break and not _is_system_step:
+                            # Action step (click/fill/etc.) — inject into break_steps
+                            # so the debug pause inside _execute_step() fires.
+                            if action_index not in self.break_steps:
+                                self.break_steps.add(action_index)
+                                _temp_break_added = True
 
                         # What-If REPL: if the debugger chose a step to execute,
                         # replace the current step and re-classify it.
@@ -1602,6 +1637,8 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                             _step_error = traceback.format_exc()
                             _log.debug("Step execution failed: %s", exc)
                         finally:
+                            if _temp_break_added:
+                                self.break_steps.discard(action_index)
                             if _what_if_active:
                                 self.debug_mode = _saved_debug
                                 self.break_steps = _saved_break
