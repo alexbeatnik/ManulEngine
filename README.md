@@ -125,7 +125,7 @@ STEP 2: Fetch and use an OTP
 WAIT FOR 'Submit' to be visible
 WAIT FOR 'Loading...' to disappear
 
-VERIFY "Email" field has value "admin@example.com"
+VERIFY "Email" field has value "{email}"
 VERIFY "Save" button has text "Save Changes"
 VERIFY "Search" input has placeholder "Type to search..."
 ```

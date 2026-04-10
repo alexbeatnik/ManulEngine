@@ -125,6 +125,7 @@ class ConditionalBranch:
     condition: str  # raw condition text; empty string for else
     actions: "list[str | IfBlock]" = field(default_factory=list)
     action_lines: list[int] = field(default_factory=list)
+    raw_actions: list[str] = field(default_factory=list)
     branch_line: int = 0
 
 
@@ -408,26 +409,15 @@ def _consume_if_block(
         raise ConditionalSyntaxError("Empty conditional block")
 
     # Recursively parse nested conditionals inside each branch.
-    # We need to pass raw lines that preserve relative indentation
-    # so nested if/elif/else blocks can be detected correctly.
+    # Use the real raw lines collected by _collect_branch_body() so that
+    # the indentation hierarchy is preserved for arbitrarily deep nesting.
     for branch in branches:
         str_actions = [a for a in branch.actions if isinstance(a, str)]
-        # Build synthetic raw lines with correct relative indentation.
-        # Body lines are at header_indent+4 (body level).
-        # Nested conditional headers should be at body level.
-        # Nested body lines should be at header_indent+8.
-        body_indent = header_indent + 4
-        synthetic_raw: list[str] = []
-        for a in str_actions:
-            # A conditional header inside a body gets body-level indent.
-            if _RE_IF_LINE.match(a) or _RE_ELIF_LINE.match(a) or _RE_ELSE_LINE.match(a):
-                synthetic_raw.append(" " * body_indent + a)
-            else:
-                # Regular actions get one deeper indent.
-                synthetic_raw.append(" " * (body_indent + 4) + a)
+        # Pair raw_actions with actions — only keep entries for str actions.
+        str_raw = [r for a, r in zip(branch.actions, branch.raw_actions) if isinstance(a, str)]
         branch.actions, branch.action_lines = _parse_conditionals(
             str_actions,
-            synthetic_raw,
+            str_raw,
             list(branch.action_lines),
         )
 
@@ -460,6 +450,7 @@ def _collect_branch_body(
             break
 
         branch.actions.append(line)
+        branch.raw_actions.append(raw_line)
         branch.action_lines.append(line_no)
         i += 1
 

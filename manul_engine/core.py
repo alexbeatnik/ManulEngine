@@ -870,6 +870,52 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         print("    🔀 [CONDITIONAL] No branch taken (all conditions False, no else)")
         return []
 
+    async def _execute_conditional(
+        self,
+        if_block: "IfBlock",
+        page: "Page",
+        ctx: "BrowserContext",
+        strategic_context: str,
+        action_index: int,
+        hunt_dir: "str | None",
+        hunt_file: "str | None",
+        _action_file_lines: list,
+        block: "object",
+        block_steps: list,
+        _step_results: list,
+        _soft_errors: list,
+        _screenshot_mode: str,
+    ) -> bool:
+        """Evaluate a conditional block and execute the taken branch's actions.
+
+        Handles arbitrarily nested IfBlocks via recursion.
+        Does not increment the parent action_index — the entire conditional
+        is treated as a single structural action for index purposes.
+        Returns ``True`` if all branch actions succeeded.
+        """
+        branch_actions = await self._evaluate_conditional(if_block, page)
+        for ba in branch_actions:
+            if isinstance(ba, IfBlock):
+                ok = await self._execute_conditional(
+                    ba, page, ctx, strategic_context,
+                    action_index, hunt_dir, hunt_file,
+                    _action_file_lines, block, block_steps,
+                    _step_results, _soft_errors, _screenshot_mode,
+                )
+                if not ok:
+                    return False
+            elif isinstance(ba, str):
+                ba = substitute_memory(ba, self.memory)
+                if not await self._dispatch_step(
+                    ba, page, ctx, strategic_context,
+                    action_index, hunt_dir, hunt_file,
+                    _action_file_lines, block, block_steps,
+                    _step_results, _soft_errors, _screenshot_mode,
+                    raw_step=ba,
+                ):
+                    return False
+        return True
+
     async def _dispatch_step(
         self,
         step: str,
@@ -889,8 +935,10 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
     ) -> bool:
         """Execute a single DSL step inside a conditional branch.
 
-        This is a lightweight dispatcher that mirrors the logic in the main
-        ``run_mission`` loop but for steps surfaced from conditional blocks.
+        This dispatcher mirrors the full logic in the main ``run_mission``
+        loop so all step kinds (including ``open_app``, ``wait_for_element``,
+        ``verify_visual``, ``upload``, ``scan_page``, ``mock``,
+        ``wait_for_response``, ``debug``, ``debug_vars``) are handled.
         Returns ``True`` if the step succeeded, ``False`` otherwise.
         """
         step_kind = classify_step(step)
@@ -905,19 +953,53 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                 if not await self._handle_navigate(page, step):
                     _step_error = "Navigation failed"
                     _step_ok = False
+
+            elif step_kind == "open_app":
+                _app_ok, page = await self._handle_open_app(page, ctx)
+                if not _app_ok:
+                    _step_error = "OPEN APP failed"
+                    _step_ok = False
+
+            elif step_kind == "mock":
+                if not await self._handle_mock(page, step, hunt_dir=hunt_dir):
+                    _step_error = "MOCK command failed"
+                    _step_ok = False
+
+            elif step_kind == "wait_for_response":
+                if not await self._handle_wait_for_response(page, step):
+                    _step_error = "WAIT FOR RESPONSE timed out"
+                    _step_ok = False
+
+            elif step_kind == "wait_for_element":
+                _wait_ok, _wait_msg = await self._handle_wait_for_element(page, step)
+                if not _wait_ok:
+                    _step_error = _wait_msg
+                    _step_ok = False
+
             elif step_kind == "wait":
                 n = re.search(r"(\d+)", step)
                 await asyncio.sleep(int(n.group(1)) if n else 2)
+
             elif step_kind == "scroll":
                 await self._handle_scroll(page, step)
+
             elif step_kind == "extract":
                 if not await self._handle_extract(page, step):
                     _step_error = "Extract failed"
                     _step_ok = False
+
             elif step_kind == "verify":
                 if not await self._handle_verify(page, step, step_idx=action_index):
                     _step_error = "Verification failed"
                     _step_ok = False
+
+            elif step_kind == "verify_visual":
+                if not await self._handle_verify_visual(
+                    page, step, strategic_context, step_idx=action_index, hunt_dir=hunt_dir
+                ):
+                    _step_error = "Visual regression check failed"
+                    _step_ok = False
+
             elif step_kind == "verify_softly":
                 _soft_ok = await self._handle_verify_softly(page, step, step_idx=action_index)
                 if not _soft_ok:
@@ -925,16 +1007,32 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     _soft_errors.append(_soft_msg)
                     _step_error = _soft_msg
                     _step_ok = False
+
             elif step_kind == "press_enter":
                 await self._handle_press_enter(page)
+
             elif step_kind == "press":
                 if not await self._handle_press(page, step, strategic_context, step_idx=action_index):
                     _step_error = "PRESS command failed"
                     _step_ok = False
+
             elif step_kind == "right_click":
                 if not await self._handle_right_click(page, step, strategic_context, step_idx=action_index):
                     _step_error = "RIGHT CLICK command failed"
                     _step_ok = False
+
+            elif step_kind == "upload":
+                if not await self._handle_upload(
+                    page, step, strategic_context, step_idx=action_index, hunt_dir=hunt_dir
+                ):
+                    _step_error = "UPLOAD command failed"
+                    _step_ok = False
+
+            elif step_kind == "scan_page":
+                if not await self._handle_scan_page(page, step):
+                    _step_error = "SCAN PAGE failed"
+                    _step_ok = False
+
             elif step_kind == "set_var":
                 _set_m = re.match(
                     r"(?:\d+\.\s*)?SET\s+\{?(\w+)\}?\s*=\s*(.+)",
@@ -951,9 +1049,18 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                 else:
                     _step_error = f"Malformed SET command: {step}"
                     _step_ok = False
+
+            elif step_kind == "debug_vars":
+                print("      📋 DEBUG VARS — current variable state:")
+                print(self.memory.dump())
+
+            elif step_kind == "debug":
+                print("      🔎 DEBUG/PAUSE step inside conditional branch")
+
             elif step_kind == "done":
                 print("      🏁 MISSION ACCOMPLISHED")
-            elif step_kind in ("call_python",):
+
+            elif step_kind == "call_python":
                 instruction = re.sub(r"^\s*\d+\.\s*", "", step).strip()
                 if re.match(r"CALL\s+PYTHON\b", instruction.upper()):
                     result = execute_hook_line(
@@ -967,6 +1074,10 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                         _step_ok = False
                     else:
                         bind_hook_result(result, self.memory)
+                elif not await self._execute_step(page, step, strategic_context, step_idx=action_index):
+                    _step_error = "Action failed"
+                    _step_ok = False
+
             else:
                 # DOM action (click, fill, select, etc.)
                 if not await self._execute_step(page, step, strategic_context, step_idx=action_index):
@@ -1091,60 +1202,14 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                             _cond_ok = True
                             _cond_error: str | None = None
                             try:
-                                _branch_actions = await self._evaluate_conditional(raw_step, page)
-                                for _ba in _branch_actions:
-                                    if isinstance(_ba, IfBlock):
-                                        # Nested conditional
-                                        _nested_actions = await self._evaluate_conditional(_ba, page)
-                                        for _na in _nested_actions:
-                                            if isinstance(_na, str):
-                                                _na = substitute_memory(_na, self.memory)
-                                                _na_ok = await self._dispatch_step(
-                                                    _na,
-                                                    page,
-                                                    ctx,
-                                                    strategic_context,
-                                                    action_index,
-                                                    hunt_dir,
-                                                    hunt_file,
-                                                    _action_file_lines,
-                                                    block,
-                                                    block_steps,
-                                                    _step_results,
-                                                    _soft_errors,
-                                                    _screenshot_mode,
-                                                    raw_step=_na,
-                                                )
-                                                if not _na_ok:
-                                                    _cond_ok = False
-                                                    _cond_error = "Nested conditional action failed"
-                                                    break
-                                            action_index += 1
-                                        if not _cond_ok:
-                                            break
-                                    elif isinstance(_ba, str):
-                                        _ba = substitute_memory(_ba, self.memory)
-                                        _ba_ok = await self._dispatch_step(
-                                            _ba,
-                                            page,
-                                            ctx,
-                                            strategic_context,
-                                            action_index,
-                                            hunt_dir,
-                                            hunt_file,
-                                            _action_file_lines,
-                                            block,
-                                            block_steps,
-                                            _step_results,
-                                            _soft_errors,
-                                            _screenshot_mode,
-                                            raw_step=_ba,
-                                        )
-                                        if not _ba_ok:
-                                            _cond_ok = False
-                                            _cond_error = "Conditional action failed"
-                                            break
-                                    action_index += 1
+                                _cond_ok = await self._execute_conditional(
+                                    raw_step, page, ctx, strategic_context,
+                                    action_index, hunt_dir, hunt_file,
+                                    _action_file_lines, block, block_steps,
+                                    _step_results, _soft_errors, _screenshot_mode,
+                                )
+                                if not _cond_ok:
+                                    _cond_error = "Conditional action failed"
                             except Exception as exc:
                                 _cond_ok = False
                                 _cond_error = str(exc)
