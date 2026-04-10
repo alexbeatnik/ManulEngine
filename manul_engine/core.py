@@ -885,36 +885,59 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         _step_results: list,
         _soft_errors: list,
         _screenshot_mode: str,
-    ) -> bool:
+    ) -> "tuple[bool, Page, bool]":
         """Evaluate a conditional block and execute the taken branch's actions.
 
         Handles arbitrarily nested IfBlocks via recursion.
-        Does not increment the parent action_index — the entire conditional
-        is treated as a single structural action for index purposes.
-        Returns ``True`` if all branch actions succeeded.
+        Returns ``(ok, page, done)`` — ``page`` may differ from the input
+        if ``OPEN APP`` reassigned it, ``done`` is ``True`` if a ``DONE.``
+        step was encountered inside the branch.
         """
         branch_actions = await self._evaluate_conditional(if_block, page)
+        done = False
         for ba in branch_actions:
             if isinstance(ba, IfBlock):
-                ok = await self._execute_conditional(
-                    ba, page, ctx, strategic_context,
-                    action_index, hunt_dir, hunt_file,
-                    _action_file_lines, block, block_steps,
-                    _step_results, _soft_errors, _screenshot_mode,
+                ok, page, done = await self._execute_conditional(
+                    ba,
+                    page,
+                    ctx,
+                    strategic_context,
+                    action_index,
+                    hunt_dir,
+                    hunt_file,
+                    _action_file_lines,
+                    block,
+                    block_steps,
+                    _step_results,
+                    _soft_errors,
+                    _screenshot_mode,
                 )
-                if not ok:
-                    return False
+                if not ok or done:
+                    return ok, page, done
             elif isinstance(ba, str):
                 ba = substitute_memory(ba, self.memory)
-                if not await self._dispatch_step(
-                    ba, page, ctx, strategic_context,
-                    action_index, hunt_dir, hunt_file,
-                    _action_file_lines, block, block_steps,
-                    _step_results, _soft_errors, _screenshot_mode,
+                outcome = await self._dispatch_step(
+                    ba,
+                    page,
+                    ctx,
+                    strategic_context,
+                    action_index,
+                    hunt_dir,
+                    hunt_file,
+                    _action_file_lines,
+                    block,
+                    block_steps,
+                    _step_results,
+                    _soft_errors,
+                    _screenshot_mode,
                     raw_step=ba,
-                ):
-                    return False
-        return True
+                )
+                page = outcome[1]
+                if outcome[3]:  # done
+                    return outcome[0], page, True
+                if not outcome[0]:
+                    return False, page, False
+        return True, page, done
 
     async def _dispatch_step(
         self,
@@ -932,19 +955,21 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         _soft_errors: list,
         _screenshot_mode: str,
         raw_step: str = "",
-    ) -> bool:
+    ) -> "tuple[bool, Page, str | None, bool]":
         """Execute a single DSL step inside a conditional branch.
 
-        This dispatcher mirrors the full logic in the main ``run_mission``
-        loop so all step kinds (including ``open_app``, ``wait_for_element``,
-        ``verify_visual``, ``upload``, ``scan_page``, ``mock``,
-        ``wait_for_response``, ``debug``, ``debug_vars``) are handled.
-        Returns ``True`` if the step succeeded, ``False`` otherwise.
+        Full-featured dispatcher that mirrors the main ``run_mission`` loop:
+        all step kinds, custom-control interception, screenshot capture,
+        proper DEBUG/PAUSE and DONE semantics.
+
+        Returns ``(ok, page, error, done)`` where *page* may be reassigned
+        by ``OPEN APP`` and *done* signals mission termination.
         """
         step_kind = classify_step(step)
         started_perf = time.perf_counter()
         _step_ok = True
         _step_error: str | None = None
+        _done = False
 
         print(f"    [▶️ ACTION START] {step}")
 
@@ -1055,10 +1080,24 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                 print(self.memory.dump())
 
             elif step_kind == "debug":
-                print("      🔎 DEBUG/PAUSE step inside conditional branch")
+                import sys as _sys
+
+                if not _sys.stdin.isatty():
+                    print("      🔎 DEBUG/PAUSE step (conditional branch)")
+                    await self._debug_prompt(page, step, action_index)
+                else:
+                    print("      🔎 DEBUG/PAUSE step — opening Playwright Inspector…")
+                    await page.pause()
 
             elif step_kind == "done":
                 print("      🏁 MISSION ACCOMPLISHED")
+                _done = True
+
+            elif step_kind == "use_import":
+                raise RuntimeError(
+                    f"Unresolved USE directive at runtime: {step!r}. "
+                    f"USE blocks must be expanded at parse time via @import: headers."
+                )
 
             elif step_kind == "call_python":
                 instruction = re.sub(r"^\s*\d+\.\s*", "", step).strip()
@@ -1079,8 +1118,34 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     _step_ok = False
 
             else:
-                # DOM action (click, fill, select, etc.)
-                if not await self._execute_step(page, step, strategic_context, step_idx=action_index):
+                # DOM action (click, fill, select, etc.) — with custom-control interception.
+                _cc_mode = detect_mode(step)
+                _cc_quoted = extract_quoted(step, preserve_case=True)
+                if _cc_mode == "input" and len(_cc_quoted) >= 2:
+                    _cc_target, _cc_value = _cc_quoted[0], _cc_quoted[-1]
+                elif _cc_mode == "select" and len(_cc_quoted) >= 2:
+                    _cc_target, _cc_value = _cc_quoted[-1], _cc_quoted[0]
+                elif _cc_mode == "drag" and len(_cc_quoted) >= 2:
+                    _cc_target, _cc_value = _cc_quoted[0], _cc_quoted[-1]
+                elif _cc_quoted:
+                    _cc_target, _cc_value = _cc_quoted[0], None
+                else:
+                    _cc_target, _cc_value = "", None
+                _cc_handler = None
+                if _cc_target:
+                    _cc_page = prompts.lookup_page_name(page.url)
+                    _cc_handler = get_custom_control(_cc_page, _cc_target)
+                if _cc_handler is not None:
+                    print(f"      🎛️  [CUSTOM CONTROL] Routed '{_cc_target}' to custom handler.")
+                    try:
+                        _cc_result = _cc_handler(page, _cc_mode, _cc_value)
+                        if inspect.isawaitable(_cc_result):
+                            await _cc_result
+                    except Exception as exc:
+                        _step_error = f"Custom control error on '{_cc_target}': {exc}"
+                        _log.warning("Custom control '%s' failed: %s", _cc_target, exc)
+                        _step_ok = False
+                elif not await self._execute_step(page, step, strategic_context, step_idx=action_index):
                     _step_error = "Action failed"
                     _step_ok = False
         except Exception as exc:
@@ -1089,24 +1154,44 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             _log.debug("Conditional step execution failed: %s", exc)
 
         duration_s = time.perf_counter() - started_perf
+
+        # ── Screenshot capture (aligned with main loop) ──
+        _ss_b64: str | None = None
+        if _screenshot_mode == "always" or (_screenshot_mode == "on-fail" and not _step_ok):
+            try:
+                import base64 as _b64
+
+                _ss_bytes = await page.screenshot(type="png")
+                _ss_b64 = _b64.b64encode(_ss_bytes).decode("ascii")
+            except Exception as exc:
+                _log.debug("Screenshot capture failed: %s", exc)
+
         if _step_ok:
+            _sr_status = "pass"
             print(f"    [✅ ACTION PASS] duration: {duration_s:.2f}s")
+        elif step_kind == "verify_softly":
+            _sr_status = "warning"
+            print(f"    [⚠️ ACTION WARN] {_step_error}")
         else:
+            _sr_status = "fail"
             print(f"    [❌ ACTION FAIL] {_step_error}")
 
-        _sr_status = "pass" if _step_ok else "fail"
+        _healed = self._last_step_healed
         _step_result = StepResult(
             index=action_index,
             text=re.sub(r"^\s*\d+\.\s*", "", step),
             status=_sr_status,
             duration_ms=duration_s * 1000,
             error=_step_error,
+            screenshot=_ss_b64,
             logical_step=getattr(block, "block_name", ""),
+            healed=_healed,
         )
         _step_results.append(_step_result)
         block_steps.append(_step_result)
+        self._last_step_healed = False
 
-        return _step_ok
+        return _step_ok, page, _step_error, _done
 
     async def run_mission(
         self,
@@ -1202,12 +1287,23 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                             _cond_ok = True
                             _cond_error: str | None = None
                             try:
-                                _cond_ok = await self._execute_conditional(
-                                    raw_step, page, ctx, strategic_context,
-                                    action_index, hunt_dir, hunt_file,
-                                    _action_file_lines, block, block_steps,
-                                    _step_results, _soft_errors, _screenshot_mode,
+                                _cond_ok, page, _cond_done = await self._execute_conditional(
+                                    raw_step,
+                                    page,
+                                    ctx,
+                                    strategic_context,
+                                    action_index,
+                                    hunt_dir,
+                                    hunt_file,
+                                    _action_file_lines,
+                                    block,
+                                    block_steps,
+                                    _step_results,
+                                    _soft_errors,
+                                    _screenshot_mode,
                                 )
+                                if _cond_done:
+                                    done = True
                                 if not _cond_ok:
                                     _cond_error = "Conditional action failed"
                             except Exception as exc:

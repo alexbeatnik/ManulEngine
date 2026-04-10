@@ -27,7 +27,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 
 from manul_engine.helpers import (
     IfBlock,
-    ConditionalBranch,
     classify_step,
     parse_hunt_blocks,
 )
@@ -399,6 +398,19 @@ async def test_variable_conditions_async():
         _assert(False, "Invalid syntax should raise ValueError")
     except ValueError:
         _assert(True, "Invalid syntax raises ValueError")
+
+    # Page-dependent conditions with page=None must raise ValueError
+    try:
+        await evaluate_condition("button 'Save' exists", None, mem)
+        _assert(False, "Element-exists with page=None should raise ValueError")
+    except ValueError as exc:
+        _assert("requires an active page" in str(exc), "Element-exists None page guard")
+
+    try:
+        await evaluate_condition("text 'Hello' is present", None, mem)
+        _assert(False, "Text-present with page=None should raise ValueError")
+    except ValueError as exc:
+        _assert("requires an active page" in str(exc), "Text-present None page guard")
 
 
 # ── Section 7: Integration — mixed actions and conditionals ──────────────────

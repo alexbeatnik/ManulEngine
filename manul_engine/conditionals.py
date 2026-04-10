@@ -58,10 +58,14 @@ _RE_VAR_TRUTHY = re.compile(
 
 async def evaluate_condition(
     condition: str,
-    page: "Page",
+    page: "Page | None",
     memory: "ScopedVariables",
 ) -> bool:
     """Evaluate a single DSL condition expression.
+
+    *page* may be ``None`` for variable-only conditions.  Page-dependent
+    conditions (element-exists, text-present) raise ``ValueError`` when
+    *page* is ``None``.
 
     Returns ``True`` if the condition is met, ``False`` otherwise.
     Raises ``ValueError`` for unrecognized condition syntax.
@@ -71,6 +75,8 @@ async def evaluate_condition(
     # ── element/button 'Target' [not] exists ──
     m = _RE_ELEMENT_EXISTS.match(cond)
     if m:
+        if page is None:
+            raise ValueError(f"Page-dependent condition requires an active page: {cond!r}")
         target = m.group("target")
         negate = bool(m.group("neg"))
         found = await _element_exists(page, target)
@@ -87,6 +93,8 @@ async def evaluate_condition(
     # ── text 'Something' is [not] present ──
     m = _RE_TEXT_PRESENT.match(cond)
     if m:
+        if page is None:
+            raise ValueError(f"Page-dependent condition requires an active page: {cond!r}")
         target = m.group("target")
         negate = bool(m.group("neg"))
         found = await _text_present(page, target)
