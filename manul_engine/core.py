@@ -88,6 +88,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         ai_threshold: "int | None" = None,
         debug_mode: bool = False,
         break_steps: "set[int] | None" = None,
+        break_file_lines: "set[int] | None" = None,
         disable_cache: bool = False,
         semantic_cache: "bool | None" = None,  # None → read from config/env
         explain_mode: "bool | None" = None,
@@ -189,6 +190,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         self._debug_continue = False  # set to True by 'Continue All' in debug session
         self._user_break_steps: set[int] = set(break_steps) if break_steps else set()
         self.break_steps: set[int] = set(self._user_break_steps)
+        self._break_file_lines: set[int] = set(break_file_lines) if break_file_lines else set()
         # Last element-resolution scoring data — used by 'explain' debug command.
         self._last_explain_data: tuple[str, list[str], list[dict]] | None = None
         # Tracks how many annotation lines have been inserted into the hunt file
@@ -839,19 +841,19 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         self,
         if_block: "IfBlock",
         page: "Page",
-    ) -> "list":
-        """Evaluate an if/elif/else block and return the actions of the taken branch.
+    ) -> "tuple[list, list[int]]":
+        """Evaluate an if/elif/else block and return the taken branch's data.
 
-        Evaluates conditions in order; returns the actions list of the first
-        branch whose condition is ``True``.  If no branch matches and there is
-        no ``else``, returns an empty list.
+        Evaluates conditions in order; returns ``(actions, action_lines)`` of
+        the first branch whose condition is ``True``.  If no branch matches
+        and there is no ``else``, returns ``([], [])``.
         """
         from .conditionals import evaluate_condition
 
         for branch in if_block.branches:
             if branch.kind == "else":
                 print("    🔀 [CONDITIONAL] Taking 'else' branch (no prior condition matched)")
-                return branch.actions
+                return branch.actions, branch.action_lines
 
             try:
                 result = await evaluate_condition(branch.condition, page, self.memory)
@@ -862,12 +864,12 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
 
             if result:
                 print(f"    🔀 [CONDITIONAL] '{branch.kind} {branch.condition}' → True — executing branch")
-                return branch.actions
+                return branch.actions, branch.action_lines
             else:
                 print(f"    🔀 [CONDITIONAL] '{branch.kind} {branch.condition}' → False — skipping")
 
         print("    🔀 [CONDITIONAL] No branch taken (all conditions False, no else)")
-        return []
+        return [], []
 
     async def _execute_conditional(
         self,
@@ -893,9 +895,10 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         ``DONE.`` step was encountered inside the branch, and
         ``action_index`` reflects incrementing per executed branch action.
         """
-        branch_actions = await self._evaluate_conditional(if_block, page)
+        branch_actions, branch_lines = await self._evaluate_conditional(if_block, page)
         done = False
-        for ba in branch_actions:
+        for ba_idx, ba in enumerate(branch_actions):
+            ba_line = branch_lines[ba_idx] if ba_idx < len(branch_lines) else 0
             if isinstance(ba, IfBlock):
                 ok, page, done, action_index = await self._execute_conditional(
                     ba,
@@ -916,6 +919,22 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     return ok, page, done, action_index
             elif isinstance(ba, str):
                 action_index += 1
+                # File-line breakpoint check for conditional body actions.
+                if (
+                    self._break_file_lines
+                    and ba_line
+                    and ba_line in self._break_file_lines
+                ):
+                    import sys as _sys
+
+                    step_kind = classify_step(ba)
+                    if step_kind != "action" and not _sys.stdin.isatty():
+                        print(f"    🔴 BREAKPOINT at line {ba_line}")
+                        await self._debug_prompt(page, ba, action_index)
+                    elif step_kind != "action":
+                        print(f"    🔴 BREAKPOINT at line {ba_line} — opening Playwright Inspector…")
+                        await page.pause()
+
                 ba = substitute_memory(ba, self.memory)
                 outcome = await self._dispatch_step(
                     ba,

@@ -20,7 +20,7 @@ import sys
 import time
 from typing import NamedTuple
 
-from .helpers import parse_hunt_blocks
+from .helpers import IfBlock, collect_ifblock_lines, parse_hunt_blocks
 from .hooks import RE_END_SETUP, RE_END_TEARDOWN, RE_SETUP, RE_TEARDOWN
 from .imports import (
     HuntImportError,
@@ -479,6 +479,8 @@ async def _run_hunt_file(
 
     # Map file line numbers (from editor gutter breakpoints) to action indices.
     # STEP headers now map to the first action inside their block.
+    # IfBlocks are expanded recursively so breakpoints on inner conditional
+    # action lines are included.
     _break_lines = break_lines or set()
     break_steps: set[int] = set()
     if _break_lines:
@@ -487,10 +489,18 @@ async def _run_hunt_file(
             block_start_action = action_index + 1
             if block.block_line in _break_lines and block.actions:
                 break_steps.add(block_start_action)
-            for file_line in block.action_lines:
-                action_index += 1
-                if file_line in _break_lines:
-                    break_steps.add(action_index)
+            for a_idx, file_line in enumerate(block.action_lines):
+                action_obj = block.actions[a_idx] if a_idx < len(block.actions) else None
+                if isinstance(action_obj, IfBlock):
+                    # Expand: count each inner action line as its own index.
+                    for inner_line in collect_ifblock_lines(action_obj):
+                        action_index += 1
+                        if inner_line in _break_lines:
+                            break_steps.add(action_index)
+                else:
+                    action_index += 1
+                    if file_line in _break_lines:
+                        break_steps.add(action_index)
 
     if not hunt.mission:
         print(f"⚠️  Skipping {filename}: empty or comments-only.")
@@ -526,6 +536,7 @@ async def _run_hunt_file(
         browser=browser,
         debug_mode=debug,
         break_steps=break_steps,
+        break_file_lines=break_lines,
         explain_mode=explain,
         required_controls=_required_controls or None,
         executable_path=executable_path,

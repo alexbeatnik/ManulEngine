@@ -136,6 +136,24 @@ class IfBlock:
     branches: list[ConditionalBranch] = field(default_factory=list)
 
 
+def collect_ifblock_lines(if_block: "IfBlock") -> list[int]:
+    """Recursively collect all action line numbers from an IfBlock.
+
+    Returns file line numbers from every branch (including nested
+    conditionals) so that breakpoints can target inner conditional actions.
+    """
+    lines: list[int] = []
+    for branch in if_block.branches:
+        if branch.branch_line:
+            lines.append(branch.branch_line)
+        for action, line_no in zip(branch.actions, branch.action_lines):
+            if isinstance(action, IfBlock):
+                lines.extend(collect_ifblock_lines(action))
+            else:
+                lines.append(line_no)
+    return lines
+
+
 class StrictVerifyAssertion(NamedTuple):
     """Parsed strict VERIFY assertion."""
 
