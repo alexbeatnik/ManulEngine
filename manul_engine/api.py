@@ -475,12 +475,15 @@ class ManulSession:
             block_error: str | None = None
 
             for raw_step in block.actions:
-                # Skip IfBlock entries — ManulSession.run_steps() does not
-                # support conditional blocks (they require the full engine
-                # dispatch loop in core.run_mission()).  IfBlock instances
-                # are silently skipped rather than crashing with a type error.
+                # IfBlock entries (IF/ELIF/ELSE conditionals) require the full
+                # engine dispatch loop in core.run_mission().  Fail fast with a
+                # clear message instead of crashing with a cryptic TypeError.
                 if not isinstance(raw_step, str):
-                    continue
+                    raise RuntimeError(
+                        "ManulSession.run_steps() does not support IF/ELIF/ELSE "
+                        "conditional blocks.  Use ManulEngine.run_mission() for "
+                        "hunts that contain conditionals."
+                    )
                 action_index += 1
                 step = substitute_memory(raw_step, eng.memory)
                 started_perf = time.perf_counter()

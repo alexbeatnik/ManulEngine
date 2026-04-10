@@ -490,6 +490,107 @@ def test_conditional_with_variables():
         _assert(actions[1].branches[2].condition == "", "Else has empty condition")
 
 
+# ── Section 8: Playwright-backed element/text condition tests ────────────────
+
+_CONDITIONAL_DOM = """<!DOCTYPE html>
+<html><body>
+<h1>Welcome Page</h1>
+<button id="save-btn">Save</button>
+<a href="#">Home</a>
+<input placeholder="Search here" aria-label="Search Input">
+<span style="display:none">Hidden Text</span>
+<p>This page has some visible content for testing.</p>
+</body></html>"""
+
+
+async def test_element_exists_browser():
+    """Test _element_exists and _text_present with a real Playwright page."""
+    print("\n── Section 8: Playwright-backed element/text conditions ──")
+
+    from playwright.async_api import async_playwright
+    from manul_engine.conditionals import _element_exists, _text_present, evaluate_condition
+    from manul_engine.variables import ScopedVariables
+
+    async with async_playwright() as pw:
+        browser = await pw.chromium.launch(headless=True)
+        page = await browser.new_page()
+        await page.set_content(_CONDITIONAL_DOM)
+
+        # ── _element_exists ──
+
+        # Button by text
+        found = await _element_exists(page, "Save")
+        _assert(found is True, "element_exists: 'Save' button found")
+
+        # Link by text
+        found = await _element_exists(page, "Home")
+        _assert(found is True, "element_exists: 'Home' link found")
+
+        # By placeholder
+        found = await _element_exists(page, "Search here")
+        _assert(found is True, "element_exists: 'Search here' placeholder found")
+
+        # By aria-label
+        found = await _element_exists(page, "Search Input")
+        _assert(found is True, "element_exists: 'Search Input' label found")
+
+        # Non-existent element
+        found = await _element_exists(page, "Delete Everything")
+        _assert(found is False, "element_exists: non-existent returns False")
+
+        # Hidden element text — button/link strategies won't match hidden spans
+        found = await _element_exists(page, "Hidden Text")
+        _assert(found is False, "element_exists: hidden element returns False")
+
+        # ── _text_present ──
+
+        # Visible heading text
+        found = await _text_present(page, "Welcome Page")
+        _assert(found is True, "text_present: 'Welcome Page' found")
+
+        # Visible paragraph text (substring)
+        found = await _text_present(page, "visible content")
+        _assert(found is True, "text_present: 'visible content' substring found")
+
+        # Case-insensitive
+        found = await _text_present(page, "welcome page")
+        _assert(found is True, "text_present: case-insensitive match")
+
+        # Non-existent text
+        found = await _text_present(page, "This text does not exist anywhere")
+        _assert(found is False, "text_present: non-existent returns False")
+
+        # ── evaluate_condition with real page ──
+
+        mem = ScopedVariables()
+
+        result = await evaluate_condition("button 'Save' exists", page, mem)
+        _assert(result is True, "evaluate: button 'Save' exists → True")
+
+        result = await evaluate_condition("button 'Delete' not exists", page, mem)
+        _assert(result is True, "evaluate: button 'Delete' not exists → True")
+
+        result = await evaluate_condition("button 'Save' not exists", page, mem)
+        _assert(result is False, "evaluate: button 'Save' not exists → False")
+
+        result = await evaluate_condition("link 'Home' exists", page, mem)
+        _assert(result is True, "evaluate: link 'Home' exists → True")
+
+        result = await evaluate_condition("text 'Welcome Page' is present", page, mem)
+        _assert(result is True, "evaluate: text 'Welcome Page' is present → True")
+
+        result = await evaluate_condition("text 'Nonexistent' is present", page, mem)
+        _assert(result is False, "evaluate: text 'Nonexistent' is present → False")
+
+        result = await evaluate_condition("text 'Welcome Page' is not present", page, mem)
+        _assert(result is False, "evaluate: text 'Welcome Page' is not present → False")
+
+        result = await evaluate_condition("text 'Nonexistent' is not present", page, mem)
+        _assert(result is True, "evaluate: text 'Nonexistent' is not present → True")
+
+        await browser.close()
+
+
 # ── Entry point ──────────────────────────────────────────────────────────────
 
 
@@ -510,8 +611,11 @@ async def run_suite() -> tuple[int, int]:
     await test_variable_conditions_async()
     test_mixed_actions()
     test_conditional_with_variables()
+    await test_element_exists_browser()
 
+    total = _PASS + _FAIL
     print(f"\n  Conditionals suite: {_PASS} passed, {_FAIL} failed")
+    print(f"SCORE: {_PASS}/{total}")
     return _PASS, _FAIL
 
 
