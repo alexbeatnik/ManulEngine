@@ -33,10 +33,10 @@ STEP 1: Open the app
     VERIFY that 'Sign In' is present
 
 STEP 2: Authenticate
-    Fill 'Email' field with '{email}'
-    Verify "Email" field has value "{email}"
-    Fill 'Password' field with '{password}'
-    Click the 'Sign In' button
+    FILL 'Email' field with '{email}'
+    VERIFY "Email" field has value "{email}"
+    FILL 'Password' field with '{password}'
+    CLICK the 'Sign In' button
     VERIFY that 'Dashboard' is present
 
 DONE.
@@ -50,6 +50,10 @@ manul path/to/login.hunt
 
 Every `@var:` is declared up front — never hardcode test data inside steps. `VERIFY` confirms state after every significant action. `DONE.` closes the mission.
 
+> **Case-insensitive keywords.** All DSL keywords are case-insensitive at runtime — `CLICK`, `Click`, and `click` all work. The canonical form used in documentation and generated files is ALL UPPERCASE.
+>
+> **Element type hints are optional.** Words like `button`, `link`, `field`, `dropdown` placed after the target outside quotes are not required, but they provide a strong heuristic signal that boosts scoring accuracy. `CLICK the 'Login' button` and `CLICK the 'Login'` both work — the former is more precise.
+
 ### Conditional branching
 
 Branch test logic with `IF` / `ELIF` / `ELSE` based on what the page actually contains. Nesting is supported.
@@ -57,13 +61,13 @@ Branch test logic with `IF` / `ELIF` / `ELSE` based on what the page actually co
 ```text
 STEP 1: Adaptive login
     IF button 'SSO Login' exists:
-        Click the 'SSO Login' button
+        CLICK the 'SSO Login' button
         VERIFY that 'SSO Portal' is present
     ELIF text 'Sign In' is present:
-        Fill 'Username' field with '{username}'
-        Click the 'Sign In' button
+        FILL 'Username' field with '{username}'
+        CLICK the 'Sign In' button
     ELSE:
-        Click the 'Create Account' link
+        CLICK the 'Create Account' link
 ```
 
 Conditions can check element existence, visible text, variable equality, substring containment, or simple truthiness — all evaluated against the live page.
@@ -73,10 +77,10 @@ Conditions can check element existence, visible text, variable equality, substri
 When a page has repeating controls — multiple "Delete" buttons, "Edit" links in every row — use contextual qualifiers instead of brittle selectors.
 
 ```text
-Click the 'Edit' button NEAR 'John Doe'
-Click the 'Login' button ON HEADER
-Click the 'Privacy Policy' link ON FOOTER
-Click the 'Delete' button INSIDE 'Actions' row with 'John Doe'
+CLICK the 'Edit' button NEAR 'John Doe'
+CLICK the 'Login' button ON HEADER
+CLICK the 'Privacy Policy' link ON FOOTER
+CLICK the 'Delete' button INSIDE 'Actions' row with 'John Doe'
 ```
 
 `NEAR` ranks by pixel distance. `ON HEADER` / `ON FOOTER` scopes to viewport zones. `INSIDE` restricts scoring to a resolved row or container subtree.
@@ -96,16 +100,16 @@ Click the 'Delete' button INSIDE 'Actions' row with 'John Doe'
 
 STEP 1: Login
     NAVIGATE to https://example.com/login
-    Fill 'Email' field with '{email}'
-    Fill 'Password' field with '{password}'
-    Click the 'Sign In' button
+    FILL 'Email' field with '{email}'
+    FILL 'Password' field with '{password}'
+    CLICK the 'Sign In' button
     VERIFY that 'Dashboard' is present
 
 STEP 2: Fetch and use an OTP
-    Click the 'Send OTP' button
+    CLICK the 'Send OTP' button
     CALL PYTHON api_helpers.fetch_otp "{email}" into {otp}
-    Fill 'OTP' field with '{otp}'
-    Click the 'Verify' button
+    FILL 'OTP' field with '{otp}'
+    CLICK the 'Verify' button
     VERIFY that 'Welcome' is present
 
 [TEARDOWN]
@@ -118,12 +122,12 @@ STEP 2: Fetch and use an OTP
 ### Explicit waits and strict assertions
 
 ```text
-Wait for 'Submit' to be visible
-Wait for 'Loading...' to disappear
+WAIT FOR 'Submit' to be visible
+WAIT FOR 'Loading...' to disappear
 
-Verify "Email" field has value "admin@example.com"
-Verify "Save" button has text "Save Changes"
-Verify "Search" input has placeholder "Type to search..."
+VERIFY "Email" field has value "admin@example.com"
+VERIFY "Save" button has text "Save Changes"
+VERIFY "Search" input has placeholder "Type to search..."
 ```
 
 Explicit waits use Playwright's `locator.wait_for()` instead of hardcoded sleeps. Strict assertions resolve the element through heuristics and compare exact text, value, or placeholder with `==`.
@@ -139,7 +143,7 @@ STEP 1: Setup
     USE Login
 
 STEP 2: Purchase flow
-    Click the 'Buy Now' button
+    CLICK the 'Buy Now' button
     VERIFY that 'Order Confirmed' is present
 
 STEP 3: Cleanup

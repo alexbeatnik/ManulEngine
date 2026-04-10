@@ -775,22 +775,26 @@ manul my_mission.hunt
 | Category | Command Syntax |
 | --- | --- |
 | **Navigation** | `NAVIGATE to [URL]`, `OPEN APP` |
-| **Input** | `Fill [Field] with [Text]`, `Type [Text] into [Field]` |
-| **Click** | `Click [Element]`, `DOUBLE CLICK [Element]`, `RIGHT CLICK [Element]` |
-| **Selection** | `Select [Option] from [Dropdown]`, `Check [Checkbox]`, `Uncheck [Checkbox]` |
-| **Mouse Action** | `HOVER over [Element]`, `Drag [Element] and drop it into [Target]` |
+| **Input** | `FILL [Field] with [Text]`, `TYPE [Text] into [Field]` |
+| **Click** | `CLICK [Element]`, `DOUBLE CLICK [Element]`, `RIGHT CLICK [Element]` |
+| **Selection** | `SELECT [Option] from [Dropdown]`, `CHECK [Checkbox]`, `UNCHECK [Checkbox]` |
+| **Mouse Action** | `HOVER over [Element]`, `DRAG [Element] and drop it into [Target]` |
 | **Data Extraction** | `EXTRACT [Target] into {variable_name}` |
-| **Verification** | `VERIFY that [Text] is present/absent`, `VERIFY that [Element] is checked/disabled/enabled`, `Verify '<element>' <type> has text '<expected>'`, `Verify '<element>' <type> has placeholder '<expected>'`, `Verify '<element>' <type> has value '<expected>'` |
+| **Verification** | `VERIFY that [Text] is present/absent`, `VERIFY that [Element] is checked/disabled/enabled`, `VERIFY '<element>' <type> has text '<expected>'`, `VERIFY '<element>' <type> has placeholder '<expected>'`, `VERIFY '<element>' <type> has value '<expected>'` |
 | **Page Scanner** | `SCAN PAGE`, `SCAN PAGE into {filename}` |
 | **Debug** | `DEBUG` / `PAUSE` — pause execution at that step (use with `--debug` or VS Code gutter breakpoints) |
 | **Keyboard** | `PRESS ENTER`, `PRESS [Key]`, `PRESS [Key] on [Element]` |
 | **File Upload** | `UPLOAD 'File' to 'Element'` |
 | **Variables** | `SET {variable} = value`, `@var: {name} = value` (header declaration) |
-| **Flow Control** | `WAIT [seconds]`, `Wait for "Text" to be visible`, `Wait for 'Spinner' to disappear`, `Wait for "Element" to be hidden`, `SCROLL DOWN` |
+| **Flow Control** | `WAIT [seconds]`, `WAIT FOR "Text" to be visible`, `WAIT FOR 'Spinner' to disappear`, `WAIT FOR "Element" to be hidden`, `SCROLL DOWN` |
 | **Conditionals** | `IF <condition>:` / `ELIF <condition>:` / `ELSE:` — block-style branching based on element presence, text state, or variable comparisons. Nesting supported. |
 | **Finish** | `DONE.` |
 
-*Note: You can append `if exists` or `optional` to the end of any step (outside quoted text) to make it non-blocking, e.g. `Click 'Close Ad' if exists`.*
+> **Case-insensitive keywords.** All DSL keywords are case-insensitive at runtime — `CLICK`, `Click`, and `click` all work identically. The canonical form used in documentation and generated files is ALL UPPERCASE.
+>
+> **Element type hints are optional but recommended.** Words like `button`, `link`, `field`, `dropdown`, `checkbox`, `radio`, `element`, `input` placed after the target outside quotes are not required, but they boost heuristic scoring accuracy. `CLICK the 'Login' button` and `CLICK the 'Login'` both work.
+
+*Note: You can append `if exists` or `optional` to the end of any step (outside quoted text) to make it non-blocking, e.g. `CLICK 'Close Ad' if exists`.*
 
 `disappear` is an alias for Playwright's `hidden` state. The runtime routes these explicit waits through `locator.wait_for()` instead of using hard sleeps.
 
@@ -799,17 +803,17 @@ manul my_mission.hunt
 Use strict assertions when the DSL must validate the exact visible text, exact placeholder attribute, or exact current field value on a resolved element.
 
 ```text
-Verify "save" button has text "Save me"
-Verify "Error message" element has text "Invalid credentials"
-Verify 'Login' field has placeholder "Login/Email"
-Verify "Search" input has placeholder "Type to search..."
-Verify "Email" field has value "captain@manul.com"
-Verify "Notes" element has value "treasure map"
+VERIFY "save" button has text "Save me"
+VERIFY "Error message" element has text "Invalid credentials"
+VERIFY 'Login' field has placeholder "Login/Email"
+VERIFY "Search" input has placeholder "Type to search..."
+VERIFY "Email" field has value "captain@manul.com"
+VERIFY "Notes" element has value "treasure map"
 ```
 
-- `Verify "<element_name>" <type> has text "<expected_text>"` routes through the normal resolver, then compares `locator.inner_text().strip()` with strict equality.
-- `Verify "<element_name>" <type> has placeholder "<expected_placeholder>"` resolves the target and compares `locator.get_attribute("placeholder")` with strict equality.
-- `Verify "<element_name>" <type> has value "<expected_value>"` resolves the target, reads the current control value via `locator.input_value()` with a `value`-attribute fallback, normalizes missing values to `""`, and compares with strict equality.
+- `VERIFY "<element_name>" <type> has text "<expected_text>"` routes through the normal resolver, then compares `locator.inner_text().strip()` with strict equality.
+- `VERIFY "<element_name>" <type> has placeholder "<expected_placeholder>"` resolves the target and compares `locator.get_attribute("placeholder")` with strict equality.
+- `VERIFY "<element_name>" <type> has value "<expected_value>"` resolves the target, reads the current control value via `locator.input_value()` with a `value`-attribute fallback, normalizes missing values to `""`, and compares with strict equality.
 - Failed strict assertions raise `AssertionError` with the resolved locator plus readable `Expected` and `Actual` values.
 
 ---

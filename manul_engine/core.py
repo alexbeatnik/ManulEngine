@@ -850,7 +850,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
 
         for branch in if_block.branches:
             if branch.kind == "else":
-                print(f"    🔀 [CONDITIONAL] Taking 'else' branch (no prior condition matched)")
+                print("    🔀 [CONDITIONAL] Taking 'else' branch (no prior condition matched)")
                 return branch.actions
 
             cond_text = substitute_memory(branch.condition, self.memory)
@@ -867,7 +867,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             else:
                 print(f"    🔀 [CONDITIONAL] '{branch.kind} {branch.condition}' → False — skipping")
 
-        print(f"    🔀 [CONDITIONAL] No branch taken (all conditions False, no else)")
+        print("    🔀 [CONDITIONAL] No branch taken (all conditions False, no else)")
         return []
 
     async def _dispatch_step(
@@ -1087,28 +1087,33 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                         if isinstance(raw_step, IfBlock):
                             action_index += 1
                             started_perf = time.perf_counter()
-                            print(f"  [▶️ ACTION START] if/elif/else conditional")
+                            print("  [▶️ ACTION START] if/elif/else conditional")
                             _cond_ok = True
                             _cond_error: str | None = None
                             try:
-                                _branch_actions = await self._evaluate_conditional(
-                                    raw_step, page
-                                )
+                                _branch_actions = await self._evaluate_conditional(raw_step, page)
                                 for _ba in _branch_actions:
                                     if isinstance(_ba, IfBlock):
                                         # Nested conditional
-                                        _nested_actions = await self._evaluate_conditional(
-                                            _ba, page
-                                        )
+                                        _nested_actions = await self._evaluate_conditional(_ba, page)
                                         for _na in _nested_actions:
                                             if isinstance(_na, str):
                                                 _na = substitute_memory(_na, self.memory)
                                                 _na_ok = await self._dispatch_step(
-                                                    _na, page, ctx, strategic_context,
-                                                    action_index, hunt_dir, hunt_file,
-                                                    _action_file_lines, block, block_steps,
-                                                    _step_results, _soft_errors,
-                                                    _screenshot_mode, raw_step=_na,
+                                                    _na,
+                                                    page,
+                                                    ctx,
+                                                    strategic_context,
+                                                    action_index,
+                                                    hunt_dir,
+                                                    hunt_file,
+                                                    _action_file_lines,
+                                                    block,
+                                                    block_steps,
+                                                    _step_results,
+                                                    _soft_errors,
+                                                    _screenshot_mode,
+                                                    raw_step=_na,
                                                 )
                                                 if not _na_ok:
                                                     _cond_ok = False
@@ -1120,11 +1125,20 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                     elif isinstance(_ba, str):
                                         _ba = substitute_memory(_ba, self.memory)
                                         _ba_ok = await self._dispatch_step(
-                                            _ba, page, ctx, strategic_context,
-                                            action_index, hunt_dir, hunt_file,
-                                            _action_file_lines, block, block_steps,
-                                            _step_results, _soft_errors,
-                                            _screenshot_mode, raw_step=_ba,
+                                            _ba,
+                                            page,
+                                            ctx,
+                                            strategic_context,
+                                            action_index,
+                                            hunt_dir,
+                                            hunt_file,
+                                            _action_file_lines,
+                                            block,
+                                            block_steps,
+                                            _step_results,
+                                            _soft_errors,
+                                            _screenshot_mode,
+                                            raw_step=_ba,
                                         )
                                         if not _ba_ok:
                                             _cond_ok = False

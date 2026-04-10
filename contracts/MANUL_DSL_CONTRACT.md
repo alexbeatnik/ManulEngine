@@ -8,6 +8,16 @@
 {
   "version": "0.0.9.28",
   "generatedFrom": "manul_engine/helpers.py :: classify_step(), detect_mode(), parse_contextual_hint(); manul_engine/core.py :: run_mission(); manul_engine/cli.py :: parse_hunt_file(); manul_engine/actions.py :: _ActionsMixin; manul_engine/scoring.py :: DOMScorer contextual proximity rules; manul_engine/js_scripts.py :: SNAPSHOT_JS geometry export; manul_engine/imports.py :: parse_import_directive(), resolve_imports(), expand_use_directives()",
+  "casePolicy": {
+    "canonical": "ALL_UPPERCASE",
+    "runtime": "case-insensitive",
+    "note": "All DSL keywords are case-insensitive at runtime. classify_step() converts step text to uppercase before pattern matching; detect_mode() converts to lowercase for verb detection. Any mix of cases is accepted (e.g. 'navigate', 'Navigate', 'NAVIGATE' all work). The canonical form shown in labels and examples is ALL UPPERCASE."
+  },
+  "elementTypeHint": {
+    "rule": "optional_but_recommended",
+    "note": "Element type hints (button, link, field, dropdown, checkbox, radio, element, input) placed outside quotes after the target name are optional. Including them provides a strong heuristic signal that boosts scoring accuracy. Examples: CLICK the 'Login' button (with hint) vs CLICK the 'Login' (without hint — still works).",
+    "validHints": ["button", "link", "field", "dropdown", "checkbox", "radio", "element", "input"]
+  },
   "commands": [
     {
       "id": "navigate",
@@ -29,11 +39,11 @@
     },
     {
       "id": "click",
-      "label": "Click",
-      "uiText": "Click the '' button",
-      "snippet": "Click the '${1:target}' button",
+      "label": "CLICK",
+      "uiText": "CLICK the ''",
+      "snippet": "CLICK the '${1:target}'${2: button}",
       "regex": null,
-      "description": "Clicks a resolved element. Detected by the 'click' verb in the step text. Interaction mode: clickable.",
+      "description": "Clicks a resolved element. Detected by the 'click' verb (case-insensitive). Element type hint (button, link, element) after the target is optional but recommended for scoring accuracy. Interaction mode: clickable.",
       "category": "interaction",
       "interactionMode": "clickable"
     },
@@ -43,57 +53,57 @@
       "uiText": "DOUBLE CLICK the ''",
       "snippet": "DOUBLE CLICK the '${1:target}'",
       "regex": null,
-      "description": "Double-clicks a resolved element. Detected by the 'double' + 'click' verbs. Interaction mode: clickable.",
+      "description": "Double-clicks a resolved element. Detected by the 'double' + 'click' verbs (case-insensitive). Interaction mode: clickable.",
       "category": "interaction",
       "interactionMode": "clickable"
     },
     {
       "id": "check",
-      "label": "Check",
-      "uiText": "Check the checkbox for ''",
-      "snippet": "Check the checkbox for '${1:target}'",
+      "label": "CHECK",
+      "uiText": "CHECK the checkbox for ''",
+      "snippet": "CHECK the checkbox for '${1:target}'",
       "regex": null,
-      "description": "Checks a checkbox element. Detected by the 'check' verb. Interaction mode: clickable.",
+      "description": "Checks a checkbox element. Detected by the 'check' verb (case-insensitive). Interaction mode: clickable.",
       "category": "interaction",
       "interactionMode": "clickable"
     },
     {
       "id": "uncheck",
-      "label": "Uncheck",
-      "uiText": "Uncheck the checkbox for ''",
-      "snippet": "Uncheck the checkbox for '${1:target}'",
+      "label": "UNCHECK",
+      "uiText": "UNCHECK the checkbox for ''",
+      "snippet": "UNCHECK the checkbox for '${1:target}'",
       "regex": null,
-      "description": "Unchecks a checkbox element. Detected by the 'uncheck' verb. Interaction mode: clickable.",
+      "description": "Unchecks a checkbox element. Detected by the 'uncheck' verb (case-insensitive). Interaction mode: clickable.",
       "category": "interaction",
       "interactionMode": "clickable"
     },
     {
       "id": "fill",
-      "label": "Fill",
-      "uiText": "Fill '' field with ''",
-      "snippet": "Fill '${1:target}' field with '${2:value}'",
+      "label": "FILL",
+      "uiText": "FILL '' field with ''",
+      "snippet": "FILL '${1:target}' field with '${2:value}'",
       "regex": null,
-      "description": "Types text into a resolved input/textarea element. Detected by the 'fill' verb. Interaction mode: input.",
+      "description": "Types text into a resolved input/textarea element. Detected by the 'fill' verb (case-insensitive). Element type hint (field, input) is optional but recommended. Interaction mode: input.",
       "category": "interaction",
       "interactionMode": "input"
     },
     {
       "id": "type",
-      "label": "Type",
-      "uiText": "Type '' into ''",
-      "snippet": "Type '${1:value}' into '${2:target}'",
+      "label": "TYPE",
+      "uiText": "TYPE '' into ''",
+      "snippet": "TYPE '${1:value}' into '${2:target}'",
       "regex": null,
-      "description": "Types text into a resolved element. Detected by the 'type' verb. Interaction mode: input.",
+      "description": "Types text into a resolved element. Detected by the 'type' verb (case-insensitive). Interaction mode: input.",
       "category": "interaction",
       "interactionMode": "input"
     },
     {
       "id": "select",
-      "label": "Select",
-      "uiText": "Select '' from the '' dropdown",
-      "snippet": "Select '${1:option}' from the '${2:target}' dropdown",
+      "label": "SELECT",
+      "uiText": "SELECT '' from the '' dropdown",
+      "snippet": "SELECT '${1:option}' from the '${2:target}' dropdown",
       "regex": null,
-      "description": "Selects an option from a native <select> or custom dropdown. Detected by the 'select' or 'choose' verbs. Interaction mode: select.",
+      "description": "Selects an option from a native <select> or custom dropdown. Detected by the 'select' or 'choose' verbs (case-insensitive). Element type hint (dropdown) is optional but recommended. Interaction mode: select.",
       "category": "interaction",
       "interactionMode": "select"
     },
@@ -103,17 +113,17 @@
       "uiText": "HOVER over the ''",
       "snippet": "HOVER over the '${1:target}'",
       "regex": null,
-      "description": "Hovers over a resolved element. Detected by the 'hover' verb. Interaction mode: hover.",
+      "description": "Hovers over a resolved element. Detected by the 'hover' verb (case-insensitive). Interaction mode: hover.",
       "category": "interaction",
       "interactionMode": "hover"
     },
     {
       "id": "drag",
-      "label": "Drag",
-      "uiText": "Drag '' and drop it into ''",
-      "snippet": "Drag '${1:source}' and drop it into '${2:destination}'",
+      "label": "DRAG",
+      "uiText": "DRAG '' and drop it into ''",
+      "snippet": "DRAG '${1:source}' and drop it into '${2:destination}'",
       "regex": null,
-      "description": "Drags one element and drops it onto another. Detected by the 'drag' + 'drop' verbs. Interaction mode: drag.",
+      "description": "Drags one element and drops it onto another. Detected by the 'drag' + 'drop' verbs (case-insensitive). Interaction mode: drag.",
       "category": "interaction",
       "interactionMode": "drag"
     },
@@ -137,9 +147,9 @@
     },
     {
       "id": "wait_for_element",
-      "label": "Wait for element",
-      "uiText": "Wait for '' to be visible",
-      "snippet": "Wait for '${1:target}' to ${2|be visible,be hidden,disappear|}",
+      "label": "WAIT FOR element",
+      "uiText": "WAIT FOR '' to be visible",
+      "snippet": "WAIT FOR '${1:target}' to ${2|be visible,be hidden,disappear|}",
       "regex": "^\\s*(?:\\d+\\.\\s*)?WAIT\\s+FOR\\s+(?P<quote>[\"'])(?P<target>.+?)(?P=quote)\\s+TO\\s+(?:(?:BE\\s+(?P<state_be>VISIBLE|HIDDEN))|(?P<state_disappear>DISAPPEAR))\\s*$",
       "description": "Explicit wait for a quoted element to reach a desired visibility state (visible, hidden, or disappear). Uses Playwright locator.wait_for(state=...).",
       "category": "wait"
@@ -174,8 +184,8 @@
     {
       "id": "verify_text_strict",
       "label": "VERIFY strict text",
-      "uiText": "Verify '' element has text ''",
-      "snippet": "Verify '${1:element_name}' ${2|button,field,element,input|} has text '${3:Expected Text}'",
+      "uiText": "VERIFY '' element has text ''",
+      "snippet": "VERIFY '${1:element_name}' ${2|button,field,element,input|} has text '${3:Expected Text}'",
       "regex": "^\\s*(?:\\d+\\.\\s*)?VERIFY\\s+(?P<target_quote>[\"'])(?P<target>.+?)(?P=target_quote)\\s+(?P<element_type>button|field|element|input)\\s+HAS\\s+TEXT\\s+(?P<expected_quote>[\"'])(?P<expected>.*?)(?P=expected_quote)\\s*\\.?\\s*$",
       "description": "Strict text verification. Resolves the element via heuristics, reads locator.inner_text().strip(), and asserts exact equality against the expected text.",
       "category": "assertion"
@@ -183,8 +193,8 @@
     {
       "id": "verify_placeholder_strict",
       "label": "VERIFY strict placeholder",
-      "uiText": "Verify '' field has placeholder ''",
-      "snippet": "Verify '${1:element_name}' ${2|button,field,element,input|} has placeholder '${3:Expected Placeholder}'",
+      "uiText": "VERIFY '' field has placeholder ''",
+      "snippet": "VERIFY '${1:element_name}' ${2|button,field,element,input|} has placeholder '${3:Expected Placeholder}'",
       "regex": "^\\s*(?:\\d+\\.\\s*)?VERIFY\\s+(?P<target_quote>[\"'])(?P<target>.+?)(?P=target_quote)\\s+(?P<element_type>button|field|element|input)\\s+HAS\\s+PLACEHOLDER\\s+(?P<expected_quote>[\"'])(?P<expected>.*?)(?P=expected_quote)\\s*\\.?\\s*$",
       "description": "Strict placeholder verification. Resolves the element via heuristics, reads its placeholder attribute, and asserts exact equality against the expected placeholder.",
       "category": "assertion"
@@ -192,8 +202,8 @@
     {
       "id": "verify_value_strict",
       "label": "VERIFY strict value",
-      "uiText": "Verify '' field has value ''",
-      "snippet": "Verify '${1:element_name}' ${2|button,field,element,input|} has value '${3:Expected Value}'",
+      "uiText": "VERIFY '' field has value ''",
+      "snippet": "VERIFY '${1:element_name}' ${2|button,field,element,input|} has value '${3:Expected Value}'",
       "regex": "^\\s*(?:\\d+\\.\\s*)?VERIFY\\s+(?P<target_quote>[\"'])(?P<target>.+?)(?P=target_quote)\\s+(?P<element_type>button|field|element|input)\\s+HAS\\s+VALUE\\s+(?P<expected_quote>[\"'])(?P<expected>.*?)(?P=expected_quote)\\s*\\.?\\s*$",
       "description": "Strict value verification. Resolves the element via heuristics, reads its current value via locator.input_value() with a value-attribute fallback, normalizes missing values to an empty string, and asserts exact equality against the expected value.",
       "category": "assertion"

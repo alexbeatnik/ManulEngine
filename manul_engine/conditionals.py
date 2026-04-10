@@ -77,7 +77,10 @@ async def evaluate_condition(
         result = (not found) if negate else found
         _log.debug(
             "Condition '%s': element_exists=%s, negate=%s → %s",
-            cond, found, negate, result,
+            cond,
+            found,
+            negate,
+            result,
         )
         return result
 
@@ -90,7 +93,10 @@ async def evaluate_condition(
         result = (not found) if negate else found
         _log.debug(
             "Condition '%s': text_present=%s, negate=%s → %s",
-            cond, found, negate, result,
+            cond,
+            found,
+            negate,
+            result,
         )
         return result
 
@@ -107,7 +113,12 @@ async def evaluate_condition(
             result = actual != expected
         _log.debug(
             "Condition '%s': {%s}='%s' %s '%s' → %s",
-            cond, var_name, actual, op, expected, result,
+            cond,
+            var_name,
+            actual,
+            op,
+            expected,
+            result,
         )
         return result
 
@@ -120,7 +131,11 @@ async def evaluate_condition(
         result = substring in actual
         _log.debug(
             "Condition '%s': {%s}='%s' contains '%s' → %s",
-            cond, var_name, actual, substring, result,
+            cond,
+            var_name,
+            actual,
+            substring,
+            result,
         )
         return result
 
@@ -132,7 +147,10 @@ async def evaluate_condition(
         result = bool(actual) and actual.lower() not in ("false", "0", "none", "")
         _log.debug(
             "Condition '%s': {%s}='%s' → truthy=%s",
-            cond, var_name, actual, result,
+            cond,
+            var_name,
+            actual,
+            result,
         )
         return result
 

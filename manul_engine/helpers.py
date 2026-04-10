@@ -6,7 +6,7 @@ Shared helper functions and timing constants used across the engine.
 import os
 import re
 from dataclasses import dataclass, field
-from typing import NamedTuple, Union
+from typing import NamedTuple
 
 # ── Timing constants ──────────────────────────────────────────────────────────
 SCROLL_WAIT = 1.5
@@ -111,7 +111,7 @@ class HuntBlock:
     """Hierarchical execution block parsed from Hunt DSL."""
 
     block_name: str
-    actions: "list[Union[str, IfBlock]]" = field(default_factory=list)
+    actions: "list[str | IfBlock]" = field(default_factory=list)
     block_line: int | None = None
     action_lines: list[int] = field(default_factory=list)
     synthetic: bool = False
@@ -123,7 +123,7 @@ class ConditionalBranch:
 
     kind: str  # "if", "elif", or "else"
     condition: str  # raw condition text; empty string for else
-    actions: "list[Union[str, IfBlock]]" = field(default_factory=list)
+    actions: "list[str | IfBlock]" = field(default_factory=list)
     action_lines: list[int] = field(default_factory=list)
     branch_line: int = 0
 
@@ -298,7 +298,7 @@ def _indent_level(raw_line: str) -> int:
 
 def _parse_conditionals(
     actions: list[str], raw_actions: list[str], action_lines: list[int]
-) -> "tuple[list[Union[str, IfBlock]], list[int]]":
+) -> tuple[list[str | IfBlock], list[int]]:
     """Consume a flat action list and group if/elif/else lines into IfBlock nodes.
 
     Uses indentation from *raw_actions* to determine block body boundaries.
@@ -306,13 +306,12 @@ def _parse_conditionals(
     replaced by a single :class:`IfBlock` entry (with line number from the
     opening ``if`` line).
     """
-    result_actions: "list[Union[str, IfBlock]]" = []
+    result_actions: list[str | IfBlock] = []
     result_lines: list[int] = []
     i = 0
 
     while i < len(actions):
         line = actions[i]
-        raw_line = raw_actions[i] if i < len(raw_actions) else line
         line_no = action_lines[i] if i < len(action_lines) else 0
 
         m_if = _RE_IF_LINE.match(line)
@@ -379,13 +378,9 @@ def _consume_if_block(
             branches.append(branch)
         elif m_elif and _indent_level(raw_line) <= header_indent:
             if has_else:
-                raise ConditionalSyntaxError(
-                    f"'ELIF' after 'ELSE' is not allowed at line {line_no}: {line}"
-                )
+                raise ConditionalSyntaxError(f"'ELIF' after 'ELSE' is not allowed at line {line_no}: {line}")
             if not branches:
-                raise ConditionalSyntaxError(
-                    f"'ELIF' without a preceding 'IF' at line {line_no}: {line}"
-                )
+                raise ConditionalSyntaxError(f"'ELIF' without a preceding 'IF' at line {line_no}: {line}")
             condition = m_elif.group(1).strip()
             branch = ConditionalBranch(kind="elif", condition=condition, branch_line=line_no)
             i += 1
@@ -393,13 +388,9 @@ def _consume_if_block(
             branches.append(branch)
         elif m_else and _indent_level(raw_line) <= header_indent:
             if has_else:
-                raise ConditionalSyntaxError(
-                    f"Multiple 'ELSE' blocks at line {line_no}: {line}"
-                )
+                raise ConditionalSyntaxError(f"Multiple 'ELSE' blocks at line {line_no}: {line}")
             if not branches:
-                raise ConditionalSyntaxError(
-                    f"'ELSE' without a preceding 'IF' at line {line_no}: {line}"
-                )
+                raise ConditionalSyntaxError(f"'ELSE' without a preceding 'IF' at line {line_no}: {line}")
             has_else = True
             branch = ConditionalBranch(kind="else", condition="", branch_line=line_no)
             i += 1
@@ -444,8 +435,12 @@ def _consume_if_block(
 
 
 def _collect_branch_body(
-    actions: list[str], raw_actions: list[str], action_lines: list[int],
-    i: int, branch: ConditionalBranch, header_indent: int,
+    actions: list[str],
+    raw_actions: list[str],
+    action_lines: list[int],
+    i: int,
+    branch: ConditionalBranch,
+    header_indent: int,
 ) -> int:
     """Collect action lines belonging to a branch body.
 

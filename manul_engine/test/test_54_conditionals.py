@@ -59,45 +59,38 @@ def _assert(condition: bool, name: str, detail: str = "") -> None:
 
 # ── Section 1: classify_step — if/elif/else detection ─────────────────────────
 
+
 def test_classify_step():
     print("\n── Section 1: classify_step — if/elif/else detection ──")
 
-    _assert(classify_step("if button 'Save' exists:") == "if_block",
-            "if lowercase with element exists condition")
+    _assert(classify_step("if button 'Save' exists:") == "if_block", "if lowercase with element exists condition")
 
-    _assert(classify_step("IF text 'Welcome' is present:") == "if_block",
-            "IF uppercase with text present condition")
+    _assert(classify_step("IF text 'Welcome' is present:") == "if_block", "IF uppercase with text present condition")
 
-    _assert(classify_step("elif button 'Confirm' exists:") == "elif_block",
-            "elif lowercase with element exists condition")
+    _assert(
+        classify_step("elif button 'Confirm' exists:") == "elif_block", "elif lowercase with element exists condition"
+    )
 
-    _assert(classify_step("ELIF {status} == 'active':") == "elif_block",
-            "ELIF uppercase with variable comparison")
+    _assert(classify_step("ELIF {status} == 'active':") == "elif_block", "ELIF uppercase with variable comparison")
 
-    _assert(classify_step("else:") == "else_block",
-            "else: lowercase")
+    _assert(classify_step("else:") == "else_block", "else: lowercase")
 
-    _assert(classify_step("ELSE:") == "else_block",
-            "ELSE: uppercase")
+    _assert(classify_step("ELSE:") == "else_block", "ELSE: uppercase")
 
-    _assert(classify_step("  else:") == "else_block",
-            "else: with leading whitespace")
+    _assert(classify_step("  else:") == "else_block", "else: with leading whitespace")
 
     # These should NOT match as conditionals
-    _assert(classify_step("Click the 'if exists' button") == "action",
-            "'if exists' inside quotes is an action")
+    _assert(classify_step("Click the 'if exists' button") == "action", "'if exists' inside quotes is an action")
 
-    _assert(classify_step("VERIFY that 'else' is present") == "verify",
-            "'else' inside a VERIFY is still verify")
+    _assert(classify_step("VERIFY that 'else' is present") == "verify", "'else' inside a VERIFY is still verify")
 
-    _assert(classify_step("if button 'Save' exists") != "if_block",
-            "if without trailing colon is NOT if_block")
+    _assert(classify_step("if button 'Save' exists") != "if_block", "if without trailing colon is NOT if_block")
 
-    _assert(classify_step("else") != "else_block",
-            "else without colon is NOT else_block")
+    _assert(classify_step("else") != "else_block", "else without colon is NOT else_block")
 
 
 # ── Section 2: parse_hunt_blocks — IfBlock AST nodes ─────────────────────────
+
 
 def test_parse_if_block():
     print("\n── Section 2: parse_hunt_blocks — IfBlock AST ──")
@@ -122,8 +115,11 @@ def test_parse_if_block():
         if_block = actions[0]
         _assert(len(if_block.branches) == 2, "Two branches (if + else)", f"got {len(if_block.branches)}")
         _assert(if_block.branches[0].kind == "if", "First branch is 'if'")
-        _assert(if_block.branches[0].condition == "button 'Save' exists",
-                "If condition text", f"got {if_block.branches[0].condition!r}")
+        _assert(
+            if_block.branches[0].condition == "button 'Save' exists",
+            "If condition text",
+            f"got {if_block.branches[0].condition!r}",
+        )
         _assert(len(if_block.branches[0].actions) == 1, "If branch has one action")
         _assert(if_block.branches[1].kind == "else", "Second branch is 'else'")
         _assert(if_block.branches[1].condition == "", "Else has no condition")
@@ -155,8 +151,11 @@ def test_parse_if_elif_else():
         _assert(if_block.branches[1].kind == "elif", "Branch 1 is 'elif'")
         _assert(if_block.branches[2].kind == "elif", "Branch 2 is 'elif'")
         _assert(if_block.branches[3].kind == "else", "Branch 3 is 'else'")
-        _assert(if_block.branches[1].condition == "button 'Confirm' exists",
-                "Elif 1 condition", f"got {if_block.branches[1].condition!r}")
+        _assert(
+            if_block.branches[1].condition == "button 'Confirm' exists",
+            "Elif 1 condition",
+            f"got {if_block.branches[1].condition!r}",
+        )
 
 
 def test_parse_if_only():
@@ -195,12 +194,16 @@ def test_parse_multi_action_branch():
     _assert(isinstance(if_block, IfBlock), "First action is IfBlock")
 
     if isinstance(if_block, IfBlock):
-        _assert(len(if_block.branches[0].actions) == 3, "If branch has 3 actions",
-                f"got {len(if_block.branches[0].actions)}")
+        _assert(
+            len(if_block.branches[0].actions) == 3,
+            "If branch has 3 actions",
+            f"got {len(if_block.branches[0].actions)}",
+        )
         _assert(len(if_block.branches[1].actions) == 1, "Else branch has 1 action")
 
 
 # ── Section 3: ConditionalSyntaxError ────────────────────────────────────────
+
 
 def test_syntax_errors():
     print("\n── Section 3: ConditionalSyntaxError ──")
@@ -210,16 +213,14 @@ def test_syntax_errors():
         parse_hunt_blocks("STEP 1: Bad\n    ELIF button 'X' exists:\n        Click 'X' button")
         _assert(False, "ELIF without IF should raise")
     except ConditionalSyntaxError as e:
-        _assert("elif" in str(e).lower() and "without" in str(e).lower(),
-                "ELIF without IF error message", str(e))
+        _assert("elif" in str(e).lower() and "without" in str(e).lower(), "ELIF without IF error message", str(e))
 
     # else without if
     try:
         parse_hunt_blocks("STEP 1: Bad\n    ELSE:\n        Click 'X' button")
         _assert(False, "ELSE without IF should raise")
     except ConditionalSyntaxError as e:
-        _assert("else" in str(e).lower() and "without" in str(e).lower(),
-                "ELSE without IF error message", str(e))
+        _assert("else" in str(e).lower() and "without" in str(e).lower(), "ELSE without IF error message", str(e))
 
     # Multiple else blocks
     try:
@@ -229,8 +230,7 @@ def test_syntax_errors():
         )
         _assert(False, "Multiple ELSE should raise")
     except ConditionalSyntaxError as e:
-        _assert("multiple" in str(e).lower() or "else" in str(e).lower(),
-                "Multiple ELSE error message", str(e))
+        _assert("multiple" in str(e).lower() or "else" in str(e).lower(), "Multiple ELSE error message", str(e))
 
     # elif after else
     try:
@@ -240,11 +240,11 @@ def test_syntax_errors():
         )
         _assert(False, "ELIF after ELSE should raise")
     except ConditionalSyntaxError as e:
-        _assert("elif" in str(e).lower() and "after" in str(e).lower(),
-                "ELIF after ELSE error message", str(e))
+        _assert("elif" in str(e).lower() and "after" in str(e).lower(), "ELIF after ELSE error message", str(e))
 
 
 # ── Section 4: Nested conditionals ──────────────────────────────────────────
+
 
 def test_nested_conditionals():
     print("\n── Section 4: Nested conditionals ──")
@@ -269,11 +269,11 @@ def test_nested_conditionals():
         inner_actions = outer.branches[0].actions
         _assert(len(inner_actions) >= 1, "If branch has actions")
         # The first action of the if branch should be a nested IfBlock
-        _assert(isinstance(inner_actions[0], IfBlock), "Nested IfBlock found",
-                f"got type {type(inner_actions[0])}")
+        _assert(isinstance(inner_actions[0], IfBlock), "Nested IfBlock found", f"got type {type(inner_actions[0])}")
 
 
 # ── Section 5: Condition pattern matching ────────────────────────────────────
+
 
 def test_condition_patterns():
     print("\n── Section 5: Condition pattern matching ──")
@@ -340,6 +340,7 @@ def test_condition_patterns():
 
 # ── Section 6: Variable condition evaluation (sync) ──────────────────────────
 
+
 async def test_variable_conditions_async():
     """Test variable-based conditions without a browser."""
     print("\n── Section 6: Variable condition evaluation ──")
@@ -402,6 +403,7 @@ async def test_variable_conditions_async():
 
 # ── Section 7: Integration — mixed actions and conditionals ──────────────────
 
+
 def test_mixed_actions():
     print("\n── Section 7: Integration — mixed actions ──")
 
@@ -463,15 +465,21 @@ def test_conditional_with_variables():
 
     if isinstance(actions[1], IfBlock):
         _assert(len(actions[1].branches) == 3, "Three branches (if + elif + else)")
-        _assert(actions[1].branches[0].condition == "{role} == 'admin'",
-                "If condition", f"got {actions[1].branches[0].condition!r}")
-        _assert(actions[1].branches[1].condition == "{role} == 'user'",
-                "Elif condition", f"got {actions[1].branches[1].condition!r}")
-        _assert(actions[1].branches[2].condition == "",
-                "Else has empty condition")
+        _assert(
+            actions[1].branches[0].condition == "{role} == 'admin'",
+            "If condition",
+            f"got {actions[1].branches[0].condition!r}",
+        )
+        _assert(
+            actions[1].branches[1].condition == "{role} == 'user'",
+            "Elif condition",
+            f"got {actions[1].branches[1].condition!r}",
+        )
+        _assert(actions[1].branches[2].condition == "", "Else has empty condition")
 
 
 # ── Entry point ──────────────────────────────────────────────────────────────
+
 
 async def run_suite() -> tuple[int, int]:
     """Execute all conditional block tests. Returns (pass_count, fail_count)."""

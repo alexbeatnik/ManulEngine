@@ -8,50 +8,50 @@ STEP 1: Navigate and dismiss optional popups
     NAVIGATE to 'https://example.com'
     VERIFY that 'Welcome' is present
     IF button 'Accept Cookies' exists:
-        Click the 'Accept Cookies' button
+        CLICK the 'Accept Cookies' button
         VERIFY that 'Accept Cookies' is NOT present
 
 STEP 2: Adaptive login flow
     IF button 'SSO Login' exists:
-        Click the 'SSO Login' button
+        CLICK the 'SSO Login' button
         VERIFY that 'SSO Portal' is present
     ELIF text 'Sign In' is present:
-        Fill 'Username' field with '{username}'
-        Fill 'Password' field with '{password}'
-        Click the 'Sign In' button
+        FILL 'Username' field with '{username}'
+        FILL 'Password' field with '{password}'
+        CLICK the 'Sign In' button
         VERIFY that 'Dashboard' is present
     ELSE:
-        Click the 'Create Account' link
+        CLICK the 'Create Account' link
         VERIFY that 'Registration' is present
 
 STEP 3: Role-based navigation
     EXTRACT the 'User Role' into {role}
     IF {role} == 'admin':
-        Click the 'Admin Panel' link
+        CLICK the 'Admin Panel' link
         VERIFY that 'Admin Dashboard' is present
     ELIF {role} == 'editor':
-        Click the 'Content Manager' link
+        CLICK the 'Content Manager' link
         VERIFY that 'Content Dashboard' is present
     ELSE:
-        Click the 'My Profile' link
+        CLICK the 'My Profile' link
         VERIFY that 'Profile' is present
 
 STEP 4: Nested conditional — handle save with confirmation
     IF button 'Save' exists:
-        Click the 'Save' button
+        CLICK the 'Save' button
         IF text 'Are you sure?' is present:
-            Click the 'Confirm' button
+            CLICK the 'Confirm' button
             VERIFY that 'Saved successfully' is present
         ELSE:
             VERIFY that 'Saved successfully' is present
     ELIF button 'Submit' exists:
-        Click the 'Submit' button
+        CLICK the 'Submit' button
     ELSE:
-        Click the 'Cancel' button
+        CLICK the 'Cancel' button
 
 STEP 5: Variable-based conditional
     EXTRACT the 'Notification Count' into {count}
     IF {count} != '0':
-        Click the 'Notifications' button
+        CLICK the 'Notifications' button
         VERIFY that 'Notifications Panel' is present
     DONE.
