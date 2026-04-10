@@ -860,9 +860,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             except ValueError as exc:
                 from .exceptions import ConditionalSyntaxError
 
-                raise ConditionalSyntaxError(
-                    f"Invalid condition '{branch.condition}': {exc}"
-                ) from exc
+                raise ConditionalSyntaxError(f"Invalid condition '{branch.condition}': {exc}") from exc
 
             if result:
                 print(f"    🔀 [CONDITIONAL] '{branch.kind} {branch.condition}' → True — executing branch")
@@ -1358,19 +1356,10 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                         # (e.g. after a conditional whose branch count differs
                         # from the static estimate), fall back to the file-line
                         # set which always matches.
-                        _file_line = (
-                            block.action_lines[_ba_idx]
-                            if _ba_idx < len(block.action_lines)
-                            else 0
-                        )
+                        _file_line = block.action_lines[_ba_idx] if _ba_idx < len(block.action_lines) else 0
                         _temp_break_added = False
-                        _should_break = (
-                            (self.break_steps and action_index in self.break_steps)
-                            or (
-                                self._break_file_lines
-                                and _file_line
-                                and _file_line in self._break_file_lines
-                            )
+                        _should_break = (self.break_steps and action_index in self.break_steps) or (
+                            self._break_file_lines and _file_line and _file_line in self._break_file_lines
                         )
                         step = substitute_memory(raw_step, self.memory)
                         started_perf = time.perf_counter()
