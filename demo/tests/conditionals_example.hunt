@@ -1,0 +1,57 @@
+@context: Demonstrating IF/ELIF/ELSE conditional blocks in ManulEngine DSL
+@title: Conditional Branching Example
+
+@var: {username} = admin
+@var: {password} = secret123
+
+STEP 1: Navigate and dismiss optional popups
+    NAVIGATE to 'https://example.com'
+    VERIFY that 'Welcome' is present
+    IF button 'Accept Cookies' exists:
+        CLICK the 'Accept Cookies' button
+        VERIFY that 'Accept Cookies' is NOT present
+
+STEP 2: Adaptive login flow
+    IF button 'SSO Login' exists:
+        CLICK the 'SSO Login' button
+        VERIFY that 'SSO Portal' is present
+    ELIF text 'Sign In' is present:
+        FILL 'Username' field with '{username}'
+        FILL 'Password' field with '{password}'
+        CLICK the 'Sign In' button
+        VERIFY that 'Dashboard' is present
+    ELSE:
+        CLICK the 'Create Account' link
+        VERIFY that 'Registration' is present
+
+STEP 3: Role-based navigation
+    EXTRACT the 'User Role' into {role}
+    IF {role} == 'admin':
+        CLICK the 'Admin Panel' link
+        VERIFY that 'Admin Dashboard' is present
+    ELIF {role} == 'editor':
+        CLICK the 'Content Manager' link
+        VERIFY that 'Content Dashboard' is present
+    ELSE:
+        CLICK the 'My Profile' link
+        VERIFY that 'Profile' is present
+
+STEP 4: Nested conditional — handle save with confirmation
+    IF button 'Save' exists:
+        CLICK the 'Save' button
+        IF text 'Are you sure?' is present:
+            CLICK the 'Confirm' button
+            VERIFY that 'Saved successfully' is present
+        ELSE:
+            VERIFY that 'Saved successfully' is present
+    ELIF button 'Submit' exists:
+        CLICK the 'Submit' button
+    ELSE:
+        CLICK the 'Cancel' button
+
+STEP 5: Variable-based conditional
+    EXTRACT the 'Notification Count' into {count}
+    IF {count} != '0':
+        CLICK the 'Notifications' button
+        VERIFY that 'Notifications Panel' is present
+    DONE.

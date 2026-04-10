@@ -59,9 +59,9 @@
 STEP 1: Login
     # 📍 Auto-Nav: https://www.saucedemo.com/
     NAVIGATE to https://www.saucedemo.com/
-    Fill 'Username' field with '{username}'
-    Fill 'Password' field with '{password}'
-    Click 'Login' button
+    FILL 'Username' field with '{username}'
+    FILL 'Password' field with '{password}'
+    CLICK 'Login' button
 
 STEP 2: Add item to cart
     # 📍 Auto-Nav: Products Catalog
@@ -69,24 +69,24 @@ STEP 2: Add item to cart
     # NEAR qualifier: resolves the 'Sauce Labs Fleece Jacket' text first,
     # then prefers the matching 'Add to cart' button in the same product card,
     # using both visual distance and DOM container affinity.
-    Click 'Add to cart' button NEAR 'Sauce Labs Fleece Jacket'
+    CLICK 'Add to cart' button NEAR 'Sauce Labs Fleece Jacket'
 
 STEP 3: Review cart
     # 📍 Auto-Nav: Shopping Cart
-    Click the 'Shopping cart' link
+    CLICK the 'Shopping cart' link
     VERIFY that 'Sauce Labs Fleece Jacket' is present
-    Click 'Checkout' button
+    CLICK 'Checkout' button
 
 STEP 4: Fill shipping info
     # 📍 Auto-Nav: Checkout: Your Info
-    Fill 'First Name' field with 'FirstName'
-    Fill 'Last Name' field with 'LastName'
-    Fill 'Zip/Postal Code' field with '49000'
-    Click 'Continue' button
+    FILL 'First Name' field with 'FirstName'
+    FILL 'Last Name' field with 'LastName'
+    FILL 'Zip/Postal Code' field with '49000'
+    CLICK 'Continue' button
 
 STEP 5: Complete order
     # 📍 Auto-Nav: Checkout: Overview
-    Click 'Finish' button
+    CLICK 'Finish' button
     # 📍 Auto-Nav: Checkout: Complete
     VERIFY that 'Thank you for your order!' is present
 DONE.

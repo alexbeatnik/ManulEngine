@@ -41,6 +41,7 @@ from .exceptions import ConfigurationError
 from .helpers import (
     RE_SYSTEM_STEP,
     ContextualHint,
+    IfBlock,
     classify_step,
     compact_log_field,
     detect_mode,
@@ -87,6 +88,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         ai_threshold: "int | None" = None,
         debug_mode: bool = False,
         break_steps: "set[int] | None" = None,
+        break_file_lines: "set[int] | None" = None,
         disable_cache: bool = False,
         semantic_cache: "bool | None" = None,  # None → read from config/env
         explain_mode: "bool | None" = None,
@@ -188,6 +190,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         self._debug_continue = False  # set to True by 'Continue All' in debug session
         self._user_break_steps: set[int] = set(break_steps) if break_steps else set()
         self.break_steps: set[int] = set(self._user_break_steps)
+        self._break_file_lines: set[int] = set(break_file_lines) if break_file_lines else set()
         # Last element-resolution scoring data — used by 'explain' debug command.
         self._last_explain_data: tuple[str, list[str], list[dict]] | None = None
         # Tracks how many annotation lines have been inserted into the hunt file
@@ -834,6 +837,391 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             )
         return parsed_task
 
+    async def _evaluate_conditional(
+        self,
+        if_block: "IfBlock",
+        page: "Page",
+    ) -> "tuple[list, list[int]]":
+        """Evaluate an if/elif/else block and return the taken branch's data.
+
+        Evaluates conditions in order; returns ``(actions, action_lines)`` of
+        the first branch whose condition is ``True``.  If no branch matches
+        and there is no ``else``, returns ``([], [])``.
+        """
+        from .conditionals import evaluate_condition
+
+        for branch in if_block.branches:
+            if branch.kind == "else":
+                print("    🔀 [CONDITIONAL] Taking 'else' branch (no prior condition matched)")
+                return branch.actions, branch.action_lines
+
+            try:
+                result = await evaluate_condition(branch.condition, page, self.memory)
+            except ValueError as exc:
+                from .exceptions import ConditionalSyntaxError
+
+                raise ConditionalSyntaxError(f"Invalid condition '{branch.condition}': {exc}") from exc
+
+            if result:
+                print(f"    🔀 [CONDITIONAL] '{branch.kind} {branch.condition}' → True — executing branch")
+                return branch.actions, branch.action_lines
+            else:
+                print(f"    🔀 [CONDITIONAL] '{branch.kind} {branch.condition}' → False — skipping")
+
+        print("    🔀 [CONDITIONAL] No branch taken (all conditions False, no else)")
+        return [], []
+
+    async def _execute_conditional(
+        self,
+        if_block: "IfBlock",
+        page: "Page",
+        ctx: "BrowserContext",
+        strategic_context: str,
+        action_index: int,
+        hunt_dir: "str | None",
+        hunt_file: "str | None",
+        _action_file_lines: list,
+        block: "object",
+        block_steps: list,
+        _step_results: list,
+        _soft_errors: list,
+        _screenshot_mode: str,
+    ) -> "tuple[bool, Page, bool, int]":
+        """Evaluate a conditional block and execute the taken branch's actions.
+
+        Handles arbitrarily nested IfBlocks via recursion.
+        Returns ``(ok, page, done, action_index)`` — ``page`` may differ from
+        the input if ``OPEN APP`` reassigned it, ``done`` is ``True`` if a
+        ``DONE.`` step was encountered inside the branch, and
+        ``action_index`` reflects incrementing per executed branch action.
+        """
+        branch_actions, branch_lines = await self._evaluate_conditional(if_block, page)
+        done = False
+        for ba_idx, ba in enumerate(branch_actions):
+            ba_line = branch_lines[ba_idx] if ba_idx < len(branch_lines) else 0
+            if isinstance(ba, IfBlock):
+                ok, page, done, action_index = await self._execute_conditional(
+                    ba,
+                    page,
+                    ctx,
+                    strategic_context,
+                    action_index,
+                    hunt_dir,
+                    hunt_file,
+                    _action_file_lines,
+                    block,
+                    block_steps,
+                    _step_results,
+                    _soft_errors,
+                    _screenshot_mode,
+                )
+                if not ok or done:
+                    return ok, page, done, action_index
+            elif isinstance(ba, str):
+                action_index += 1
+                # File-line breakpoint check for conditional body actions.
+                _temp_break_added = False
+                if self._break_file_lines and ba_line and ba_line in self._break_file_lines:
+                    import sys as _sys
+
+                    step_kind = classify_step(ba)
+                    if step_kind != "action" and not _sys.stdin.isatty():
+                        print(f"    🔴 BREAKPOINT at line {ba_line}")
+                        await self._debug_prompt(page, ba, action_index)
+                    elif step_kind != "action":
+                        print(f"    🔴 BREAKPOINT at line {ba_line} — opening Playwright Inspector…")
+                        await page.pause()
+                    else:
+                        # Action step (click/fill/etc.) — inject into break_steps
+                        # so the debug pause inside _execute_step() fires.
+                        if self.break_steps is None:
+                            self.break_steps = set()
+                        if action_index not in self.break_steps:
+                            self.break_steps.add(action_index)
+                            _temp_break_added = True
+
+                ba = substitute_memory(ba, self.memory)
+                try:
+                    outcome = await self._dispatch_step(
+                        ba,
+                        page,
+                        ctx,
+                        strategic_context,
+                        action_index,
+                        hunt_dir,
+                        hunt_file,
+                        _action_file_lines,
+                        block,
+                        block_steps,
+                        _step_results,
+                        _soft_errors,
+                        _screenshot_mode,
+                        raw_step=ba,
+                    )
+                    page = outcome[1]
+                    if outcome[3]:  # done
+                        return outcome[0], page, True, action_index
+                    if not outcome[0]:
+                        return False, page, False, action_index
+                finally:
+                    if _temp_break_added:
+                        self.break_steps.discard(action_index)
+        return True, page, done, action_index
+
+    async def _dispatch_step(
+        self,
+        step: str,
+        page: "Page",
+        ctx: "BrowserContext",
+        strategic_context: str,
+        action_index: int,
+        hunt_dir: "str | None",
+        hunt_file: "str | None",
+        _action_file_lines: list,
+        block: "object",
+        block_steps: list,
+        _step_results: list,
+        _soft_errors: list,
+        _screenshot_mode: str,
+        raw_step: str = "",
+    ) -> "tuple[bool, Page, str | None, bool]":
+        """Execute a single DSL step inside a conditional branch.
+
+        Full-featured dispatcher that mirrors the main ``run_mission`` loop:
+        all step kinds, custom-control interception, screenshot capture,
+        proper DEBUG/PAUSE and DONE semantics.
+
+        Returns ``(ok, page, error, done)`` where *page* may be reassigned
+        by ``OPEN APP`` and *done* signals mission termination.
+        """
+        step_kind = classify_step(step)
+        started_perf = time.perf_counter()
+        _step_ok = True
+        _step_error: str | None = None
+        _done = False
+
+        print(f"    [▶️ ACTION START] {step}")
+
+        try:
+            if step_kind == "navigate":
+                if not await self._handle_navigate(page, step):
+                    _step_error = "Navigation failed"
+                    _step_ok = False
+
+            elif step_kind == "open_app":
+                _app_ok, page = await self._handle_open_app(page, ctx)
+                if not _app_ok:
+                    _step_error = "OPEN APP failed"
+                    _step_ok = False
+
+            elif step_kind == "mock":
+                if not await self._handle_mock(page, step, hunt_dir=hunt_dir):
+                    _step_error = "MOCK command failed"
+                    _step_ok = False
+
+            elif step_kind == "wait_for_response":
+                if not await self._handle_wait_for_response(page, step):
+                    _step_error = "WAIT FOR RESPONSE timed out"
+                    _step_ok = False
+
+            elif step_kind == "wait_for_element":
+                _wait_ok, _wait_msg = await self._handle_wait_for_element(page, step)
+                if not _wait_ok:
+                    _step_error = _wait_msg
+                    _step_ok = False
+
+            elif step_kind == "wait":
+                n = re.search(r"(\d+)", step)
+                await asyncio.sleep(int(n.group(1)) if n else 2)
+
+            elif step_kind == "scroll":
+                await self._handle_scroll(page, step)
+
+            elif step_kind == "extract":
+                if not await self._handle_extract(page, step):
+                    _step_error = "Extract failed"
+                    _step_ok = False
+
+            elif step_kind == "verify":
+                if not await self._handle_verify(page, step, step_idx=action_index):
+                    _step_error = "Verification failed"
+                    _step_ok = False
+
+            elif step_kind == "verify_visual":
+                if not await self._handle_verify_visual(
+                    page, step, strategic_context, step_idx=action_index, hunt_dir=hunt_dir
+                ):
+                    _step_error = "Visual regression check failed"
+                    _step_ok = False
+
+            elif step_kind == "verify_softly":
+                _soft_ok = await self._handle_verify_softly(page, step, step_idx=action_index)
+                if not _soft_ok:
+                    _soft_msg = f"Soft assertion failed: {step}"
+                    _soft_errors.append(_soft_msg)
+                    _step_error = _soft_msg
+                    _step_ok = False
+
+            elif step_kind == "press_enter":
+                await self._handle_press_enter(page)
+
+            elif step_kind == "press":
+                if not await self._handle_press(page, step, strategic_context, step_idx=action_index):
+                    _step_error = "PRESS command failed"
+                    _step_ok = False
+
+            elif step_kind == "right_click":
+                if not await self._handle_right_click(page, step, strategic_context, step_idx=action_index):
+                    _step_error = "RIGHT CLICK command failed"
+                    _step_ok = False
+
+            elif step_kind == "upload":
+                if not await self._handle_upload(
+                    page, step, strategic_context, step_idx=action_index, hunt_dir=hunt_dir
+                ):
+                    _step_error = "UPLOAD command failed"
+                    _step_ok = False
+
+            elif step_kind == "scan_page":
+                if not await self._handle_scan_page(page, step):
+                    _step_error = "SCAN PAGE failed"
+                    _step_ok = False
+
+            elif step_kind == "set_var":
+                _set_m = re.match(
+                    r"(?:\d+\.\s*)?SET\s+\{?(\w+)\}?\s*=\s*(.+)",
+                    raw_step or step,
+                    re.IGNORECASE,
+                )
+                if _set_m:
+                    _sv_name = _set_m.group(1)
+                    _sv_raw = _set_m.group(2).strip()
+                    if len(_sv_raw) >= 2 and _sv_raw[0] in ("'", '"') and _sv_raw[-1] == _sv_raw[0]:
+                        _sv_raw = _sv_raw[1:-1]
+                    self.memory[_sv_name] = _sv_raw
+                    print(f"      📝 SET {{{_sv_name}}} = {_sv_raw}")
+                else:
+                    _step_error = f"Malformed SET command: {step}"
+                    _step_ok = False
+
+            elif step_kind == "debug_vars":
+                print("      📋 DEBUG VARS — current variable state:")
+                print(self.memory.dump())
+
+            elif step_kind == "debug":
+                import sys as _sys
+
+                if not _sys.stdin.isatty():
+                    print("      🔎 DEBUG/PAUSE step (conditional branch)")
+                    await self._debug_prompt(page, step, action_index)
+                else:
+                    print("      🔎 DEBUG/PAUSE step — opening Playwright Inspector…")
+                    await page.pause()
+
+            elif step_kind == "done":
+                print("      🏁 MISSION ACCOMPLISHED")
+                _done = True
+
+            elif step_kind == "use_import":
+                raise RuntimeError(
+                    f"Unresolved USE directive at runtime: {step!r}. "
+                    f"USE blocks must be expanded at parse time via @import: headers."
+                )
+
+            elif step_kind == "call_python":
+                instruction = re.sub(r"^\s*\d+\.\s*", "", step).strip()
+                if re.match(r"CALL\s+PYTHON\b", instruction.upper()):
+                    result = execute_hook_line(
+                        re.sub(r"^\s*\d+\.\s*", "", raw_step or step).strip(),
+                        hunt_dir=hunt_dir,
+                        variables=self.memory,
+                    )
+                    print(f"       {result.message}")
+                    if not result.success:
+                        _step_error = result.message
+                        _step_ok = False
+                    else:
+                        bind_hook_result(result, self.memory)
+                elif not await self._execute_step(page, step, strategic_context, step_idx=action_index):
+                    _step_error = "Action failed"
+                    _step_ok = False
+
+            else:
+                # DOM action (click, fill, select, etc.) — with custom-control interception.
+                _cc_mode = detect_mode(step)
+                _cc_quoted = extract_quoted(step, preserve_case=True)
+                if _cc_mode == "input" and len(_cc_quoted) >= 2:
+                    _cc_target, _cc_value = _cc_quoted[0], _cc_quoted[-1]
+                elif _cc_mode == "select" and len(_cc_quoted) >= 2:
+                    _cc_target, _cc_value = _cc_quoted[-1], _cc_quoted[0]
+                elif _cc_mode == "drag" and len(_cc_quoted) >= 2:
+                    _cc_target, _cc_value = _cc_quoted[0], _cc_quoted[-1]
+                elif _cc_quoted:
+                    _cc_target, _cc_value = _cc_quoted[0], None
+                else:
+                    _cc_target, _cc_value = "", None
+                _cc_handler = None
+                if _cc_target:
+                    _cc_page = prompts.lookup_page_name(page.url)
+                    _cc_handler = get_custom_control(_cc_page, _cc_target)
+                if _cc_handler is not None:
+                    print(f"      🎛️  [CUSTOM CONTROL] Routed '{_cc_target}' to custom handler.")
+                    try:
+                        _cc_result = _cc_handler(page, _cc_mode, _cc_value)
+                        if inspect.isawaitable(_cc_result):
+                            await _cc_result
+                    except Exception as exc:
+                        _step_error = f"Custom control error on '{_cc_target}': {exc}"
+                        _log.warning("Custom control '%s' failed: %s", _cc_target, exc)
+                        _step_ok = False
+                elif not await self._execute_step(page, step, strategic_context, step_idx=action_index):
+                    _step_error = "Action failed"
+                    _step_ok = False
+        except Exception as exc:
+            _step_ok = False
+            _step_error = str(exc)
+            _log.debug("Conditional step execution failed: %s", exc)
+
+        duration_s = time.perf_counter() - started_perf
+
+        # ── Screenshot capture (aligned with main loop) ──
+        _ss_b64: str | None = None
+        if _screenshot_mode == "always" or (_screenshot_mode == "on-fail" and not _step_ok):
+            try:
+                import base64 as _b64
+
+                _ss_bytes = await page.screenshot(type="png")
+                _ss_b64 = _b64.b64encode(_ss_bytes).decode("ascii")
+            except Exception as exc:
+                _log.debug("Screenshot capture failed: %s", exc)
+
+        if _step_ok:
+            _sr_status = "pass"
+            print(f"    [✅ ACTION PASS] duration: {duration_s:.2f}s")
+        elif step_kind == "verify_softly":
+            _sr_status = "warning"
+            print(f"    [⚠️ ACTION WARN] {_step_error}")
+        else:
+            _sr_status = "fail"
+            print(f"    [❌ ACTION FAIL] {_step_error}")
+
+        _healed = self._last_step_healed
+        _step_result = StepResult(
+            index=action_index,
+            text=re.sub(r"^\s*\d+\.\s*", "", step),
+            status=_sr_status,
+            duration_ms=duration_s * 1000,
+            error=_step_error,
+            screenshot=_ss_b64,
+            logical_step=getattr(block, "block_name", ""),
+            healed=_healed,
+        )
+        _step_results.append(_step_result)
+        block_steps.append(_step_result)
+        self._last_step_healed = False
+
+        return _step_ok, page, _step_error, _done
+
     async def run_mission(
         self,
         task: str,
@@ -919,8 +1307,60 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
 
                     print(f"\n[📦 BLOCK START] {block.block_name}")
 
-                    for raw_step in block.actions:
+                    for _ba_idx, raw_step in enumerate(block.actions):
+                        # ── Conditional block (IfBlock) ──
+                        if isinstance(raw_step, IfBlock):
+                            started_perf = time.perf_counter()
+                            print("  [▶️ ACTION START] if/elif/else conditional")
+                            _cond_ok = True
+                            _cond_error: str | None = None
+                            try:
+                                _cond_ok, page, _cond_done, action_index = await self._execute_conditional(
+                                    raw_step,
+                                    page,
+                                    ctx,
+                                    strategic_context,
+                                    action_index,
+                                    hunt_dir,
+                                    hunt_file,
+                                    _action_file_lines,
+                                    block,
+                                    block_steps,
+                                    _step_results,
+                                    _soft_errors,
+                                    _screenshot_mode,
+                                )
+                                if _cond_done:
+                                    done = True
+                                if not _cond_ok:
+                                    _cond_error = "Conditional action failed"
+                            except Exception as exc:
+                                _cond_ok = False
+                                _cond_error = str(exc)
+                                _log.debug("Conditional block failed: %s", exc)
+                            duration_s = time.perf_counter() - started_perf
+                            if _cond_ok:
+                                print(f"  [✅ ACTION PASS] conditional block (duration: {duration_s:.2f}s)")
+                            else:
+                                ok = False
+                                block_status = "fail"
+                                block_error = _cond_error
+                                print(f"  [❌ ACTION FAIL] conditional block: {_cond_error}")
+                            if block_status == "fail" or done:
+                                break
+                            continue
+
                         action_index += 1
+                        # ── File-line breakpoint fallback ──
+                        # When the index-based break_steps mapping is stale
+                        # (e.g. after a conditional whose branch count differs
+                        # from the static estimate), fall back to the file-line
+                        # set which always matches.
+                        _file_line = block.action_lines[_ba_idx] if _ba_idx < len(block.action_lines) else 0
+                        _temp_break_added = False
+                        _should_break = (self.break_steps and action_index in self.break_steps) or (
+                            self._break_file_lines and _file_line and _file_line in self._break_file_lines
+                        )
                         step = substitute_memory(raw_step, self.memory)
                         started_perf = time.perf_counter()
                         step_kind = classify_step(step)
@@ -940,12 +1380,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
 
                         if self.debug_mode and _is_system_step:
                             await self._debug_prompt(page, step, action_index)
-                        elif (
-                            not self.debug_mode
-                            and self.break_steps
-                            and action_index in self.break_steps
-                            and _is_system_step
-                        ):
+                        elif not self.debug_mode and _should_break and _is_system_step:
                             import sys as _sys
 
                             if not _sys.stdin.isatty():
@@ -954,6 +1389,12 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                             else:
                                 print(f"    🔴 BREAKPOINT at action {action_index} — opening Playwright Inspector…")
                                 await page.pause()
+                        elif not self.debug_mode and _should_break and not _is_system_step:
+                            # Action step (click/fill/etc.) — inject into break_steps
+                            # so the debug pause inside _execute_step() fires.
+                            if action_index not in self.break_steps:
+                                self.break_steps.add(action_index)
+                                _temp_break_added = True
 
                         # What-If REPL: if the debugger chose a step to execute,
                         # replace the current step and re-classify it.
@@ -1185,6 +1626,8 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                             _step_error = traceback.format_exc()
                             _log.debug("Step execution failed: %s", exc)
                         finally:
+                            if _temp_break_added:
+                                self.break_steps.discard(action_index)
                             if _what_if_active:
                                 self.debug_mode = _saved_debug
                                 self.break_steps = _saved_break

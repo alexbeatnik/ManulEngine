@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.27 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.28 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -27,7 +27,7 @@ ManulEngine/
 ├── run_tests.py                      Synthetic DOM test suite runner (dev only)
 ├── bump_version.py                   Version bumper — updates all 18 files from pyproject.toml
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.27
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.28
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession, EngineConfig, all exception classes
@@ -600,7 +600,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.27
+pip install manul-engine==0.0.9.28
 playwright install chromium
 ```
 
@@ -723,7 +723,7 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.27 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.28 \
   --html-report --screenshot on-fail hunts/
 ```
 
@@ -775,21 +775,26 @@ manul my_mission.hunt
 | Category | Command Syntax |
 | --- | --- |
 | **Navigation** | `NAVIGATE to [URL]`, `OPEN APP` |
-| **Input** | `Fill [Field] with [Text]`, `Type [Text] into [Field]` |
-| **Click** | `Click [Element]`, `DOUBLE CLICK [Element]`, `RIGHT CLICK [Element]` |
-| **Selection** | `Select [Option] from [Dropdown]`, `Check [Checkbox]`, `Uncheck [Checkbox]` |
-| **Mouse Action** | `HOVER over [Element]`, `Drag [Element] and drop it into [Target]` |
+| **Input** | `FILL [Field] with [Text]`, `TYPE [Text] into [Field]` |
+| **Click** | `CLICK [Element]`, `DOUBLE CLICK [Element]`, `RIGHT CLICK [Element]` |
+| **Selection** | `SELECT [Option] from [Dropdown]`, `CHECK [Checkbox]`, `UNCHECK [Checkbox]` |
+| **Mouse Action** | `HOVER over [Element]`, `DRAG [Element] and drop it into [Target]` |
 | **Data Extraction** | `EXTRACT [Target] into {variable_name}` |
-| **Verification** | `VERIFY that [Text] is present/absent`, `VERIFY that [Element] is checked/disabled/enabled`, `Verify '<element>' <type> has text '<expected>'`, `Verify '<element>' <type> has placeholder '<expected>'`, `Verify '<element>' <type> has value '<expected>'` |
+| **Verification** | `VERIFY that [Text] is present/absent`, `VERIFY that [Element] is checked/disabled/enabled`, `VERIFY '<element>' <type> has text '<expected>'`, `VERIFY '<element>' <type> has placeholder '<expected>'`, `VERIFY '<element>' <type> has value '<expected>'` |
 | **Page Scanner** | `SCAN PAGE`, `SCAN PAGE into {filename}` |
 | **Debug** | `DEBUG` / `PAUSE` — pause execution at that step (use with `--debug` or VS Code gutter breakpoints) |
 | **Keyboard** | `PRESS ENTER`, `PRESS [Key]`, `PRESS [Key] on [Element]` |
 | **File Upload** | `UPLOAD 'File' to 'Element'` |
 | **Variables** | `SET {variable} = value`, `@var: {name} = value` (header declaration) |
-| **Flow Control** | `WAIT [seconds]`, `Wait for "Text" to be visible`, `Wait for 'Spinner' to disappear`, `Wait for "Element" to be hidden`, `SCROLL DOWN` |
+| **Flow Control** | `WAIT [seconds]`, `WAIT FOR "Text" to be visible`, `WAIT FOR 'Spinner' to disappear`, `WAIT FOR "Element" to be hidden`, `SCROLL DOWN` |
+| **Conditionals** | `IF <condition>:` / `ELIF <condition>:` / `ELSE:` — block-style branching based on element presence, text state, or variable comparisons. Nesting supported. |
 | **Finish** | `DONE.` |
 
-*Note: You can append `if exists` or `optional` to the end of any step (outside quoted text) to make it non-blocking, e.g. `Click 'Close Ad' if exists`.*
+> **Case-insensitive keywords.** All DSL keywords are case-insensitive at runtime — `CLICK`, `Click`, and `click` all work identically. The canonical form used in documentation and generated files is ALL UPPERCASE.
+>
+> **Element type hints are optional but recommended.** Words like `button`, `link`, `field`, `dropdown`, `checkbox`, `radio`, `element`, `input` placed after the target outside quotes are not required, but they boost heuristic scoring accuracy. `CLICK the 'Login' button` and `CLICK the 'Login'` both work.
+
+*Note: You can append `if exists` or `optional` to the end of any step (outside quoted text) to make it non-blocking, e.g. `CLICK 'Close Ad' if exists`.*
 
 `disappear` is an alias for Playwright's `hidden` state. The runtime routes these explicit waits through `locator.wait_for()` instead of using hard sleeps.
 
@@ -798,24 +803,24 @@ manul my_mission.hunt
 Use strict assertions when the DSL must validate the exact visible text, exact placeholder attribute, or exact current field value on a resolved element.
 
 ```text
-Verify "save" button has text "Save me"
-Verify "Error message" element has text "Invalid credentials"
-Verify 'Login' field has placeholder "Login/Email"
-Verify "Search" input has placeholder "Type to search..."
-Verify "Email" field has value "captain@manul.com"
-Verify "Notes" element has value "treasure map"
+VERIFY "save" button has text "Save me"
+VERIFY "Error message" element has text "Invalid credentials"
+VERIFY 'Login' field has placeholder "Login/Email"
+VERIFY "Search" input has placeholder "Type to search..."
+VERIFY "Email" field has value "captain@manul.com"
+VERIFY "Notes" element has value "treasure map"
 ```
 
-- `Verify "<element_name>" <type> has text "<expected_text>"` routes through the normal resolver, then compares `locator.inner_text().strip()` with strict equality.
-- `Verify "<element_name>" <type> has placeholder "<expected_placeholder>"` resolves the target and compares `locator.get_attribute("placeholder")` with strict equality.
-- `Verify "<element_name>" <type> has value "<expected_value>"` resolves the target, reads the current control value via `locator.input_value()` with a `value`-attribute fallback, normalizes missing values to `""`, and compares with strict equality.
+- `VERIFY "<element_name>" <type> has text "<expected_text>"` routes through the normal resolver, then compares `locator.inner_text().strip()` with strict equality.
+- `VERIFY "<element_name>" <type> has placeholder "<expected_placeholder>"` resolves the target and compares `locator.get_attribute("placeholder")` with strict equality.
+- `VERIFY "<element_name>" <type> has value "<expected_value>"` resolves the target, reads the current control value via `locator.input_value()` with a `value`-attribute fallback, normalizes missing values to `""`, and compares with strict equality.
 - Failed strict assertions raise `AssertionError` with the resolved locator plus readable `Expected` and `Actual` values.
 
 ---
 
-## 🐾 Chaos Chamber Verified (2868 Tests)
+## 🐾 Chaos Chamber Verified (2982 Tests)
 
-The engine is battle-tested with **2868** synthetic DOM/unit tests across 52 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, visibility edge cases, attribute-semantic icon matching, camelCase developer attributes, and contextual UI disambiguation across repeated controls.
+The engine is battle-tested with **2982** synthetic DOM/unit tests across 54 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, visibility edge cases, attribute-semantic icon matching, camelCase developer attributes, contextual UI disambiguation across repeated controls, and conditional branching logic.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py`.
@@ -956,7 +961,7 @@ Covered files: `pyproject.toml`, `Dockerfile`, `docker-compose.yml`, `README.md`
 
 ---
 
-## Release Notes: v0.0.9.27
+## Release Notes: v0.0.9.28
 
 - **What-If Analysis REPL (`ExplainNextDebugger`):** New `explain_next.py` module with interactive debug REPL for hypothetical step evaluation. During a debug pause, type `w` (terminal) to enter the REPL or `e` / send `explain-next` (extension protocol) for one-shot evaluation. Combines DOMScorer heuristic scoring with optional LLM analysis to produce a 0–10 confidence rating, element match info, risk assessment, and corrective suggestions. The best heuristic match is highlighted with a persistent magenta outline on the live page via the engine's `_debug_highlight` / `_clear_debug_highlight` methods. Classes: `PageContext` (read-only snapshot), `WhatIfResult` (structured result with `confidence_label` property and `format_report()`), `_HeuristicHit` (best candidate from scoring), `ExplainNextDebugger` (REPL controller). REPL commands: `!execute [N]`, `!history`, `!context`, `!quit`. Extension protocol: `explain-next` token emits `\x00MANUL_EXPLAIN_NEXT\x00{json}` marker with serialized `WhatIfResult` via `_result_to_dict()`; the `what-if` interactive REPL is disabled in extension protocol mode (stdin reserved for control tokens). Hooked into `debug.py` via `_get_explain_next()` lazy factory and `_what_if_execute_step` attribute in `core.py`. 112-assertion test suite (`test_53_explain_next.py`).
 - **What-If execute bug fixes:** `_execute_step()` recursive call for What-If replacement now passes `strategic_context` and `step_idx` by keyword (was misordered as positional args, breaking debug/breakpoint behavior). Injected What-If steps in `core.py` now run through `substitute_memory()` so `{var}` placeholders are resolved before execution.
@@ -981,7 +986,7 @@ Covered files: `pyproject.toml`, `Dockerfile`, `docker-compose.yml`, `README.md`
 
 </details>
 
-**Version:** 0.0.9.27
+**Version:** 0.0.9.28
 
 **Codename:** Containerised Manul
 

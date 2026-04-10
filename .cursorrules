@@ -64,25 +64,25 @@ Follow these rules before generating code, documentation, architecture notes, or
 
 ## 3. Versioning and Dependencies
 
-- Treat `0.0.9.27` as the current engine version for this documentation and release line.
+- Treat `0.0.9.28` as the current engine version for this documentation and release line.
 - When version metadata is required in config examples or integration code, use:
 
 ```json
 {
-  "manulEngineVersion": "0.0.9.27"
+  "manulEngineVersion": "0.0.9.28"
 }
 ```
 
 - When generating `pip install` commands, pin the exact version, for example:
 
 ```bash
-pip install manul-engine==0.0.9.27
+pip install manul-engine==0.0.9.28
 ```
 
 - If the AI extra is needed, pin that exact version too:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.27"
+pip install "manul-engine[ai]==0.0.9.28"
 ```
 
 - When standalone Python dependencies must be installed manually for this release line, pin them explicitly too:
@@ -122,28 +122,31 @@ pip install ollama==0.6.1
 
 ## 6. DSL Step Rules
 
+- All DSL keywords are case-insensitive at runtime. The canonical form is ALL UPPERCASE (`CLICK`, `FILL`, `TYPE`, `SELECT`, `VERIFY`, etc.). Any mix of cases works: `Click`, `click`, `CLICK` are all valid.
+- Element type hints (`button`, `link`, `field`, `dropdown`, `checkbox`, `radio`, `element`, `input`) placed outside quotes after the target name are optional but recommended. They boost heuristic scoring accuracy. `CLICK the 'Login' button` and `CLICK the 'Login'` both work.
 - Document explicit waits as first-class DSL steps, not as ad hoc examples or sleep-based workarounds.
-- When documenting typing syntax, keep the argument order exact: `Type 'Value' into 'Target'` is value-first because `into` marks the target, while `Fill 'Target' field with 'Value'` remains target-first/value-last.
+- When documenting typing syntax, keep the argument order exact: `TYPE 'Value' into 'Target'` is value-first because `into` marks the target, while `FILL 'Target' field with 'Value'` remains target-first/value-last.
 - Document lifecycle hooks with bracket-only syntax: `[SETUP]` / `[END SETUP]` and `[TEARDOWN]` / `[END TEARDOWN]`. Do not introduce `SETUP:` / `TEARDOWN:` aliases.
 - When documenting hooks, mention that `PRINT "..."`, `CALL PYTHON ... into {var}`, optional `with args:`, `@script: {alias} = package.module`, `@script: {callable_alias} = package.module.function`, and the `hunt dir → CWD → sys.path` resolution order are supported.
 - When documenting failure semantics, state that setup-hook failures mark the mission as `broken` and skip browser steps.
 - When documenting `SCAN PAGE`, mention that checkbox/radio identifiers should come from associated labels when available, and that fillable controls may surface current non-empty values for downstream tooling.
 - Supported syntax:
-  - `Wait for "Welcome, User" to be visible`
-  - `Wait for 'Loading...' to disappear`
-  - `Wait for "Submit" to be hidden`
-  - `Verify "save" button has text "Save me"`
-  - `Verify 'Login' field has placeholder "Login/Email"`
-  - `Verify "Email" field has value "captain@manul.com"`
+  - `WAIT FOR "Welcome, User" to be visible`
+  - `WAIT FOR 'Loading...' to disappear`
+  - `WAIT FOR "Submit" to be hidden`
+  - `VERIFY "save" button has text "Save me"`
+  - `VERIFY 'Login' field has placeholder "Login/Email"`
+  - `VERIFY "Email" field has value "captain@manul.com"`
 - When documenting repeated controls, prefer contextual qualifiers:
-  - `Click the 'Delete' button NEAR 'John Doe'`
-  - `Click the 'Login' button ON HEADER`
-  - `Click the 'Privacy Policy' link ON FOOTER`
-  - `Click the 'Delete' button INSIDE 'Actions' row with 'John Doe'`
+  - `CLICK the 'Delete' button NEAR 'John Doe'`
+  - `CLICK the 'Login' button ON HEADER`
+  - `CLICK the 'Privacy Policy' link ON FOOTER`
+  - `CLICK the 'Delete' button INSIDE 'Actions' row with 'John Doe'`
 - When describing engine behavior, state that `disappear` maps to Playwright's `hidden` state.
 - Prefer explicit waits over recommending `WAIT [seconds]` when the goal is to wait for async rendering, spinners, or deferred UI state changes.
-- After every generated `Fill` or `Type` step, immediately emit `Verify "{element_name}" field/input has value "{expected_value}"` before moving to the next logical action.
-- When the user asks for exact text or placeholder verification, generate only `Verify "{element_name}" {type} has text "{expected_text}"` or `Verify "{element_name}" field/input has placeholder "{expected_placeholder}"`.
-- When the user asks for exact current field content or textarea value verification, generate only `Verify "{element_name}" field/input has value "{expected_value}"`.
+- After every generated `FILL` or `TYPE` step, immediately emit `VERIFY "{element_name}" field/input has value "{expected_value}"` before moving to the next logical action.
+- When the user asks for exact text or placeholder verification, generate only `VERIFY "{element_name}" {type} has text "{expected_text}"` or `VERIFY "{element_name}" field/input has placeholder "{expected_placeholder}"`.
+- When the user asks for exact current field content or textarea value verification, generate only `VERIFY "{element_name}" field/input has value "{expected_value}"`.
 - Do not invent alternate text assertion verbs such as `Check if text is`.
 - When documenting import directives, use `@import: Block1, Block2 from source.hunt` and `@export: Block1`. `USE BlockName` expands an imported block inline. `@import: * from lib.hunt` is wildcard import; `@import: Login as AuthLogin from lib.hunt` is aliased import. Imported `@var:` declarations inherit at the lowest (import) scope.
+- When documenting conditional blocks, use `IF <condition>:` / `ELIF <condition>:` / `ELSE:` with UPPERCASE keywords as the canonical form. Body lines use 4-space indent. Nesting is supported. Supported conditions: element exists (`button 'Save' exists`), text present (`text 'Welcome' is present`), variable comparison (`{role} == 'admin'`), variable contains (`{message} contains 'success'`), and variable truthy (`{token}`). Both uppercase and lowercase are accepted; uppercase is canonical.

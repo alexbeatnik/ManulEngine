@@ -62,10 +62,10 @@ manul.py                   Dev CLI entry point (run hunts from repo root without
 run_tests.py               Synthetic DOM test suite runner (dev only)
 bump_version.py            Version bumper — updates all 18 files from pyproject.toml
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.27
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.28
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession, EngineConfig, all exception classes
-  exceptions.py            Structured exception hierarchy (ManulEngineError base, ConfigurationError, ElementResolutionError, HookExecutionError, HuntImportError, VerificationError, SessionError, ScheduleError)
+  exceptions.py            Structured exception hierarchy (ManulEngineError base, ConfigurationError, ElementResolutionError, HookExecutionError, HuntImportError, VerificationError, SessionError, ScheduleError, ConditionalSyntaxError)
   _types.py                Shared type definitions — ElementSnapshot TypedDict used across scoring, core, actions
   api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)
   config.py                EngineConfig frozen dataclass — injectable configuration (replaces module-global reads); validate() method checks invariants
@@ -82,7 +82,8 @@ manul_engine/
   scoring.py               DOMScorer class — normalised 0.0–1.0 float scoring, WEIGHTS dict, SCALE=177,778, pre-compiled regex, score_elements() backward-compatible API
   js_scripts.py            All JS injected into the browser (TreeWalker-based SNAPSHOT_JS with PRUNE set, SCAN_JS)
   scanner.py               Smart Page Scanner — scan_page(), build_hunt(), scan_main()
-  helpers.py               HuntBlock, parse_hunt_blocks(), substitute_memory(), extract_quoted(), env_bool(), detect_mode(), classify_step(), timing constants
+  helpers.py               HuntBlock, IfBlock, ConditionalBranch, parse_hunt_blocks(), substitute_memory(), extract_quoted(), env_bool(), detect_mode(), classify_step(), timing constants
+  conditionals.py          Condition evaluator for IF/ELIF/ELSE blocks — evaluate_condition(), element_exists, text_present, variable comparison/contains/truthy
   cli.py                   Public installed CLI entry point (manul command + manul scan + manul record + manul daemon subcommands); ParsedHunt NamedTuple
   controls.py              Custom Controls registry (@custom_control, get_custom_control, load_custom_controls); thread-safe _REGISTRY_LOCK
   hooks.py                 [SETUP] / [TEARDOWN] hook parser and executor; thread-safe _CACHE_LOCK; 30s CALL PYTHON timeout warning
@@ -135,6 +136,7 @@ manul_engine/
     test_51_packager.py        Pack/install .huntlib archives and lockfile (21 assertions, no browser)
     test_52_exports.py         @export validation, wildcard exports, access control (19 assertions, no browser)
     test_53_explain_next.py   ExplainNextDebugger What-If Analysis REPL + debug protocol (112 assertions, no browser)
+    test_54_conditionals.py  IF/ELIF/ELSE conditional block parsing, condition evaluation, nested conditionals (97 assertions, no browser)
 demo/
   run_demo.py              Runner script for integration hunts (sets CWD, calls manul CLI)
   manul_engine_configuration.json  Demo-specific config (heuristics-only)
@@ -186,6 +188,10 @@ docker-compose.yml         Local dev/CI compose: manul, manul-daemon services
 
 ## Interaction modes
 
+> **Case-insensitive keywords.** All DSL keywords are case-insensitive at runtime — `CLICK`, `Click`, and `click` all work identically. `classify_step()` converts step text to uppercase before pattern matching; `detect_mode()` converts to lowercase for verb detection. The canonical form used in documentation and generated files is ALL UPPERCASE. Any mixed case is accepted.
+>
+> **Element type hints are optional but recommended.** Words like `button`, `link`, `field`, `dropdown`, `checkbox`, `radio`, `element`, `input` placed after the target outside quotes are not required, but they provide a strong heuristic signal that boosts scoring accuracy. `CLICK the 'Login' button` and `CLICK the 'Login'` both work — the former gives the scorer a useful mode hint.
+
 Detected from step keywords:
 
 * `input` — "type", "fill", "enter"
@@ -207,9 +213,9 @@ NAVIGATE to https://example.com/login
 VERIFY that 'Sign In' is present
 
 STEP 2: Fill credentials
-Fill 'Username' field with 'admin'
-Fill 'Password' field with 'secret'
-Click the 'Login' button
+FILL 'Username' field with 'admin'
+FILL 'Password' field with 'secret'
+CLICK the 'Login' button
 VERIFY that 'Welcome' is present.
 
 STEP 3: Wrap up
@@ -221,8 +227,8 @@ DONE.
 
 ```text
 "1. NAVIGATE to https://example.com"
-"2. Fill 'Username' field with 'admin'"
-"3. Click the 'Login' button"
+"2. FILL 'Username' field with 'admin'"
+"3. CLICK the 'Login' button"
 "4. VERIFY that 'Welcome' is present."
 "5. DONE."
 ```
@@ -256,9 +262,9 @@ Rules for STEP-grouped files:
 * `SCROLL DOWN` or `SCROLL DOWN inside the list`
 * `EXTRACT [target] into {variable_name}`
 * `VERIFY that [target] is present` / `is NOT present` / `is DISABLED` / `is ENABLED` / `is checked`
-* `Verify "element_name" [button|field|element|input] has text "Expected Text"` — resolves the target via heuristics, reads `locator.inner_text().strip()`, and asserts strict equality.
-* `Verify "element_name" [button|field|element|input] has placeholder "Expected Placeholder"` — resolves the target, reads its `placeholder` attribute, and asserts strict equality.
-* `Verify "element_name" [button|field|element|input] has value "Expected Value"` — resolves the target, reads its current value via `locator.input_value()` with a `value`-attribute fallback, normalizes missing values to an empty string, and asserts strict equality.
+* `VERIFY "element_name" [button|field|element|input] has text "Expected Text"` — resolves the target via heuristics, reads `locator.inner_text().strip()`, and asserts strict equality.
+* `VERIFY "element_name" [button|field|element|input] has placeholder "Expected Placeholder"` — resolves the target, reads its `placeholder` attribute, and asserts strict equality.
+* `VERIFY "element_name" [button|field|element|input] has value "Expected Value"` — resolves the target, reads its current value via `locator.input_value()` with a `value`-attribute fallback, normalizes missing values to an empty string, and asserts strict equality.
 * `VERIFY VISUAL 'Element'` — Takes an element screenshot and compares against a baseline in `visual_baselines/`. Saves baseline on first run. Uses PIL/Pillow threshold comparison (default 1%) or raw byte fallback.
 * `VERIFY SOFTLY that [target] is present` — Same as VERIFY but does **not** stop execution on failure. Failures are collected as soft errors and surfaced as `"warning"` status.
 * `MOCK METHOD "url_pattern" with 'mock_file'` — Intercepts matching network requests via `page.route()` and fulfills from a local file. METHOD: GET, POST, PUT, PATCH, DELETE. Mock file resolved relative to hunt dir → CWD.
@@ -267,6 +273,7 @@ Rules for STEP-grouped files:
 * `SCAN PAGE into {filename}` — same, but also writes the draft to `{filename}`. Default output dir is `tests_home` from config.
 * `SET {variable_name} = value` — Sets a runtime variable mid-flight. Both `{braced}` and bare key forms accepted. Quoted values (`'...'` / `"..."`) are auto-unquoted. The variable is immediately available for `{placeholder}` substitution in all subsequent steps.
 * `DEBUG` / `PAUSE` — pauses execution at that step. In interactive terminal mode (`--debug`), draws a dashed red border around the resolved element and prompts the user; when run via VS Code extension, emits the debug pause protocol marker (see below).
+* **Conditional blocks:** `IF <condition>:` / `ELIF <condition>:` / `ELSE:` — block-style branching based on element presence, text state, or variable comparisons. Body lines are indented by 4 spaces under the header. Nesting is supported. See Section 7c.
 * `DONE.`
 
 Everything else goes through `_execute_step` (mode detection → resolve → action).
@@ -312,7 +319,7 @@ Placed at the top of the file. Used by the engine for logging and LLM context.
 > 3. You MUST use **4-space indentation** for all action lines under `STEP` headers; comments inside a `STEP` or hook block follow the same 4-space indentation. `STEP` headers themselves, metadata lines (`@context:`, `@var:`, `@script:`, `@tags:`, `@data:`, `@import:`, `@export:`), hook block markers (`[SETUP]`/`[TEARDOWN]`), top-level comments (`#` before the first `STEP`), and `DONE.` must remain flush-left (zero indentation). This matches the VS Code Auto-Formatter output (`Shift+Alt+F`).
 
 ### 5. System Keywords (parser-detected)
-These keywords are detected via word-boundary regex, bypass heuristics, and are handled directly by the engine parser:
+These keywords are detected via word-boundary regex, bypass heuristics, and are handled directly by the engine parser. All keywords are case-insensitive — the canonical form is ALL UPPERCASE:
 * `NAVIGATE to [url]` — Loads a URL and waits for DOM settlement.
 * `OPEN APP` — Attaches to an Electron/Desktop app's default window instead of navigating to a URL. Use as the first step in `.hunt` files targeting `executable_path` apps. The handler checks `ctx.pages` for an existing window, falls back to `ctx.wait_for_event("page")`, waits for DOM settlement. Returns `(success, page)` — the `page` variable in `run_mission()` is reassigned.
 * `WAIT [seconds]` — Hard sleep (e.g., `WAIT 2`).
@@ -333,6 +340,7 @@ These keywords are detected via word-boundary regex, bypass heuristics, and are 
 * `SCAN PAGE into {filename}` — Same, but also writes the draft to `{filename}`. Output defaults to `{tests_home}/draft.hunt` (reads `tests_home` from `manul_engine_configuration.json`).
 * `SET {variable_name} = value` — Sets a runtime variable mid-flight. Both `{braced}` and bare key forms accepted. Quoted values are auto-unquoted. Available for `{placeholder}` substitution in subsequent steps.
 * `USE BlockName` — Expands an imported STEP block inline at parse time. The block must have been imported via `@import:`. Aliased names (from `as` clause) are supported. Case-insensitive matching. Expanded actions replace the `USE` line in the mission body with synthetic line numbers (0).
+* **Conditional blocks:** `IF <condition>:` / `ELIF <condition>:` / `ELSE:` — block-style branching (see Section 7c below).
 * `DONE.` — Explicitly ends the mission.
 * `[SETUP]` / `[END SETUP]` — Block wrapping `PRINT ...` and `CALL PYTHON ...` lines. Runs **before** the browser launches. If any line fails, the mission is marked as `broken` and browser steps are skipped.
 * `[TEARDOWN]` / `[END TEARDOWN]` — Cleanup block. Runs in a `finally` block **after** the mission (pass or fail). Only executed if `[SETUP]` succeeded. Failure is logged but does not override the mission result.
@@ -340,13 +348,13 @@ These keywords are detected via word-boundary regex, bypass heuristics, and are 
 * **Inline `CALL PYTHON` steps** — `CALL PYTHON <module>.<function>` (with optional positional arguments) is also valid as a standard numbered step anywhere in the main mission body (outside hook blocks). It uses the identical module resolution, state isolation, and sync-only rules as hook blocks. A failure stops the mission immediately.
 
 ### 6. Interaction Actions (Parsed Modes)
-If not a System Keyword, the engine detects the interaction mode based on verbs:
-* **Clicking (`clickable`)**: `Click the 'Login' button`, `DOUBLE CLICK the 'Image'`, `Click on the 'Home' link`.
-* **Typing (`input`)**: `Fill 'Email' field with 'test@manul.ai'`, `Type 'Search' into that field`.
-* **Select/Dropdown (`select`)**: `Select 'Option 1' from the 'Menu' dropdown`.
-* **Checkboxes/Radios (`clickable`)**: `Check the checkbox for 'Terms'`, `Uncheck the checkbox for 'Promo'`, `Click the radio button for 'Male'`.
+If not a System Keyword, the engine detects the interaction mode based on verbs (case-insensitive):
+* **Clicking (`clickable`)**: `CLICK the 'Login' button`, `DOUBLE CLICK the 'Image'`, `CLICK on the 'Home' link`.
+* **Typing (`input`)**: `FILL 'Email' field with 'test@manul.ai'`, `TYPE 'Search' into that field`.
+* **Select/Dropdown (`select`)**: `SELECT 'Option 1' from the 'Menu' dropdown`.
+* **Checkboxes/Radios (`clickable`)**: `CHECK the checkbox for 'Terms'`, `UNCHECK the checkbox for 'Promo'`, `CLICK the radio button for 'Male'`.
 * **Hovering (`hover`)**: `HOVER over the 'Menu'`.
-* **Drag & Drop (`drag`)**: `Drag the element "Item" and drop it into "Box"`.
+* **Drag & Drop (`drag`)**: `DRAG the element "Item" and drop it into "Box"`.
 * **Locate (`locate`)**: `Locate the text input...` (highlights without acting).
 
 ### 7. Variables & Memory
@@ -368,15 +376,15 @@ Correct:
 @var: {password}   = secret123
 
 STEP 1: Login
-Fill 'Email' with '{user_email}'
-Fill 'Password' with '{password}'
+FILL 'Email' with '{user_email}'
+FILL 'Password' with '{password}'
 ```
 
 Wrong (do not do this):
 ```text
 STEP 1: Login
-Fill 'Email' with 'admin@example.com'
-Fill 'Password' with 'secret123'
+FILL 'Email' with 'admin@example.com'
+FILL 'Password' with 'secret123'
 ```
 
 ### 7b. Dynamic Variable Capture (`CALL PYTHON ... into {var}`)
@@ -399,22 +407,80 @@ CALL PYTHON <module>.<function> into {result}
 Correct:
 ```text
 3. CALL PYTHON helpers.api.get_otp "{email}" into {otp_code}
-4. Fill 'OTP' field with '{otp_code}'
+4. FILL 'OTP' field with '{otp_code}'
 ```
 
 Wrong (do not do this):
 ```text
-4. Fill 'OTP' field with '123456'
+4. FILL 'OTP' field with '123456'
 ```
 
+### 7c. Conditional Blocks (`IF` / `ELIF` / `ELSE`)
+Block-style branching based on element presence, text state, or variable comparisons.
+
+**Syntax:**
+```text
+IF <condition>:
+    <action lines>
+ELIF <condition>:
+    <action lines>
+ELSE:
+    <action lines>
+```
+
+* `IF`, `ELIF`, `ELSE` headers end with `:` and are indented at the same level as sibling action lines inside a STEP block (4 spaces). Body lines inside each branch use an additional 4-space indent (8 spaces total inside a STEP).
+* `ELIF` and `ELSE` are optional. Multiple `ELIF` branches are allowed. Only one `ELSE` is allowed and must be last.
+* `ELIF` after `ELSE` raises `ConditionalSyntaxError`. Stray `ELIF`/`ELSE` without a preceding `IF` also raises.
+* Nesting is supported — an `IF` block can appear inside another `IF`/`ELIF`/`ELSE` branch body (at the deeper indent level).
+* The parser accepts both uppercase (`IF`, `ELIF`, `ELSE`) and lowercase (`if`, `elif`, `else`) via `re.IGNORECASE`, but **uppercase is the canonical form** used in all documentation and generated hunt files.
+
+**Supported conditions:**
+
+| Pattern | Example | Evaluator |
+|---------|---------|-----------|
+| Element exists | `button 'Save' exists`, `link 'Home' not exists` | Playwright locator probe |
+| Text present | `text 'Welcome' is present`, `text 'Error' is not present` | Visible text check |
+| Variable comparison | `{role} == 'admin'`, `{status} != 'active'` | String equality from memory |
+| Variable contains | `{message} contains 'success'` | Substring check |
+| Variable truthy | `{token}` | Non-empty, non-"false", non-"0" |
+
+**Example:**
+```text
+STEP 1: Adaptive login
+    IF button 'SSO Login' exists:
+        CLICK the 'SSO Login' button
+        VERIFY that 'SSO Portal' is present
+    ELIF text 'Sign In' is present:
+        FILL 'Username' field with '{username}'
+        CLICK the 'Sign In' button
+    ELSE:
+        CLICK the 'Create Account' link
+
+STEP 2: Nested conditional
+    IF button 'Save' exists:
+        CLICK the 'Save' button
+        IF text 'Are you sure?' is present:
+            CLICK the 'Confirm' button
+        ELSE:
+            VERIFY that 'Saved' is present
+    ELIF button 'Submit' exists:
+        CLICK the 'Submit' button
+    ELSE:
+        CLICK the 'Cancel' button
+```
+
+* At runtime, `_evaluate_conditional()` in `core.py` evaluates branches in order and executes the first branch whose condition is `True` (or the `ELSE` branch if no condition matched). Branch decisions are logged with `🔀 [CONDITIONAL]`.
+* `_dispatch_step()` handles the action execution inside a matched branch — it mirrors the main step dispatch logic (navigate, verify, fill, click, etc.).
+
 ### 8. Best Practices
-* **Specify Element Type:** Include words like `button`, `field`, `link`, `dropdown`, `checkbox`, `radio` outside quotes. This acts as a strong heuristic signal.
+* **ALL UPPERCASE canonical form:** When generating `.hunt` files, all DSL keywords must use ALL UPPERCASE: `CLICK`, `FILL`, `TYPE`, `SELECT`, `CHECK`, `UNCHECK`, `HOVER`, `DRAG`, `NAVIGATE`, `VERIFY`, `EXTRACT`, `WAIT`, `PRESS`, `SCROLL`, `SET`, `DONE`, etc. The engine is case-insensitive at runtime (any mix of cases works), but the canonical generated form is uppercase.
+* **Element type hints are optional but recommended:** Words like `button`, `field`, `link`, `dropdown`, `checkbox`, `radio`, `element`, `input` placed outside quotes after the target name are not required, but they provide a strong heuristic signal. `CLICK the 'Login' button` and `CLICK the 'Login'` both work — the former gives the scorer a useful mode hint.
 * **Exact Text Matching:** Put target texts in quotes (`'Save'`) to yield a high heuristic score.
-* **Mandatory post-input guard:** After every generated `Fill` or `Type` step, immediately emit a strict value assertion using `Verify "{element_name}" field/input has value "{expected_value}"` before moving on to the next logical action.
-* **Strict text/placeholder assertions:** When the user asks for exact text or placeholder validation, generate only `Verify "{element_name}" {type} has text "{expected_text}"` or `Verify "{element_name}" field/input has placeholder "{expected_placeholder}"`. Do not invent alternate assertion verbs.
-* **Strict value assertions:** When the user asks for the current inputted value or textarea content, generate only `Verify "{element_name}" field/input has value "{expected_value}"`.
+* **Mandatory post-input guard:** After every generated `FILL` or `TYPE` step, immediately emit a strict value assertion using `VERIFY "{element_name}" field/input has value "{expected_value}"` before moving on to the next logical action.
+* **Strict text/placeholder assertions:** When the user asks for exact text or placeholder validation, generate only `VERIFY "{element_name}" {type} has text "{expected_text}"` or `VERIFY "{element_name}" field/input has placeholder "{expected_placeholder}"`. Do not invent alternate assertion verbs.
+* **Strict value assertions:** When the user asks for the current inputted value or textarea content, generate only `VERIFY "{element_name}" field/input has value "{expected_value}"`.
 * **Verify After Actions:** Always use a `VERIFY` step after taking a significant action (e.g., login, form submit) before assuming the new page state.
-* **Implicit Context:** The engine reuses context if you refer to previous elements implicitly, e.g., `Type "Password" into that field`.
+* **Implicit Context:** The engine reuses context if you refer to previous elements implicitly, e.g., `TYPE "Password" into that field`.
 * **MANDATORY — Reporting, Screenshots, and Retries are CLI/Execution concerns, NOT DSL syntax.** Never write steps like `RETRY 3`, `TAKE SCREENSHOT`, `GENERATE REPORT`, or similar in `.hunt` files. These features are controlled exclusively via CLI flags (`--retries`, `--screenshot`, `--html-report`), `manul_engine_configuration.json` keys (`retries`, `screenshot`, `html_report`), or VS Code Extension settings (`manulEngine.retries`, `manulEngine.screenshotMode`, `manulEngine.htmlReport`). When asked to add retries or reporting to a test, instruct the user to use CLI flags or config — never inject pseudo-steps into the hunt file.
 
 ### 9. Python Hooks (`[SETUP]` / `[TEARDOWN]`) and Inline `CALL PYTHON` Steps
@@ -425,7 +491,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
   ```text
   2. CLICK the 'Send OTP' button
   3. CALL PYTHON api_helpers.fetch_otp "{email}" into {otp}
-  4. Fill 'OTP' field with '{otp}'
+  4. FILL 'OTP' field with '{otp}'
   ```
 * `[TEARDOWN]` cleanup runs whether the mission passed or failed. Use it to delete test records and reset state.
 * `PRINT "..."` is valid inside hook blocks and should be used for human-readable setup/cleanup logging.
@@ -437,7 +503,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 ## Code patterns to follow
 
 * Import: `from manul_engine import ManulEngine` (never `engine` or `framework`). For the programmatic API: `from manul_engine import ManulSession`. For injectable configuration: `from manul_engine import EngineConfig`.
-* `exceptions.py` owns the structured exception hierarchy: `ManulEngineError(Exception)` is the base class. Concrete exceptions: `ConfigurationError(ManulEngineError, ValueError)`, `ElementResolutionError(ManulEngineError)`, `HookExecutionError(ManulEngineError)`, `HuntImportError(ManulEngineError)`, `VerificationError(ManulEngineError)`, `SessionError(ManulEngineError, RuntimeError)`, `ScheduleError(ManulEngineError, ValueError)`. Multi-inheritance preserves backward compatibility with `except ValueError` / `except RuntimeError` in existing code. All exceptions are re-exported from `__init__.py`.
+* `exceptions.py` owns the structured exception hierarchy: `ManulEngineError(Exception)` is the base class. Concrete exceptions: `ConfigurationError(ManulEngineError, ValueError)`, `ElementResolutionError(ManulEngineError)`, `HookExecutionError(ManulEngineError)`, `HuntImportError(ManulEngineError)`, `VerificationError(ManulEngineError)`, `SessionError(ManulEngineError, RuntimeError)`, `ScheduleError(ManulEngineError, ValueError)`, `ConditionalSyntaxError(ManulEngineError, SyntaxError)`. Multi-inheritance preserves backward compatibility with `except ValueError` / `except RuntimeError` in existing code. All exceptions are re-exported from `__init__.py`.
 * `_types.py` owns shared type definitions. `ElementSnapshot` is a `TypedDict(total=False)` describing the shape of element dicts returned by `SNAPSHOT_JS`. Used with `TYPE_CHECKING` imports in `core.py`, `actions.py`, and `scoring.py` for IDE support and future type-checking.
 * `config.py` owns `EngineConfig` — a frozen dataclass with 24 fields mirroring the JSON config surface. `EngineConfig.from_file(path)` loads JSON + env overlay. `ManulEngine.__init__` accepts an optional `config: EngineConfig` parameter; when provided, all settings are read from the config object instead of module-level globals. All runtime configuration (timeouts, AI settings, auto-annotate, etc.) is stored as instance attributes on `ManulEngine` — never read from `prompts.*` at call time. `validate()` method checks invariants: browser enum, screenshot mode, channel+chromium compat, non-negative timeouts/retries, ai_always requires model.
 * `scoring.py` owns `DOMScorer` class — normalised `0.0–1.0` float scoring with five weighted channels (`WEIGHTS` dict: cache=2.0, text=0.45, attributes=0.25, semantics=0.60, proximity=0.10). `SCALE=177,778` maps the weighted float to integer thresholds expected by `core.py`. `score_elements()` is the backward-compatible entry point that delegates to `DOMScorer.score_all()`. Receives `learned_elements` and `last_xpath` as kwargs. Pre-compiled regex loaded at module import; per-element strings normalised in `_preprocess()`.
@@ -445,13 +511,14 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * **iframe routing in `core.py`:** `_snapshot()` iterates `page.frames`, evaluates `SNAPSHOT_JS` per frame, tags elements with `frame_index`. `_frame_for(page, el)` resolves the correct Playwright `Frame` by index with stale fallback to main frame. All 12+ locator call-sites in `actions.py` route through the resolved frame. Cross-origin frames are silently skipped (3-retry, 1.5s backoff on `closed` errors).
 * **TreeWalker in `js_scripts.py`:** `SNAPSHOT_JS` uses `document.createTreeWalker()` with a `PRUNE` set (`SCRIPT, STYLE, SVG, NOSCRIPT, TEMPLATE, META, PATH, G, BR, HR`). Visibility checked via `checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })` with `offsetWidth/offsetHeight` fallback. Hidden checkbox/radio/file inputs are kept (special-input exception). No `getComputedStyle` in the hot loop.
 * `actions.py` is a **mixin** (`_ActionsMixin`) inherited by `ManulEngine` in `core.py`. Explicit waits live here as `_handle_wait_for_element()` and are executed as parser-level system steps rather than generic heuristic actions.
-* **Input phrasing in `actions.py`:** steps containing `into` are parsed as value-first (`Type 'VALUE' into 'TARGET'`); `Fill ... with ...` and generic enter/fill phrasing remain value-last. Do not invert these forms when generating DSL.
+* **Input phrasing in `actions.py`:** steps containing `into` are parsed as value-first (`TYPE 'VALUE' into 'TARGET'`); `FILL ... with ...` and generic enter/fill phrasing remain value-last. Do not invert these forms when generating DSL.
 * `cache.py` is a **mixin** (`_ControlsCacheMixin`) inherited by `ManulEngine` in `core.py`. It owns all persistent per-site controls-cache logic.
 * `ManulEngine` MRO: `class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin)` in `core.py`.
 * `prompts.py` loads config from `manul_engine_configuration.json` (CWD first, then package root fallback). No dotenv dependency.
 * `js_scripts.py` owns **all** JavaScript constants injected into the browser — no inline JS in Python files. This includes `SCAN_JS` (Smart Page Scanner).
 * `scanner.py` owns the standalone scan logic: `SCAN_JS` is imported from `js_scripts.py`; `build_hunt()` maps raw element dicts to hunt steps; `scan_page()` is the async Playwright runner; `scan_main()` is the async CLI entry called by `cli.py`. `_default_output()` reads `tests_home` from the config to derive the default output path. `SCAN_JS.bestLabel()` should prefer associated checkbox/radio labels, and scan entries may include `manul_id` plus current non-empty values for fillable controls.
-* `helpers.py` provides `HuntBlock`, `parse_hunt_blocks(task, file_lines=None)`, `env_bool(name, default)`, `detect_mode(step)`, and `classify_step(step)`. `parse_hunt_blocks()` is the runtime-level hierarchical parser that groups STEP headers into parent blocks and action lines into child lists while preserving block and action file lines for breakpoint mapping.
+* `helpers.py` provides `HuntBlock`, `IfBlock`, `ConditionalBranch`, `parse_hunt_blocks(task, file_lines=None)`, `env_bool(name, default)`, `detect_mode(step)`, and `classify_step(step)`. `parse_hunt_blocks()` is the runtime-level hierarchical parser that groups STEP headers into parent blocks and action lines into child lists while preserving block and action file lines for breakpoint mapping. Conditional blocks (`IF`/`ELIF`/`ELSE`) are parsed by `_parse_conditionals()` using indentation-based body detection and produce `IfBlock` AST nodes containing `ConditionalBranch` entries.
+* `conditionals.py` provides `evaluate_condition(condition, page, memory)` — an async function that evaluates a condition string against the live page and variable memory. Supports element-exists probing, visible-text checks, variable `==`/`!=` comparison, `contains` substring checks, and truthy evaluation. Used by `_evaluate_conditional()` in `core.py` at runtime.
 * **Null model = heuristics-only:** When `model` is `None`, `_llm_json()` returns `None` immediately. `get_threshold(None)` returns `0`. No Ollama calls are made.
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
 * **Debug mode:** `ManulEngine(debug_mode=True, break_steps={N,...})`. `debug_mode=True` (from `--debug`) highlights the resolved element and pauses before every step using `input()` in TTY or Playwright's `page.pause()`. `break_steps` (from `--break-lines`) pauses only at listed step indices using the stdout/stdin panel protocol when stdout is not a TTY. The two are mutually exclusive in practice — the extension only ever sets `break_steps` via `--break-lines`.
@@ -527,7 +594,7 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.27 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.28 \
   --html-report --screenshot on-fail hunts/
 ```
 
@@ -624,7 +691,7 @@ STEP 1: Attach to the app window
     VERIFY that 'Welcome' is present
 
 STEP 2: Interact with app UI
-    Click the 'Settings' button
+    CLICK the 'Settings' button
     VERIFY that 'Preferences' is present
     DONE.
 ```
@@ -672,13 +739,13 @@ async def handle_datepicker(page, action_type: str, value: str | None) -> None:
 ```
 ```text
 # tests/checkout.hunt
-Fill 'React Datepicker' with '2026-12-25'
+FILL 'React Datepicker' with '2026-12-25'
 ```
 
 Example — WRONG (do not do this):
 ```text
 # tests/checkout.hunt
-2. Click the '.react-datepicker__input-container input' element
+2. CLICK the '.react-datepicker__input-container input' element
 3. Fill the first input inside the calendar widget with '2026-12-25'
 4. Click on day cell number 25 in the calendar grid
 ```
@@ -736,7 +803,7 @@ async with ManulSession() as session:
     await session.navigate("https://example.com")
     result = await session.run_steps("""
         STEP 1: Search
-            Fill 'Search' with 'ManulEngine'
+            FILL 'Search' with 'ManulEngine'
             PRESS Enter
             VERIFY that 'Results' is present
     """)
@@ -770,7 +837,7 @@ async with ManulSession() as session:
 * **Overlapped Elements:** Modern UIs use invisible overlays. The engine primarily uses Playwright with `force=True` plus retries/alternate candidates; JS helpers (`window.manulClick`, `window.manulType`) are mainly used for Shadow DOM elements.
 * **Deep Text Verification:** Standard `document.body.innerText` does not see text inside Shadow DOMs or Input values. `_handle_verify` uses a JS collector (`VISIBLE_TEXT_JS`) plus fallback checks.
 * **Form Auto-clearing:** Before typing into an input using `loc.type()`, always `await loc.fill("")` to prevent appending text to pre-filled placeholders (especially critical on Wikipedia and search bars).
-* **Input order semantics:** `Type 'VALUE' into 'TARGET'` is value-first because `into` marks the target after the first quoted string. `Fill 'TARGET' field with 'VALUE'` stays target-first/value-last. Do not describe or generate these forms interchangeably.
+* **Input order semantics:** `TYPE 'VALUE' into 'TARGET'` is value-first because `into` marks the target after the first quoted string. `FILL 'TARGET' field with 'VALUE'` stays target-first/value-last. Do not describe or generate these forms interchangeably.
 * **Checkbox/Radio strictness:** Heuristics must ruthlessly penalize (-50_000) non-checkbox elements when the user specifically asks to "Check" or "Select the radio", to prevent clicking a nearby `<td>` that happens to share the target text.
 * **Scanner label quality:** For checkbox/radio controls, prefer visible label association (`label[for]`, wrapping `<label>`, adjacent label) over generic text extraction so generated hunt identifiers match what humans see.
 * **Contextual navigation:** Prefer DSL qualifiers such as `NEAR 'Search'`, `ON HEADER`, `ON FOOTER`, and `INSIDE 'Actions' row with 'John Doe'` before suggesting brittle selectors or custom controls for repeated standard widgets.

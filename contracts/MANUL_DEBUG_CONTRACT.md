@@ -5,7 +5,7 @@
 
 ```json
 {
-  "version": "0.0.9.27",
+  "version": "0.0.9.28",
   "generatedFrom": "manul_engine/debug.py :: _DebugMixin; manul_engine/explain_next.py :: ExplainNextDebugger, PageContext, WhatIfResult, capture_page_context, _heuristic_pre_check, _HeuristicHit",
 
   "modules": {
