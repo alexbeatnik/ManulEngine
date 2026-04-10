@@ -36,3 +36,7 @@ class SessionError(ManulEngineError, RuntimeError):
 
 class ScheduleError(ManulEngineError, ValueError):
     """Invalid @schedule: expression."""
+
+
+class ConditionalSyntaxError(ManulEngineError, SyntaxError):
+    """Invalid if/elif/else conditional block syntax in a .hunt file."""

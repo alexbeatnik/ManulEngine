@@ -6,7 +6,7 @@ Shared helper functions and timing constants used across the engine.
 import os
 import re
 from dataclasses import dataclass, field
-from typing import NamedTuple
+from typing import NamedTuple, Union
 
 # ── Timing constants ──────────────────────────────────────────────────────────
 SCROLL_WAIT = 1.5
@@ -65,12 +65,15 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
     ("debug", re.compile(r"\b(?:DEBUG|PAUSE)\b")),
     ("done", re.compile(r"\bDONE\b")),
     ("use_import", re.compile(r"^\s*(?:\d+\.\s*)?USE\b")),
+    ("if_block", re.compile(r"^\s*(?:\d+\.\s*)?IF\b.+:\s*$", re.IGNORECASE)),
+    ("elif_block", re.compile(r"^\s*(?:\d+\.\s*)?ELIF\b.+:\s*$", re.IGNORECASE)),
+    ("else_block", re.compile(r"^\s*(?:\d+\.\s*)?ELSE\s*:\s*$", re.IGNORECASE)),
 ]
 
 # Legacy pre-compiled system-step pattern kept for backwards compatibility.
 # Prefer classify_step() for step classification.
 RE_SYSTEM_STEP = re.compile(
-    r"""\b(?:STEP\s*\d*\s*:|WAIT\s+FOR\s+(?:"[^"]+"|'[^']+')\s+TO\s+(?:BE\s+(?:VISIBLE|HIDDEN)|DISAPPEAR)|NAVIGATE|OPEN\s+APP|MOCK\s+(?:GET|POST|PUT|PATCH|DELETE)|WAIT\s+FOR\s+RESPONSE|WAIT|SCROLL|EXTRACT|VERIFY\s+VISUAL|VERIFY\s+SOFTLY|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|SET|DEBUG\s+VARS|DEBUG|PAUSE|DONE|USE)\b""",
+    r"""\b(?:STEP\s*\d*\s*:|WAIT\s+FOR\s+(?:"[^"]+"|'[^']+')\s+TO\s+(?:BE\s+(?:VISIBLE|HIDDEN)|DISAPPEAR)|NAVIGATE|OPEN\s+APP|MOCK\s+(?:GET|POST|PUT|PATCH|DELETE)|WAIT\s+FOR\s+RESPONSE|WAIT|SCROLL|EXTRACT|VERIFY\s+VISUAL|VERIFY\s+SOFTLY|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|SET|DEBUG\s+VARS|DEBUG|PAUSE|DONE|USE|IF\b.+:|ELIF\b.+:|ELSE\s*:)\b""",
     re.IGNORECASE,
 )
 
@@ -108,10 +111,28 @@ class HuntBlock:
     """Hierarchical execution block parsed from Hunt DSL."""
 
     block_name: str
-    actions: list[str] = field(default_factory=list)
+    actions: "list[Union[str, IfBlock]]" = field(default_factory=list)
     block_line: int | None = None
     action_lines: list[int] = field(default_factory=list)
     synthetic: bool = False
+
+
+@dataclass(slots=True)
+class ConditionalBranch:
+    """A single branch (if / elif / else) in a conditional block."""
+
+    kind: str  # "if", "elif", or "else"
+    condition: str  # raw condition text; empty string for else
+    actions: "list[Union[str, IfBlock]]" = field(default_factory=list)
+    action_lines: list[int] = field(default_factory=list)
+    branch_line: int = 0
+
+
+@dataclass(slots=True)
+class IfBlock:
+    """AST node for an if/elif/else conditional block."""
+
+    branches: list[ConditionalBranch] = field(default_factory=list)
 
 
 class StrictVerifyAssertion(NamedTuple):
@@ -203,37 +224,251 @@ def parse_hunt_blocks(task: str, file_lines: list[int] | None = None) -> list[Hu
     attached to the current block until the next STEP marker. When the mission
     contains no STEP markers, the executable lines are grouped into a single
     synthetic default block to preserve backward compatibility.
+
+    ``if``/``elif``/``else:`` conditional blocks are collapsed into
+    :class:`IfBlock` AST nodes attached inline inside each block's
+    ``actions`` list.
     """
-    mission_lines = [line.rstrip("\n") for line in task.splitlines() if line.strip()]
-    if not mission_lines:
+    raw_lines = [line.rstrip("\n") for line in task.splitlines() if line.strip()]
+    if not raw_lines:
         return []
 
-    resolved_lines = file_lines if file_lines and len(file_lines) == len(mission_lines) else [0] * len(mission_lines)
-    blocks: list[HuntBlock] = []
-    current_block: HuntBlock | None = None
+    resolved_lines = file_lines if file_lines and len(file_lines) == len(raw_lines) else [0] * len(raw_lines)
+    # Keep both raw (with indentation) and stripped versions.
+    mission_lines = [(raw.strip(), raw) for raw in raw_lines]
 
-    for raw_line, line_no in zip(mission_lines, resolved_lines):
-        stripped = raw_line.strip()
+    # ── First pass: split into STEP blocks with raw lines ──
+    raw_block_lines: list[tuple[list[str], list[str], list[int], str, int | None, bool]] = []
+    _cur_stripped: list[str] = []
+    _cur_raw: list[str] = []
+    _cur_lines: list[int] = []
+    _cur_name: str = "STEP: Default"
+    _cur_line: int | None = None
+    _cur_synthetic: bool = True
+
+    for (stripped, raw), line_no in zip(mission_lines, resolved_lines):
         if classify_step(stripped) == "logical_step":
-            current_block = HuntBlock(
-                block_name=normalize_logical_step(stripped),
-                block_line=line_no or None,
-            )
-            blocks.append(current_block)
+            if _cur_stripped or not _cur_synthetic:
+                raw_block_lines.append((_cur_stripped, _cur_raw, _cur_lines, _cur_name, _cur_line, _cur_synthetic))
+            _cur_stripped = []
+            _cur_raw = []
+            _cur_lines = []
+            _cur_name = normalize_logical_step(stripped)
+            _cur_line = line_no or None
+            _cur_synthetic = False
             continue
 
-        if current_block is None:
-            current_block = HuntBlock(
-                block_name="STEP: Default",
-                block_line=line_no or None,
-                synthetic=True,
-            )
-            blocks.append(current_block)
+        if not _cur_stripped and _cur_synthetic and not raw_block_lines:
+            _cur_line = line_no or None
 
-        current_block.actions.append(stripped)
-        current_block.action_lines.append(line_no or 0)
+        _cur_stripped.append(stripped)
+        _cur_raw.append(raw)
+        _cur_lines.append(line_no or 0)
+
+    if _cur_stripped or not _cur_synthetic:
+        raw_block_lines.append((_cur_stripped, _cur_raw, _cur_lines, _cur_name, _cur_line, _cur_synthetic))
+
+    # ── Second pass: parse conditional blocks inside each STEP ──
+    blocks: list[HuntBlock] = []
+    for stripped_actions, raw_actions, action_lines, block_name, block_line, synthetic in raw_block_lines:
+        parsed_actions, parsed_lines = _parse_conditionals(stripped_actions, raw_actions, action_lines)
+        blk = HuntBlock(
+            block_name=block_name,
+            actions=parsed_actions,
+            block_line=block_line,
+            action_lines=parsed_lines,
+            synthetic=synthetic,
+        )
+        blocks.append(blk)
 
     return [block for block in blocks if block.actions or not block.synthetic]
+
+
+# ── Conditional block regexes ─────────────────────────────────────────────────
+
+_RE_IF_LINE = re.compile(r"^(?:\d+\.\s*)?IF\s+(.+?):\s*$", re.IGNORECASE)
+_RE_ELIF_LINE = re.compile(r"^(?:\d+\.\s*)?ELIF\s+(.+?):\s*$", re.IGNORECASE)
+_RE_ELSE_LINE = re.compile(r"^(?:\d+\.\s*)?ELSE\s*:\s*$", re.IGNORECASE)
+
+
+def _indent_level(raw_line: str) -> int:
+    """Return the number of leading spaces in a raw line."""
+    return len(raw_line) - len(raw_line.lstrip())
+
+
+def _parse_conditionals(
+    actions: list[str], raw_actions: list[str], action_lines: list[int]
+) -> "tuple[list[Union[str, IfBlock]], list[int]]":
+    """Consume a flat action list and group if/elif/else lines into IfBlock nodes.
+
+    Uses indentation from *raw_actions* to determine block body boundaries.
+    Returns ``(parsed_actions, parsed_lines)`` where conditional blocks are
+    replaced by a single :class:`IfBlock` entry (with line number from the
+    opening ``if`` line).
+    """
+    result_actions: "list[Union[str, IfBlock]]" = []
+    result_lines: list[int] = []
+    i = 0
+
+    while i < len(actions):
+        line = actions[i]
+        raw_line = raw_actions[i] if i < len(raw_actions) else line
+        line_no = action_lines[i] if i < len(action_lines) else 0
+
+        m_if = _RE_IF_LINE.match(line)
+        if m_if:
+            if_block, consumed = _consume_if_block(actions, raw_actions, action_lines, i)
+            result_actions.append(if_block)
+            result_lines.append(line_no)
+            i += consumed
+            continue
+
+        # Stray elif/else outside an if block — error
+        if _RE_ELIF_LINE.match(line):
+            from .exceptions import ConditionalSyntaxError
+
+            raise ConditionalSyntaxError(f"'ELIF' without a preceding 'IF' at line {line_no}: {line}")
+        if _RE_ELSE_LINE.match(line):
+            from .exceptions import ConditionalSyntaxError
+
+            raise ConditionalSyntaxError(f"'ELSE' without a preceding 'IF' at line {line_no}: {line}")
+
+        result_actions.append(line)
+        result_lines.append(line_no)
+        i += 1
+
+    return result_actions, result_lines
+
+
+def _consume_if_block(
+    actions: list[str], raw_actions: list[str], action_lines: list[int], start: int
+) -> "tuple[IfBlock, int]":
+    """Parse an if/elif/else block starting at *start*.
+
+    Uses indentation of the ``if`` header line to determine where branch
+    bodies end (any line at or below the header's indentation level that is
+    not an elif/else terminates the conditional block).
+
+    Returns ``(IfBlock, number_of_lines_consumed)``.
+    Raises :class:`ConditionalSyntaxError` on invalid syntax.
+    """
+    from .exceptions import ConditionalSyntaxError
+
+    branches: list[ConditionalBranch] = []
+    i = start
+    has_else = False
+
+    # Determine the indentation level of the opening if line.
+    header_indent = _indent_level(raw_actions[start] if start < len(raw_actions) else "")
+
+    while i < len(actions):
+        line = actions[i]
+        raw_line = raw_actions[i] if i < len(raw_actions) else line
+        line_no = action_lines[i] if i < len(action_lines) else 0
+
+        m_if = _RE_IF_LINE.match(line)
+        m_elif = _RE_ELIF_LINE.match(line)
+        m_else = _RE_ELSE_LINE.match(line)
+
+        if m_if and i == start:
+            # Opening 'if'
+            condition = m_if.group(1).strip()
+            branch = ConditionalBranch(kind="if", condition=condition, branch_line=line_no)
+            i += 1
+            i = _collect_branch_body(actions, raw_actions, action_lines, i, branch, header_indent)
+            branches.append(branch)
+        elif m_elif and _indent_level(raw_line) <= header_indent:
+            if has_else:
+                raise ConditionalSyntaxError(
+                    f"'ELIF' after 'ELSE' is not allowed at line {line_no}: {line}"
+                )
+            if not branches:
+                raise ConditionalSyntaxError(
+                    f"'ELIF' without a preceding 'IF' at line {line_no}: {line}"
+                )
+            condition = m_elif.group(1).strip()
+            branch = ConditionalBranch(kind="elif", condition=condition, branch_line=line_no)
+            i += 1
+            i = _collect_branch_body(actions, raw_actions, action_lines, i, branch, header_indent)
+            branches.append(branch)
+        elif m_else and _indent_level(raw_line) <= header_indent:
+            if has_else:
+                raise ConditionalSyntaxError(
+                    f"Multiple 'ELSE' blocks at line {line_no}: {line}"
+                )
+            if not branches:
+                raise ConditionalSyntaxError(
+                    f"'ELSE' without a preceding 'IF' at line {line_no}: {line}"
+                )
+            has_else = True
+            branch = ConditionalBranch(kind="else", condition="", branch_line=line_no)
+            i += 1
+            i = _collect_branch_body(actions, raw_actions, action_lines, i, branch, header_indent)
+            branches.append(branch)
+        elif i == start:
+            # Must start with 'if'
+            raise ConditionalSyntaxError(f"Expected 'IF' at line {line_no}: {line}")
+        else:
+            # Line is at header indent but not elif/else — end of block.
+            break
+
+    consumed = i - start
+    if not branches:
+        raise ConditionalSyntaxError("Empty conditional block")
+
+    # Recursively parse nested conditionals inside each branch.
+    # We need to pass raw lines that preserve relative indentation
+    # so nested if/elif/else blocks can be detected correctly.
+    for branch in branches:
+        str_actions = [a for a in branch.actions if isinstance(a, str)]
+        # Build synthetic raw lines with correct relative indentation.
+        # Body lines are at header_indent+4 (body level).
+        # Nested conditional headers should be at body level.
+        # Nested body lines should be at header_indent+8.
+        body_indent = header_indent + 4
+        synthetic_raw: list[str] = []
+        for a in str_actions:
+            # A conditional header inside a body gets body-level indent.
+            if _RE_IF_LINE.match(a) or _RE_ELIF_LINE.match(a) or _RE_ELSE_LINE.match(a):
+                synthetic_raw.append(" " * body_indent + a)
+            else:
+                # Regular actions get one deeper indent.
+                synthetic_raw.append(" " * (body_indent + 4) + a)
+        branch.actions, branch.action_lines = _parse_conditionals(
+            str_actions,
+            synthetic_raw,
+            list(branch.action_lines),
+        )
+
+    return IfBlock(branches=branches), consumed
+
+
+def _collect_branch_body(
+    actions: list[str], raw_actions: list[str], action_lines: list[int],
+    i: int, branch: ConditionalBranch, header_indent: int,
+) -> int:
+    """Collect action lines belonging to a branch body.
+
+    A line belongs to the body if its indentation is greater than
+    *header_indent*. Stops when encountering a line at or below the
+    header indentation level.
+    """
+    while i < len(actions):
+        line = actions[i]
+        raw_line = raw_actions[i] if i < len(raw_actions) else line
+        line_no = action_lines[i] if i < len(action_lines) else 0
+        line_indent = _indent_level(raw_line)
+
+        # If the line is at or below the header indentation, it belongs
+        # to the parent scope (might be elif/else or the next action).
+        if line_indent <= header_indent:
+            break
+
+        branch.actions.append(line)
+        branch.action_lines.append(line_no)
+        i += 1
+
+    return i
 
 
 # Pattern to strip quoted text before classification.
@@ -251,7 +486,8 @@ def classify_step(step: str) -> str:
     ``"extract"``, ``"verify_visual"``, ``"verify_softly"``,
     ``"verify"``, ``"press_enter"``, ``"press"``, ``"right_click"``,
     ``"upload"``, ``"scan_page"``, ``"call_python"``, ``"set_var"``,
-    ``"debug_vars"``, ``"debug"``, ``"done"``, or ``"action"``.
+    ``"debug_vars"``, ``"debug"``, ``"done"``, ``"use_import"``,
+    ``"if_block"``, ``"elif_block"``, ``"else_block"``, or ``"action"``.
     """
     # Fast-path: STEP markers are checked on the raw text BEFORE quote
     # stripping so that apostrophes in descriptions (e.g. "Pallas's cat")

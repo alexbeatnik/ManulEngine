@@ -44,6 +44,7 @@ from .config import EngineConfig
 from .controls import custom_control
 from .core import ManulEngine
 from .exceptions import (
+    ConditionalSyntaxError,
     ConfigurationError,
     ElementResolutionError,
     HookExecutionError,
@@ -64,6 +65,7 @@ from .lifecycle import (
 from .variables import ScopedVariables
 
 __all__ = [
+    "ConditionalSyntaxError",
     "ConfigurationError",
     "ElementResolutionError",
     "EngineConfig",

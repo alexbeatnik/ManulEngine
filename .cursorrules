@@ -64,25 +64,25 @@ Follow these rules before generating code, documentation, architecture notes, or
 
 ## 3. Versioning and Dependencies
 
-- Treat `0.0.9.27` as the current engine version for this documentation and release line.
+- Treat `0.0.9.28` as the current engine version for this documentation and release line.
 - When version metadata is required in config examples or integration code, use:
 
 ```json
 {
-  "manulEngineVersion": "0.0.9.27"
+  "manulEngineVersion": "0.0.9.28"
 }
 ```
 
 - When generating `pip install` commands, pin the exact version, for example:
 
 ```bash
-pip install manul-engine==0.0.9.27
+pip install manul-engine==0.0.9.28
 ```
 
 - If the AI extra is needed, pin that exact version too:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.27"
+pip install "manul-engine[ai]==0.0.9.28"
 ```
 
 - When standalone Python dependencies must be installed manually for this release line, pin them explicitly too:
@@ -147,3 +147,4 @@ pip install ollama==0.6.1
 - When the user asks for exact current field content or textarea value verification, generate only `Verify "{element_name}" field/input has value "{expected_value}"`.
 - Do not invent alternate text assertion verbs such as `Check if text is`.
 - When documenting import directives, use `@import: Block1, Block2 from source.hunt` and `@export: Block1`. `USE BlockName` expands an imported block inline. `@import: * from lib.hunt` is wildcard import; `@import: Login as AuthLogin from lib.hunt` is aliased import. Imported `@var:` declarations inherit at the lowest (import) scope.
+- When documenting conditional blocks, use `IF <condition>:` / `ELIF <condition>:` / `ELSE:` with UPPERCASE keywords as the canonical form. Body lines use 4-space indent. Nesting is supported. Supported conditions: element exists (`button 'Save' exists`), text present (`text 'Welcome' is present`), variable comparison (`{role} == 'admin'`), variable contains (`{message} contains 'success'`), and variable truthy (`{token}`). Both uppercase and lowercase are accepted; uppercase is canonical.

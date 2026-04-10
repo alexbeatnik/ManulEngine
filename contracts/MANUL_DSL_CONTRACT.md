@@ -6,7 +6,7 @@
 
 ```json
 {
-  "version": "0.0.9.27",
+  "version": "0.0.9.28",
   "generatedFrom": "manul_engine/helpers.py :: classify_step(), detect_mode(), parse_contextual_hint(); manul_engine/core.py :: run_mission(); manul_engine/cli.py :: parse_hunt_file(); manul_engine/actions.py :: _ActionsMixin; manul_engine/scoring.py :: DOMScorer contextual proximity rules; manul_engine/js_scripts.py :: SNAPSHOT_JS geometry export; manul_engine/imports.py :: parse_import_directive(), resolve_imports(), expand_use_directives()",
   "commands": [
     {
@@ -332,6 +332,33 @@
       "regex": "^\\s*(?:\\d+\\.\\s*)?USE\\b",
       "description": "Expands an imported STEP block inline at parse time. The block must have been imported via @import:. Aliased names (from 'as' clause) are supported. Case-insensitive matching.",
       "category": "structure"
+    },
+    {
+      "id": "if_block",
+      "label": "IF",
+      "uiText": "IF button 'Save' exists:",
+      "snippet": "IF ${1:condition}:\n        ${2:action}",
+      "regex": "^\\s*(?:\\d+\\.\\s*)?IF\\b.+:\\s*$",
+      "description": "Block-style conditional branching. Body lines are indented by 4 extra spaces. Supports ELIF and ELSE branches. Nesting supported. Conditions: element exists, text present, variable comparison/contains/truthy.",
+      "category": "control_flow"
+    },
+    {
+      "id": "elif_block",
+      "label": "ELIF",
+      "uiText": "ELIF text 'Error' is present:",
+      "snippet": "ELIF ${1:condition}:\n        ${2:action}",
+      "regex": "^\\s*(?:\\d+\\.\\s*)?ELIF\\b.+:\\s*$",
+      "description": "Alternative branch in an IF block. Multiple ELIF branches are allowed. Must follow IF or another ELIF. Cannot appear after ELSE.",
+      "category": "control_flow"
+    },
+    {
+      "id": "else_block",
+      "label": "ELSE",
+      "uiText": "ELSE:",
+      "snippet": "ELSE:\n        ${1:action}",
+      "regex": "^\\s*(?:\\d+\\.\\s*)?ELSE\\s*:\\s*$",
+      "description": "Default branch in an IF block. Only one ELSE is allowed and must be the last branch.",
+      "category": "control_flow"
     }
   ],
   "contextualQualifiers": [

@@ -62,10 +62,10 @@ manul.py                   Dev CLI entry point (run hunts from repo root without
 run_tests.py               Synthetic DOM test suite runner (dev only)
 bump_version.py            Version bumper — updates all 18 files from pyproject.toml
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.27
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.28
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession, EngineConfig, all exception classes
-  exceptions.py            Structured exception hierarchy (ManulEngineError base, ConfigurationError, ElementResolutionError, HookExecutionError, HuntImportError, VerificationError, SessionError, ScheduleError)
+  exceptions.py            Structured exception hierarchy (ManulEngineError base, ConfigurationError, ElementResolutionError, HookExecutionError, HuntImportError, VerificationError, SessionError, ScheduleError, ConditionalSyntaxError)
   _types.py                Shared type definitions — ElementSnapshot TypedDict used across scoring, core, actions
   api.py                   ManulSession — public Python API facade (async context manager, Playwright lifecycle)
   config.py                EngineConfig frozen dataclass — injectable configuration (replaces module-global reads); validate() method checks invariants
@@ -82,7 +82,8 @@ manul_engine/
   scoring.py               DOMScorer class — normalised 0.0–1.0 float scoring, WEIGHTS dict, SCALE=177,778, pre-compiled regex, score_elements() backward-compatible API
   js_scripts.py            All JS injected into the browser (TreeWalker-based SNAPSHOT_JS with PRUNE set, SCAN_JS)
   scanner.py               Smart Page Scanner — scan_page(), build_hunt(), scan_main()
-  helpers.py               HuntBlock, parse_hunt_blocks(), substitute_memory(), extract_quoted(), env_bool(), detect_mode(), classify_step(), timing constants
+  helpers.py               HuntBlock, IfBlock, ConditionalBranch, parse_hunt_blocks(), substitute_memory(), extract_quoted(), env_bool(), detect_mode(), classify_step(), timing constants
+  conditionals.py          Condition evaluator for IF/ELIF/ELSE blocks — evaluate_condition(), element_exists, text_present, variable comparison/contains/truthy
   cli.py                   Public installed CLI entry point (manul command + manul scan + manul record + manul daemon subcommands); ParsedHunt NamedTuple
   controls.py              Custom Controls registry (@custom_control, get_custom_control, load_custom_controls); thread-safe _REGISTRY_LOCK
   hooks.py                 [SETUP] / [TEARDOWN] hook parser and executor; thread-safe _CACHE_LOCK; 30s CALL PYTHON timeout warning
@@ -135,6 +136,7 @@ manul_engine/
     test_51_packager.py        Pack/install .huntlib archives and lockfile (21 assertions, no browser)
     test_52_exports.py         @export validation, wildcard exports, access control (19 assertions, no browser)
     test_53_explain_next.py   ExplainNextDebugger What-If Analysis REPL + debug protocol (112 assertions, no browser)
+    test_54_conditionals.py  IF/ELIF/ELSE conditional block parsing, condition evaluation, nested conditionals (97 assertions, no browser)
 demo/
   run_demo.py              Runner script for integration hunts (sets CWD, calls manul CLI)
   manul_engine_configuration.json  Demo-specific config (heuristics-only)
@@ -267,6 +269,7 @@ Rules for STEP-grouped files:
 * `SCAN PAGE into {filename}` — same, but also writes the draft to `{filename}`. Default output dir is `tests_home` from config.
 * `SET {variable_name} = value` — Sets a runtime variable mid-flight. Both `{braced}` and bare key forms accepted. Quoted values (`'...'` / `"..."`) are auto-unquoted. The variable is immediately available for `{placeholder}` substitution in all subsequent steps.
 * `DEBUG` / `PAUSE` — pauses execution at that step. In interactive terminal mode (`--debug`), draws a dashed red border around the resolved element and prompts the user; when run via VS Code extension, emits the debug pause protocol marker (see below).
+* **Conditional blocks:** `IF <condition>:` / `ELIF <condition>:` / `ELSE:` — block-style branching based on element presence, text state, or variable comparisons. Body lines are indented by 4 spaces under the header. Nesting is supported. See Section 7c.
 * `DONE.`
 
 Everything else goes through `_execute_step` (mode detection → resolve → action).
@@ -333,6 +336,7 @@ These keywords are detected via word-boundary regex, bypass heuristics, and are 
 * `SCAN PAGE into {filename}` — Same, but also writes the draft to `{filename}`. Output defaults to `{tests_home}/draft.hunt` (reads `tests_home` from `manul_engine_configuration.json`).
 * `SET {variable_name} = value` — Sets a runtime variable mid-flight. Both `{braced}` and bare key forms accepted. Quoted values are auto-unquoted. Available for `{placeholder}` substitution in subsequent steps.
 * `USE BlockName` — Expands an imported STEP block inline at parse time. The block must have been imported via `@import:`. Aliased names (from `as` clause) are supported. Case-insensitive matching. Expanded actions replace the `USE` line in the mission body with synthetic line numbers (0).
+* **Conditional blocks:** `IF <condition>:` / `ELIF <condition>:` / `ELSE:` — block-style branching (see Section 7c below).
 * `DONE.` — Explicitly ends the mission.
 * `[SETUP]` / `[END SETUP]` — Block wrapping `PRINT ...` and `CALL PYTHON ...` lines. Runs **before** the browser launches. If any line fails, the mission is marked as `broken` and browser steps are skipped.
 * `[TEARDOWN]` / `[END TEARDOWN]` — Cleanup block. Runs in a `finally` block **after** the mission (pass or fail). Only executed if `[SETUP]` succeeded. Failure is logged but does not override the mission result.
@@ -407,6 +411,63 @@ Wrong (do not do this):
 4. Fill 'OTP' field with '123456'
 ```
 
+### 7c. Conditional Blocks (`IF` / `ELIF` / `ELSE`)
+Block-style branching based on element presence, text state, or variable comparisons.
+
+**Syntax:**
+```text
+IF <condition>:
+    <action lines>
+ELIF <condition>:
+    <action lines>
+ELSE:
+    <action lines>
+```
+
+* `IF`, `ELIF`, `ELSE` headers end with `:` and are indented at the same level as sibling action lines inside a STEP block (4 spaces). Body lines inside each branch use an additional 4-space indent (8 spaces total inside a STEP).
+* `ELIF` and `ELSE` are optional. Multiple `ELIF` branches are allowed. Only one `ELSE` is allowed and must be last.
+* `ELIF` after `ELSE` raises `ConditionalSyntaxError`. Stray `ELIF`/`ELSE` without a preceding `IF` also raises.
+* Nesting is supported — an `IF` block can appear inside another `IF`/`ELIF`/`ELSE` branch body (at the deeper indent level).
+* The parser accepts both uppercase (`IF`, `ELIF`, `ELSE`) and lowercase (`if`, `elif`, `else`) via `re.IGNORECASE`, but **uppercase is the canonical form** used in all documentation and generated hunt files.
+
+**Supported conditions:**
+
+| Pattern | Example | Evaluator |
+|---------|---------|----------|
+| Element exists | `button 'Save' exists`, `link 'Home' not exists` | Playwright locator probe |
+| Text present | `text 'Welcome' is present`, `text 'Error' is not present` | Visible text check |
+| Variable comparison | `{role} == 'admin'`, `{status} != 'active'` | String equality from memory |
+| Variable contains | `{message} contains 'success'` | Substring check |
+| Variable truthy | `{token}` | Non-empty, non-"false", non-"0" |
+
+**Example:**
+```text
+STEP 1: Adaptive login
+    IF button 'SSO Login' exists:
+        Click the 'SSO Login' button
+        VERIFY that 'SSO Portal' is present
+    ELIF text 'Sign In' is present:
+        Fill 'Username' field with '{username}'
+        Click the 'Sign In' button
+    ELSE:
+        Click the 'Create Account' link
+
+STEP 2: Nested conditional
+    IF button 'Save' exists:
+        Click the 'Save' button
+        IF text 'Are you sure?' is present:
+            Click the 'Confirm' button
+        ELSE:
+            VERIFY that 'Saved' is present
+    ELIF button 'Submit' exists:
+        Click the 'Submit' button
+    ELSE:
+        Click the 'Cancel' button
+```
+
+* At runtime, `_evaluate_conditional()` in `core.py` evaluates branches in order and executes the first branch whose condition is `True` (or the `ELSE` branch if no condition matched). Branch decisions are logged with `🔀 [CONDITIONAL]`.
+* `_dispatch_step()` handles the action execution inside a matched branch — it mirrors the main step dispatch logic (navigate, verify, fill, click, etc.).
+
 ### 8. Best Practices
 * **Specify Element Type:** Include words like `button`, `field`, `link`, `dropdown`, `checkbox`, `radio` outside quotes. This acts as a strong heuristic signal.
 * **Exact Text Matching:** Put target texts in quotes (`'Save'`) to yield a high heuristic score.
@@ -437,7 +498,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 ## Code patterns to follow
 
 * Import: `from manul_engine import ManulEngine` (never `engine` or `framework`). For the programmatic API: `from manul_engine import ManulSession`. For injectable configuration: `from manul_engine import EngineConfig`.
-* `exceptions.py` owns the structured exception hierarchy: `ManulEngineError(Exception)` is the base class. Concrete exceptions: `ConfigurationError(ManulEngineError, ValueError)`, `ElementResolutionError(ManulEngineError)`, `HookExecutionError(ManulEngineError)`, `HuntImportError(ManulEngineError)`, `VerificationError(ManulEngineError)`, `SessionError(ManulEngineError, RuntimeError)`, `ScheduleError(ManulEngineError, ValueError)`. Multi-inheritance preserves backward compatibility with `except ValueError` / `except RuntimeError` in existing code. All exceptions are re-exported from `__init__.py`.
+* `exceptions.py` owns the structured exception hierarchy: `ManulEngineError(Exception)` is the base class. Concrete exceptions: `ConfigurationError(ManulEngineError, ValueError)`, `ElementResolutionError(ManulEngineError)`, `HookExecutionError(ManulEngineError)`, `HuntImportError(ManulEngineError)`, `VerificationError(ManulEngineError)`, `SessionError(ManulEngineError, RuntimeError)`, `ScheduleError(ManulEngineError, ValueError)`, `ConditionalSyntaxError(ManulEngineError, SyntaxError)`. Multi-inheritance preserves backward compatibility with `except ValueError` / `except RuntimeError` in existing code. All exceptions are re-exported from `__init__.py`.
 * `_types.py` owns shared type definitions. `ElementSnapshot` is a `TypedDict(total=False)` describing the shape of element dicts returned by `SNAPSHOT_JS`. Used with `TYPE_CHECKING` imports in `core.py`, `actions.py`, and `scoring.py` for IDE support and future type-checking.
 * `config.py` owns `EngineConfig` — a frozen dataclass with 24 fields mirroring the JSON config surface. `EngineConfig.from_file(path)` loads JSON + env overlay. `ManulEngine.__init__` accepts an optional `config: EngineConfig` parameter; when provided, all settings are read from the config object instead of module-level globals. All runtime configuration (timeouts, AI settings, auto-annotate, etc.) is stored as instance attributes on `ManulEngine` — never read from `prompts.*` at call time. `validate()` method checks invariants: browser enum, screenshot mode, channel+chromium compat, non-negative timeouts/retries, ai_always requires model.
 * `scoring.py` owns `DOMScorer` class — normalised `0.0–1.0` float scoring with five weighted channels (`WEIGHTS` dict: cache=2.0, text=0.45, attributes=0.25, semantics=0.60, proximity=0.10). `SCALE=177,778` maps the weighted float to integer thresholds expected by `core.py`. `score_elements()` is the backward-compatible entry point that delegates to `DOMScorer.score_all()`. Receives `learned_elements` and `last_xpath` as kwargs. Pre-compiled regex loaded at module import; per-element strings normalised in `_preprocess()`.
@@ -451,7 +512,8 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * `prompts.py` loads config from `manul_engine_configuration.json` (CWD first, then package root fallback). No dotenv dependency.
 * `js_scripts.py` owns **all** JavaScript constants injected into the browser — no inline JS in Python files. This includes `SCAN_JS` (Smart Page Scanner).
 * `scanner.py` owns the standalone scan logic: `SCAN_JS` is imported from `js_scripts.py`; `build_hunt()` maps raw element dicts to hunt steps; `scan_page()` is the async Playwright runner; `scan_main()` is the async CLI entry called by `cli.py`. `_default_output()` reads `tests_home` from the config to derive the default output path. `SCAN_JS.bestLabel()` should prefer associated checkbox/radio labels, and scan entries may include `manul_id` plus current non-empty values for fillable controls.
-* `helpers.py` provides `HuntBlock`, `parse_hunt_blocks(task, file_lines=None)`, `env_bool(name, default)`, `detect_mode(step)`, and `classify_step(step)`. `parse_hunt_blocks()` is the runtime-level hierarchical parser that groups STEP headers into parent blocks and action lines into child lists while preserving block and action file lines for breakpoint mapping.
+* `helpers.py` provides `HuntBlock`, `IfBlock`, `ConditionalBranch`, `parse_hunt_blocks(task, file_lines=None)`, `env_bool(name, default)`, `detect_mode(step)`, and `classify_step(step)`. `parse_hunt_blocks()` is the runtime-level hierarchical parser that groups STEP headers into parent blocks and action lines into child lists while preserving block and action file lines for breakpoint mapping. Conditional blocks (`IF`/`ELIF`/`ELSE`) are parsed by `_parse_conditionals()` using indentation-based body detection and produce `IfBlock` AST nodes containing `ConditionalBranch` entries.
+* `conditionals.py` provides `evaluate_condition(condition, page, memory)` — an async function that evaluates a condition string against the live page and variable memory. Supports element-exists probing, visible-text checks, variable `==`/`!=` comparison, `contains` substring checks, and truthy evaluation. Used by `_evaluate_conditional()` in `core.py` at runtime.
 * **Null model = heuristics-only:** When `model` is `None`, `_llm_json()` returns `None` immediately. `get_threshold(None)` returns `0`. No Ollama calls are made.
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
 * **Debug mode:** `ManulEngine(debug_mode=True, break_steps={N,...})`. `debug_mode=True` (from `--debug`) highlights the resolved element and pauses before every step using `input()` in TTY or Playwright's `page.pause()`. `break_steps` (from `--break-lines`) pauses only at listed step indices using the stdout/stdin panel protocol when stdout is not a TTY. The two are mutually exclusive in practice — the extension only ever sets `break_steps` via `--break-lines`.
@@ -527,7 +589,7 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.27 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.28 \
   --html-report --screenshot on-fail hunts/
 ```
 
