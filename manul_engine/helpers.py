@@ -73,7 +73,7 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
 # Legacy pre-compiled system-step pattern kept for backwards compatibility.
 # Prefer classify_step() for step classification.
 RE_SYSTEM_STEP = re.compile(
-    r"""\b(?:STEP\s*\d*\s*:|WAIT\s+FOR\s+(?:"[^"]+"|'[^']+')\s+TO\s+(?:BE\s+(?:VISIBLE|HIDDEN)|DISAPPEAR)|NAVIGATE|OPEN\s+APP|MOCK\s+(?:GET|POST|PUT|PATCH|DELETE)|WAIT\s+FOR\s+RESPONSE|WAIT|SCROLL|EXTRACT|VERIFY\s+VISUAL|VERIFY\s+SOFTLY|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|SET|DEBUG\s+VARS|DEBUG|PAUSE|DONE|USE|IF\b.+:|ELIF\b.+:|ELSE\s*:)\b""",
+    r"""\b(?:STEP\s*\d*\s*:|WAIT\s+FOR\s+(?:"[^"]+"|'[^']+')\s+TO\s+(?:BE\s+(?:VISIBLE|HIDDEN)|DISAPPEAR)|NAVIGATE|OPEN\s+APP|MOCK\s+(?:GET|POST|PUT|PATCH|DELETE)|WAIT\s+FOR\s+RESPONSE|WAIT|SCROLL|EXTRACT|VERIFY\s+VISUAL|VERIFY\s+SOFTLY|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|SET|DEBUG\s+VARS|DEBUG|PAUSE|DONE|USE|IF\b.+:|ELIF\b.+:|ELSE\s*:)(?:\b|$)""",
     re.IGNORECASE,
 )
 

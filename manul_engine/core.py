@@ -853,12 +853,11 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                 print("    🔀 [CONDITIONAL] Taking 'else' branch (no prior condition matched)")
                 return branch.actions
 
-            cond_text = substitute_memory(branch.condition, self.memory)
             try:
-                result = await evaluate_condition(cond_text, page, self.memory)
+                result = await evaluate_condition(branch.condition, page, self.memory)
             except ValueError as exc:
                 _log.warning("Condition evaluation error: %s", exc)
-                print(f"    ⚠️  [CONDITIONAL] Error evaluating '{cond_text}': {exc}")
+                print(f"    ⚠️  [CONDITIONAL] Error evaluating '{branch.condition}': {exc}")
                 result = False
 
             if result:
@@ -885,19 +884,20 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         _step_results: list,
         _soft_errors: list,
         _screenshot_mode: str,
-    ) -> "tuple[bool, Page, bool]":
+    ) -> "tuple[bool, Page, bool, int]":
         """Evaluate a conditional block and execute the taken branch's actions.
 
         Handles arbitrarily nested IfBlocks via recursion.
-        Returns ``(ok, page, done)`` — ``page`` may differ from the input
-        if ``OPEN APP`` reassigned it, ``done`` is ``True`` if a ``DONE.``
-        step was encountered inside the branch.
+        Returns ``(ok, page, done, action_index)`` — ``page`` may differ from
+        the input if ``OPEN APP`` reassigned it, ``done`` is ``True`` if a
+        ``DONE.`` step was encountered inside the branch, and
+        ``action_index`` reflects incrementing per executed branch action.
         """
         branch_actions = await self._evaluate_conditional(if_block, page)
         done = False
         for ba in branch_actions:
             if isinstance(ba, IfBlock):
-                ok, page, done = await self._execute_conditional(
+                ok, page, done, action_index = await self._execute_conditional(
                     ba,
                     page,
                     ctx,
@@ -913,8 +913,9 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     _screenshot_mode,
                 )
                 if not ok or done:
-                    return ok, page, done
+                    return ok, page, done, action_index
             elif isinstance(ba, str):
+                action_index += 1
                 ba = substitute_memory(ba, self.memory)
                 outcome = await self._dispatch_step(
                     ba,
@@ -934,10 +935,10 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                 )
                 page = outcome[1]
                 if outcome[3]:  # done
-                    return outcome[0], page, True
+                    return outcome[0], page, True, action_index
                 if not outcome[0]:
-                    return False, page, False
-        return True, page, done
+                    return False, page, False, action_index
+        return True, page, done, action_index
 
     async def _dispatch_step(
         self,
@@ -1281,13 +1282,12 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     for raw_step in block.actions:
                         # ── Conditional block (IfBlock) ──
                         if isinstance(raw_step, IfBlock):
-                            action_index += 1
                             started_perf = time.perf_counter()
                             print("  [▶️ ACTION START] if/elif/else conditional")
                             _cond_ok = True
                             _cond_error: str | None = None
                             try:
-                                _cond_ok, page, _cond_done = await self._execute_conditional(
+                                _cond_ok, page, _cond_done, action_index = await self._execute_conditional(
                                     raw_step,
                                     page,
                                     ctx,
