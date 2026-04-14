@@ -39,11 +39,11 @@ from .config import EngineConfig
 from .debug import _DebugMixin
 from .exceptions import ConfigurationError
 from .helpers import (
+    MAX_LOOP_ITERATIONS,
     RE_SYSTEM_STEP,
     ContextualHint,
     IfBlock,
     LoopBlock,
-    MAX_LOOP_ITERATIONS,
     classify_step,
     compact_log_field,
     detect_mode,
@@ -1116,13 +1116,16 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     f"(condition: {condition_text!r})"
                 )
                 print(f"    ⚠️  [LOOP] {msg}")
-                _step_results.append(
-                    StepResult(
-                        step_text=f"WHILE {condition_text}",
-                        status="fail",
-                        error_message=msg,
-                    )
+                step_result = StepResult(
+                    index=action_index + 1,
+                    text=f"WHILE {condition_text}",
+                    status="fail",
+                    error=msg,
+                    duration_ms=0,
+                    logical_step=getattr(block, "block_name", None),
                 )
+                _step_results.append(step_result)
+                block_steps.append(step_result)
                 return False, page, done, action_index
             return True, page, done, action_index
 

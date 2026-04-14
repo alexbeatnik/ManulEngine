@@ -370,7 +370,7 @@ def _parse_conditionals(
     replaced by a single :class:`IfBlock` entry and loop blocks by a
     :class:`LoopBlock` entry (with line number from the opening line).
     """
-    result_actions: "list[str | IfBlock | LoopBlock]" = []
+    result_actions: list[str | IfBlock | LoopBlock] = []
     result_lines: list[int] = []
     i = 0
 

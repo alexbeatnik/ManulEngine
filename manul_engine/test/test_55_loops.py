@@ -386,7 +386,7 @@ def test_collect_lines():
         lines = collect_loopblock_lines(lb)
         _assert(len(lines) == 2, "Two lines collected", f"got {len(lines)}")
         _assert(all(isinstance(n, int) for n in lines), "All line numbers are ints")
-        _assert(all(isinstance(n, int) for n in lines), "All line numbers are ints (may include 0)")
+        _assert(lines == sorted(lines), "Collected line numbers preserve source order", f"got {lines}")
 
     # Nested: loop inside loop
     task2 = """STEP 1: Nested
