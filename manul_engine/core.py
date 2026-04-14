@@ -1017,10 +1017,21 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             for iteration in range(1, count + 1):
                 self.memory[str(loop_block.var_name or "i")] = str(iteration)
                 ok, page, done, action_index = await self._run_loop_body(
-                    loop_block, page, ctx, strategic_context, action_index,
-                    hunt_dir, hunt_file, _action_file_lines, block, block_steps,
-                    _step_results, _soft_errors, _screenshot_mode,
-                    iteration=iteration, total=count,
+                    loop_block,
+                    page,
+                    ctx,
+                    strategic_context,
+                    action_index,
+                    hunt_dir,
+                    hunt_file,
+                    _action_file_lines,
+                    block,
+                    block_steps,
+                    _step_results,
+                    _soft_errors,
+                    _screenshot_mode,
+                    iteration=iteration,
+                    total=count,
                 )
                 if not ok or done:
                     return ok, page, done, action_index
@@ -1029,7 +1040,11 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         elif loop_block.kind == "for_each":
             var_name = loop_block.var_name or "item"
             collection_key = loop_block.collection_expr or ""
-            raw_collection = self.memory.resolve(collection_key) if hasattr(self.memory, "resolve") else self.memory.get(collection_key, "")
+            raw_collection = (
+                self.memory.resolve(collection_key)
+                if hasattr(self.memory, "resolve")
+                else self.memory.get(collection_key, "")
+            )
             if raw_collection is None:
                 raw_collection = ""
             items = [item.strip() for item in str(raw_collection).split(",") if item.strip()]
@@ -1038,10 +1053,21 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                 self.memory[var_name] = item
                 self.memory["i"] = str(iteration)
                 ok, page, done, action_index = await self._run_loop_body(
-                    loop_block, page, ctx, strategic_context, action_index,
-                    hunt_dir, hunt_file, _action_file_lines, block, block_steps,
-                    _step_results, _soft_errors, _screenshot_mode,
-                    iteration=iteration, total=len(items),
+                    loop_block,
+                    page,
+                    ctx,
+                    strategic_context,
+                    action_index,
+                    hunt_dir,
+                    hunt_file,
+                    _action_file_lines,
+                    block,
+                    block_steps,
+                    _step_results,
+                    _soft_errors,
+                    _screenshot_mode,
+                    iteration=iteration,
+                    total=len(items),
                 )
                 if not ok or done:
                     return ok, page, done, action_index
@@ -1066,15 +1092,37 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                 iteration += 1
                 self.memory["i"] = str(iteration)
                 ok, page, done, action_index = await self._run_loop_body(
-                    loop_block, page, ctx, strategic_context, action_index,
-                    hunt_dir, hunt_file, _action_file_lines, block, block_steps,
-                    _step_results, _soft_errors, _screenshot_mode,
-                    iteration=iteration, total=None,
+                    loop_block,
+                    page,
+                    ctx,
+                    strategic_context,
+                    action_index,
+                    hunt_dir,
+                    hunt_file,
+                    _action_file_lines,
+                    block,
+                    block_steps,
+                    _step_results,
+                    _soft_errors,
+                    _screenshot_mode,
+                    iteration=iteration,
+                    total=None,
                 )
                 if not ok or done:
                     return ok, page, done, action_index
             else:
-                print(f"    ⚠️  [LOOP] WHILE loop hit safety limit ({MAX_LOOP_ITERATIONS} iterations) — aborting")
+                msg = (
+                    f"WHILE loop exceeded safety limit of {MAX_LOOP_ITERATIONS} iterations "
+                    f"(condition: {condition_text!r})"
+                )
+                print(f"    ⚠️  [LOOP] {msg}")
+                _step_results.append(
+                    StepResult(
+                        step_text=f"WHILE {condition_text}",
+                        status="fail",
+                        error_message=msg,
+                    )
+                )
                 return False, page, done, action_index
             return True, page, done, action_index
 
@@ -1110,17 +1158,37 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             ba_line = loop_block.action_lines[ba_idx] if ba_idx < len(loop_block.action_lines) else 0
             if isinstance(ba, IfBlock):
                 ok, page, done, action_index = await self._execute_conditional(
-                    ba, page, ctx, strategic_context, action_index,
-                    hunt_dir, hunt_file, _action_file_lines, block, block_steps,
-                    _step_results, _soft_errors, _screenshot_mode,
+                    ba,
+                    page,
+                    ctx,
+                    strategic_context,
+                    action_index,
+                    hunt_dir,
+                    hunt_file,
+                    _action_file_lines,
+                    block,
+                    block_steps,
+                    _step_results,
+                    _soft_errors,
+                    _screenshot_mode,
                 )
                 if not ok or done:
                     return ok, page, done, action_index
             elif isinstance(ba, LoopBlock):
                 ok, page, done, action_index = await self._execute_loop(
-                    ba, page, ctx, strategic_context, action_index,
-                    hunt_dir, hunt_file, _action_file_lines, block, block_steps,
-                    _step_results, _soft_errors, _screenshot_mode,
+                    ba,
+                    page,
+                    ctx,
+                    strategic_context,
+                    action_index,
+                    hunt_dir,
+                    hunt_file,
+                    _action_file_lines,
+                    block,
+                    block_steps,
+                    _step_results,
+                    _soft_errors,
+                    _screenshot_mode,
                 )
                 if not ok or done:
                     return ok, page, done, action_index
@@ -1148,9 +1216,19 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                 ba = substitute_memory(ba, self.memory)
                 try:
                     outcome = await self._dispatch_step(
-                        ba, page, ctx, strategic_context, action_index,
-                        hunt_dir, hunt_file, _action_file_lines, block, block_steps,
-                        _step_results, _soft_errors, _screenshot_mode,
+                        ba,
+                        page,
+                        ctx,
+                        strategic_context,
+                        action_index,
+                        hunt_dir,
+                        hunt_file,
+                        _action_file_lines,
+                        block,
+                        block_steps,
+                        _step_results,
+                        _soft_errors,
+                        _screenshot_mode,
                         raw_step=ba,
                     )
                     page = outcome[1]

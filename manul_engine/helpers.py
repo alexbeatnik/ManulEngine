@@ -114,7 +114,7 @@ class HuntBlock:
     """Hierarchical execution block parsed from Hunt DSL."""
 
     block_name: str
-    actions: "list[str | IfBlock]" = field(default_factory=list)
+    actions: "list[str | IfBlock | LoopBlock]" = field(default_factory=list)
     block_line: int | None = None
     action_lines: list[int] = field(default_factory=list)
     synthetic: bool = False
@@ -126,7 +126,7 @@ class ConditionalBranch:
 
     kind: str  # "if", "elif", or "else"
     condition: str  # raw condition text; empty string for else
-    actions: "list[str | IfBlock]" = field(default_factory=list)
+    actions: "list[str | IfBlock | LoopBlock]" = field(default_factory=list)
     action_lines: list[int] = field(default_factory=list)
     raw_actions: list[str] = field(default_factory=list)
     branch_line: int = 0
@@ -556,20 +556,31 @@ def _consume_loop_block(
     m_for_each = _RE_FOR_EACH_LINE.match(line)
     m_while = _RE_WHILE_LINE.match(line)
 
+    from .exceptions import ConditionalSyntaxError
+
     if m_repeat:
-        loop = LoopBlock(kind="repeat", count=int(m_repeat.group(1)), loop_line=line_no)
+        count = int(m_repeat.group(1))
+        if count < 1:
+            raise ConditionalSyntaxError(
+                f"Invalid REPEAT count at line {line_no}: {count}. REPEAT requires a positive integer (>= 1)."
+            )
+        loop = LoopBlock(kind="repeat", count=count, loop_line=line_no)
     elif m_for_each:
+        var_name = m_for_each.group(1)
+        if var_name.lower() == "i":
+            raise ConditionalSyntaxError(
+                f"Invalid FOR EACH loop variable at line {line_no}: "
+                "{{i}} is reserved for the engine's automatic loop counter."
+            )
         loop = LoopBlock(
             kind="for_each",
-            var_name=m_for_each.group(1),
+            var_name=var_name,
             collection_expr=m_for_each.group(2),
             loop_line=line_no,
         )
     elif m_while:
         loop = LoopBlock(kind="while", condition_text=m_while.group(1).strip(), loop_line=line_no)
     else:
-        from .exceptions import ConditionalSyntaxError
-
         raise ConditionalSyntaxError(f"Unrecognized loop syntax at line {line_no}: {line}")
 
     # Collect body lines (indentation > header)
@@ -592,9 +603,7 @@ def _consume_loop_block(
     if not body_stripped:
         from .exceptions import ConditionalSyntaxError
 
-        raise ConditionalSyntaxError(
-            f"Empty loop body at line {line_no}: {line.strip()}"
-        )
+        raise ConditionalSyntaxError(f"Empty loop body at line {line_no}: {line.strip()}")
 
     # Recursively parse nested conditionals and loops inside the body.
     loop.actions, loop.action_lines = _parse_conditionals(body_stripped, body_raw, body_lines)

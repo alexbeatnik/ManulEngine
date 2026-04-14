@@ -5,7 +5,7 @@ Unit-test suite for REPEAT / FOR EACH / WHILE loop blocks in Hunt DSL.
 Tests:
   Section 1: classify_step() detects loop keywords
   Section 2: parse_hunt_blocks() produces LoopBlock AST nodes
-  Section 3: Syntax errors — malformed loop headers, empty bodies
+  Section 3: Syntax errors — malformed loop headers, empty bodies, invalid inputs
   Section 4: Nested loops & conditionals
   Section 5: LoopBlock field validation
   Section 6: collect_loopblock_lines() utility
@@ -178,7 +178,9 @@ def test_parse_while_variable_condition():
     _assert(isinstance(lb, LoopBlock), "Is LoopBlock")
 
     if isinstance(lb, LoopBlock):
-        _assert(lb.condition_text == "{counter} != '0'", "condition preserves variable syntax", f"got {lb.condition_text!r}")
+        _assert(
+            lb.condition_text == "{counter} != '0'", "condition preserves variable syntax", f"got {lb.condition_text!r}"
+        )
 
 
 # ── Section 3: Syntax errors ────────────────────────────────────────────────
@@ -207,6 +209,22 @@ def test_syntax_errors():
         _assert(False, "Empty FOR EACH body should raise")
     except (ConditionalSyntaxError, ValueError) as e:
         _assert(True, "Empty FOR EACH body raises", str(e))
+
+    # REPEAT 0 — must require positive integer
+    try:
+        parse_hunt_blocks("STEP 1: Bad\n    REPEAT 0 TIMES:\n        CLICK the 'X' button")
+        _assert(False, "REPEAT 0 should raise")
+    except (ConditionalSyntaxError, ValueError) as e:
+        _assert(
+            "positive integer" in str(e).lower() or ">= 1" in str(e), "REPEAT 0 error mentions positive integer", str(e)
+        )
+
+    # FOR EACH {i} — reserved variable name
+    try:
+        parse_hunt_blocks("STEP 1: Bad\n    FOR EACH {i} IN {items}:\n        CLICK the 'X' button")
+        _assert(False, "FOR EACH {i} should raise")
+    except (ConditionalSyntaxError, ValueError) as e:
+        _assert("reserved" in str(e).lower(), "FOR EACH {i} error mentions reserved", str(e))
 
 
 # ── Section 4: Nested loops & conditionals ───────────────────────────────────
