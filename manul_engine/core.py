@@ -1046,6 +1046,24 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                 else self.memory.get(collection_key, "")
             )
             if raw_collection is None:
+                if collection_key:
+                    msg = (
+                        f"FOR EACH loop references undefined collection variable "
+                        f"{{{collection_key}}} — loop will not execute. "
+                        f"Declare it with @var: {{{collection_key}}} = ... or SET {{{collection_key}}} = ..."
+                    )
+                    print(f"    ⚠️  [LOOP] {msg}")
+                    step_result = StepResult(
+                        index=action_index + 1,
+                        text=f"FOR EACH {{{var_name}}} IN {{{collection_key}}}",
+                        status="fail",
+                        error=msg,
+                        duration_ms=0,
+                        logical_step=getattr(block, "block_name", None),
+                    )
+                    _step_results.append(step_result)
+                    block_steps.append(step_result)
+                    return False, page, done, action_index
                 raw_collection = ""
             items = [item.strip() for item in str(raw_collection).split(",") if item.strip()]
             print(f"    🔁 [LOOP] FOR EACH {{{var_name}}} IN {{{collection_key}}} ({len(items)} items)")

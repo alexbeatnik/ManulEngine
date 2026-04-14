@@ -606,6 +606,27 @@ def test_deeply_nested():
                 _assert(deepest.count == 2, "Deepest count is 2")
 
 
+
+def test_for_each_undefined_collection_parses():
+    """FOR EACH with an undefined collection parses fine; runtime detection
+    is tested here by confirming the LoopBlock carries the collection_expr
+    so the executor can detect None at run time."""
+    print("\n\u2500\u2500 Section 8g: FOR EACH undefined collection (parse-level check) \u2500\u2500")
+
+    task = """STEP 1: Loop
+    FOR EACH {color} IN {missing_var}:
+        Click the '{color}' button"""
+
+    blocks = parse_hunt_blocks(task)
+    lb = blocks[0].actions[0]
+    _assert(isinstance(lb, LoopBlock), "Parses to LoopBlock even when var is not yet in memory")
+    if isinstance(lb, LoopBlock):
+        _assert(lb.kind == "for_each", "kind is for_each")
+        _assert(lb.collection_expr == "missing_var", "collection_expr preserved for runtime resolution",
+                f"got {lb.collection_expr!r}")
+        _assert(lb.var_name == "color", "var_name preserved", f"got {lb.var_name!r}")
+
+
 # ── Entry point ──────────────────────────────────────────────────────────────
 
 
@@ -639,6 +660,7 @@ async def run_suite() -> tuple[int, int]:
     test_loop_preserves_raw_actions()
     test_while_complex_condition()
     test_deeply_nested()
+    test_for_each_undefined_collection_parses()
 
     total = _PASS + _FAIL
     print(f"\n  Loops suite: {_PASS} passed, {_FAIL} failed")
