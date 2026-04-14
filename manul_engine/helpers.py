@@ -69,7 +69,7 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
     ("elif_block", re.compile(r"^\s*(?:\d+\.\s*)?ELIF\b.+:\s*$", re.IGNORECASE)),
     ("else_block", re.compile(r"^\s*(?:\d+\.\s*)?ELSE\s*:\s*$", re.IGNORECASE)),
     ("repeat_loop", re.compile(r"^\s*(?:\d+\.\s*)?REPEAT\s+\d+\s+TIMES\s*:\s*$", re.IGNORECASE)),
-    ("for_each_loop", re.compile(r"^\s*(?:\d+\.\s*)?FOR\s+EACH\b.+\bIN\b.+:\s*$", re.IGNORECASE)),
+    ("for_each_loop", re.compile(r"^\s*(?:\d+\.\s*)?FOR\s+EACH\s+\{?\w+\}?\s+IN\s+\{?\w+\}?\s*:\s*$", re.IGNORECASE)),
     ("while_loop", re.compile(r"^\s*(?:\d+\.\s*)?WHILE\b.+:\s*$", re.IGNORECASE)),
 ]
 
@@ -144,9 +144,9 @@ class LoopBlock:
     """AST node for a loop construct (REPEAT / FOR EACH / WHILE)."""
 
     kind: str  # "repeat", "for_each", or "while"
-    # REPEAT N TIMES: count=N, var_name="i" (implicit counter)
+    # REPEAT N TIMES:   count=N, var_name=None ({i} is set at runtime by the executor)
     # FOR EACH {item} IN {collection}: var_name="item", collection_expr="collection"
-    # WHILE condition: condition_text="..."
+    # WHILE condition:  condition_text="..."
     count: int | None = None
     var_name: str | None = None
     collection_expr: str | None = None
@@ -354,6 +354,9 @@ _RE_FOR_EACH_LINE = re.compile(
     re.IGNORECASE,
 )
 _RE_WHILE_LINE = re.compile(r"^(?:\d+\.\s*)?WHILE\s+(.+?):\s*$", re.IGNORECASE)
+# Loose pattern used only in _parse_conditionals to detect malformed FOR EACH headers
+# that slipped through the strict _RE_FOR_EACH_LINE match.
+_RE_LOOSE_FOR_EACH = re.compile(r"^(?:\d+\.\s*)?FOR\s+EACH\b.+\bIN\b.+:\s*$", re.IGNORECASE)
 
 
 def _indent_level(raw_line: str) -> int:
@@ -407,6 +410,16 @@ def _parse_conditionals(
             from .exceptions import ConditionalSyntaxError
 
             raise ConditionalSyntaxError(f"'ELSE' without a preceding 'IF' at line {line_no}: {line}")
+
+        # Malformed FOR EACH header: matches the loose pattern but failed the strict
+        # _RE_FOR_EACH_LINE parse above, meaning it has unexpected extra tokens.
+        if _RE_LOOSE_FOR_EACH.match(line):
+            from .exceptions import ConditionalSyntaxError
+
+            raise ConditionalSyntaxError(
+                f"Malformed FOR EACH header at line {line_no}: {line!r}. "
+                "Expected: FOR EACH {var} IN {collection}:"
+            )
 
         result_actions.append(line)
         result_lines.append(line_no)

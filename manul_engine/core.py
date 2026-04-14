@@ -1040,17 +1040,16 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         elif loop_block.kind == "for_each":
             var_name = loop_block.var_name or "item"
             collection_key = loop_block.collection_expr or ""
-            raw_collection = (
-                self.memory.resolve(collection_key)
-                if hasattr(self.memory, "resolve")
-                else self.memory.get(collection_key, "")
-            )
+            raw_collection = self.memory.resolve(collection_key)
             if raw_collection is None:
                 if collection_key:
                     msg = (
                         f"FOR EACH loop references undefined collection variable "
                         f"{{{collection_key}}} — "
-                        f"declare it with @var: {{{collection_key}}} = ... or SET {{{collection_key}}} = ..."
+                        f"populate it before this step with @var: {{{collection_key}}} = ..., "
+                        f"SET {{{collection_key}}} = ..., "
+                        f"EXTRACT ... into {{{collection_key}}}, or "
+                        f"CALL PYTHON ... into {{{collection_key}}}"
                     )
                     print(f"    ❌  [LOOP] {msg}")
                     step_result = StepResult(
