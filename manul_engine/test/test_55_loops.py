@@ -606,7 +606,6 @@ def test_deeply_nested():
                 _assert(deepest.count == 2, "Deepest count is 2")
 
 
-
 def test_for_each_undefined_collection_parses():
     """FOR EACH with an undefined collection parses fine; runtime detection
     is tested here by confirming the LoopBlock carries the collection_expr
@@ -622,8 +621,11 @@ def test_for_each_undefined_collection_parses():
     _assert(isinstance(lb, LoopBlock), "Parses to LoopBlock even when var is not yet in memory")
     if isinstance(lb, LoopBlock):
         _assert(lb.kind == "for_each", "kind is for_each")
-        _assert(lb.collection_expr == "missing_var", "collection_expr preserved for runtime resolution",
-                f"got {lb.collection_expr!r}")
+        _assert(
+            lb.collection_expr == "missing_var",
+            "collection_expr preserved for runtime resolution",
+            f"got {lb.collection_expr!r}",
+        )
         _assert(lb.var_name == "color", "var_name preserved", f"got {lb.var_name!r}")
 
 
