@@ -21,7 +21,9 @@ This is the complete reference for the `.hunt` DSL — ManulEngine's plain-Engli
 - [Explicit Waits](#explicit-waits)
 - [Extraction](#extraction)
 - [Variables and Substitution](#variables-and-substitution)
-- [Global Variables (`@var:`)](#global-variables-var)
+- [File-Level Variables (`@var:`)](#file-level-variables-var)
+  - [Cross-File Global Variables (`@before_all`)](#cross-file-global-variables-before_all)
+  - [Variable Priority](#variable-priority-lowest--highest)
 - [Data-Driven Testing (`@data:`)](#data-driven-testing-data)
 - [Python Hooks (`[SETUP]` / `[TEARDOWN]`)](#python-hooks-setup--teardown)
 - [Inline CALL PYTHON](#inline-call-python)
@@ -331,12 +333,12 @@ Variables can come from several sources:
 
 | Source | Syntax | Scope |
 |--------|--------|-------|
-| `@var:` header | `@var: {key} = value` | Available from mission start |
+| `@var:` header | `@var: {key} = value` | File-scoped — available from mission start |
 | `EXTRACT` | `EXTRACT 'X' into {var}` | Available after the extract step |
 | `SET` | `SET {var} = value` | Available after the set step |
 | `CALL PYTHON ... into {var}` | Return value captured | Available after the call |
-| `@data:` row | Auto-injected from CSV/JSON | Available per data row iteration |
-| `@before_all` / lifecycle | `ctx.variables["key"]` | Available globally |
+| `@data:` row | Auto-injected from CSV/JSON | Per data row iteration (highest priority) |
+| `@before_all` / lifecycle | `ctx.variables["key"]` | Cross-file global — all `.hunt` files |
 | `@import` source vars | `@var:` from imported file | Lowest priority (import level) |
 
 All variables use `{placeholder}` syntax for substitution:
@@ -359,9 +361,9 @@ Both `{braced}` and bare key forms are accepted. Quoted values are auto-unquoted
 
 ---
 
-## Global Variables (`@var:`)
+## File-Level Variables (`@var:`)
 
-Declare static test data at the top of the file:
+Declare static test data at the top of a `.hunt` file:
 
 ```text
 @var: {email} = admin@example.com
@@ -373,6 +375,7 @@ Declare static test data at the top of the file:
 - Both `@var: {key} = value` and `@var: key = value` are accepted (keys stored without braces).
 - Values may contain spaces and are stripped of leading/trailing whitespace.
 - Variables are pre-populated into runtime memory before any step runs.
+- `@var:` is **scoped to the file** where it is declared — other `.hunt` files do not see these variables.
 - **Never hardcode test data inside steps** — always use `@var:` declarations.
 
 ```text
@@ -383,6 +386,66 @@ FILL 'Email' field with '{email}'
 # WRONG — do not hardcode
 FILL 'Email' field with 'admin@example.com'
 ```
+
+### Cross-File Global Variables (`@before_all`)
+
+To share variables across **all** `.hunt` files in a directory, use lifecycle hooks in `manul_hooks.py`:
+
+```python
+# tests/manul_hooks.py
+from manul_engine import before_all, after_all, GlobalContext
+
+@before_all
+def setup(ctx: GlobalContext) -> None:
+    ctx.variables["TOKEN"] = auth_service.get_token()
+    ctx.variables["BASE_URL"] = "https://staging.example.com"
+
+@after_all
+def teardown(ctx: GlobalContext) -> None:
+    auth_service.revoke_token(ctx.variables["TOKEN"])
+```
+
+Variables set via `ctx.variables` are available as `{TOKEN}` and `{BASE_URL}` in every `.hunt` file — no per-file `@var:` needed. Place `manul_hooks.py` in the same directory as your `.hunt` files; the engine discovers it automatically.
+
+**Using global variables in a `.hunt` file:**
+
+```text
+@context: Uses global TOKEN and BASE_URL from manul_hooks.py
+@title: Dashboard Check
+
+STEP 1: Open dashboard
+    NAVIGATE to {BASE_URL}/dashboard
+    VERIFY that 'Dashboard' is present
+
+STEP 2: Use API token
+    CALL PYTHON api.set_auth_header "{TOKEN}"
+    CLICK the 'Refresh Data' button
+    VERIFY that 'Data loaded' is present
+
+DONE.
+```
+
+No `@var:` declaration is needed — `{TOKEN}` and `{BASE_URL}` are injected by the `@before_all` hook before any `.hunt` file runs. If the same key is also declared as `@var:` in the file, the file-level value wins (higher priority).
+
+You can also scope global variables to tagged file groups:
+
+```python
+from manul_engine import before_group, GlobalContext
+
+@before_group(tag="smoke")
+def smoke_setup(ctx: GlobalContext) -> None:
+    ctx.variables["ENV"] = "smoke"
+```
+
+See [Integration — Global Lifecycle Hooks](integration.md#global-lifecycle-hooks) for full details.
+
+### Variable priority (lowest → highest)
+
+1. `@import` source `@var:` declarations (import level)
+2. `@before_all` / `@before_group` `ctx.variables` (global level)
+3. File-level `@var:` declarations (mission level)
+4. `SET`, `EXTRACT`, `CALL PYTHON ... into` (step level)
+5. `@data:` row values (row level — wins over everything)
 
 ---
 

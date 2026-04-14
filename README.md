@@ -17,7 +17,7 @@ Write browser automation in plain English. ManulEngine interprets `.hunt` files 
 
 > **Status: Alpha.** Solo-developed, actively battle-tested. Bugs are expected, APIs may evolve, and there are no promises about stability or production readiness. The core claim is transparency: when a step works, you can see exactly why; when it fails, you get the scoring breakdown to diagnose it.
 
-> **📖 [Full Documentation](docs/)** — overview, installation, DSL reference, reports, integration guides.
+> **📖 Full Documentation:** [Overview](docs/overview.md) · [Installation](docs/installation.md) · [Getting Started](docs/getting-started.md) · [DSL Syntax](docs/dsl-syntax.md) · [Reports & Explainability](docs/reports.md) · [Integration](docs/integration.md)
 
 ---
 
