@@ -1003,11 +1003,12 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         _step_results: list,
         _soft_errors: list,
         _screenshot_mode: str,
-    ) -> "tuple[bool, Page, bool, int]":
+    ) -> "tuple[bool, Page, bool, int, str | None]":
         """Execute a loop block (REPEAT / FOR EACH / WHILE).
 
-        Returns ``(ok, page, done, action_index)`` — same contract as
-        ``_execute_conditional``.
+        Returns ``(ok, page, done, action_index, error_msg)`` — same contract as
+        ``_execute_conditional`` but with a 5th element carrying the failure
+        reason when ``ok`` is ``False``.
         """
         done = False
 
@@ -1034,8 +1035,8 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     total=count,
                 )
                 if not ok or done:
-                    return ok, page, done, action_index
-            return True, page, done, action_index
+                    return ok, page, done, action_index, None
+            return True, page, done, action_index, None
 
         elif loop_block.kind == "for_each":
             var_name = loop_block.var_name or "item"
@@ -1062,7 +1063,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     )
                     _step_results.append(step_result)
                     block_steps.append(step_result)
-                    return False, page, done, action_index
+                    return False, page, done, action_index, msg
                 raw_collection = ""
             items = [item.strip() for item in str(raw_collection).split(",") if item.strip()]
             print(f"    🔁 [LOOP] FOR EACH {{{var_name}}} IN {{{collection_key}}} ({len(items)} items)")
@@ -1087,8 +1088,8 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     total=len(items),
                 )
                 if not ok or done:
-                    return ok, page, done, action_index
-            return True, page, done, action_index
+                    return ok, page, done, action_index, None
+            return True, page, done, action_index, None
 
         elif loop_block.kind == "while":
             from .conditionals import evaluate_condition
@@ -1126,7 +1127,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     total=None,
                 )
                 if not ok or done:
-                    return ok, page, done, action_index
+                    return ok, page, done, action_index, None
             else:
                 msg = (
                     f"WHILE loop exceeded safety limit of {MAX_LOOP_ITERATIONS} iterations "
@@ -1143,10 +1144,10 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                 )
                 _step_results.append(step_result)
                 block_steps.append(step_result)
-                return False, page, done, action_index
-            return True, page, done, action_index
+                return False, page, done, action_index, msg
+            return True, page, done, action_index, None
 
-        return True, page, done, action_index
+        return True, page, done, action_index, None
 
     async def _run_loop_body(
         self,
@@ -1651,7 +1652,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                             _loop_ok = True
                             _loop_error: str | None = None
                             try:
-                                _loop_ok, page, _loop_done, action_index = await self._execute_loop(
+                                _loop_ok, page, _loop_done, action_index, _exec_error = await self._execute_loop(
                                     raw_step,
                                     page,
                                     ctx,
@@ -1669,7 +1670,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                 if _loop_done:
                                     done = True
                                 if not _loop_ok:
-                                    _loop_error = "Loop action failed"
+                                    _loop_error = _exec_error or "Loop action failed"
                             except Exception as exc:
                                 _loop_ok = False
                                 _loop_error = str(exc)

@@ -353,7 +353,7 @@ _RE_FOR_EACH_LINE = re.compile(
     r"^(?:\d+\.\s*)?FOR\s+EACH\s+\{?(\w+)\}?\s+IN\s+\{?(\w+)\}?\s*:\s*$",
     re.IGNORECASE,
 )
-_RE_WHILE_LINE = re.compile(r"^(?:\d+\.\s*)?WHILE\s+(.+?):\s*$", re.IGNORECASE)
+_RE_WHILE_LINE = re.compile(r"^(?:\d+\.\s*)?WHILE\s+(.+):\s*$", re.IGNORECASE)
 # Loose pattern used only in _parse_conditionals to detect malformed FOR EACH headers
 # that slipped through the strict _RE_FOR_EACH_LINE match.
 _RE_LOOSE_FOR_EACH = re.compile(r"^(?:\d+\.\s*)?FOR\s+EACH\b.+\bIN\b.+:\s*$", re.IGNORECASE)
@@ -417,7 +417,8 @@ def _parse_conditionals(
             from .exceptions import ConditionalSyntaxError
 
             raise ConditionalSyntaxError(
-                f"Malformed FOR EACH header at line {line_no}: {line!r}. Expected: FOR EACH {{var}} IN {{collection}}:"
+                f"Malformed FOR EACH header at line {line_no}: {line!r}. "
+                "Expected: FOR EACH {var} IN {collection}: or FOR EACH item IN items:"
             )
 
         result_actions.append(line)
