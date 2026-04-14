@@ -417,8 +417,7 @@ def _parse_conditionals(
             from .exceptions import ConditionalSyntaxError
 
             raise ConditionalSyntaxError(
-                f"Malformed FOR EACH header at line {line_no}: {line!r}. "
-                "Expected: FOR EACH {var} IN {collection}:"
+                f"Malformed FOR EACH header at line {line_no}: {line!r}. Expected: FOR EACH {{var}} IN {{collection}}:"
             )
 
         result_actions.append(line)
