@@ -5,7 +5,7 @@
 
 ```json
 {
-  "version": "0.0.9.28",
+  "version": "0.0.9.29",
   "generatedFrom": "manul_engine/prompts.py :: _KEY_MAP, _CFG, get_threshold(), lookup_page_name(); manul_engine/variables.py :: ScopedVariables; manul_engine/helpers.py :: env_bool()",
 
   "configFile": {

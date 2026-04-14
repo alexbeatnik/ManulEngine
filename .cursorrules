@@ -64,25 +64,25 @@ Follow these rules before generating code, documentation, architecture notes, or
 
 ## 3. Versioning and Dependencies
 
-- Treat `0.0.9.28` as the current engine version for this documentation and release line.
+- Treat `0.0.9.29` as the current engine version for this documentation and release line.
 - When version metadata is required in config examples or integration code, use:
 
 ```json
 {
-  "manulEngineVersion": "0.0.9.28"
+  "manulEngineVersion": "0.0.9.29"
 }
 ```
 
 - When generating `pip install` commands, pin the exact version, for example:
 
 ```bash
-pip install manul-engine==0.0.9.28
+pip install manul-engine==0.0.9.29
 ```
 
 - If the AI extra is needed, pin that exact version too:
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.28"
+pip install "manul-engine[ai]==0.0.9.29"
 ```
 
 - When standalone Python dependencies must be installed manually for this release line, pin them explicitly too:
@@ -150,3 +150,4 @@ pip install ollama==0.6.1
 - Do not invent alternate text assertion verbs such as `Check if text is`.
 - When documenting import directives, use `@import: Block1, Block2 from source.hunt` and `@export: Block1`. `USE BlockName` expands an imported block inline. `@import: * from lib.hunt` is wildcard import; `@import: Login as AuthLogin from lib.hunt` is aliased import. Imported `@var:` declarations inherit at the lowest (import) scope.
 - When documenting conditional blocks, use `IF <condition>:` / `ELIF <condition>:` / `ELSE:` with UPPERCASE keywords as the canonical form. Body lines use 4-space indent. Nesting is supported. Supported conditions: element exists (`button 'Save' exists`), text present (`text 'Welcome' is present`), variable comparison (`{role} == 'admin'`), variable contains (`{message} contains 'success'`), and variable truthy (`{token}`). Both uppercase and lowercase are accepted; uppercase is canonical.
+- When documenting loops, use `REPEAT N TIMES:` / `FOR EACH {var} IN {collection}:` / `WHILE <condition>:` with UPPERCASE keywords. Body lines use 4-space indent (same as conditionals). `{i}` counter is auto-set (1-based). FOR EACH iterates comma-separated values from a variable. WHILE uses the same conditions as IF blocks. Safety limit: 100 iterations for WHILE. Nesting is fully supported (loops inside conditionals, conditionals inside loops, loops inside loops).

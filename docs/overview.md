@@ -48,7 +48,7 @@ Everything runs **locally**. No cloud APIs, no telemetry, no external dependenci
 
 | Component | File | Role |
 |-----------|------|------|
-| **Parser** | `cli.py`, `helpers.py` | Reads `.hunt` files, extracts metadata (`@context`, `@var`, `@tags`, `@import`), splits into STEP blocks and conditional trees |
+| **Parser** | `cli.py`, `helpers.py` | Reads `.hunt` files, extracts metadata (`@context`, `@var`, `@tags`, `@import`), splits into STEP blocks, conditional trees, and loop blocks |
 | **Execution Engine** | `core.py` | Orchestrates step dispatch, element resolution, self-healing retries, debug pauses |
 | **DOMScorer** | `scoring.py` | Normalised 0.0–1.0 heuristic scoring across five weighted channels: `cache`, `semantics`, `text`, `attributes`, `proximity` |
 | **TreeWalker Snapshot** | `js_scripts.py` | JavaScript injected into each frame — walks the DOM, prunes non-interactive nodes, checks visibility |
@@ -59,6 +59,7 @@ Everything runs **locally**. No cloud APIs, no telemetry, no external dependenci
 | **Lifecycle Hooks** | `lifecycle.py` | `@before_all` / `@after_all` / `@before_group` / `@after_group` global hooks |
 | **Import System** | `imports.py` | `@import` / `@export` / `USE` for sharing STEP blocks across `.hunt` files |
 | **Conditionals** | `conditionals.py` | `IF` / `ELIF` / `ELSE` block evaluation against live page state |
+| **Loops** | `helpers.py`, `core.py` | `REPEAT` / `FOR EACH` / `WHILE` iterative execution with nesting support |
 | **Reporter** | `reporter.py` | Self-contained HTML report generator (dark theme, accordions, screenshots) |
 | **Scheduler** | `scheduler.py` | `@schedule:` header + `manul daemon` for recurring automation |
 | **Scanner** | `scanner.py` | `manul scan <url>` — generates a draft `.hunt` file from a live page |

@@ -77,6 +77,34 @@ STEP 1: Adaptive login
 
 Conditions can check element existence, visible text, variable equality, substring containment, or simple truthiness — all evaluated against the live page.
 
+### Loops
+
+Repeat actions with `REPEAT`, iterate data with `FOR EACH`, or poll dynamic state with `WHILE`. Loops nest freely with conditionals.
+
+```text
+@var: {products} = Laptop, Headphones, Mouse
+
+STEP 1: Add products to cart
+    FOR EACH {product} IN {products}:
+        FILL 'Search' field with '{product}'
+        PRESS Enter
+        CLICK the 'Add to Cart' button NEAR '{product}'
+        VERIFY that 'Added to cart' is present
+
+STEP 2: Load all reviews
+    WHILE button 'Load More' exists:
+        CLICK the 'Load More' button
+        WAIT 2
+
+STEP 3: Retry checkout
+    REPEAT 3 TIMES:
+        CLICK the 'Place Order' button
+        IF text 'Success' is present:
+            VERIFY that 'Order confirmed' is present
+```
+
+`REPEAT N TIMES:` runs a fixed count. `FOR EACH {var} IN {collection}:` iterates comma-separated values. `WHILE <condition>:` repeats until the condition is false (safety limit: 100 iterations). `{i}` counter is auto-set on every iteration.
+
 ### Contextual navigation
 
 When a page has repeating controls — multiple "Delete" buttons, "Edit" links in every row — use contextual qualifiers instead of brittle selectors.
@@ -223,6 +251,7 @@ The same runtime and the same DSL serve four use cases:
 
 ## Key Features
 
+- **Conditional branching & loops** — `IF` / `ELIF` / `ELSE` for adaptive flows; `REPEAT`, `FOR EACH`, `WHILE` for iterating data, retrying actions, and polling dynamic state. Full nesting support.
 - **Explainability** — `--explain` prints per-channel scoring breakdowns on the CLI. The VS Code extension shows hover tooltips and a title-bar "Explain Current Step" action during debug pauses.
 - **What-If Analysis REPL** — During a `--debug` pause, type `w` to enter an interactive REPL that evaluates hypothetical steps against the live DOM without executing them. Returns a 0–10 confidence score, risk assessment, and highlights the best match on the page.
 - **Desktop / Electron** — Set `executable_path` in the config and use `OPEN APP` instead of `NAVIGATE` to drive Electron apps with the same DSL.
@@ -363,6 +392,7 @@ ManulEngine is alpha-stage and solo-developed. If deterministic, explainable bro
 
 ## What's New in v0.0.9.29
 
+- **Loop constructs (`REPEAT` / `FOR EACH` / `WHILE`):** Iterative execution blocks in `.hunt` files. `REPEAT N TIMES:` for fixed counts, `FOR EACH {var} IN {collection}:` for data iteration, `WHILE <condition>:` for dynamic polling. Full nesting with conditionals, `{i}` auto-counter, WHILE safety limit (100 iterations), empty body validation. 123-assertion test suite.
 - **Complete user guide** — new `docs/` folder with structured documentation: overview, installation, getting started, full DSL syntax reference, reports & explainability, and integration guides.
 
 <details>
@@ -372,20 +402,6 @@ ManulEngine is alpha-stage and solo-developed. If deterministic, explainable bro
 - **What-If Analysis REPL (`ExplainNextDebugger`):** Interactive debug REPL for hypothetical step evaluation. During a debug pause, type `w` (terminal) to enter the REPL or `e` / send `explain-next` (extension protocol) for one-shot evaluation. Combines DOMScorer heuristic scoring with optional LLM analysis to produce a 0–10 confidence rating, element match info, risk assessment, and corrective suggestions. The best heuristic match is highlighted with a persistent magenta outline on the live page. 112-assertion test suite.
 - **What-If execute bug fixes:** `_execute_step()` recursive call now passes `strategic_context` and `step_idx` by keyword. Injected What-If steps run through `substitute_memory()` so `{var}` placeholders resolve before execution.
 - **LLM JSON fence-stripping:** `_parse_llm_json()` now strips markdown code fences before JSON parsing.
-
-</details>
-
-<details>
-<summary>v0.0.9.26</summary>
-
-- **`EngineConfig` frozen dataclass:** Injectable `EngineConfig` replacing module-level globals. `validate()` checks configuration invariants.
-- **Structured exception hierarchy:** `ManulEngineError` base with 7 concrete subclasses. All re-exported from `manul_engine`.
-- **Thread safety:** Registry and module-cache access guarded by locks.
-- **Scoring early exit:** `DOMScorer.score_all()` short-circuits when threshold is exceeded.
-- **Import depth guard:** Recursive `.hunt` imports capped at depth 10.
-- **CI quality gates:** Ruff lint + format check, Dependabot.
-- **Demo directory restructure:** Integration hunts, scripts, benchmarks moved to `demo/`.
-- **Security hygiene:** Eliminated false-positive shell-access alert from package scanners.
 
 </details>
 

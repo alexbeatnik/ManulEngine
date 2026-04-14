@@ -192,6 +192,6 @@ my-project/
 
 ## Next Steps
 
-- [DSL Syntax Reference](dsl-syntax.md) — full command reference, variables, conditionals, custom controls
+- [DSL Syntax Reference](dsl-syntax.md) — full command reference, variables, conditionals, loops, custom controls
 - [Reports & Explainability](reports.md) — HTML reports, explain mode, What-If REPL
 - [Integration](integration.md) — Python API, CI/CD, Docker

@@ -55,6 +55,7 @@ from .exceptions import (
     VerificationError,
 )
 from .explain_next import ExplainNextDebugger, WhatIfResult
+from .helpers import LoopBlock
 from .lifecycle import (
     GlobalContext,
     after_all,
@@ -73,6 +74,7 @@ __all__ = [
     "GlobalContext",
     "HookExecutionError",
     "HuntImportError",
+    "LoopBlock",
     "ManulEngine",
     "ManulEngineError",
     "ManulSession",

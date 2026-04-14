@@ -29,6 +29,7 @@ This is the complete reference for the `.hunt` DSL — ManulEngine's plain-Engli
 - [Inline CALL PYTHON](#inline-call-python)
 - [Script Aliases (`@script:`)](#script-aliases-script)
 - [Conditional Blocks (IF / ELIF / ELSE)](#conditional-blocks-if--elif--else)
+- [Loops (REPEAT / FOR EACH / WHILE)](#loops-repeat--for-each--while)
 - [Contextual Qualifiers](#contextual-qualifiers)
 - [Page Object Model (`@import` / `@export` / `USE`)](#page-object-model-import--export--use)
 - [Custom Controls](#custom-controls)
@@ -617,6 +618,305 @@ STEP 2: Nested conditional
     ELSE:
         CLICK the 'Cancel' button
 ```
+
+---
+
+## Loops (REPEAT / FOR EACH / WHILE)
+
+Loop constructs repeat a block of actions multiple times. All three follow the same indentation rules as conditional blocks — the loop header ends with `:`, and body lines are indented by an additional 4 spaces.
+
+A `{i}` counter variable (1-based) is automatically set on every iteration of any loop type.
+
+### REPEAT N TIMES
+
+Execute a fixed number of iterations:
+
+```text
+STEP 1: Paginate through results
+    REPEAT 5 TIMES:
+        CLICK the 'Next' button
+        WAIT 1
+        VERIFY that 'Page' is present
+```
+
+**Retry pattern** — click a button, check for success, repeat if needed:
+
+```text
+STEP 2: Retry on failure
+    REPEAT 3 TIMES:
+        CLICK the 'Submit' button
+        WAIT 2
+        IF text 'Success' is present:
+            VERIFY that 'Success' is present
+```
+
+**Scroll to load content:**
+
+```text
+STEP 3: Scroll to reveal lazy-loaded items
+    REPEAT 10 TIMES:
+        SCROLL DOWN
+        WAIT 1
+```
+
+### FOR EACH
+
+Iterate over a comma-separated collection stored in a variable:
+
+```text
+@var: {colors} = red, green, blue
+
+STEP 1: Test each color filter
+    FOR EACH {color} IN {colors}:
+        CLICK the '{color}' button
+        VERIFY that '{color}' is present
+```
+
+The collection variable must hold a comma-separated string. On each iteration, `{color}` is set to the current item (trimmed) and `{i}` to the 1-based index.
+
+Both `{braced}` and bare-key forms are accepted: `FOR EACH {item} IN {items}:` and `FOR EACH item IN items:` are equivalent.
+
+**Form testing with multiple inputs:**
+
+```text
+@var: {usernames} = alice, bob, charlie
+@var: {password} = Test1234!
+
+STEP 2: Verify login for each user
+    FOR EACH {user} IN {usernames}:
+        NAVIGATE to 'https://example.com/login'
+        FILL 'Username' field with '{user}'
+        FILL 'Password' field with '{password}'
+        CLICK the 'Sign In' button
+        VERIFY that 'Dashboard' is present
+        CLICK the 'Logout' link
+```
+
+**Search across multiple queries:**
+
+```text
+@var: {queries} = laptop, headphones, keyboard, mouse
+
+STEP 3: Search store inventory
+    FOR EACH {query} IN {queries}:
+        FILL 'Search' field with '{query}'
+        PRESS Enter
+        VERIFY that 'results' is present
+```
+
+**Navigation menu walkthrough:**
+
+```text
+@var: {pages} = Home, Products, About, Contact
+
+STEP 4: Verify all nav links work
+    FOR EACH {page} IN {pages}:
+        CLICK the '{page}' link ON HEADER
+        VERIFY that '{page}' is present
+```
+
+### WHILE
+
+Repeat while a condition is true. Uses the same condition syntax as `IF` blocks:
+
+```text
+STEP 1: Load all results
+    WHILE button 'Load More' exists:
+        CLICK the 'Load More' button
+        WAIT 2
+```
+
+WHILE loops have a safety limit of **100 iterations** to prevent infinite loops. If the limit is reached, the loop aborts and the step fails.
+
+**Dismiss multiple overlays:**
+
+```text
+STEP 2: Close all popups
+    WHILE button 'Close' exists:
+        CLICK the 'Close' button
+        WAIT 1
+```
+
+**Paginate through all pages:**
+
+```text
+STEP 3: Export all pages
+    WHILE button 'Next Page' exists:
+        EXTRACT the 'Total Items' into {count}
+        CLICK the 'Next Page' button
+        WAIT 2
+    VERIFY that 'Last Page' is present
+```
+
+**Wait for a process to complete (variable-based):**
+
+```text
+STEP 4: Poll until ready
+    WHILE text 'Processing' is present:
+        WAIT 3
+    VERIFY that 'Complete' is present
+```
+
+**Supported WHILE conditions** — same as [conditional blocks](#supported-conditions):
+
+| Pattern | Example |
+|---------|---------|
+| Element exists | `WHILE button 'Next' exists:` |
+| Text present | `WHILE text 'Loading' is present:` |
+| Variable comparison | `WHILE {counter} != '0':` |
+| Variable contains | `WHILE {message} contains 'loading':` |
+| Variable truthy | `WHILE {running}:` |
+
+### Nesting
+
+Loops can be nested inside conditionals, conditionals inside loops, and loops inside loops.
+
+**Conditional inside a loop — retry with fallback:**
+
+```text
+STEP 1: Retry with adaptive strategy
+    REPEAT 3 TIMES:
+        IF text 'Error' is present:
+            CLICK the 'Retry' button
+        ELSE:
+            CLICK the 'Next' button
+```
+
+**Loop inside a conditional — load more only when available:**
+
+```text
+STEP 2: Conditional pagination
+    IF button 'Load More' exists:
+        REPEAT 3 TIMES:
+            CLICK the 'Load More' button
+            WAIT 1
+    ELSE:
+        VERIFY that 'All items loaded' is present
+```
+
+**Loop inside a loop — table interaction:**
+
+```text
+@var: {sections} = Electronics, Clothing, Books
+
+STEP 3: Expand and check all sections
+    FOR EACH {section} IN {sections}:
+        CLICK the '{section}' element
+        REPEAT 2 TIMES:
+            SCROLL DOWN
+            WAIT 1
+        VERIFY that '{section}' is present
+```
+
+**Deep nesting — conditional pagination with validation:**
+
+```text
+STEP 4: Smart pagination
+    WHILE button 'Next' exists:
+        CLICK the 'Next' button
+        WAIT 1
+        IF text 'Error' is present:
+            CLICK the 'Retry' button
+            WAIT 2
+        ELSE:
+            VERIFY that 'Page' is present
+```
+
+**FOR EACH with conditional skip:**
+
+```text
+@var: {features} = Dark Mode, Notifications, Auto-Save, Beta Features
+
+STEP 5: Enable selected features
+    FOR EACH {feature} IN {features}:
+        IF checkbox '{feature}' is checked:
+            VERIFY that '{feature}' is present
+        ELSE:
+            Check the checkbox for '{feature}'
+            VERIFY that '{feature}' is present
+```
+
+### Real-World Examples
+
+**E-commerce: add multiple products to cart**
+
+```text
+@context: Verify cart functionality for multiple products
+@title: Multi-product cart test
+
+@var: {products} = Laptop, Headphones, Mouse
+
+STEP 1: Navigate to store
+    NAVIGATE to 'https://example.com/products'
+    VERIFY that 'Products' is present
+
+STEP 2: Add each product to cart
+    FOR EACH {product} IN {products}:
+        FILL 'Search' field with '{product}'
+        PRESS Enter
+        CLICK the 'Add to Cart' button NEAR '{product}'
+        VERIFY that 'Added to cart' is present
+        WAIT 1
+
+STEP 3: Verify cart contents
+    CLICK the 'Cart' link ON HEADER
+    VERIFY that 'Laptop' is present
+    VERIFY that 'Headphones' is present
+    VERIFY that 'Mouse' is present
+    DONE.
+```
+
+**Admin panel: bulk user management**
+
+```text
+@context: Test bulk operations on user management page
+@title: Bulk user operations
+
+@var: {users} = alice@test.com, bob@test.com, charlie@test.com
+
+STEP 1: Navigate to admin panel
+    NAVIGATE to 'https://admin.example.com/users'
+    VERIFY that 'User Management' is present
+
+STEP 2: Select all target users
+    FOR EACH {user} IN {users}:
+        Check the checkbox for '{user}'
+        VERIFY that '{user}' is present
+
+STEP 3: Apply bulk action
+    SELECT 'Deactivate' from 'Bulk Actions' dropdown
+    CLICK the 'Apply' button
+    VERIFY that 'successfully updated' is present
+    DONE.
+```
+
+**Infinite scroll: load all items**
+
+```text
+@context: Verify infinite scroll loads all content
+@title: Infinite scroll test
+
+STEP 1: Open feed
+    NAVIGATE to 'https://example.com/feed'
+    VERIFY that 'Feed' is present
+
+STEP 2: Scroll until all loaded
+    WHILE text 'Loading more' is present:
+        SCROLL DOWN
+        WAIT 2
+
+STEP 3: Verify final state
+    VERIFY that 'No more items' is present
+    DONE.
+```
+
+### Best Practices
+
+- Prefer `REPEAT` when the number of iterations is known in advance.
+- Prefer `FOR EACH` for iterating over data.
+- Prefer `WHILE` for waiting on dynamic conditions (pagination, loading states).
+- Always add a `WAIT` inside `WHILE` loops to avoid tight-looping.
+- Keep loop bodies short — complex logic should use nested `IF` blocks.
 
 ---
 
