@@ -281,8 +281,9 @@ def parse_hunt_blocks(task: str, file_lines: list[int] | None = None) -> list[Hu
     synthetic default block to preserve backward compatibility.
 
     ``if``/``elif``/``else:`` conditional blocks are collapsed into
-    :class:`IfBlock` AST nodes attached inline inside each block's
-    ``actions`` list.
+    :class:`IfBlock` AST nodes, and ``REPEAT``/``FOR EACH``/``WHILE`` loop
+    blocks are collapsed into :class:`LoopBlock` AST nodes — both attached
+    inline inside each block's ``actions`` list.
     """
     raw_lines = [line.rstrip("\n") for line in task.splitlines() if line.strip()]
     if not raw_lines:

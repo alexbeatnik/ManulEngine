@@ -1049,10 +1049,10 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                 if collection_key:
                     msg = (
                         f"FOR EACH loop references undefined collection variable "
-                        f"{{{collection_key}}} — loop will not execute. "
-                        f"Declare it with @var: {{{collection_key}}} = ... or SET {{{collection_key}}} = ..."
+                        f"{{{collection_key}}} — "
+                        f"declare it with @var: {{{collection_key}}} = ... or SET {{{collection_key}}} = ..."
                     )
-                    print(f"    ⚠️  [LOOP] {msg}")
+                    print(f"    ❌  [LOOP] {msg}")
                     step_result = StepResult(
                         index=action_index + 1,
                         text=f"FOR EACH {{{var_name}}} IN {{{collection_key}}}",
