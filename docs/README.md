@@ -17,7 +17,6 @@ ManulEngine is a deterministic, DSL-first Web & Desktop Automation Runtime backe
 
 ## Additional Resources
 
-- [Architecture Decision Records](adr/) — ADR-001 through ADR-004
 - [Contracts](../contracts/) — Machine-readable API, CLI, DSL, and scoring contracts
 - [Demo & Benchmarks](../demo/) — Integration hunts and adversarial DOM fixtures
 

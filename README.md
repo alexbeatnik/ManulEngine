@@ -386,7 +386,6 @@ ManulEngine is alpha-stage and solo-developed. If deterministic, explainable bro
 
 - Try it: `pip install manul-engine==0.0.9.29 && playwright install`
 - File issues: [github.com/alexbeatnik/ManulEngine/issues](https://github.com/alexbeatnik/ManulEngine/issues)
-- Read the architecture: [docs/adr/](https://github.com/alexbeatnik/ManulEngine/tree/main/docs/adr)
 
 ---
 

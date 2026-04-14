@@ -154,7 +154,6 @@ demo/
   playground/              Experimental nested-module demos
   benchmarks/              Adversarial benchmark suite (12 tasks, 5 HTML fixtures)
 docs/
-  adr/                     Architecture Decision Records (ADR-001 through ADR-004)
 contracts/
   MANUL_API_CONTRACT.md    Machine-readable contract: ManulSession Python API
   MANUL_CLI_CONTRACT.md    Machine-readable contract: CLI interface

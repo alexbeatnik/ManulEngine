@@ -132,8 +132,6 @@ ManulEngine/
 │   ├── README.md                     Usage guide (Copilot, ChatGPT, Claude, Ollama)
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
-├── docs/
-│   └── adr/                          Architecture Decision Records (ADR-001 through ADR-004)
 ├── Dockerfile                        Multi-stage CI/CD runner image (ghcr.io/alexbeatnik/manul-engine)
 ├── .dockerignore                     Build-context exclusions for Docker
 ├── docker-compose.yml                Local dev/CI compose: manul, manul-daemon services
@@ -985,7 +983,6 @@ Covered files: `pyproject.toml`, `Dockerfile`, `docker-compose.yml`, `README.md`
 - **CALL PYTHON timeout warning:** `execute_hook_line()` warns when a function takes longer than 30 seconds.
 - **Static analysis:** Ruff + mypy config in `pyproject.toml`; new `lint.yml` CI workflow gates on `ruff check` + `ruff format --check`; lint gate added to `release.yml`.
 - **Dependabot:** `.github/dependabot.yml` for automated pip + github-actions dependency updates (weekly).
-- **ADR documents:** `docs/adr/` with 4 Architecture Decision Records (mixin pattern, custom test runner, TreeWalker snapshot, heuristics-first resolution).
 - **`run_mission()` decomposition:** Extracted `_launch_browser()` and `_parse_task()` from the 400-line `run_mission()` method.
 - **Demo directory restructure:** All integration hunts, scripts, controls, benchmarks, and pages.json moved to `demo/`. New `demo/run_demo.py` runner. Synthetic test suite extracted to standalone `run_tests.py`.
 - **Security hygiene:** Eliminated false-positive "shell access" alert from package security scanners (socket.dev).
