@@ -391,7 +391,7 @@ ManulEngine is alpha-stage and solo-developed. If deterministic, explainable bro
 
 ## What's New in v0.0.9.29
 
-- **Loop constructs (`REPEAT` / `FOR EACH` / `WHILE`):** Iterative execution blocks in `.hunt` files. `REPEAT N TIMES:` for fixed counts, `FOR EACH {var} IN {collection}:` for data iteration, `WHILE <condition>:` for dynamic polling. Full nesting with conditionals, `{i}` auto-counter, WHILE safety limit (100 iterations), empty body validation. 123-assertion test suite.
+- **Loop constructs (`REPEAT` / `FOR EACH` / `WHILE`):** Iterative execution blocks in `.hunt` files. `REPEAT N TIMES:` for fixed counts, `FOR EACH {var} IN {collection}:` for data iteration, `WHILE <condition>:` for dynamic polling. Full nesting with conditionals, `{i}` auto-counter, WHILE safety limit (100 iterations), empty body validation. 129-assertion test suite.
 - **Complete user guide** — new `docs/` folder with structured documentation: overview, installation, getting started, full DSL syntax reference, reports & explainability, and integration guides.
 
 <details>

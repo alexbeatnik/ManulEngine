@@ -137,7 +137,7 @@ manul_engine/
     test_52_exports.py         @export validation, wildcard exports, access control (19 assertions, no browser)
     test_53_explain_next.py   ExplainNextDebugger What-If Analysis REPL + debug protocol (112 assertions, no browser)
     test_54_conditionals.py  IF/ELIF/ELSE conditional block parsing, condition evaluation, nested conditionals (97 assertions, no browser)
-    test_55_loops.py         REPEAT/FOR EACH/WHILE loop block parsing, nesting, field validation (123 assertions, no browser)
+    test_55_loops.py         REPEAT/FOR EACH/WHILE loop block parsing, nesting, field validation (129 assertions, no browser)
 demo/
   run_demo.py              Runner script for integration hunts (sets CWD, calls manul CLI)
   manul_engine_configuration.json  Demo-specific config (heuristics-only)
