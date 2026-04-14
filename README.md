@@ -7,12 +7,17 @@
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/manul-engine?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/manul-engine)
 [![Manul Engine Extension](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=Manul%20Engine%20Extension&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
+[![Manul Engine Extension (Open VSX)](https://img.shields.io/open-vsx/v/manul-engine/manul-engine?label=Open%20VSX&logo=eclipse-ide)](https://open-vsx.org/extension/manul-engine/manul-engine)
 [![MCP Server](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-mcp-server?label=MCP%20Server&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-mcp-server)
+[![MCP Server (Open VSX)](https://img.shields.io/open-vsx/v/manul-engine/manul-mcp-server?label=MCP%20Server%20Open%20VSX&logo=eclipse-ide)](https://open-vsx.org/extension/manul-engine/manul-mcp-server)
+[![ManulAI Local Agent](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manulai-local-agent?label=ManulAI%20Local%20Agent&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manulai-local-agent)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-d97706)](#status)
 
 Write browser automation in plain English. ManulEngine interprets `.hunt` files through deterministic DOM heuristics on top of Playwright — no selectors, no cloud APIs, no AI required.
 
 > **Status: Alpha.** Solo-developed, actively battle-tested. Bugs are expected, APIs may evolve, and there are no promises about stability or production readiness. The core claim is transparency: when a step works, you can see exactly why; when it fails, you get the scoring breakdown to diagnose it.
+
+> **📖 [Full Documentation](docs/)** — overview, installation, DSL reference, reports, integration guides.
 
 ---
 
@@ -235,7 +240,7 @@ The same runtime and the same DSL serve four use cases:
 - **Custom controls** — `@custom_control(page, target)` decorator lets SDETs handle complex widgets (datepickers, virtual tables, canvas elements) with raw Playwright while the hunt file keeps a single readable step.
 - **Lifecycle hooks** — `@before_all`, `@after_all`, `@before_group`, `@after_group` in `manul_hooks.py` for suite-wide setup and teardown.
 - **HTML reports** — `--html-report` generates a self-contained dark-themed report with accordions, screenshots, tag filters, and run-session merging across CLI invocations.
-- **Docker CI runner** — `ghcr.io/alexbeatnik/manul-engine:0.0.9.28` runs headless in CI with `dumb-init`, non-root user, and `MANUL_*` env overrides.
+- **Docker CI runner** — `ghcr.io/alexbeatnik/manul-engine:0.0.9.29` runs headless in CI with `dumb-init`, non-root user, and `MANUL_*` env overrides.
 
 ---
 
@@ -244,14 +249,14 @@ The same runtime and the same DSL serve four use cases:
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.28
+pip install manul-engine==0.0.9.29
 playwright install
 ```
 
 Optional local AI fallback (not required):
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.28"
+pip install "manul-engine[ai]==0.0.9.29"
 ollama pull qwen2.5:0.5b && ollama serve
 ```
 
@@ -313,7 +318,7 @@ Environment variables (`MANUL_HEADLESS`, `MANUL_BROWSER`, `MANUL_MODEL`, `MANUL_
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.28 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.29 \
   --html-report --screenshot on-fail hunts/
 ```
 
@@ -323,25 +328,12 @@ Non-root (`manul`, UID 1000), `dumb-init` as PID 1, `--no-sandbox` baked in. A `
 
 ## Ecosystem
 
-### Manul Engine Extension for VS Code
-
-Test Explorer integration, syntax highlighting, config sidebar, cache browser, interactive debug runner with gutter breakpoints, and hover-based explain tooltips.
-
-```bash
-code --install-extension manul-engine.manul-engine
-```
-
-[Marketplace](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
-
-### MCP Server for GitHub Copilot
-
-A separate extension turns ManulEngine into a native MCP server. Copilot Chat gains tools like `manul_run_step`, `manul_run_goal`, `manul_scan_page`, and `manul_save_hunt` — driving a real browser session from natural language.
-
-```bash
-code --install-extension manul-engine.manul-mcp-server
-```
-
-[Marketplace](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-mcp-server) · [Developer guide](https://github.com/alexbeatnik/ManulMcpServer)
+| Component | Role | Links |
+|-----------|------|-------|
+| **ManulEngine** | Deterministic automation runtime (Python). Heuristic element resolver, `.hunt` DSL, CLI runner. | [PyPI](https://pypi.org/project/manul-engine/) · [GitHub](https://github.com/alexbeatnik/ManulEngine) |
+| **Manul Engine Extension** | VS Code extension for ManulEngine with debug panel, explain mode, and Test Explorer integration. | [Marketplace](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine) · [Open VSX](https://open-vsx.org/extension/manul-engine/manul-engine) · [GitHub](https://github.com/alexbeatnik/ManulEngineExtension) |
+| **ManulMcpServer** | MCP bridge that gives Copilot Chat and other agents access to ManulEngine. | [Marketplace](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-mcp-server) · [Open VSX](https://open-vsx.org/extension/manul-engine/manul-mcp-server) · [GitHub](https://github.com/alexbeatnik/ManulMcpServer) |
+| **ManulAI Local Agent** | Autonomous AI agent for browser automation, powered by ManulEngine. | [Marketplace](https://marketplace.visualstudio.com/items?itemName=manul-engine.manulai-local-agent) · [Open VSX](https://open-vsx.org/extension/manul-engine/manulai-local-agent) · [GitHub](https://github.com/alexbeatnik/ManulAI-local-agent) |
 
 ### Contributing and running tests
 
@@ -363,18 +355,25 @@ python demo/benchmarks/run_benchmarks.py         # adversarial DOM fixtures
 
 ManulEngine is alpha-stage and solo-developed. If deterministic, explainable browser automation interests you:
 
-- Try it: `pip install manul-engine==0.0.9.28 && playwright install`
+- Try it: `pip install manul-engine==0.0.9.29 && playwright install`
 - File issues: [github.com/alexbeatnik/ManulEngine/issues](https://github.com/alexbeatnik/ManulEngine/issues)
 - Read the architecture: [docs/adr/](https://github.com/alexbeatnik/ManulEngine/tree/main/docs/adr)
 
 ---
 
-## What's New in v0.0.9.28
+## What's New in v0.0.9.29
+
+- **Complete user guide** — new `docs/` folder with structured documentation: overview, installation, getting started, full DSL syntax reference, reports & explainability, and integration guides.
+
+<details>
+<summary>v0.0.9.28</summary>
 
 - **Conditional branching (`IF` / `ELIF` / `ELSE`):** Block-style branching in `.hunt` files based on element presence, visible text, or variable state. Indentation-based body detection, nesting support, and `ConditionalSyntaxError` for malformed blocks. 97-assertion test suite.
 - **What-If Analysis REPL (`ExplainNextDebugger`):** Interactive debug REPL for hypothetical step evaluation. During a debug pause, type `w` (terminal) to enter the REPL or `e` / send `explain-next` (extension protocol) for one-shot evaluation. Combines DOMScorer heuristic scoring with optional LLM analysis to produce a 0–10 confidence rating, element match info, risk assessment, and corrective suggestions. The best heuristic match is highlighted with a persistent magenta outline on the live page. 112-assertion test suite.
 - **What-If execute bug fixes:** `_execute_step()` recursive call now passes `strategic_context` and `step_idx` by keyword. Injected What-If steps run through `substitute_memory()` so `{var}` placeholders resolve before execution.
 - **LLM JSON fence-stripping:** `_parse_llm_json()` now strips markdown code fences before JSON parsing.
+
+</details>
 
 <details>
 <summary>v0.0.9.26</summary>
@@ -392,6 +391,6 @@ ManulEngine is alpha-stage and solo-developed. If deterministic, explainable bro
 
 ## License
 
-**Version:** 0.0.9.28
+**Version:** 0.0.9.29
 
 Apache-2.0.
