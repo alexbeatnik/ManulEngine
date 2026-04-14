@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.28 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.29 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -27,7 +27,7 @@ ManulEngine/
 ├── run_tests.py                      Synthetic DOM test suite runner (dev only)
 ├── bump_version.py                   Version bumper — updates all 18 files from pyproject.toml
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.28
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.29
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession, EngineConfig, all exception classes
@@ -132,8 +132,6 @@ ManulEngine/
 │   ├── README.md                     Usage guide (Copilot, ChatGPT, Claude, Ollama)
 │   ├── html_to_hunt.md               Prompt: HTML page → hunt steps
 │   └── description_to_hunt.md        Prompt: plain-text description → hunt steps
-├── docs/
-│   └── adr/                          Architecture Decision Records (ADR-001 through ADR-004)
 ├── Dockerfile                        Multi-stage CI/CD runner image (ghcr.io/alexbeatnik/manul-engine)
 ├── .dockerignore                     Build-context exclusions for Docker
 ├── docker-compose.yml                Local dev/CI compose: manul, manul-daemon services
@@ -600,7 +598,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.28
+pip install manul-engine==0.0.9.29
 playwright install chromium
 ```
 
@@ -723,7 +721,7 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.28 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.29 \
   --html-report --screenshot on-fail hunts/
 ```
 
@@ -788,6 +786,7 @@ manul my_mission.hunt
 | **Variables** | `SET {variable} = value`, `@var: {name} = value` (header declaration) |
 | **Flow Control** | `WAIT [seconds]`, `WAIT FOR "Text" to be visible`, `WAIT FOR 'Spinner' to disappear`, `WAIT FOR "Element" to be hidden`, `SCROLL DOWN` |
 | **Conditionals** | `IF <condition>:` / `ELIF <condition>:` / `ELSE:` — block-style branching based on element presence, text state, or variable comparisons. Nesting supported. |
+| **Loops** | `REPEAT N TIMES:` / `FOR EACH {var} IN {collection}:` / `WHILE <condition>:` — iterative execution with indentation-based bodies. `{i}` auto-counter. WHILE has 100-iteration safety limit. Full nesting with conditionals. |
 | **Finish** | `DONE.` |
 
 > **Case-insensitive keywords.** All DSL keywords are case-insensitive at runtime — `CLICK`, `Click`, and `click` all work identically. The canonical form used in documentation and generated files is ALL UPPERCASE.
@@ -818,9 +817,9 @@ VERIFY "Notes" element has value "treasure map"
 
 ---
 
-## 🐾 Chaos Chamber Verified (2982 Tests)
+## 🐾 Chaos Chamber Verified (3228 Tests)
 
-The engine is battle-tested with **2982** synthetic DOM/unit tests across 54 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, visibility edge cases, attribute-semantic icon matching, camelCase developer attributes, contextual UI disambiguation across repeated controls, and conditional branching logic.
+The engine is battle-tested with **3228** synthetic DOM/unit tests across 55 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, visibility edge cases, attribute-semantic icon matching, camelCase developer attributes, contextual UI disambiguation across repeated controls, conditional branching logic, and loop constructs.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
 * **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py`.
@@ -859,6 +858,9 @@ The engine is battle-tested with **2982** synthetic DOM/unit tests across 54 tes
 * **Imports unit suite:** `manul_engine/test/test_50_imports.py`.
 * **Packager unit suite:** `manul_engine/test/test_51_packager.py`.
 * **Exports unit suite:** `manul_engine/test/test_52_exports.py`.
+* **Explain Next unit suite:** `manul_engine/test/test_53_explain_next.py`.
+* **Conditionals unit suite:** `manul_engine/test/test_54_conditionals.py`.
+* **Loops unit suite:** `manul_engine/test/test_55_loops.py`.
 * **Integration hunts:** Real-site E2E flows under `demo/tests/*.hunt` — run with `python demo/run_demo.py` (requires Playwright + network).
 
 Run the synthetic suite:
@@ -961,8 +963,10 @@ Covered files: `pyproject.toml`, `Dockerfile`, `docker-compose.yml`, `README.md`
 
 ---
 
-## Release Notes: v0.0.9.28
+## Release Notes: v0.0.9.29
 
+- **Loop constructs (`REPEAT` / `FOR EACH` / `WHILE`):** New iterative execution blocks with indentation-based bodies. `REPEAT N TIMES:` for fixed iterations, `FOR EACH {var} IN {collection}:` for comma-separated data iteration, `WHILE <condition>:` for condition-driven loops with 100-iteration safety limit. Automatic `{i}` counter (1-based) on every iteration. Full nesting: loops inside conditionals, conditionals inside loops, loops inside loops. Parser in `helpers.py` (`LoopBlock` dataclass, `_consume_loop_block()`), executor in `core.py` (`_execute_loop()`, `_run_loop_body()`). 129-assertion test suite (`test_55_loops.py`).
+- **Conditional blocks (`IF` / `ELIF` / `ELSE`):** Block-style branching based on element existence, visible text, variable comparisons, contains checks, and truthy evaluation. Indentation-based body detection. Nested conditionals supported. Parser in `helpers.py` (`IfBlock`, `ConditionalBranch`), evaluator in `conditionals.py` (`evaluate_condition()`), executor in `core.py` (`_evaluate_conditional()`). 97-assertion test suite (`test_54_conditionals.py`).
 - **What-If Analysis REPL (`ExplainNextDebugger`):** New `explain_next.py` module with interactive debug REPL for hypothetical step evaluation. During a debug pause, type `w` (terminal) to enter the REPL or `e` / send `explain-next` (extension protocol) for one-shot evaluation. Combines DOMScorer heuristic scoring with optional LLM analysis to produce a 0–10 confidence rating, element match info, risk assessment, and corrective suggestions. The best heuristic match is highlighted with a persistent magenta outline on the live page via the engine's `_debug_highlight` / `_clear_debug_highlight` methods. Classes: `PageContext` (read-only snapshot), `WhatIfResult` (structured result with `confidence_label` property and `format_report()`), `_HeuristicHit` (best candidate from scoring), `ExplainNextDebugger` (REPL controller). REPL commands: `!execute [N]`, `!history`, `!context`, `!quit`. Extension protocol: `explain-next` token emits `\x00MANUL_EXPLAIN_NEXT\x00{json}` marker with serialized `WhatIfResult` via `_result_to_dict()`; the `what-if` interactive REPL is disabled in extension protocol mode (stdin reserved for control tokens). Hooked into `debug.py` via `_get_explain_next()` lazy factory and `_what_if_execute_step` attribute in `core.py`. 112-assertion test suite (`test_53_explain_next.py`).
 - **What-If execute bug fixes:** `_execute_step()` recursive call for What-If replacement now passes `strategic_context` and `step_idx` by keyword (was misordered as positional args, breaking debug/breakpoint behavior). Injected What-If steps in `core.py` now run through `substitute_memory()` so `{var}` placeholders are resolved before execution.
 - **LLM JSON fence-stripping:** `_parse_llm_json()` in `llm.py` now strips markdown code fences (```` ``` ````) before JSON parsing, improving robustness with models that wrap JSON responses in triple-backtick blocks.
@@ -979,14 +983,13 @@ Covered files: `pyproject.toml`, `Dockerfile`, `docker-compose.yml`, `README.md`
 - **CALL PYTHON timeout warning:** `execute_hook_line()` warns when a function takes longer than 30 seconds.
 - **Static analysis:** Ruff + mypy config in `pyproject.toml`; new `lint.yml` CI workflow gates on `ruff check` + `ruff format --check`; lint gate added to `release.yml`.
 - **Dependabot:** `.github/dependabot.yml` for automated pip + github-actions dependency updates (weekly).
-- **ADR documents:** `docs/adr/` with 4 Architecture Decision Records (mixin pattern, custom test runner, TreeWalker snapshot, heuristics-first resolution).
 - **`run_mission()` decomposition:** Extracted `_launch_browser()` and `_parse_task()` from the 400-line `run_mission()` method.
 - **Demo directory restructure:** All integration hunts, scripts, controls, benchmarks, and pages.json moved to `demo/`. New `demo/run_demo.py` runner. Synthetic test suite extracted to standalone `run_tests.py`.
 - **Security hygiene:** Eliminated false-positive "shell access" alert from package security scanners (socket.dev).
 
 </details>
 
-**Version:** 0.0.9.28
+**Version:** 0.0.9.29
 
 **Codename:** Containerised Manul
 

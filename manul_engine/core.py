@@ -39,9 +39,11 @@ from .config import EngineConfig
 from .debug import _DebugMixin
 from .exceptions import ConfigurationError
 from .helpers import (
+    MAX_LOOP_ITERATIONS,
     RE_SYSTEM_STEP,
     ContextualHint,
     IfBlock,
+    LoopBlock,
     classify_step,
     compact_log_field,
     detect_mode,
@@ -917,6 +919,24 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                 )
                 if not ok or done:
                     return ok, page, done, action_index
+            elif isinstance(ba, LoopBlock):
+                ok, page, done, action_index = await self._execute_loop(
+                    ba,
+                    page,
+                    ctx,
+                    strategic_context,
+                    action_index,
+                    hunt_dir,
+                    hunt_file,
+                    _action_file_lines,
+                    block,
+                    block_steps,
+                    _step_results,
+                    _soft_errors,
+                    _screenshot_mode,
+                )
+                if not ok or done:
+                    return ok, page, done, action_index
             elif isinstance(ba, str):
                 action_index += 1
                 # File-line breakpoint check for conditional body actions.
@@ -934,6 +954,280 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     else:
                         # Action step (click/fill/etc.) — inject into break_steps
                         # so the debug pause inside _execute_step() fires.
+                        if self.break_steps is None:
+                            self.break_steps = set()
+                        if action_index not in self.break_steps:
+                            self.break_steps.add(action_index)
+                            _temp_break_added = True
+
+                ba = substitute_memory(ba, self.memory)
+                try:
+                    outcome = await self._dispatch_step(
+                        ba,
+                        page,
+                        ctx,
+                        strategic_context,
+                        action_index,
+                        hunt_dir,
+                        hunt_file,
+                        _action_file_lines,
+                        block,
+                        block_steps,
+                        _step_results,
+                        _soft_errors,
+                        _screenshot_mode,
+                        raw_step=ba,
+                    )
+                    page = outcome[1]
+                    if outcome[3]:  # done
+                        return outcome[0], page, True, action_index
+                    if not outcome[0]:
+                        return False, page, False, action_index
+                finally:
+                    if _temp_break_added:
+                        self.break_steps.discard(action_index)
+        return True, page, done, action_index
+
+    async def _execute_loop(
+        self,
+        loop_block: "LoopBlock",
+        page: "Page",
+        ctx: "BrowserContext",
+        strategic_context: str,
+        action_index: int,
+        hunt_dir: "str | None",
+        hunt_file: "str | None",
+        _action_file_lines: list,
+        block: "object",
+        block_steps: list,
+        _step_results: list,
+        _soft_errors: list,
+        _screenshot_mode: str,
+    ) -> "tuple[bool, Page, bool, int, str | None]":
+        """Execute a loop block (REPEAT / FOR EACH / WHILE).
+
+        Returns ``(ok, page, done, action_index, error_msg)`` — same contract as
+        ``_execute_conditional`` but with a 5th element carrying the failure
+        reason when ``ok`` is ``False``.
+        """
+        done = False
+
+        if loop_block.kind == "repeat":
+            count = loop_block.count or 0
+            print(f"    🔁 [LOOP] REPEAT {count} TIMES")
+            for iteration in range(1, count + 1):
+                self.memory[str(loop_block.var_name or "i")] = str(iteration)
+                ok, page, done, action_index = await self._run_loop_body(
+                    loop_block,
+                    page,
+                    ctx,
+                    strategic_context,
+                    action_index,
+                    hunt_dir,
+                    hunt_file,
+                    _action_file_lines,
+                    block,
+                    block_steps,
+                    _step_results,
+                    _soft_errors,
+                    _screenshot_mode,
+                    iteration=iteration,
+                    total=count,
+                )
+                if not ok or done:
+                    return ok, page, done, action_index, None
+            return True, page, done, action_index, None
+
+        elif loop_block.kind == "for_each":
+            var_name = loop_block.var_name or "item"
+            collection_key = loop_block.collection_expr or ""
+            raw_collection = self.memory.resolve(collection_key)
+            if raw_collection is None:
+                if collection_key:
+                    msg = (
+                        f"FOR EACH loop references undefined collection variable "
+                        f"{{{collection_key}}} — "
+                        f"populate it before this step with @var: {{{collection_key}}} = ..., "
+                        f"SET {{{collection_key}}} = ..., "
+                        f"EXTRACT ... into {{{collection_key}}}, or "
+                        f"CALL PYTHON ... into {{{collection_key}}}"
+                    )
+                    print(f"    ❌  [LOOP] {msg}")
+                    step_result = StepResult(
+                        index=action_index + 1,
+                        text=f"FOR EACH {{{var_name}}} IN {{{collection_key}}}",
+                        status="fail",
+                        error=msg,
+                        duration_ms=0,
+                        logical_step=getattr(block, "block_name", None),
+                    )
+                    _step_results.append(step_result)
+                    block_steps.append(step_result)
+                    return False, page, done, action_index, msg
+                raw_collection = ""
+            items = [item.strip() for item in str(raw_collection).split(",") if item.strip()]
+            print(f"    🔁 [LOOP] FOR EACH {{{var_name}}} IN {{{collection_key}}} ({len(items)} items)")
+            for iteration, item in enumerate(items, 1):
+                self.memory[var_name] = item
+                self.memory["i"] = str(iteration)
+                ok, page, done, action_index = await self._run_loop_body(
+                    loop_block,
+                    page,
+                    ctx,
+                    strategic_context,
+                    action_index,
+                    hunt_dir,
+                    hunt_file,
+                    _action_file_lines,
+                    block,
+                    block_steps,
+                    _step_results,
+                    _soft_errors,
+                    _screenshot_mode,
+                    iteration=iteration,
+                    total=len(items),
+                )
+                if not ok or done:
+                    return ok, page, done, action_index, None
+            return True, page, done, action_index, None
+
+        elif loop_block.kind == "while":
+            from .conditionals import evaluate_condition
+
+            condition_text = loop_block.condition_text or ""
+            print(f"    🔁 [LOOP] WHILE {condition_text}")
+            iteration = 0
+            while iteration < MAX_LOOP_ITERATIONS:
+                try:
+                    result = await evaluate_condition(condition_text, page, self.memory)
+                except ValueError as exc:
+                    from .exceptions import ConditionalSyntaxError
+
+                    raise ConditionalSyntaxError(f"Invalid WHILE condition '{condition_text}': {exc}") from exc
+                if not result:
+                    print(f"    🔁 [LOOP] WHILE condition False after {iteration} iteration(s) — exiting")
+                    break
+                iteration += 1
+                self.memory["i"] = str(iteration)
+                ok, page, done, action_index = await self._run_loop_body(
+                    loop_block,
+                    page,
+                    ctx,
+                    strategic_context,
+                    action_index,
+                    hunt_dir,
+                    hunt_file,
+                    _action_file_lines,
+                    block,
+                    block_steps,
+                    _step_results,
+                    _soft_errors,
+                    _screenshot_mode,
+                    iteration=iteration,
+                    total=None,
+                )
+                if not ok or done:
+                    return ok, page, done, action_index, None
+            else:
+                msg = (
+                    f"WHILE loop exceeded safety limit of {MAX_LOOP_ITERATIONS} iterations "
+                    f"(condition: {condition_text!r})"
+                )
+                print(f"    ⚠️  [LOOP] {msg}")
+                step_result = StepResult(
+                    index=action_index + 1,
+                    text=f"WHILE {condition_text}",
+                    status="fail",
+                    error=msg,
+                    duration_ms=0,
+                    logical_step=getattr(block, "block_name", None),
+                )
+                _step_results.append(step_result)
+                block_steps.append(step_result)
+                return False, page, done, action_index, msg
+            return True, page, done, action_index, None
+
+        return True, page, done, action_index, None
+
+    async def _run_loop_body(
+        self,
+        loop_block: "LoopBlock",
+        page: "Page",
+        ctx: "BrowserContext",
+        strategic_context: str,
+        action_index: int,
+        hunt_dir: "str | None",
+        hunt_file: "str | None",
+        _action_file_lines: list,
+        block: "object",
+        block_steps: list,
+        _step_results: list,
+        _soft_errors: list,
+        _screenshot_mode: str,
+        iteration: int = 1,
+        total: "int | None" = None,
+    ) -> "tuple[bool, Page, bool, int]":
+        """Execute a single iteration of a loop body.
+
+        Delegates each action to ``_dispatch_step`` or recurses into
+        ``_execute_conditional`` / ``_execute_loop`` for nested blocks.
+        """
+        total_str = f"/{total}" if total else ""
+        print(f"    🔁 [LOOP] iteration {iteration}{total_str}")
+        done = False
+        for ba_idx, ba in enumerate(loop_block.actions):
+            ba_line = loop_block.action_lines[ba_idx] if ba_idx < len(loop_block.action_lines) else 0
+            if isinstance(ba, IfBlock):
+                ok, page, done, action_index = await self._execute_conditional(
+                    ba,
+                    page,
+                    ctx,
+                    strategic_context,
+                    action_index,
+                    hunt_dir,
+                    hunt_file,
+                    _action_file_lines,
+                    block,
+                    block_steps,
+                    _step_results,
+                    _soft_errors,
+                    _screenshot_mode,
+                )
+                if not ok or done:
+                    return ok, page, done, action_index
+            elif isinstance(ba, LoopBlock):
+                ok, page, done, action_index = await self._execute_loop(
+                    ba,
+                    page,
+                    ctx,
+                    strategic_context,
+                    action_index,
+                    hunt_dir,
+                    hunt_file,
+                    _action_file_lines,
+                    block,
+                    block_steps,
+                    _step_results,
+                    _soft_errors,
+                    _screenshot_mode,
+                )
+                if not ok or done:
+                    return ok, page, done, action_index
+            elif isinstance(ba, str):
+                action_index += 1
+                # File-line breakpoint check for loop body actions.
+                _temp_break_added = False
+                if self._break_file_lines and ba_line and ba_line in self._break_file_lines:
+                    import sys as _sys
+
+                    step_kind = classify_step(ba)
+                    if step_kind != "action" and not _sys.stdin.isatty():
+                        print(f"    🔴 BREAKPOINT at line {ba_line}")
+                        await self._debug_prompt(page, ba, action_index)
+                    elif step_kind != "action":
+                        print(f"    🔴 BREAKPOINT at line {ba_line} — opening Playwright Inspector…")
+                        await page.pause()
+                    else:
                         if self.break_steps is None:
                             self.break_steps = set()
                         if action_index not in self.break_steps:
@@ -1346,6 +1640,49 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                 block_status = "fail"
                                 block_error = _cond_error
                                 print(f"  [❌ ACTION FAIL] conditional block: {_cond_error}")
+                            if block_status == "fail" or done:
+                                break
+                            continue
+
+                        # ── Loop block (LoopBlock) ──
+                        if isinstance(raw_step, LoopBlock):
+                            started_perf = time.perf_counter()
+                            _loop_kind_label = raw_step.kind.upper().replace("_", " ")
+                            print(f"  [▶️ ACTION START] {_loop_kind_label} loop")
+                            _loop_ok = True
+                            _loop_error: str | None = None
+                            try:
+                                _loop_ok, page, _loop_done, action_index, _exec_error = await self._execute_loop(
+                                    raw_step,
+                                    page,
+                                    ctx,
+                                    strategic_context,
+                                    action_index,
+                                    hunt_dir,
+                                    hunt_file,
+                                    _action_file_lines,
+                                    block,
+                                    block_steps,
+                                    _step_results,
+                                    _soft_errors,
+                                    _screenshot_mode,
+                                )
+                                if _loop_done:
+                                    done = True
+                                if not _loop_ok:
+                                    _loop_error = _exec_error or "Loop action failed"
+                            except Exception as exc:
+                                _loop_ok = False
+                                _loop_error = str(exc)
+                                _log.debug("Loop block failed: %s", exc)
+                            duration_s = time.perf_counter() - started_perf
+                            if _loop_ok:
+                                print(f"  [✅ ACTION PASS] {_loop_kind_label} loop (duration: {duration_s:.2f}s)")
+                            else:
+                                ok = False
+                                block_status = "fail"
+                                block_error = _loop_error
+                                print(f"  [❌ ACTION FAIL] {_loop_kind_label} loop: {_loop_error}")
                             if block_status == "fail" or done:
                                 break
                             continue

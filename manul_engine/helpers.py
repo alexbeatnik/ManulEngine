@@ -68,12 +68,15 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
     ("if_block", re.compile(r"^\s*(?:\d+\.\s*)?IF\b.+:\s*$", re.IGNORECASE)),
     ("elif_block", re.compile(r"^\s*(?:\d+\.\s*)?ELIF\b.+:\s*$", re.IGNORECASE)),
     ("else_block", re.compile(r"^\s*(?:\d+\.\s*)?ELSE\s*:\s*$", re.IGNORECASE)),
+    ("repeat_loop", re.compile(r"^\s*(?:\d+\.\s*)?REPEAT\s+\d+\s+TIMES\s*:\s*$", re.IGNORECASE)),
+    ("for_each_loop", re.compile(r"^\s*(?:\d+\.\s*)?FOR\s+EACH\s+\{?\w+\}?\s+IN\s+\{?\w+\}?\s*:\s*$", re.IGNORECASE)),
+    ("while_loop", re.compile(r"^\s*(?:\d+\.\s*)?WHILE\b.+:\s*$", re.IGNORECASE)),
 ]
 
 # Legacy pre-compiled system-step pattern kept for backwards compatibility.
 # Prefer classify_step() for step classification.
 RE_SYSTEM_STEP = re.compile(
-    r"""\b(?:STEP\s*\d*\s*:|WAIT\s+FOR\s+(?:"[^"]+"|'[^']+')\s+TO\s+(?:BE\s+(?:VISIBLE|HIDDEN)|DISAPPEAR)|NAVIGATE|OPEN\s+APP|MOCK\s+(?:GET|POST|PUT|PATCH|DELETE)|WAIT\s+FOR\s+RESPONSE|WAIT|SCROLL|EXTRACT|VERIFY\s+VISUAL|VERIFY\s+SOFTLY|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|SET|DEBUG\s+VARS|DEBUG|PAUSE|DONE|USE|IF\b.+:|ELIF\b.+:|ELSE\s*:)(?:\b|$)""",
+    r"""\b(?:STEP\s*\d*\s*:|WAIT\s+FOR\s+(?:"[^"]+"|'[^']+')\s+TO\s+(?:BE\s+(?:VISIBLE|HIDDEN)|DISAPPEAR)|NAVIGATE|OPEN\s+APP|MOCK\s+(?:GET|POST|PUT|PATCH|DELETE)|WAIT\s+FOR\s+RESPONSE|WAIT|SCROLL|EXTRACT|VERIFY\s+VISUAL|VERIFY\s+SOFTLY|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|SET|DEBUG\s+VARS|DEBUG|PAUSE|DONE|USE|IF\b.+:|ELIF\b.+:|ELSE\s*:|REPEAT\s+\d+\s+TIMES\s*:|FOR\s+EACH\b.+\bIN\b.+:|WHILE\b.+:)(?:\b|$)""",
     re.IGNORECASE,
 )
 
@@ -111,7 +114,7 @@ class HuntBlock:
     """Hierarchical execution block parsed from Hunt DSL."""
 
     block_name: str
-    actions: "list[str | IfBlock]" = field(default_factory=list)
+    actions: "list[str | IfBlock | LoopBlock]" = field(default_factory=list)
     block_line: int | None = None
     action_lines: list[int] = field(default_factory=list)
     synthetic: bool = False
@@ -123,7 +126,7 @@ class ConditionalBranch:
 
     kind: str  # "if", "elif", or "else"
     condition: str  # raw condition text; empty string for else
-    actions: "list[str | IfBlock]" = field(default_factory=list)
+    actions: "list[str | IfBlock | LoopBlock]" = field(default_factory=list)
     action_lines: list[int] = field(default_factory=list)
     raw_actions: list[str] = field(default_factory=list)
     branch_line: int = 0
@@ -134,6 +137,37 @@ class IfBlock:
     """AST node for an if/elif/else conditional block."""
 
     branches: list[ConditionalBranch] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class LoopBlock:
+    """AST node for a loop construct (REPEAT / FOR EACH / WHILE)."""
+
+    kind: str  # "repeat", "for_each", or "while"
+    # REPEAT N TIMES:   count=N, var_name=None ({i} is set at runtime by the executor)
+    # FOR EACH {item} IN {collection}: var_name="item", collection_expr="collection"
+    # WHILE condition:  condition_text="..."
+    count: int | None = None
+    var_name: str | None = None
+    collection_expr: str | None = None
+    condition_text: str | None = None
+    actions: "list[str | IfBlock | LoopBlock]" = field(default_factory=list)
+    action_lines: list[int] = field(default_factory=list)
+    raw_actions: list[str] = field(default_factory=list)
+    loop_line: int = 0
+
+
+def collect_loopblock_lines(loop_block: "LoopBlock") -> list[int]:
+    """Recursively collect all action line numbers from a LoopBlock."""
+    lines: list[int] = []
+    for action, line_no in zip(loop_block.actions, loop_block.action_lines):
+        if isinstance(action, IfBlock):
+            lines.extend(collect_ifblock_lines(action))
+        elif isinstance(action, LoopBlock):
+            lines.extend(collect_loopblock_lines(action))
+        else:
+            lines.append(line_no)
+    return lines
 
 
 def collect_ifblock_lines(if_block: "IfBlock") -> list[int]:
@@ -149,6 +183,8 @@ def collect_ifblock_lines(if_block: "IfBlock") -> list[int]:
         for action, line_no in zip(branch.actions, branch.action_lines):
             if isinstance(action, IfBlock):
                 lines.extend(collect_ifblock_lines(action))
+            elif isinstance(action, LoopBlock):
+                lines.extend(collect_loopblock_lines(action))
             else:
                 lines.append(line_no)
     return lines
@@ -245,8 +281,9 @@ def parse_hunt_blocks(task: str, file_lines: list[int] | None = None) -> list[Hu
     synthetic default block to preserve backward compatibility.
 
     ``if``/``elif``/``else:`` conditional blocks are collapsed into
-    :class:`IfBlock` AST nodes attached inline inside each block's
-    ``actions`` list.
+    :class:`IfBlock` AST nodes, and ``REPEAT``/``FOR EACH``/``WHILE`` loop
+    blocks are collapsed into :class:`LoopBlock` AST nodes — both attached
+    inline inside each block's ``actions`` list.
     """
     raw_lines = [line.rstrip("\n") for line in task.splitlines() if line.strip()]
     if not raw_lines:
@@ -287,7 +324,7 @@ def parse_hunt_blocks(task: str, file_lines: list[int] | None = None) -> list[Hu
     if _cur_stripped or not _cur_synthetic:
         raw_block_lines.append((_cur_stripped, _cur_raw, _cur_lines, _cur_name, _cur_line, _cur_synthetic))
 
-    # ── Second pass: parse conditional blocks inside each STEP ──
+    # ── Second pass: parse conditional and loop blocks inside each STEP ──
     blocks: list[HuntBlock] = []
     for stripped_actions, raw_actions, action_lines, block_name, block_line, synthetic in raw_block_lines:
         parsed_actions, parsed_lines = _parse_conditionals(stripped_actions, raw_actions, action_lines)
@@ -309,6 +346,18 @@ _RE_IF_LINE = re.compile(r"^(?:\d+\.\s*)?IF\s+(.+?):\s*$", re.IGNORECASE)
 _RE_ELIF_LINE = re.compile(r"^(?:\d+\.\s*)?ELIF\s+(.+?):\s*$", re.IGNORECASE)
 _RE_ELSE_LINE = re.compile(r"^(?:\d+\.\s*)?ELSE\s*:\s*$", re.IGNORECASE)
 
+# ── Loop block regexes ────────────────────────────────────────────────────────
+
+_RE_REPEAT_LINE = re.compile(r"^(?:\d+\.\s*)?REPEAT\s+(\d+)\s+TIMES\s*:\s*$", re.IGNORECASE)
+_RE_FOR_EACH_LINE = re.compile(
+    r"^(?:\d+\.\s*)?FOR\s+EACH\s+\{?(\w+)\}?\s+IN\s+\{?(\w+)\}?\s*:\s*$",
+    re.IGNORECASE,
+)
+_RE_WHILE_LINE = re.compile(r"^(?:\d+\.\s*)?WHILE\s+(.+):\s*$", re.IGNORECASE)
+# Loose pattern used only in _parse_conditionals to detect malformed FOR EACH headers
+# that slipped through the strict _RE_FOR_EACH_LINE match.
+_RE_LOOSE_FOR_EACH = re.compile(r"^(?:\d+\.\s*)?FOR\s+EACH\b.+\bIN\b.+:\s*$", re.IGNORECASE)
+
 
 def _indent_level(raw_line: str) -> int:
     """Return the number of leading spaces in a raw line."""
@@ -317,15 +366,15 @@ def _indent_level(raw_line: str) -> int:
 
 def _parse_conditionals(
     actions: list[str], raw_actions: list[str], action_lines: list[int]
-) -> tuple[list[str | IfBlock], list[int]]:
-    """Consume a flat action list and group if/elif/else lines into IfBlock nodes.
+) -> "tuple[list[str | IfBlock | LoopBlock], list[int]]":
+    """Consume a flat action list and group if/elif/else and loop lines into AST nodes.
 
     Uses indentation from *raw_actions* to determine block body boundaries.
     Returns ``(parsed_actions, parsed_lines)`` where conditional blocks are
-    replaced by a single :class:`IfBlock` entry (with line number from the
-    opening ``if`` line).
+    replaced by a single :class:`IfBlock` entry and loop blocks by a
+    :class:`LoopBlock` entry (with line number from the opening line).
     """
-    result_actions: list[str | IfBlock] = []
+    result_actions: list[str | IfBlock | LoopBlock] = []
     result_lines: list[int] = []
     i = 0
 
@@ -341,6 +390,17 @@ def _parse_conditionals(
             i += consumed
             continue
 
+        # Loop blocks
+        m_repeat = _RE_REPEAT_LINE.match(line)
+        m_for_each = _RE_FOR_EACH_LINE.match(line)
+        m_while = _RE_WHILE_LINE.match(line)
+        if m_repeat or m_for_each or m_while:
+            loop_block, consumed = _consume_loop_block(actions, raw_actions, action_lines, i)
+            result_actions.append(loop_block)
+            result_lines.append(line_no)
+            i += consumed
+            continue
+
         # Stray elif/else outside an if block — error
         if _RE_ELIF_LINE.match(line):
             from .exceptions import ConditionalSyntaxError
@@ -350,6 +410,16 @@ def _parse_conditionals(
             from .exceptions import ConditionalSyntaxError
 
             raise ConditionalSyntaxError(f"'ELSE' without a preceding 'IF' at line {line_no}: {line}")
+
+        # Malformed FOR EACH header: matches the loose pattern but failed the strict
+        # _RE_FOR_EACH_LINE parse above, meaning it has unexpected extra tokens.
+        if _RE_LOOSE_FOR_EACH.match(line):
+            from .exceptions import ConditionalSyntaxError
+
+            raise ConditionalSyntaxError(
+                f"Malformed FOR EACH header at line {line_no}: {line!r}. "
+                "Expected: FOR EACH {var} IN {collection}: or FOR EACH item IN items:"
+            )
 
         result_actions.append(line)
         result_lines.append(line_no)
@@ -475,6 +545,87 @@ def _collect_branch_body(
     return i
 
 
+# ── Loop block parsing ────────────────────────────────────────────────────────
+
+# Safety limit: maximum iterations for WHILE loops to prevent infinite loops.
+MAX_LOOP_ITERATIONS = 100
+
+
+def _consume_loop_block(
+    actions: list[str], raw_actions: list[str], action_lines: list[int], start: int
+) -> "tuple[LoopBlock, int]":
+    """Parse a REPEAT/FOR EACH/WHILE loop block starting at *start*.
+
+    Uses indentation of the loop header line to determine where the loop
+    body ends (any line at or below the header's indentation level
+    terminates the loop block).
+
+    Returns ``(LoopBlock, number_of_lines_consumed)``.
+    """
+    line = actions[start]
+    line_no = action_lines[start] if start < len(action_lines) else 0
+    header_indent = _indent_level(raw_actions[start] if start < len(raw_actions) else "")
+
+    m_repeat = _RE_REPEAT_LINE.match(line)
+    m_for_each = _RE_FOR_EACH_LINE.match(line)
+    m_while = _RE_WHILE_LINE.match(line)
+
+    from .exceptions import ConditionalSyntaxError
+
+    if m_repeat:
+        count = int(m_repeat.group(1))
+        if count < 1:
+            raise ConditionalSyntaxError(
+                f"Invalid REPEAT count at line {line_no}: {count}. REPEAT requires a positive integer (>= 1)."
+            )
+        loop = LoopBlock(kind="repeat", count=count, loop_line=line_no)
+    elif m_for_each:
+        var_name = m_for_each.group(1)
+        if var_name.lower() == "i":
+            raise ConditionalSyntaxError(
+                f"Invalid FOR EACH loop variable at line {line_no}: "
+                "{{i}} is reserved for the engine's automatic loop counter."
+            )
+        loop = LoopBlock(
+            kind="for_each",
+            var_name=var_name,
+            collection_expr=m_for_each.group(2),
+            loop_line=line_no,
+        )
+    elif m_while:
+        loop = LoopBlock(kind="while", condition_text=m_while.group(1).strip(), loop_line=line_no)
+    else:
+        raise ConditionalSyntaxError(f"Unrecognized loop syntax at line {line_no}: {line}")
+
+    # Collect body lines (indentation > header)
+    i = start + 1
+    body_stripped: list[str] = []
+    body_raw: list[str] = []
+    body_lines: list[int] = []
+
+    while i < len(actions):
+        raw_line = raw_actions[i] if i < len(raw_actions) else actions[i]
+        if _indent_level(raw_line) <= header_indent:
+            break
+        body_stripped.append(actions[i])
+        body_raw.append(raw_line)
+        body_lines.append(action_lines[i] if i < len(action_lines) else 0)
+        i += 1
+
+    consumed = i - start
+
+    if not body_stripped:
+        from .exceptions import ConditionalSyntaxError
+
+        raise ConditionalSyntaxError(f"Empty loop body at line {line_no}: {line.strip()}")
+
+    # Recursively parse nested conditionals and loops inside the body.
+    loop.actions, loop.action_lines = _parse_conditionals(body_stripped, body_raw, body_lines)
+    loop.raw_actions = body_raw
+
+    return loop, consumed
+
+
 # Pattern to strip quoted text before classification.
 _RE_QUOTED = re.compile(r"""(['"]).*?\1""")
 
@@ -491,7 +642,9 @@ def classify_step(step: str) -> str:
     ``"verify"``, ``"press_enter"``, ``"press"``, ``"right_click"``,
     ``"upload"``, ``"scan_page"``, ``"call_python"``, ``"set_var"``,
     ``"debug_vars"``, ``"debug"``, ``"done"``, ``"use_import"``,
-    ``"if_block"``, ``"elif_block"``, ``"else_block"``, or ``"action"``.
+    ``"if_block"``, ``"elif_block"``, ``"else_block"``,
+    ``"repeat_loop"``, ``"for_each_loop"``, ``"while_loop"``,
+    or ``"action"``.
     """
     # Fast-path: STEP markers are checked on the raw text BEFORE quote
     # stripping so that apostrophes in descriptions (e.g. "Pallas's cat")

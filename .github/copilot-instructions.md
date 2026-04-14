@@ -62,7 +62,7 @@ manul.py                   Dev CLI entry point (run hunts from repo root without
 run_tests.py               Synthetic DOM test suite runner (dev only)
 bump_version.py            Version bumper — updates all 18 files from pyproject.toml
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.28
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.29
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession, EngineConfig, all exception classes
   exceptions.py            Structured exception hierarchy (ManulEngineError base, ConfigurationError, ElementResolutionError, HookExecutionError, HuntImportError, VerificationError, SessionError, ScheduleError, ConditionalSyntaxError)
@@ -137,6 +137,7 @@ manul_engine/
     test_52_exports.py         @export validation, wildcard exports, access control (19 assertions, no browser)
     test_53_explain_next.py   ExplainNextDebugger What-If Analysis REPL + debug protocol (112 assertions, no browser)
     test_54_conditionals.py  IF/ELIF/ELSE conditional block parsing, condition evaluation, nested conditionals (97 assertions, no browser)
+    test_55_loops.py         REPEAT/FOR EACH/WHILE loop block parsing, nesting, field validation (129 assertions, no browser)
 demo/
   run_demo.py              Runner script for integration hunts (sets CWD, calls manul CLI)
   manul_engine_configuration.json  Demo-specific config (heuristics-only)
@@ -153,7 +154,6 @@ demo/
   playground/              Experimental nested-module demos
   benchmarks/              Adversarial benchmark suite (12 tasks, 5 HTML fixtures)
 docs/
-  adr/                     Architecture Decision Records (ADR-001 through ADR-004)
 contracts/
   MANUL_API_CONTRACT.md    Machine-readable contract: ManulSession Python API
   MANUL_CLI_CONTRACT.md    Machine-readable contract: CLI interface
@@ -274,6 +274,7 @@ Rules for STEP-grouped files:
 * `SET {variable_name} = value` — Sets a runtime variable mid-flight. Both `{braced}` and bare key forms accepted. Quoted values (`'...'` / `"..."`) are auto-unquoted. The variable is immediately available for `{placeholder}` substitution in all subsequent steps.
 * `DEBUG` / `PAUSE` — pauses execution at that step. In interactive terminal mode (`--debug`), draws a dashed red border around the resolved element and prompts the user; when run via VS Code extension, emits the debug pause protocol marker (see below).
 * **Conditional blocks:** `IF <condition>:` / `ELIF <condition>:` / `ELSE:` — block-style branching based on element presence, text state, or variable comparisons. Body lines are indented by 4 spaces under the header. Nesting is supported. See Section 7c.
+* **Loop blocks:** `REPEAT N TIMES:` / `FOR EACH {var} IN {collection}:` / `WHILE <condition>:` — iterative execution. Body lines use the same 4-space indentation as conditional blocks. Nesting (loops inside conditionals, conditionals inside loops, loops inside loops) is supported. `{i}` counter variable is auto-set (1-based). WHILE loops have a safety limit of `MAX_LOOP_ITERATIONS` (100). See Section 7d.
 * `DONE.`
 
 Everything else goes through `_execute_step` (mode detection → resolve → action).
@@ -341,6 +342,7 @@ These keywords are detected via word-boundary regex, bypass heuristics, and are 
 * `SET {variable_name} = value` — Sets a runtime variable mid-flight. Both `{braced}` and bare key forms accepted. Quoted values are auto-unquoted. Available for `{placeholder}` substitution in subsequent steps.
 * `USE BlockName` — Expands an imported STEP block inline at parse time. The block must have been imported via `@import:`. Aliased names (from `as` clause) are supported. Case-insensitive matching. Expanded actions replace the `USE` line in the mission body with synthetic line numbers (0).
 * **Conditional blocks:** `IF <condition>:` / `ELIF <condition>:` / `ELSE:` — block-style branching (see Section 7c below).
+* **Loop blocks:** `REPEAT N TIMES:` / `FOR EACH {var} IN {collection}:` / `WHILE <condition>:` — iterative execution (see Section 7d below).
 * `DONE.` — Explicitly ends the mission.
 * `[SETUP]` / `[END SETUP]` — Block wrapping `PRINT ...` and `CALL PYTHON ...` lines. Runs **before** the browser launches. If any line fails, the mission is marked as `broken` and browser steps are skipped.
 * `[TEARDOWN]` / `[END TEARDOWN]` — Cleanup block. Runs in a `finally` block **after** the mission (pass or fail). Only executed if `[SETUP]` succeeded. Failure is logged but does not override the mission result.
@@ -472,6 +474,53 @@ STEP 2: Nested conditional
 * At runtime, `_evaluate_conditional()` in `core.py` evaluates branches in order and executes the first branch whose condition is `True` (or the `ELSE` branch if no condition matched). Branch decisions are logged with `🔀 [CONDITIONAL]`.
 * `_dispatch_step()` handles the action execution inside a matched branch — it mirrors the main step dispatch logic (navigate, verify, fill, click, etc.).
 
+### 7d. Loop Blocks (`REPEAT` / `FOR EACH` / `WHILE`)
+Iterative execution blocks using indentation-based body detection (same as conditionals).
+
+**Syntax:**
+```text
+REPEAT N TIMES:
+    <action lines>
+
+FOR EACH {var} IN {collection}:
+    <action lines>
+
+WHILE <condition>:
+    <action lines>
+```
+
+* Loop headers end with `:` and are indented at the same level as sibling action lines inside a STEP block (4 spaces). Body lines use an additional 4-space indent (8 spaces total inside a STEP).
+* `{i}` counter variable is automatically set (1-based) on every iteration of any loop type.
+* `REPEAT N TIMES:` — fixed iteration count. `N` must be a positive integer.
+* `FOR EACH {var} IN {collection}:` — iterates over a comma-separated string from memory. Both `{braced}` and bare-key forms are accepted. On each iteration, `{var}` is set to the current item (trimmed).
+* `WHILE <condition>:` — repeats while the condition is `True`. Uses the same condition evaluator as `IF` blocks (`evaluate_condition()` in `conditionals.py`). Safety limit: `MAX_LOOP_ITERATIONS` (100). Exceeding the limit aborts the loop and fails the step.
+* Nesting is fully supported: loops inside conditionals, conditionals inside loops, loops inside loops.
+* The parser accepts both uppercase and lowercase keywords via `re.IGNORECASE`, but **uppercase is canonical**.
+
+**Example:**
+```text
+@var: {colors} = red, green, blue
+
+STEP 1: Test each color
+    FOR EACH {color} IN {colors}:
+        CLICK the '{color}' button
+        VERIFY that '{color}' is present
+
+STEP 2: Paginate
+    WHILE button 'Next' exists:
+        CLICK the 'Next' button
+        WAIT 1
+
+STEP 3: Retry with conditional
+    REPEAT 3 TIMES:
+        IF text 'Error' is present:
+            CLICK the 'Retry' button
+        ELSE:
+            CLICK the 'Continue' button
+```
+
+* At runtime, `_execute_loop()` in `core.py` handles all three loop kinds. `_run_loop_body()` executes a single iteration, delegating each action to `_dispatch_step()` or recursing into `_execute_conditional()` / `_execute_loop()` for nested blocks. Loop iterations are logged with `🔁 [LOOP]`.
+
 ### 8. Best Practices
 * **ALL UPPERCASE canonical form:** When generating `.hunt` files, all DSL keywords must use ALL UPPERCASE: `CLICK`, `FILL`, `TYPE`, `SELECT`, `CHECK`, `UNCHECK`, `HOVER`, `DRAG`, `NAVIGATE`, `VERIFY`, `EXTRACT`, `WAIT`, `PRESS`, `SCROLL`, `SET`, `DONE`, etc. The engine is case-insensitive at runtime (any mix of cases works), but the canonical generated form is uppercase.
 * **Element type hints are optional but recommended:** Words like `button`, `field`, `link`, `dropdown`, `checkbox`, `radio`, `element`, `input` placed outside quotes after the target name are not required, but they provide a strong heuristic signal. `CLICK the 'Login' button` and `CLICK the 'Login'` both work — the former gives the scorer a useful mode hint.
@@ -517,7 +566,7 @@ Hook blocks run synchronous Python functions **outside the browser** — the pri
 * `prompts.py` loads config from `manul_engine_configuration.json` (CWD first, then package root fallback). No dotenv dependency.
 * `js_scripts.py` owns **all** JavaScript constants injected into the browser — no inline JS in Python files. This includes `SCAN_JS` (Smart Page Scanner).
 * `scanner.py` owns the standalone scan logic: `SCAN_JS` is imported from `js_scripts.py`; `build_hunt()` maps raw element dicts to hunt steps; `scan_page()` is the async Playwright runner; `scan_main()` is the async CLI entry called by `cli.py`. `_default_output()` reads `tests_home` from the config to derive the default output path. `SCAN_JS.bestLabel()` should prefer associated checkbox/radio labels, and scan entries may include `manul_id` plus current non-empty values for fillable controls.
-* `helpers.py` provides `HuntBlock`, `IfBlock`, `ConditionalBranch`, `parse_hunt_blocks(task, file_lines=None)`, `env_bool(name, default)`, `detect_mode(step)`, and `classify_step(step)`. `parse_hunt_blocks()` is the runtime-level hierarchical parser that groups STEP headers into parent blocks and action lines into child lists while preserving block and action file lines for breakpoint mapping. Conditional blocks (`IF`/`ELIF`/`ELSE`) are parsed by `_parse_conditionals()` using indentation-based body detection and produce `IfBlock` AST nodes containing `ConditionalBranch` entries.
+* `helpers.py` provides `HuntBlock`, `IfBlock`, `ConditionalBranch`, `LoopBlock`, `parse_hunt_blocks(task, file_lines=None)`, `env_bool(name, default)`, `detect_mode(step)`, and `classify_step(step)`. `parse_hunt_blocks()` is the runtime-level hierarchical parser that groups STEP headers into parent blocks and action lines into child lists while preserving block and action file lines for breakpoint mapping. Conditional blocks (`IF`/`ELIF`/`ELSE`) are parsed by `_parse_conditionals()` using indentation-based body detection and produce `IfBlock` AST nodes containing `ConditionalBranch` entries. Loop blocks (`REPEAT`/`FOR EACH`/`WHILE`) are parsed by the same function and produce `LoopBlock` AST nodes.
 * `conditionals.py` provides `evaluate_condition(condition, page, memory)` — an async function that evaluates a condition string against the live page and variable memory. Supports element-exists probing, visible-text checks, variable `==`/`!=` comparison, `contains` substring checks, and truthy evaluation. Used by `_evaluate_conditional()` in `core.py` at runtime.
 * **Null model = heuristics-only:** When `model` is `None`, `_llm_json()` returns `None` immediately. `get_threshold(None)` returns `0`. No Ollama calls are made.
 * **`scan_main` must be `async`** — it is called with `await` from inside `cli.main()` which runs under `asyncio.run()`. Never use `asyncio.run()` inside `scan_main`.
@@ -594,7 +643,7 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.28 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.29 \
   --html-report --screenshot on-fail hunts/
 ```
 

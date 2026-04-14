@@ -5,7 +5,7 @@
 
 ```json
 {
-  "version": "0.0.9.28",
+  "version": "0.0.9.29",
   "generatedFrom": "manul_engine/reporting.py :: StepResult, BlockResult, MissionResult, RunSummary, append_run_history(), load_report_state(), save_report_state(), merge_report_summaries(), recompute_summary(); manul_engine/reporter.py :: generate_report()",
 
   "statusValues": {
