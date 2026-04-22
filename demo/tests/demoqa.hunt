@@ -40,7 +40,6 @@ STEP 1: Text box form submission
 
 STEP 2: Checkbox tree
     NAVIGATE to https://demoqa.com/checkbox
-    CLICK the 'Expand all' button
     # "checkbox for 'Home'" — the engine applies strict checkbox mode:
     # non-checkbox elements get a heavy scoring penalty.
     CHECK the checkbox for 'Home'

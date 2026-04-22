@@ -6,5 +6,13 @@
     "https://testautomationpractice.blogspot.com/": {
         "Domain": "Auto: testautomationpractice.blogspot.com",
         "https://testautomationpractice.blogspot.com/": "Auto: testautomationpractice.blogspot.com"
+    },
+    "https://www.saucedemo.com/": {
+        "Domain": "Auto: www.saucedemo.com",
+        "https://www.saucedemo.com/": "Auto: www.saucedemo.com"
+    },
+    "https://demoqa.com/": {
+        "Domain": "Auto: demoqa.com/text-box",
+        "https://demoqa.com/text-box": "Auto: demoqa.com/text-box"
     }
 }
