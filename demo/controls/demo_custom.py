@@ -12,7 +12,7 @@ instead of attempting DOM heuristics or LLM resolution.
 
 HOW IT WORKS
 ------------
-1. pages.json maps the checkout URL to "Checkout Page".
+1. pages/<site>.json maps the checkout URL to "Checkout Page".
 2. The hunt step  Fill 'React Datepicker' with '2026-12-25'  is parsed.
 3. Before any DOM snapshot is taken, core.py checks the registry:
        get_custom_control("Checkout Page", "React Datepicker")
@@ -27,7 +27,7 @@ HANDLER SIGNATURE  (since 0.0.9.30 — breaking change)
     ctx.action     — DSL mode: "input" / "clickable" / "select" / "hover" / "drag" / "locate".
     ctx.value      — type/select value, or None.
     ctx.target     — the quoted target from the step (e.g. "React Datepicker").
-    ctx.page_name  — the resolved pages.json label (matches @custom_control(page=…)).
+    ctx.page_name  — the resolved pages/ label (matches @custom_control(page=…)).
     ctx.url        — page.url snapshot at dispatch time.
     ctx.step       — the original step text (with variables substituted).
 

@@ -40,6 +40,12 @@ Custom controls:
         await ctx.page.locator("#user").fill(ctx.value or "")
 
     # ctx fields: page, action, value, target, page_name, url, step.
+
+Page registry (since 0.0.9.30):
+    Mappings live as one JSON fragment per site under <project>/pages/<safe_netloc>.json.
+    Lean shape:    {"site": "https://example.com/", "Domain": "Example", ".*/login": "Login"}
+    Wrapped shape: {"https://example.com/": {"Domain": "Example", ".*/login": "Login"}}
+    Override the directory via MANUL_PAGES_DIR. Use `manul pages list` / `manul pages migrate`.
 """
 
 from .api import ManulSession

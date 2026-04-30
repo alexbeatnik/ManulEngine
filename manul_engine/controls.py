@@ -5,7 +5,7 @@ Custom Controls registry for ManulEngine.
 Maps ``(page_name, target_element)`` pairs to user Python handlers, bypassing
 the heuristic / AI element resolver for that one target on that one page.
 ``page_name`` is the human-readable label returned by ``lookup_page_name()``
-— i.e. whatever you mapped in ``pages.json``.
+— i.e. whatever you mapped in the per-site fragments under ``<project>/pages/``.
 
 Quickstart — drop a file under ``controls/`` in your project root::
 
@@ -95,7 +95,7 @@ def custom_control(page: str, target: str) -> Callable:
 
     Args:
         page:   The page name as returned by ``lookup_page_name()``
-                (case-insensitive). Must match a label in your ``pages.json``.
+                (case-insensitive). Must match a label in your ``pages/`` fragments.
         target: The quoted target element name from the ``.hunt`` step
                 (case-insensitive).
 
@@ -155,8 +155,8 @@ def diagnose_custom_control_miss(page_name: str, target_name: str) -> str | None
     """Return a one-line hint when a target has a control on a *different* page.
 
     The most common authoring mistake is mismatched ``page=`` vs. the label
-    in ``pages.json``. When a step's target has a registered handler under
-    some *other* page name, surface that to the user instead of silently
+    in the ``pages/`` fragments. When a step's target has a registered handler
+    under some *other* page name, surface that to the user instead of silently
     falling through to heuristic resolution.
 
     Returns ``None`` when there is no near-match (heuristic resolution is
@@ -176,7 +176,8 @@ def diagnose_custom_control_miss(page_name: str, target_name: str) -> str | None
     return (
         f"⚠️  CUSTOM CONTROL MISS — target '{target_name}' is registered for {pretty} "
         f"but the current page resolves to '{page_name}'. "
-        f"Fix: align @custom_control(page=…) with pages.json, or update pages.json."
+        f"Fix: align @custom_control(page=…) with the matching pages/*.json fragment, "
+        f"or update that fragment."
     )
 
 

@@ -1607,8 +1607,8 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                 if row_vars:
                     self.memory.set_many(row_vars, ScopedVariables.LEVEL_ROW)
                 # Cache lookup_page_name() results within this mission.
-                # The cache is invalidated when pages.json is modified on disk so live
-                # edits made during a long run are still reflected within one step.
+                # The cache is invalidated when any pages/*.json fragment is modified
+                # so live edits made during a long run are still reflected within one step.
                 _cc_page_cache: dict[str, str] = {}
                 _cc_pages_mtime: float = 0.0
                 action_index = 0

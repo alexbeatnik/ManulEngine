@@ -231,6 +231,64 @@ def test_lookup_auto_populate() -> None:
             _sh.rmtree(tmp_dir, ignore_errors=True)
 
 
+# ── 6b. pages/ directory loader — lean & wrapped fragment shapes ─────────────
+
+
+def test_pages_dir_lean_and_wrapped() -> None:
+    import shutil
+    from manul_engine.prompts import _load_pages_dir, _safe_site_filename
+
+    tmp = Path(tempfile.mkdtemp(prefix="manul_pages_dir_"))
+    try:
+        # Lean form with explicit "site" field.
+        (tmp / "example.com.json").write_text(
+            json.dumps(
+                {
+                    "site": "https://example.com/",
+                    "Domain": "Example",
+                    ".*/login": "Login Page",
+                }
+            ),
+            encoding="utf-8",
+        )
+        # Wrapped form (back-compat shape).
+        (tmp / "shop.json").write_text(
+            json.dumps({"https://shop.com/": {"Domain": "Shop", ".*/cart": "Cart"}}),
+            encoding="utf-8",
+        )
+        # Malformed: no "site" field, lean form. Should be skipped (and warn).
+        (tmp / "broken.json").write_text(
+            json.dumps({"Domain": "Orphan"}),
+            encoding="utf-8",
+        )
+
+        import warnings as _warnings
+
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("ignore")
+            registry = _load_pages_dir(tmp)
+
+        _assert("https://example.com/" in registry, "lean fragment contributes site key")
+        _assert(registry["https://example.com/"].get("Domain") == "Example", "lean Domain preserved")
+        _assert(
+            registry["https://example.com/"].get(".*/login") == "Login Page",
+            "lean pattern preserved",
+        )
+        _assert("https://shop.com/" in registry, "wrapped fragment contributes site key")
+        _assert(registry["https://shop.com/"].get(".*/cart") == "Cart", "wrapped pattern preserved")
+        _assert("Orphan" not in str(registry), "fragment without 'site' field is skipped")
+
+        # _safe_site_filename slugifies special characters in the netloc.
+        _assert(_safe_site_filename("https://www.shop.com/") == "www.shop.com.json", "safe filename basic")
+        _assert(
+            _safe_site_filename("https://api.shop.com:8080/") == "api.shop.com_8080.json",
+            "safe filename strips port colon",
+        )
+        _assert(_safe_site_filename("") == "site.json", "safe filename has fallback")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 # ── 7. _KEY_MAP completeness ─────────────────────────────────────────────────
 
 
@@ -390,6 +448,9 @@ async def run_suite() -> tuple[int, int]:
 
     print("\n  6. lookup_page_name — auto-populate")
     test_lookup_auto_populate()
+
+    print("\n  6b. pages/ directory loader (lean & wrapped fragments)")
+    test_pages_dir_lean_and_wrapped()
 
     print("\n  7. _KEY_MAP completeness")
     test_key_map_expected_keys()

@@ -115,6 +115,19 @@
           "description": "Currently only 'list' is supported. Any other value exits 1."
         }
       ]
+    },
+    {
+      "id": "pages",
+      "syntax": "manul pages [list|migrate]",
+      "description": "Inspect and migrate the per-site page registry. `list` prints every site → pattern → label mapping discovered under pages/. `migrate` splits a legacy pre-0.0.9.30 pages.json into pages/<safe_netloc>.json fragments and renames the original to pages.json.bak.",
+      "positionalArgs": [
+        {
+          "name": "subcommand",
+          "required": false,
+          "default": "list",
+          "description": "Either 'list' (default) or 'migrate'. Any other value exits 1."
+        }
+      ]
     }
   ],
   "flags": [
