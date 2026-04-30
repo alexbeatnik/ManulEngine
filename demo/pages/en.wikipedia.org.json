@@ -1,0 +1,10 @@
+{
+    "site": "https://en.wikipedia.org/",
+    "Domain": "Wikipedia",
+    "https://en.wikipedia.org/wiki/Main_Page": "Wikipedia: Main Page",
+    ".*/wiki/Pallas's_cat": "Wikipedia: Pallas's cat",
+    ".*/wiki/Software_testing": "Wikipedia: Software testing",
+    ".*/wiki/Selenium_\\(software\\)": "Wikipedia: Selenium",
+    ".*/wiki/Playwright_\\(software\\)": "Wikipedia: Playwright",
+    ".*/wiki/Microsoft": "Wikipedia: Microsoft"
+}

@@ -1,0 +1,9 @@
+{
+    "site": "https://www.saucedemo.com/",
+    "Domain": "Swag Labs",
+    ".*/inventory": "Products Catalog",
+    ".*/cart": "Shopping Cart",
+    ".*/checkout-step-one": "Checkout: Your Info",
+    ".*/checkout-step-two": "Checkout: Overview",
+    ".*/checkout-complete": "Checkout: Complete"
+}

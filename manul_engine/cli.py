@@ -14,10 +14,12 @@ Hunt file format: plain text, numbered steps, optional @context / @title headers
 """
 
 import asyncio
+import json
 import os
 import re
 import sys
 import time
+from pathlib import Path
 from typing import NamedTuple
 
 from .helpers import IfBlock, collect_ifblock_lines, parse_hunt_blocks
@@ -83,6 +85,8 @@ Usage:
   manul pack [dir]           — pack a .hunt library into a distributable .huntlib archive
   manul install <source>     — install a .huntlib archive locally (or --global)
   manul controls list        — list all @custom_control handlers discovered under controls/
+  manul pages list           — list every site → pattern → label mapping under pages/
+  manul pages migrate        — split a legacy pages.json into pages/<site>.json fragments
 
 Flags:
   --headless                 — run browser in headless mode
@@ -791,6 +795,62 @@ async def main() -> "int | None":
         dest = _install_pkg(_non_flag_args[1], global_install=_global_flag)
         print(f"📦 Installed to: {dest}")
         return
+
+    if _non_flag_args and _non_flag_args[0] == "pages":
+        from . import prompts as _prompts_pages
+
+        sub = _non_flag_args[1] if len(_non_flag_args) > 1 else "list"
+        pages_dir = _prompts_pages._PAGES_DIR_PATH
+
+        if sub == "list":
+            registry = _prompts_pages._load_pages_dir(pages_dir)
+            if not registry:
+                print(f"No page registrations found in {pages_dir}/. Drop a JSON fragment per site.")
+                return
+            print(f"  PAGES — {pages_dir}")
+            for site in sorted(registry):
+                block = registry[site]
+                domain = block.get("Domain", "(no Domain)")
+                print(f"  • {site}  →  {domain}")
+                for pattern, name in sorted(block.items()):
+                    if pattern == "Domain":
+                        continue
+                    print(f"      {pattern}  →  {name}")
+            return
+
+        if sub == "migrate":
+            legacy = Path.cwd() / "pages.json"
+            if not legacy.exists():
+                print(f"No legacy pages.json found in {Path.cwd()}. Nothing to migrate.")
+                return
+            try:
+                with open(legacy, encoding="utf-8") as _lf:
+                    legacy_data = json.load(_lf)
+            except (json.JSONDecodeError, OSError) as exc:
+                print(f"Error: could not read {legacy}: {exc}", file=sys.stderr)
+                sys.exit(1)
+            if not isinstance(legacy_data, dict):
+                print(f"Error: {legacy} is not a JSON object.", file=sys.stderr)
+                sys.exit(1)
+            pages_dir.mkdir(parents=True, exist_ok=True)
+            written = 0
+            for site_root, block in legacy_data.items():
+                if not isinstance(block, dict):
+                    continue
+                fragment = pages_dir / _prompts_pages._safe_site_filename(str(site_root))
+                payload = {"site": str(site_root), **{str(k): str(v) for k, v in block.items()}}
+                with open(fragment, "w", encoding="utf-8") as _wf:
+                    json.dump(payload, _wf, indent=4, ensure_ascii=False)
+                    _wf.write("\n")
+                print(f"  → {fragment}")
+                written += 1
+            backup = legacy.with_suffix(".json.bak")
+            legacy.rename(backup)
+            print(f"\n✅ Migrated {written} site(s) to {pages_dir}/. Old file moved to {backup}.")
+            return
+
+        print(f"Error: unknown 'pages' subcommand: {sub!r}. Try `manul pages list` or `manul pages migrate`.", file=sys.stderr)
+        sys.exit(1)
 
     if _non_flag_args and _non_flag_args[0] == "controls":
         from manul_engine.controls import list_custom_controls, load_custom_controls
