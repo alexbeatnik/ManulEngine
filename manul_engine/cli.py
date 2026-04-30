@@ -145,10 +145,12 @@ class _Tee:
     def __init__(self, path: str) -> None:
         self._term = sys.stdout
         self._file = open(path, "w", encoding="utf-8")
+        self.encoding: str = getattr(self._term, "encoding", "utf-8")
 
-    def write(self, msg: str) -> None:
-        self._term.write(msg)
+    def write(self, msg: str) -> int:
+        n = self._term.write(msg)
         self._file.write(msg)
+        return n
 
     def flush(self) -> None:
         self._term.flush()

@@ -269,7 +269,7 @@ The same runtime and the same DSL serve four use cases:
 - **Custom controls** — `@custom_control(page, target)` decorator lets SDETs handle complex widgets (datepickers, virtual tables, canvas elements) with raw Playwright while the hunt file keeps a single readable step.
 - **Lifecycle hooks** — `@before_all`, `@after_all`, `@before_group`, `@after_group` in `manul_hooks.py` for suite-wide setup and teardown.
 - **HTML reports** — `--html-report` generates a self-contained dark-themed report with accordions, screenshots, tag filters, and run-session merging across CLI invocations.
-- **Docker CI runner** — `ghcr.io/alexbeatnik/manul-engine:0.0.9.29` runs headless in CI with `dumb-init`, non-root user, and `MANUL_*` env overrides.
+- **Docker CI runner** — `ghcr.io/alexbeatnik/manul-engine:0.0.9.30` runs headless in CI with `dumb-init`, non-root user, and `MANUL_*` env overrides.
 
 ---
 
@@ -278,14 +278,14 @@ The same runtime and the same DSL serve four use cases:
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.29
+pip install manul-engine==0.0.9.30
 playwright install
 ```
 
 Optional local AI fallback (not required):
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.29"
+pip install "manul-engine[ai]==0.0.9.30"
 ollama pull qwen2.5:0.5b && ollama serve
 ```
 
@@ -347,7 +347,7 @@ Environment variables (`MANUL_HEADLESS`, `MANUL_BROWSER`, `MANUL_MODEL`, `MANUL_
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.29 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.30 \
   --html-report --screenshot on-fail hunts/
 ```
 
@@ -384,12 +384,12 @@ python demo/benchmarks/run_benchmarks.py         # adversarial DOM fixtures
 
 ManulEngine is alpha-stage and solo-developed. If deterministic, explainable browser automation interests you:
 
-- Try it: `pip install manul-engine==0.0.9.29 && playwright install`
+- Try it: `pip install manul-engine==0.0.9.30 && playwright install`
 - File issues: [github.com/alexbeatnik/ManulEngine/issues](https://github.com/alexbeatnik/ManulEngine/issues)
 
 ---
 
-## What's New in v0.0.9.29
+## What's New in v0.0.9.30
 
 - **Loop constructs (`REPEAT` / `FOR EACH` / `WHILE`):** Iterative execution blocks in `.hunt` files. `REPEAT N TIMES:` for fixed counts, `FOR EACH {var} IN {collection}:` for data iteration, `WHILE <condition>:` for dynamic polling. Full nesting with conditionals, `{i}` auto-counter, WHILE safety limit (100 iterations), empty body validation. 129-assertion test suite.
 - **Complete user guide** — new `docs/` folder with structured documentation: overview, installation, getting started, full DSL syntax reference, reports & explainability, and integration guides.
@@ -406,6 +406,6 @@ ManulEngine is alpha-stage and solo-developed. If deterministic, explainable bro
 
 ## License
 
-**Version:** 0.0.9.29
+**Version:** 0.0.9.30
 
 Apache-2.0.

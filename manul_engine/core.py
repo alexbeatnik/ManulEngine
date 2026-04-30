@@ -15,10 +15,12 @@ drag-and-drop, click/type/select/hover via _execute_step).
 """
 
 import asyncio
+import base64
 import inspect
 import json
 import os
 import re
+import sys
 import time
 import traceback
 from os import environ as _environ
@@ -33,9 +35,11 @@ if TYPE_CHECKING:
     from ._types import ElementSnapshot  # noqa: F401
 
 from . import prompts
+from . import prompts as _prompts_mod  # alias for CUSTOM_CONTROLS_DIRS access
 from .actions import _ActionsMixin
 from .cache import _ControlsCacheMixin
 from .config import EngineConfig
+from .controls import get_custom_control, load_custom_controls
 from .debug import _DebugMixin
 from .exceptions import ConfigurationError
 from .helpers import (
@@ -56,13 +60,11 @@ from .hooks import bind_hook_result, execute_hook_line
 from .js_scripts import SNAPSHOT_JS
 from .llm import create_provider
 from .logging_config import logger
+from .reporting import BlockResult, MissionResult, StepResult
 from .scoring import SCALE, score_elements
+from .variables import ScopedVariables
 
 _log = logger.getChild("core")
-from . import prompts as _prompts_mod  # for CUSTOM_CONTROLS_DIRS access
-from .controls import get_custom_control, load_custom_controls
-from .reporting import BlockResult, MissionResult, StepResult
-from .variables import ScopedVariables
 
 # ── Pre-compiled patterns ─────────────────────────────────────────────────────
 _RE_NUMBERED_PREFIX = re.compile(r"^\s*\d+\.\s*")
@@ -229,6 +231,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         self.memory.clear_runtime()
         self.learned_elements.clear()
         self.last_xpath = None
+        self._annotate_line_offset = 0
 
     # ── Persistent controls cache ─────────────────────────────────────
     # All cache methods live in engine/cache.py (_ControlsCacheMixin).
@@ -422,31 +425,35 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
 
     @staticmethod
     def _print_explain(step: str, search_texts: list[str], top: list[dict]) -> None:
-        """Print a formatted score breakdown for the top candidates."""
+        """Print a formatted score breakdown for the top candidates to stderr."""
         target_str = ", ".join(search_texts) if search_texts else "(blind)"
-        print(f'\n    ┌─ 🔍 EXPLAIN: Target = "{target_str}"')
-        print(f"    │  Step: {step}")
-        print(f"    │  Top {len(top)} candidates:")
+        lines = [
+            f'\n    ┌─ 🔍 EXPLAIN: Target = "{target_str}"',
+            f"    │  Step: {step}",
+            f"    │  Top {len(top)} candidates:",
+        ]
         for rank, el in enumerate(top, 1):
             name = compact_log_field(el.get("name", ""), "MANUL_LOG_NAME_MAXLEN")
             tag = el.get("tag_name", "?")
             score = el.get("score", 0)
             expl = el.get("_explain")
             if expl:
-                print("    │")
-                print(f'    │  #{rank}  <{tag}> "{name}"  → Total: {expl["total"]:.3f}')
-                print(f"    │       Text:       {expl['text']:>+.3f}")
-                print(f"    │       Attributes: {expl['attributes']:>+.3f}")
-                print(f"    │       Semantics:  {expl['semantics']:>+.3f}")
-                print(f"    │       Proximity:  {expl['proximity']:>+.3f}")
-                print(f"    │       Cache:      {expl['cache']:>+.3f}")
+                lines.append("    │")
+                lines.append(f'    │  #{rank}  <{tag}> "{name}"  → Total: {expl["total"]:.3f}')
+                lines.append(f"    │       Text:       {expl['text']:>+.3f}")
+                lines.append(f"    │       Attributes: {expl['attributes']:>+.3f}")
+                lines.append(f"    │       Semantics:  {expl['semantics']:>+.3f}")
+                lines.append(f"    │       Proximity:  {expl['proximity']:>+.3f}")
+                lines.append(f"    │       Cache:      {expl['cache']:>+.3f}")
                 if expl["penalty"] < 1.0:
-                    print(f"    │       Penalty:    ×{expl['penalty']:.1f}")
+                    lines.append(f"    │       Penalty:    ×{expl['penalty']:.1f}")
                 if "ctx_kind" in expl:
                     ctx_label = expl["ctx_kind"].upper().replace("_", " ")
-                    print(f"    │       Context:    {ctx_label} (raw={expl.get('ctx_prox_raw', 0):.3f})")
+                    lines.append(
+                        f"    │       Context:    {ctx_label} (raw={expl.get('ctx_prox_raw', 0):.3f})"
+                    )
             else:
-                print(f'    │  #{rank}  <{tag}> "{name}"  → Score: {score}')
+                lines.append(f'    │  #{rank}  <{tag}> "{name}"  → Score: {score}')
         winner = top[0]
         winner_expl = winner.get("_explain")
         winner_name = compact_log_field(winner.get("name", ""), "MANUL_LOG_NAME_MAXLEN")
@@ -457,9 +464,11 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             rect_top = winner.get("rect_top", 0)
             rect_left = winner.get("rect_left", 0)
             ctx_summary = f" [{winner_expl['ctx_kind'].upper().replace('_', ' ')} at ({rect_left},{rect_top})]"
-        print("    │")
-        print(f'    └─ ✅ Decision: Selected "{winner_name}" with score {winner_display}{ctx_summary}')
-        print()
+        lines.append("    │")
+        lines.append(f'    └─ ✅ Decision: Selected "{winner_name}" with score {winner_display}{ctx_summary}')
+        lines.append("")
+        sys.stderr.write("\n".join(lines) + "\n")
+        sys.stderr.flush()
 
     # ── Scoring (delegates to scoring module) ─
 
@@ -942,10 +951,8 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                 # File-line breakpoint check for conditional body actions.
                 _temp_break_added = False
                 if self._break_file_lines and ba_line and ba_line in self._break_file_lines:
-                    import sys as _sys
-
                     step_kind = classify_step(ba)
-                    if step_kind != "action" and not _sys.stdin.isatty():
+                    if step_kind != "action" and not sys.stdin.isatty():
                         print(f"    🔴 BREAKPOINT at line {ba_line}")
                         await self._debug_prompt(page, ba, action_index)
                     elif step_kind != "action":
@@ -1218,10 +1225,8 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                 # File-line breakpoint check for loop body actions.
                 _temp_break_added = False
                 if self._break_file_lines and ba_line and ba_line in self._break_file_lines:
-                    import sys as _sys
-
                     step_kind = classify_step(ba)
-                    if step_kind != "action" and not _sys.stdin.isatty():
+                    if step_kind != "action" and not sys.stdin.isatty():
                         print(f"    🔴 BREAKPOINT at line {ba_line}")
                         await self._debug_prompt(page, ba, action_index)
                     elif step_kind != "action":
@@ -1403,9 +1408,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                 print(self.memory.dump())
 
             elif step_kind == "debug":
-                import sys as _sys
-
-                if not _sys.stdin.isatty():
+                if not sys.stdin.isatty():
                     print("      🔎 DEBUG/PAUSE step (conditional branch)")
                     await self._debug_prompt(page, step, action_index)
                 else:
@@ -1482,10 +1485,8 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         _ss_b64: str | None = None
         if _screenshot_mode == "always" or (_screenshot_mode == "on-fail" and not _step_ok):
             try:
-                import base64 as _b64
-
                 _ss_bytes = await page.screenshot(type="png")
-                _ss_b64 = _b64.b64encode(_ss_bytes).decode("ascii")
+                _ss_b64 = base64.b64encode(_ss_bytes).decode("ascii")
             except Exception as exc:
                 _log.debug("Screenshot capture failed: %s", exc)
 
@@ -1553,45 +1554,45 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             if ctx is None or page is None:
                 return browser  # it's actually the MissionResult
 
-            parsed_task = await self._parse_task(task)
-
-            blocks = parse_hunt_blocks(parsed_task, step_file_lines)
-            if not blocks:
-                return MissionResult(
-                    file=hunt_file or "", name=Path(hunt_file).name if hunt_file else "", status="fail"
-                )
-
-            ok = True
-            done = False
-            _step_results: list[StepResult] = []
-            _block_results: list[BlockResult] = []
-            _soft_errors: list[str] = []
-            _screenshot_mode = screenshot_mode
-            _action_file_lines = [line for block in blocks for line in block.action_lines]
-            # Clear per-mission scopes to avoid stale values leaking between
-            # runs of the same ManulEngine instance.
-            self.memory.clear_level(ScopedVariables.LEVEL_ROW)
-            self.memory.clear_level(ScopedVariables.LEVEL_MISSION)
-            self.memory.clear_level(ScopedVariables.LEVEL_IMPORT)
-            # Pre-populate scoped variable levels.
-            # Level 5 (lowest): Import vars from @import file @var: declarations.
-            if import_vars:
-                self.memory.set_many(import_vars, ScopedVariables.LEVEL_IMPORT)
-            # Level 4: Global vars from CLI / lifecycle hooks.
-            if global_vars:
-                self.memory.set_many(global_vars, ScopedVariables.LEVEL_GLOBAL)
-            # Level 3: Mission vars declared via @var: in the hunt file header.
-            if initial_vars:
-                self.memory.set_many(initial_vars, ScopedVariables.LEVEL_MISSION)
-            # Level 1 (highest): Row vars from @data iteration.
-            if row_vars:
-                self.memory.set_many(row_vars, ScopedVariables.LEVEL_ROW)
-            # Cache lookup_page_name() results within this mission.
-            # The cache is invalidated when pages.json is modified on disk so live
-            # edits made during a long run are still reflected within one step.
-            _cc_page_cache: dict[str, str] = {}
-            _cc_pages_mtime: float = 0.0
             try:
+                parsed_task = await self._parse_task(task)
+
+                blocks = parse_hunt_blocks(parsed_task, step_file_lines)
+                if not blocks:
+                    return MissionResult(
+                        file=hunt_file or "", name=Path(hunt_file).name if hunt_file else "", status="fail"
+                    )
+
+                ok = True
+                done = False
+                _step_results: list[StepResult] = []
+                _block_results: list[BlockResult] = []
+                _soft_errors: list[str] = []
+                _screenshot_mode = screenshot_mode
+                _action_file_lines = [line for block in blocks for line in block.action_lines]
+                # Clear per-mission scopes to avoid stale values leaking between
+                # runs of the same ManulEngine instance.
+                self.memory.clear_level(ScopedVariables.LEVEL_ROW)
+                self.memory.clear_level(ScopedVariables.LEVEL_MISSION)
+                self.memory.clear_level(ScopedVariables.LEVEL_IMPORT)
+                # Pre-populate scoped variable levels.
+                # Level 5 (lowest): Import vars from @import file @var: declarations.
+                if import_vars:
+                    self.memory.set_many(import_vars, ScopedVariables.LEVEL_IMPORT)
+                # Level 4: Global vars from CLI / lifecycle hooks.
+                if global_vars:
+                    self.memory.set_many(global_vars, ScopedVariables.LEVEL_GLOBAL)
+                # Level 3: Mission vars declared via @var: in the hunt file header.
+                if initial_vars:
+                    self.memory.set_many(initial_vars, ScopedVariables.LEVEL_MISSION)
+                # Level 1 (highest): Row vars from @data iteration.
+                if row_vars:
+                    self.memory.set_many(row_vars, ScopedVariables.LEVEL_ROW)
+                # Cache lookup_page_name() results within this mission.
+                # The cache is invalidated when pages.json is modified on disk so live
+                # edits made during a long run are still reflected within one step.
+                _cc_page_cache: dict[str, str] = {}
+                _cc_pages_mtime: float = 0.0
                 action_index = 0
                 for block in blocks:
                     block_started_perf = time.perf_counter()
@@ -1718,9 +1719,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                         if self.debug_mode and _is_system_step:
                             await self._debug_prompt(page, step, action_index)
                         elif not self.debug_mode and _should_break and _is_system_step:
-                            import sys as _sys
-
-                            if not _sys.stdin.isatty():
+                            if not sys.stdin.isatty():
                                 print(f"    🔴 BREAKPOINT at action {action_index}")
                                 await self._debug_prompt(page, step, action_index)
                             else:
@@ -1901,9 +1900,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
 
                             elif step_kind == "debug":
                                 if not self.debug_mode:
-                                    import sys as _sys
-
-                                    if not _sys.stdin.isatty():
+                                    if not sys.stdin.isatty():
                                         print("    🔎 DEBUG/PAUSE step")
                                         await self._debug_prompt(page, step, action_index)
                                     else:
@@ -1973,10 +1970,8 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                             _ss_b64: str | None = None
                             if _screenshot_mode == "always" or (_screenshot_mode == "on-fail" and not _step_ok):
                                 try:
-                                    import base64 as _b64
-
                                     _ss_bytes = await page.screenshot(type="png")
-                                    _ss_b64 = _b64.b64encode(_ss_bytes).decode("ascii")
+                                    _ss_b64 = base64.b64encode(_ss_bytes).decode("ascii")
                                 except Exception as exc:
                                     _log.debug("Screenshot capture failed: %s", exc)
                             if _step_ok:
