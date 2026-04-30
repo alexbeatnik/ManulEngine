@@ -69,9 +69,9 @@ class ControlContext:
         step:      Original step text (with ``{variables}`` substituted).
     """
 
-    page: "Page"
+    page: Page
     action: str
-    value: "str | None"
+    value: str | None
     target: str
     page_name: str
     url: str

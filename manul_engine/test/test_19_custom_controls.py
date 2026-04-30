@@ -421,7 +421,7 @@ def _test_new_surface() -> None:
         try:
 
             @custom_control(page="Old Page", target="Old Target")
-            def _legacy(page, action_type, value):  # noqa: ARG001
+            def _legacy(page, action_type, value):
                 pass
         except TypeError as exc:
             rejected = "ControlContext" in str(exc) and "0.0.9.30" in str(exc)
