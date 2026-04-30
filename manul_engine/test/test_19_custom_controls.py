@@ -8,8 +8,13 @@ Tests:
   1. Registry correctness  — decorator stores the handler keyed by
      (page_lower, target_lower); lookup is case-insensitive.
   2. Engine interception   — when a step targets a registered control the
-     custom handler is called with the correct (page, mode, value) arguments
-     and standard DOM resolution (_execute_step) is bypassed entirely.
+     custom handler is called with a ControlContext and standard DOM
+     resolution (_execute_step) is bypassed entirely.
+  3. Pre-flight extraction & lazy loading — extract_required_controls only
+     loads files whose declared targets appear in the mission text.
+  4. Signature enforcement & miss-diagnostics & list_custom_controls — the
+     0.0.9.30 surface: legacy 3-arg handlers are rejected, sibling-page
+     misses produce a hint, and list_custom_controls() returns the registry.
 
 Entry point ``run_suite()`` is picked up by the dev test runner
 (``python run_tests.py``) and must remain async.
@@ -27,9 +32,13 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 from manul_engine.controls import (
     _CUSTOM_CONTROLS,
     _LOADED_FILES,
+    _REGISTRY_META,
+    ControlContext,
     custom_control,
+    diagnose_custom_control_miss,
     extract_required_controls,
     get_custom_control,
+    list_custom_controls,
     load_custom_controls,
 )
 
@@ -50,23 +59,37 @@ def _assert(condition: bool, name: str, detail: str = "") -> None:
         print(f"    ❌  {name}{suffix}")
 
 
+def _isolate_registry():
+    """Return a (saved_controls, saved_meta, saved_files) tuple for restoration."""
+    saved = (dict(_CUSTOM_CONTROLS), dict(_REGISTRY_META), set(_LOADED_FILES))
+    _CUSTOM_CONTROLS.clear()
+    _REGISTRY_META.clear()
+    _LOADED_FILES.clear()
+    return saved
+
+
+def _restore_registry(saved) -> None:
+    s_controls, s_meta, s_files = saved
+    _CUSTOM_CONTROLS.clear()
+    _CUSTOM_CONTROLS.update(s_controls)
+    _REGISTRY_META.clear()
+    _REGISTRY_META.update(s_meta)
+    _LOADED_FILES.clear()
+    _LOADED_FILES.update(s_files)
+
+
 # ── Section 1: Registry correctness ──────────────────────────────────────────
 
 
 def _test_registry() -> None:
     print("\n  ── Registry (decorator + lookup) ────────────────────────────")
 
-    # Isolate: save and restore the registry around this section.
-    saved = dict(_CUSTOM_CONTROLS)
-    _CUSTOM_CONTROLS.clear()
-
+    saved = _isolate_registry()
     try:
         # 1a. Registration adds the handler under the normalised key.
-        call_log: list = []
-
         @custom_control(page="Login Page", target="Username")
-        def _handle_username(page, action_type, value):
-            call_log.append((action_type, value))
+        def _handle_username(ctx: ControlContext) -> None:
+            pass
 
         expected_key = ("login page", "username")
         _assert(
@@ -109,11 +132,11 @@ def _test_registry() -> None:
 
         # 1d. Multiple handlers co-exist without collision.
         @custom_control(page="Login Page", target="Password")
-        def _handle_password(page, action_type, value):
+        def _handle_password(ctx: ControlContext) -> None:
             pass
 
         @custom_control(page="Checkout Page", target="React Datepicker")
-        def _handle_datepicker(page, action_type, value):
+        def _handle_datepicker(ctx: ControlContext) -> None:
             pass
 
         _assert(
@@ -137,17 +160,15 @@ def _test_registry() -> None:
 
         # 1f. Async handlers are stored without modification.
         @custom_control(page="Search Page", target="Date Range")
-        async def _async_handler(page, action_type, value):
+        async def _async_handler(ctx: ControlContext) -> None:
             pass
 
         _assert(
             asyncio.iscoroutinefunction(get_custom_control("Search Page", "Date Range")),
             "async handler stored and detectable via iscoroutinefunction",
         )
-
     finally:
-        _CUSTOM_CONTROLS.clear()
-        _CUSTOM_CONTROLS.update(saved)
+        _restore_registry(saved)
 
 
 # ── Section 2: Engine interception ───────────────────────────────────────────
@@ -156,39 +177,32 @@ def _test_registry() -> None:
 async def _test_interception() -> None:
     print("\n  ── Engine interception (core.py else-branch) ────────────────")
 
-    # Inject a fresh handler into the registry.
-    saved = dict(_CUSTOM_CONTROLS)
-    _CUSTOM_CONTROLS.clear()
+    saved = _isolate_registry()
+    handler_calls: list[ControlContext] = []
 
-    handler_calls: list[tuple] = []
-
-    async def _datepicker_handler(page, action_type: str, value):
-        handler_calls.append((action_type, value))
+    async def _datepicker_handler(ctx: ControlContext) -> None:
+        handler_calls.append(ctx)
 
     _CUSTOM_CONTROLS[("checkout page", "react datepicker")] = _datepicker_handler
+    _REGISTRY_META[("checkout page", "react datepicker")] = {
+        "page": "Checkout Page",
+        "target": "React Datepicker",
+        "handler": "_datepicker_handler",
+        "source": "<test>",
+    }
 
     try:
-        # Build the minimal ManulEngine instance without touching Playwright.
-        # We patch load_custom_controls so it does not scan the filesystem
-        # (which would overwrite our synthetic registry entry).
         from manul_engine.core import ManulEngine
 
         engine = ManulEngine(model=None, disable_cache=True)
-
-        # Patch out the parts of run_mission we do not want to exercise:
-        # - async_playwright launch / close
-        # - _execute_step (must NOT be called when a custom control matches)
-        # - lookup_page_name (returns our synthetic page name)
         execute_step_mock = AsyncMock(return_value=True)
 
-        # Minimal fake Playwright page.
         fake_page = MagicMock()
         fake_page.url = "https://example-shop.com/checkout"
         fake_page.evaluate = AsyncMock(return_value=None)
         fake_page.goto = AsyncMock()
         fake_page.wait_for_load_state = AsyncMock()
 
-        # Fake browser / context.
         fake_ctx = MagicMock()
         fake_ctx.new_page = AsyncMock(return_value=fake_page)
         fake_browser = MagicMock()
@@ -217,31 +231,35 @@ async def _test_interception() -> None:
         _assert(
             len(handler_calls) == 1,
             "custom handler called exactly once",
-            f"calls={handler_calls}",
+            f"calls={len(handler_calls)}",
         )
 
-        # 2b. action_type is "input" (mode detected from "Fill").
+        # 2b. Single arg is a ControlContext (not the legacy 3-tuple).
+        ctx = handler_calls[0] if handler_calls else None
         _assert(
-            handler_calls[0][0] == "input",
-            "handler received action_type='input'",
-            f"got={handler_calls[0][0]!r}",
+            isinstance(ctx, ControlContext),
+            "handler received ControlContext instance",
+            f"got={type(ctx).__name__ if ctx else None}",
         )
 
-        # 2c. value is the last quoted token.
-        _assert(
-            handler_calls[0][1] == "2026-12-25",
-            "handler received value='2026-12-25'",
-            f"got={handler_calls[0][1]!r}",
-        )
+        if isinstance(ctx, ControlContext):
+            # 2c. ctx.action is "input" (mode detected from "Fill").
+            _assert(ctx.action == "input", "ctx.action == 'input'", f"got={ctx.action!r}")
+            # 2d. ctx.value is the last quoted token.
+            _assert(ctx.value == "2026-12-25", "ctx.value == '2026-12-25'", f"got={ctx.value!r}")
+            # 2e. ctx.target / ctx.page_name / ctx.page populated.
+            _assert(ctx.target == "React Datepicker", "ctx.target propagated", f"got={ctx.target!r}")
+            _assert(ctx.page_name == "Checkout Page", "ctx.page_name resolved", f"got={ctx.page_name!r}")
+            _assert(ctx.page is fake_page, "ctx.page is the live Playwright Page")
 
-        # 2d. Standard DOM resolution was NOT called.
+        # 2f. Standard DOM resolution was NOT called.
         _assert(
             execute_step_mock.call_count == 0,
             "_execute_step bypassed when custom control matches",
             f"call_count={execute_step_mock.call_count}",
         )
 
-        # 2e. A step for a non-registered (page, target) falls through to DOM.
+        # 2g. A step for a non-registered (page, target) falls through to DOM.
         handler_calls.clear()
         execute_step_mock.reset_mock()
 
@@ -264,47 +282,43 @@ async def _test_interception() -> None:
             "_execute_step called for non-registered target",
             f"call_count={execute_step_mock.call_count}",
         )
-
     finally:
-        _CUSTOM_CONTROLS.clear()
-        _CUSTOM_CONTROLS.update(saved)
+        _restore_registry(saved)
 
 
 # ── Section 3: Pre-flight extraction & lazy loading ──────────────────────────
 
 
 def _test_extraction_and_lazy_loading() -> None:
-    import tempfile
     import shutil
+    import tempfile
 
     print("\n  ── Pre-flight extraction & lazy loading ─────────────────────")
 
-    # Create a temporary workspace with a controls/ directory.
     tmpdir = tempfile.mkdtemp(prefix="manul_ctrl_test_")
     controls_dir = os.path.join(tmpdir, "controls")
     os.makedirs(controls_dir)
 
     try:
-        # Write two control files — one matching and one not.
+        # New 1-arg signature is mandatory.
         with open(os.path.join(controls_dir, "booking.py"), "w", encoding="utf-8") as f:
             f.write(
                 "from manul_engine.controls import custom_control\n"
                 "@custom_control(page='Booking Page', target='React Datepicker')\n"
-                "async def handle(page, action_type, value): pass\n"
+                "async def handle(ctx): pass\n"
             )
         with open(os.path.join(controls_dir, "admin.py"), "w", encoding="utf-8") as f:
             f.write(
                 "from manul_engine.controls import custom_control\n"
                 "@custom_control(page='Admin Page', target='User Table')\n"
-                "async def handle(page, action_type, value): pass\n"
+                "async def handle(ctx): pass\n"
             )
         with open(os.path.join(controls_dir, "positional.py"), "w", encoding="utf-8") as f:
             f.write(
                 "from manul_engine import custom_control\n"
                 "@custom_control('Some Page', 'Some Target')\n"
-                "async def handle(page, action_type, value): pass\n"
+                "async def handle(ctx): pass\n"
             )
-        # Also a file that should be skipped (underscore prefix).
         with open(os.path.join(controls_dir, "_internal.py"), "w", encoding="utf-8") as f:
             f.write("# internal helper — should never be imported\n")
 
@@ -357,10 +371,7 @@ def _test_extraction_and_lazy_loading() -> None:
             shutil.rmtree(empty_dir)
 
         # 3f. Lazy load only the targeted file — registry gets only that handler.
-        saved = dict(_CUSTOM_CONTROLS)
-        saved_files = set(_LOADED_FILES)
-        _CUSTOM_CONTROLS.clear()
-        _LOADED_FILES.clear()
+        saved = _isolate_registry()
         try:
             load_custom_controls(tmpdir, required_modules={"controls/booking.py"})
             _assert(
@@ -373,8 +384,7 @@ def _test_extraction_and_lazy_loading() -> None:
             )
 
             # 3g. Per-file idempotency: calling again does not re-import.
-            # Replace the handler — if re-imported, it would be overwritten.
-            sentinel = lambda p, a, v: None  # noqa: E731
+            sentinel = lambda ctx: None  # noqa: E731
             _CUSTOM_CONTROLS[("booking page", "react datepicker")] = sentinel
             load_custom_controls(tmpdir, required_modules={"controls/booking.py"})
             _assert(
@@ -382,16 +392,10 @@ def _test_extraction_and_lazy_loading() -> None:
                 "per-file idempotency: second lazy call did not re-import",
             )
         finally:
-            _CUSTOM_CONTROLS.clear()
-            _CUSTOM_CONTROLS.update(saved)
-            _LOADED_FILES.clear()
-            _LOADED_FILES.update(saved_files)
+            _restore_registry(saved)
 
         # 3h. Positional-arg decorator usage is still lazy-loaded correctly.
-        saved = dict(_CUSTOM_CONTROLS)
-        saved_files = set(_LOADED_FILES)
-        _CUSTOM_CONTROLS.clear()
-        _LOADED_FILES.clear()
+        saved = _isolate_registry()
         try:
             load_custom_controls(tmpdir, required_modules=needed_positional)
             _assert(
@@ -399,13 +403,83 @@ def _test_extraction_and_lazy_loading() -> None:
                 "lazy-loaded positional.py registered its handler",
             )
         finally:
-            _CUSTOM_CONTROLS.clear()
-            _CUSTOM_CONTROLS.update(saved)
-            _LOADED_FILES.clear()
-            _LOADED_FILES.update(saved_files)
-
+            _restore_registry(saved)
     finally:
         shutil.rmtree(tmpdir)
+
+
+# ── Section 4: 0.0.9.30 surface — signature, diagnostics, listing ────────────
+
+
+def _test_new_surface() -> None:
+    print("\n  ── 0.0.9.30 surface (sig / miss-hint / listing) ─────────────")
+
+    saved = _isolate_registry()
+    try:
+        # 4a. Legacy 3-arg signature is rejected with a helpful TypeError.
+        rejected = False
+        try:
+
+            @custom_control(page="Old Page", target="Old Target")
+            def _legacy(page, action_type, value):  # noqa: ARG001
+                pass
+        except TypeError as exc:
+            rejected = "ControlContext" in str(exc) and "0.0.9.30" in str(exc)
+
+        _assert(
+            rejected,
+            "legacy (page, action_type, value) signature rejected with migration hint",
+            "expected TypeError mentioning ControlContext + 0.0.9.30",
+        )
+        _assert(
+            ("old page", "old target") not in _CUSTOM_CONTROLS,
+            "rejected handler is NOT added to the registry",
+        )
+
+        # 4b. diagnose_custom_control_miss surfaces sibling-page mismatches.
+        @custom_control(page="Booking Page", target="Date Picker")
+        async def _h(ctx: ControlContext) -> None:
+            pass
+
+        hint = diagnose_custom_control_miss("Checkout Page", "Date Picker")
+        _assert(
+            hint is not None and "Booking Page" in hint and "Checkout Page" in hint,
+            "miss-hint mentions both registered page and current page",
+            f"hint={hint!r}",
+        )
+        _assert(
+            diagnose_custom_control_miss("Checkout Page", "Some Random Field") is None,
+            "miss-hint returns None when no sibling registration exists",
+        )
+        _assert(
+            diagnose_custom_control_miss("Booking Page", "Date Picker") is None,
+            "miss-hint returns None when target IS registered for the current page",
+        )
+
+        # 4c. list_custom_controls returns sorted rows with full metadata.
+        @custom_control(page="Admin Page", target="User Table")
+        async def _h2(ctx: ControlContext) -> None:
+            pass
+
+        rows = list_custom_controls()
+        _assert(
+            len(rows) == 2,
+            "list_custom_controls returns one row per registration",
+            f"len={len(rows)}",
+        )
+        pages = [r["page"] for r in rows]
+        _assert(
+            pages == sorted(pages, key=str.lower),
+            "list_custom_controls is sorted by page (case-insensitive)",
+            f"pages={pages}",
+        )
+        for r in rows:
+            _assert(
+                set(r.keys()) >= {"page", "target", "handler", "source"},
+                f"row has full metadata for {r.get('page')!r}",
+            )
+    finally:
+        _restore_registry(saved)
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
@@ -423,6 +497,7 @@ async def run_suite() -> bool:
     _test_registry()
     await _test_interception()
     _test_extraction_and_lazy_loading()
+    _test_new_surface()
 
     total = _PASS + _FAIL
     print(f"\n📊 SCORE: {_PASS}/{total} passed")

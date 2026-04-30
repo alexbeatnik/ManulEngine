@@ -266,7 +266,7 @@ The same runtime and the same DSL serve four use cases:
       await session.verify("Welcome")
   ```
 - **Smart recorder** — Captures semantic intent (e.g., `Select 'Option' from 'Dropdown'`) instead of brittle pointer events.
-- **Custom controls** — `@custom_control(page, target)` decorator lets SDETs handle complex widgets (datepickers, virtual tables, canvas elements) with raw Playwright while the hunt file keeps a single readable step.
+- **Custom controls** — `@custom_control(page, target)` decorator lets SDETs handle complex widgets (datepickers, virtual tables, canvas elements) with raw Playwright while the hunt file keeps a single readable step. Handlers receive a typed `ControlContext` (`ctx.page` / `ctx.action` / `ctx.value` / `ctx.target` / `ctx.page_name` / `ctx.url` / `ctx.step`); `manul controls list` shows the registry; misses against a sibling page print a one-line hint.
 - **Lifecycle hooks** — `@before_all`, `@after_all`, `@before_group`, `@after_group` in `manul_hooks.py` for suite-wide setup and teardown.
 - **HTML reports** — `--html-report` generates a self-contained dark-themed report with accordions, screenshots, tag filters, and run-session merging across CLI invocations.
 - **Docker CI runner** — `ghcr.io/alexbeatnik/manul-engine:0.0.9.30` runs headless in CI with `dumb-init`, non-root user, and `MANUL_*` env overrides.
@@ -391,8 +391,19 @@ ManulEngine is alpha-stage and solo-developed. If deterministic, explainable bro
 
 ## What's New in v0.0.9.30
 
+- **Custom Controls API redesign — `ControlContext` (BREAKING):** `@custom_control` handlers now accept a single `ControlContext` argument instead of the legacy `(page, action_type, value)` triple. The context exposes `page` (live Playwright Page), `action`, `value`, `target`, `page_name`, `url`, and `step` — handlers no longer guess what the engine is passing them. The decorator validates the signature at registration and rejects the legacy form with a one-line migration hint. **Migration:** replace `async def fn(page, action_type, value)` with `async def fn(ctx: ControlContext)` and read `ctx.page` / `ctx.action` / `ctx.value`.
+- **Custom Controls miss-diagnostics:** when a `.hunt` step's quoted target has a `@custom_control` registered for a *different* `page` label, ManulEngine now prints a one-line hint pointing at the likely `pages.json` mismatch instead of silently falling through to heuristic resolution. Eliminates the most common "my handler isn't firing" debugging session.
+- **Visible dispatch log:** the dispatch log line now includes the resolved page label, action mode, and handler qualname (`🎛️  [CUSTOM CONTROL] 'React Datepicker' on 'Checkout Page' (input) → handle_react_datepicker`) — visible without `--debug`.
+- **`manul controls list` CLI command + `list_custom_controls()` API:** introspect the registry from the terminal or from Python.
+- **Internal hygiene:** lifted 8 function-local imports of stdlib modules (`sys`, `base64`) to module scope in `core.py`; collapsed the import-after-statement block into a single PEP-8 import section.
+
+<details>
+<summary>v0.0.9.29</summary>
+
 - **Loop constructs (`REPEAT` / `FOR EACH` / `WHILE`):** Iterative execution blocks in `.hunt` files. `REPEAT N TIMES:` for fixed counts, `FOR EACH {var} IN {collection}:` for data iteration, `WHILE <condition>:` for dynamic polling. Full nesting with conditionals, `{i}` auto-counter, WHILE safety limit (100 iterations), empty body validation. 129-assertion test suite.
 - **Complete user guide** — new `docs/` folder with structured documentation: overview, installation, getting started, full DSL syntax reference, reports & explainability, and integration guides.
+
+</details>
 
 <details>
 <summary>v0.0.9.28</summary>

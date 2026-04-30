@@ -468,32 +468,50 @@ Custom Controls provide a first-class escape hatch for UI elements that heuristi
 **How it ties into `pages.json`:**
 The page name key in the decorator must match the value returned by `lookup_page_name(page.url)` at runtime — whatever is mapped in `pages.json` for the current URL. This makes the routing declarative: update the page name in `pages.json` and all dependent custom controls follow.
 
-**Decorator syntax:**
+**Decorator syntax (since v0.0.9.30 — single `ControlContext` argument):**
 
 ```python
 # controls/checkout.py
-from manul_engine import custom_control
+from manul_engine import ControlContext, custom_control
 
 @custom_control(page="Checkout Page", target="React Datepicker")
-async def handle_datepicker(page, action_type: str, value: str | None) -> None:
+async def handle_datepicker(ctx: ControlContext) -> None:
     """
-    page        — live Playwright Page
-    action_type — "input" | "clickable" | "select" | "hover" | "drag" | "locate"
-    value       — for 'input' steps: the text to type; None for everything else
+    ctx.page       — live Playwright Page (use ctx.page.locator(...) etc.)
+    ctx.action     — "input" | "clickable" | "select" | "hover" | "drag" | "locate"
+    ctx.value      — typed/selected value, or None for click/hover/locate
+    ctx.target     — quoted target from the step (e.g. "React Datepicker")
+    ctx.page_name  — resolved pages.json label (matches @custom_control(page=…))
+    ctx.url        — page.url at dispatch time
+    ctx.step       — original step text with variables substituted
     """
-    input_loc = page.locator(".react-datepicker__input-container input").first
-    if action_type == "input" and value:
+    input_loc = ctx.page.locator(".react-datepicker__input-container input").first
+    if ctx.action == "input" and ctx.value:
         await input_loc.click()
-        await input_loc.fill(value)
+        await input_loc.fill(ctx.value)
 ```
 
 Both sync and async handlers are accepted; the engine awaits async ones.
 
+> **Breaking change in 0.0.9.30:** the legacy 3-argument signature
+> `(page, action_type, value)` is no longer accepted. Decorating a handler
+> with the old shape raises `TypeError` at registration with a one-line
+> migration hint. To migrate: replace the three positional params with a
+> single `ctx: ControlContext` and read `ctx.page` / `ctx.action` / `ctx.value`.
+
 **Auto-loading:**
-`load_custom_controls(workspace_dir)` is called from `ManulEngine.__init__` with `Path.cwd()`. It imports every `*.py` file (not starting with `_`) from `controls/` in an isolated `ModuleType` — same sandboxing pattern as `[SETUP]`/`[TEARDOWN]` hooks.
+`load_custom_controls(workspace_dir)` runs on the first `run_mission()` call. By default it imports every `*.py` file (not starting with `_`) from `controls/` in an isolated `ModuleType` — same sandboxing pattern as `[SETUP]`/`[TEARDOWN]` hooks. When a mission's required modules are pre-extracted via `extract_required_controls()`, only those files are imported (lazy mode).
 
 **Interception point:**
-In `run_mission()`, the `else` branch (action steps) runs `get_custom_control(page_name, target)` before taking any DOM snapshot. If a handler is found, it is called with `(page, mode, value)` and `_execute_step` is bypassed entirely. If not found, the normal heuristic/AI pipeline runs.
+In both step executors (`run_mission` main loop and `_dispatch_step` for steps inside `IF` / `LOOP` blocks), `get_custom_control(page_name, target)` runs before any DOM snapshot. On a match the handler is invoked with one `ControlContext` and `_execute_step` is bypassed entirely. On a miss, if the *target* is registered for **another** `page_name`, `diagnose_custom_control_miss()` prints a one-line hint pointing at the likely `pages.json` / `@custom_control(page=…)` mismatch — then heuristic/AI resolution runs as usual. The dispatch log line includes the resolved page, action mode, and handler qualname so the routing is visible without `--debug`.
+
+**Inspecting the registry:**
+
+```bash
+manul controls list
+```
+
+Or programmatically: `from manul_engine import list_custom_controls` returns a `[{page, target, handler, source}, …]` list sorted by `(page, target)`.
 
 **Module layout:**
 
@@ -965,7 +983,13 @@ Covered files: `pyproject.toml`, `Dockerfile`, `docker-compose.yml`, `README.md`
 
 ## Release Notes: v0.0.9.30
 
-- **Loop constructs (`REPEAT` / `FOR EACH` / `WHILE`):** New iterative execution blocks with indentation-based bodies. `REPEAT N TIMES:` for fixed iterations, `FOR EACH {var} IN {collection}:` for comma-separated data iteration, `WHILE <condition>:` for condition-driven loops with 100-iteration safety limit. Automatic `{i}` counter (1-based) on every iteration. Full nesting: loops inside conditionals, conditionals inside loops, loops inside loops. Parser in `helpers.py` (`LoopBlock` dataclass, `_consume_loop_block()`), executor in `core.py` (`_execute_loop()`, `_run_loop_body()`). 129-assertion test suite (`test_55_loops.py`).
+- **Custom Controls API redesign — `ControlContext` (BREAKING):** New public `ControlContext` dataclass in `manul_engine/controls.py` (slots, exported from `manul_engine/__init__.py` and listed in `__all__`). `@custom_control` handlers now accept exactly one positional argument; the registry-time `_validate_handler_signature()` rejects the legacy `(page, action_type, value)` form with a `TypeError` whose message includes both the migration recipe (`async def fn(ctx): await ctx.page.locator(...).fill(ctx.value or '')`) and the breaking-change version (`0.0.9.30`). Both dispatch sites in `core.py` — main loop in `run_mission()` and `_dispatch_step()` for steps inside `IF` / `LOOP` blocks — construct a `ControlContext(page, action, value, target, page_name, url, step)` and pass it as a single argument; the conditional-branch dispatch was previously inconsistent (no `_cc_page` in its log line, no diagnostics) and has been brought into parity with the main-loop path.
+- **Custom Controls miss-diagnostics:** new `diagnose_custom_control_miss(page_name, target_name)` in `manul_engine/controls.py` consults the new `_REGISTRY_META` map (populated alongside `_CUSTOM_CONTROLS` at registration) and returns a one-line hint when the same `target` is registered for a *different* `page` label. Both dispatch sites print the hint just before falling through to `_execute_step()`. Eliminates the most common "my @custom_control isn't firing" debugging session by surfacing the likely `pages.json` ↔ `@custom_control(page=…)` mismatch immediately.
+- **`list_custom_controls()` API + `manul controls list` CLI:** new public function returning `[{page, target, handler, source}, …]` sorted by `(page, target)`. New CLI subcommand routed in `cli.py:main()` after `install`; eagerly calls `load_custom_controls()` against CWD and prints a fixed-width table (PAGE / TARGET / HANDLER / SOURCE).
+- **Visible dispatch log:** the dispatch log line in both executors now reads `🎛️  [CUSTOM CONTROL] '<target>' on '<page_name>' (<action>) → <handler.__qualname__>`; previously the conditional-branch path omitted both `<page_name>` and the handler name, making routing invisible without `--debug`.
+- **`test_19_custom_controls.py` rewritten:** legacy 3-arg signatures across registry / interception / lazy-load tests migrated to the new shape; added Section 4 covering signature rejection (TypeError contents, registry not mutated), `diagnose_custom_control_miss()` (sibling-page hit, no-sibling miss returns `None`, target-on-current-page returns `None`), and `list_custom_controls()` (count, sort, full metadata). Total assertions in this file ≈ 35.
+- **Internal hygiene in `core.py`:** lifted 6× `import sys as _sys` and 2× `import base64 as _b64` from per-call function-locals to module-level `import sys` / `import base64`; collapsed the import-after-statement block (`from . import prompts as _prompts_mod` and three siblings placed after `_log = logger.getChild("core")`) into a single PEP-8 import section. The `_DebugMixin._debug_prompt()` `finally` block now `await`s the cancelled `abort_poll_task` and swallows `CancelledError` — silences a stray `Task was destroyed but it is pending!` warning when a debug pause is aborted via the in-browser modal. The `_Tee` wrapper in `cli.py` now reports an `encoding` attribute and returns the byte count from `write()` so it satisfies the `IO[str]` protocol cleanly.
+- **Loop constructs (`REPEAT` / `FOR EACH` / `WHILE`):** (carried over from 0.0.9.29) New iterative execution blocks with indentation-based bodies. `REPEAT N TIMES:` for fixed iterations, `FOR EACH {var} IN {collection}:` for comma-separated data iteration, `WHILE <condition>:` for condition-driven loops with 100-iteration safety limit. Automatic `{i}` counter (1-based) on every iteration. Full nesting: loops inside conditionals, conditionals inside loops, loops inside loops. Parser in `helpers.py` (`LoopBlock` dataclass, `_consume_loop_block()`), executor in `core.py` (`_execute_loop()`, `_run_loop_body()`). 129-assertion test suite (`test_55_loops.py`).
 - **Conditional blocks (`IF` / `ELIF` / `ELSE`):** Block-style branching based on element existence, visible text, variable comparisons, contains checks, and truthy evaluation. Indentation-based body detection. Nested conditionals supported. Parser in `helpers.py` (`IfBlock`, `ConditionalBranch`), evaluator in `conditionals.py` (`evaluate_condition()`), executor in `core.py` (`_evaluate_conditional()`). 97-assertion test suite (`test_54_conditionals.py`).
 - **What-If Analysis REPL (`ExplainNextDebugger`):** New `explain_next.py` module with interactive debug REPL for hypothetical step evaluation. During a debug pause, type `w` (terminal) to enter the REPL or `e` / send `explain-next` (extension protocol) for one-shot evaluation. Combines DOMScorer heuristic scoring with optional LLM analysis to produce a 0–10 confidence rating, element match info, risk assessment, and corrective suggestions. The best heuristic match is highlighted with a persistent magenta outline on the live page via the engine's `_debug_highlight` / `_clear_debug_highlight` methods. Classes: `PageContext` (read-only snapshot), `WhatIfResult` (structured result with `confidence_label` property and `format_report()`), `_HeuristicHit` (best candidate from scoring), `ExplainNextDebugger` (REPL controller). REPL commands: `!execute [N]`, `!history`, `!context`, `!quit`. Extension protocol: `explain-next` token emits `\x00MANUL_EXPLAIN_NEXT\x00{json}` marker with serialized `WhatIfResult` via `_result_to_dict()`; the `what-if` interactive REPL is disabled in extension protocol mode (stdin reserved for control tokens). Hooked into `debug.py` via `_get_explain_next()` lazy factory and `_what_if_execute_step` attribute in `core.py`. 112-assertion test suite (`test_53_explain_next.py`).
 - **What-If execute bug fixes:** `_execute_step()` recursive call for What-If replacement now passes `strategic_context` and `step_idx` by keyword (was misordered as positional args, breaking debug/breakpoint behavior). Injected What-If steps in `core.py` now run through `substitute_memory()` so `{var}` placeholders are resolved before execution.

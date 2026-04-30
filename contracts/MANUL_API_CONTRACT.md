@@ -171,6 +171,38 @@
 
   "internalRouting": "Each method generates a synthetic DSL step string internally and calls the appropriate ManulEngine._execute_step / _handle_* handler — the same code path used by .hunt file execution.",
 
+  "customControls": {
+    "importPath": "from manul_engine import ControlContext, custom_control, list_custom_controls",
+    "decorator": {
+      "signature": "@custom_control(page: str, target: str)",
+      "description": "Register a function as the handler for (page, target). Page must match lookup_page_name(page.url). Target is matched case-insensitively against the quoted token in the .hunt step. Both sync and async handlers are accepted; the engine awaits async ones.",
+      "handlerSignature": "(ctx: ControlContext) -> Any | Awaitable[Any]",
+      "validation": "Decorator validates the signature at registration via inspect.signature(). Handlers with the legacy 3-argument shape (page, action_type, value) are rejected with TypeError; the message names ControlContext, the breaking version (0.0.9.30), and a one-line migration recipe."
+    },
+    "ControlContext": {
+      "module": "manul_engine.controls",
+      "kind": "dataclass(slots=True)",
+      "fields": [
+        { "name": "page",      "type": "playwright.async_api.Page", "description": "Live Playwright Page. Use ctx.page.locator(...) etc." },
+        { "name": "action",    "type": "str",                       "description": "DSL mode: 'input' | 'clickable' | 'select' | 'hover' | 'drag' | 'locate'." },
+        { "name": "value",     "type": "str | None",                "description": "Type/select value. None for click/hover/locate." },
+        { "name": "target",    "type": "str",                       "description": "Quoted target token from the step (preserves case)." },
+        { "name": "page_name", "type": "str",                       "description": "Resolved pages.json label that matched @custom_control(page=…)." },
+        { "name": "url",       "type": "str",                       "description": "page.url snapshot at dispatch time." },
+        { "name": "step",      "type": "str",                       "description": "Original step text with {variables} substituted." }
+      ]
+    },
+    "introspection": {
+      "function": "list_custom_controls() -> list[dict[str, str]]",
+      "description": "Returns one dict per registration: {page, target, handler, source}, sorted by (page.lower(), target.lower()). Empty list when nothing is registered."
+    },
+    "diagnostics": {
+      "function": "diagnose_custom_control_miss(page_name, target_name) -> str | None",
+      "description": "Returns a one-line hint when a step's target has a registered handler under a DIFFERENT page label (typical pages.json ↔ @custom_control(page=…) mismatch). Returns None when the target is unregistered or already matches the current page. Both run_mission() and _dispatch_step() print the hint just before falling through to heuristic resolution."
+    }
+  },
+
+
   "usageExamples": {
     "purePython": [
       "async with ManulSession(headless=True) as session:",

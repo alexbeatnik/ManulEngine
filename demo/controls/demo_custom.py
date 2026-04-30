@@ -4,7 +4,7 @@ Demo custom control: React Datepicker on the Checkout Page.
 
 This file demonstrates the Custom Controls pattern for ManulEngine.
 Drop any .py file into the controls/ directory at your project root and
-the engine will auto-load it on startup via load_custom_controls().
+the engine will auto-load it on demand via load_custom_controls().
 
 The @custom_control decorator registers a (page, target) pair so that
 whenever the engine encounters a matching step it calls this function
@@ -16,31 +16,31 @@ HOW IT WORKS
 2. The hunt step  Fill 'React Datepicker' with '2026-12-25'  is parsed.
 3. Before any DOM snapshot is taken, core.py checks the registry:
        get_custom_control("Checkout Page", "React Datepicker")
-4. This function is returned and called with (page, "input", "2026-12-25").
+4. This function is returned and called with a single ControlContext.
 5. Standard heuristics and AI resolution are bypassed entirely.
 
-HANDLER SIGNATURE
------------------
-    async def handler(page, action_type: str, value: str | None) -> None
+HANDLER SIGNATURE  (since 0.0.9.30 — breaking change)
+-----------------------------------------------------
+    async def handler(ctx: ControlContext) -> None
 
-    page          Playwright Page object (live browser context)
-    action_type   Detected mode string: "input", "clickable", "select",
-                  "hover", "drag", or "locate"
-    value         For "input" steps: the text to type (last quoted arg).
-                  For "select" steps: the option being selected (first quoted arg).
-                  For "drag" steps: the drop destination label (last quoted arg).
-                  For "clickable", "hover", and "locate" steps: None.
+    ctx.page       — live Playwright Page (use it as `ctx.page.locator(...)`).
+    ctx.action     — DSL mode: "input" / "clickable" / "select" / "hover" / "drag" / "locate".
+    ctx.value      — type/select value, or None.
+    ctx.target     — the quoted target from the step (e.g. "React Datepicker").
+    ctx.page_name  — the resolved pages.json label (matches @custom_control(page=…)).
+    ctx.url        — page.url snapshot at dispatch time.
+    ctx.step       — the original step text (with variables substituted).
 
 Both sync and async handlers are supported; the engine awaits async ones.
 """
 
 from __future__ import annotations
 
-from manul_engine.controls import custom_control
+from manul_engine import ControlContext, custom_control
 
 
 @custom_control(page="Checkout Page", target="React Datepicker")
-async def handle_react_datepicker(page, action_type: str, value: str | None) -> None:
+async def handle_react_datepicker(ctx: ControlContext) -> None:
     """
     Interact with a React-based custom datepicker widget.
 
@@ -52,23 +52,24 @@ async def handle_react_datepicker(page, action_type: str, value: str | None) -> 
     Rather than fighting heuristics against 31 identically-styled day
     cells, we drive the widget with direct Playwright locators.
     """
+    page = ctx.page
     input_selector = ".react-datepicker__input-container input"
     input_loc = page.locator(input_selector).first
 
-    if action_type == "input" and value:
+    if ctx.action == "input" and ctx.value:
         # Open the calendar and clear any pre-filled date.
         await input_loc.click()
         await input_loc.fill("")
 
         # Parse the incoming date string.  Accepted format: YYYY-MM-DD.
         try:
-            year_str, month_str, day_str = value.split("-")
+            year_str, month_str, day_str = ctx.value.split("-")
             target_year = int(year_str)
             target_month = int(month_str)
             target_day = int(day_str)
         except ValueError:
             # Fallback: type the raw value directly and let the widget handle it.
-            await input_loc.type(value, delay=50)
+            await input_loc.type(ctx.value, delay=50)
             return
 
         # Navigate month / year until the calendar shows the target month.
@@ -111,7 +112,7 @@ async def handle_react_datepicker(page, action_type: str, value: str | None) -> 
         ).first
         await day_cell.click()
 
-    elif action_type in ("clickable", "locate"):
+    elif ctx.action in ("clickable", "locate"):
         # For a plain click or locate just focus the input to open the popup.
         await input_loc.click()
 

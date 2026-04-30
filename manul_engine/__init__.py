@@ -32,16 +32,19 @@ Usage (DSL runner — .hunt files):
     await manul.run_mission("1. Navigate to ...")
 
 Custom controls:
-    from manul_engine import ManulEngine, custom_control
+    from manul_engine import ControlContext, ManulEngine, custom_control
 
     @custom_control(page="Login Page", target="Username")
-    async def handle_username(page, action_type, value):
-        await page.locator("#user").fill(value or "")
+    async def handle_username(ctx: ControlContext) -> None:
+        # ctx.page is a live Playwright Page.
+        await ctx.page.locator("#user").fill(ctx.value or "")
+
+    # ctx fields: page, action, value, target, page_name, url, step.
 """
 
 from .api import ManulSession
 from .config import EngineConfig
-from .controls import custom_control
+from .controls import ControlContext, custom_control, list_custom_controls
 from .core import ManulEngine
 from .exceptions import (
     ConditionalSyntaxError,
@@ -68,6 +71,7 @@ from .variables import ScopedVariables
 __all__ = [
     "ConditionalSyntaxError",
     "ConfigurationError",
+    "ControlContext",
     "ElementResolutionError",
     "EngineConfig",
     "ExplainNextDebugger",
@@ -88,4 +92,5 @@ __all__ = [
     "before_all",
     "before_group",
     "custom_control",
+    "list_custom_controls",
 ]

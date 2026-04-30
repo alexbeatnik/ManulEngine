@@ -102,6 +102,19 @@
         }
       ],
       "specificFlags": ["--global"]
+    },
+    {
+      "id": "controls",
+      "syntax": "manul controls list",
+      "description": "List all @custom_control handlers discovered under the configured custom_controls_dirs (default: controls/) in the current working directory. Prints a fixed-width table with PAGE / TARGET / HANDLER / SOURCE columns. Eagerly imports every non-underscore .py file in each scan dir, then calls list_custom_controls().",
+      "positionalArgs": [
+        {
+          "name": "subcommand",
+          "required": false,
+          "default": "list",
+          "description": "Currently only 'list' is supported. Any other value exits 1."
+        }
+      ]
     }
   ],
   "flags": [

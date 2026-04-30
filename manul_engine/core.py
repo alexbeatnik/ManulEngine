@@ -39,7 +39,7 @@ from . import prompts as _prompts_mod  # alias for CUSTOM_CONTROLS_DIRS access
 from .actions import _ActionsMixin
 from .cache import _ControlsCacheMixin
 from .config import EngineConfig
-from .controls import get_custom_control, load_custom_controls
+from .controls import ControlContext, diagnose_custom_control_miss, get_custom_control, load_custom_controls
 from .debug import _DebugMixin
 from .exceptions import ConfigurationError
 from .helpers import (
@@ -1458,22 +1458,40 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                 else:
                     _cc_target, _cc_value = "", None
                 _cc_handler = None
+                _cc_page = ""
                 if _cc_target:
                     _cc_page = prompts.lookup_page_name(page.url)
                     _cc_handler = get_custom_control(_cc_page, _cc_target)
                 if _cc_handler is not None:
-                    print(f"      🎛️  [CUSTOM CONTROL] Routed '{_cc_target}' to custom handler.")
+                    print(
+                        f"      🎛️  [CUSTOM CONTROL] '{_cc_target}' on '{_cc_page}' ({_cc_mode}) "
+                        f"→ {getattr(_cc_handler, '__qualname__', _cc_handler.__name__)}"
+                    )
                     try:
-                        _cc_result = _cc_handler(page, _cc_mode, _cc_value)
+                        _cc_ctx = ControlContext(
+                            page=page,
+                            action=_cc_mode,
+                            value=_cc_value,
+                            target=_cc_target,
+                            page_name=_cc_page,
+                            url=page.url,
+                            step=step,
+                        )
+                        _cc_result = _cc_handler(_cc_ctx)
                         if inspect.isawaitable(_cc_result):
                             await _cc_result
                     except Exception as exc:
                         _step_error = f"Custom control error on '{_cc_target}': {exc}"
                         _log.warning("Custom control '%s' failed: %s", _cc_target, exc)
                         _step_ok = False
-                elif not await self._execute_step(page, step, strategic_context, step_idx=action_index):
-                    _step_error = "Action failed"
-                    _step_ok = False
+                else:
+                    if _cc_target:
+                        _miss = diagnose_custom_control_miss(_cc_page, _cc_target)
+                        if _miss:
+                            print(f"      {_miss}")
+                    if not await self._execute_step(page, step, strategic_context, step_idx=action_index):
+                        _step_error = "Action failed"
+                        _step_ok = False
         except Exception as exc:
             _step_ok = False
             _step_error = str(exc)
@@ -1931,6 +1949,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                 else:
                                     _cc_target, _cc_value = "", None
                                 _cc_handler = None
+                                _cc_page = ""
                                 if _cc_target:
                                     _mt = prompts.pages_registry_mtime()
                                     if _mt != _cc_pages_mtime:
@@ -1941,10 +1960,20 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                     _cc_handler = get_custom_control(_cc_page, _cc_target)
                                 if _cc_handler is not None:
                                     print(
-                                        f"    🎛️  [CUSTOM CONTROL] Routed '{_cc_target}' on '{_cc_page}' to custom handler."
+                                        f"    🎛️  [CUSTOM CONTROL] '{_cc_target}' on '{_cc_page}' ({_cc_mode}) "
+                                        f"→ {getattr(_cc_handler, '__qualname__', _cc_handler.__name__)}"
                                     )
                                     try:
-                                        _cc_result = _cc_handler(page, _cc_mode, _cc_value)
+                                        _cc_ctx = ControlContext(
+                                            page=page,
+                                            action=_cc_mode,
+                                            value=_cc_value,
+                                            target=_cc_target,
+                                            page_name=_cc_page,
+                                            url=page.url,
+                                            step=step,
+                                        )
+                                        _cc_result = _cc_handler(_cc_ctx)
                                         if inspect.isawaitable(_cc_result):
                                             await _cc_result
                                     except Exception as exc:
@@ -1952,9 +1981,14 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                         _log.warning("Custom control '%s' failed: %s", _cc_target, exc)
                                         print(traceback.format_exc())
                                         _step_ok = False
-                                elif not await self._execute_step(page, step, strategic_context, step_idx=action_index):
-                                    _step_error = "Action failed"
-                                    _step_ok = False
+                                else:
+                                    if _cc_target:
+                                        _miss = diagnose_custom_control_miss(_cc_page, _cc_target)
+                                        if _miss:
+                                            print(f"    {_miss}")
+                                    if not await self._execute_step(page, step, strategic_context, step_idx=action_index):
+                                        _step_error = "Action failed"
+                                        _step_ok = False
                         except Exception as exc:
                             _step_ok = False
                             _step_error = traceback.format_exc()

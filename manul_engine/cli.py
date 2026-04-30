@@ -82,6 +82,7 @@ Usage:
   manul daemon <directory>    — run scheduled .hunt files as a long-running daemon
   manul pack [dir]           — pack a .hunt library into a distributable .huntlib archive
   manul install <source>     — install a .huntlib archive locally (or --global)
+  manul controls list        — list all @custom_control handlers discovered under controls/
 
 Flags:
   --headless                 — run browser in headless mode
@@ -789,6 +790,34 @@ async def main() -> "int | None":
         _global_flag = "--global" in args
         dest = _install_pkg(_non_flag_args[1], global_install=_global_flag)
         print(f"📦 Installed to: {dest}")
+        return
+
+    if _non_flag_args and _non_flag_args[0] == "controls":
+        from manul_engine.controls import list_custom_controls, load_custom_controls
+
+        sub = _non_flag_args[1] if len(_non_flag_args) > 1 else "list"
+        if sub != "list":
+            print(f"Error: unknown 'controls' subcommand: {sub!r}. Try `manul controls list`.", file=sys.stderr)
+            sys.exit(1)
+        # Eager-load every controls module from CWD so the listing is complete.
+        from . import prompts as _prompts_cli
+
+        load_custom_controls(
+            str(os.getcwd()),
+            custom_modules_dirs=list(getattr(_prompts_cli, "CUSTOM_CONTROLS_DIRS", ["controls"])),
+        )
+        rows = list_custom_controls()
+        if not rows:
+            print("No @custom_control handlers registered. Drop a .py file under controls/ in your project root.")
+            return
+        page_w = max(len("PAGE"), max(len(r["page"]) for r in rows))
+        target_w = max(len("TARGET"), max(len(r["target"]) for r in rows))
+        handler_w = max(len("HANDLER"), max(len(r["handler"]) for r in rows))
+        print(f"  {'PAGE':<{page_w}}  {'TARGET':<{target_w}}  {'HANDLER':<{handler_w}}  SOURCE")
+        print(f"  {'-' * page_w}  {'-' * target_w}  {'-' * handler_w}  ------")
+        for r in rows:
+            src = os.path.relpath(r["source"]) if r["source"] not in ("<unknown>", "") else r["source"]
+            print(f"  {r['page']:<{page_w}}  {r['target']:<{target_w}}  {r['handler']:<{handler_w}}  {src}")
         return
 
     from . import prompts as _prompts_cli
