@@ -197,7 +197,7 @@ def _normalise_fragment(raw: dict, *, source: Path) -> dict[str, dict[str, str]]
         # diagnostic and skip — refusing to silently merge into the wrong key.
         _warnings.warn(
             f"ManulEngine: '{source}' has no 'site' field and no wrapped site key; "
-            f"add `\"site\": \"https://your.site/\"` at the top of the file.",
+            f'add `"site": "https://your.site/"` at the top of the file.',
             stacklevel=2,
         )
         return out

@@ -849,7 +849,10 @@ async def main() -> "int | None":
             print(f"\n✅ Migrated {written} site(s) to {pages_dir}/. Old file moved to {backup}.")
             return
 
-        print(f"Error: unknown 'pages' subcommand: {sub!r}. Try `manul pages list` or `manul pages migrate`.", file=sys.stderr)
+        print(
+            f"Error: unknown 'pages' subcommand: {sub!r}. Try `manul pages list` or `manul pages migrate`.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     if _non_flag_args and _non_flag_args[0] == "controls":

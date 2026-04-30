@@ -132,7 +132,9 @@ def _validate_handler_signature(func: Callable, *, page: str, target: str) -> No
     except (TypeError, ValueError):
         return  # builtins / C-extensions — give them the benefit of the doubt
     params = [
-        p for p in sig.parameters.values() if p.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+        p
+        for p in sig.parameters.values()
+        if p.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
     ]
     if len(params) == 1:
         return
@@ -168,7 +170,11 @@ def diagnose_custom_control_miss(page_name: str, target_name: str) -> str | None
     current = page_name.strip().lower()
     with _REGISTRY_LOCK:
         sibling_pages = sorted(
-            {meta["page"] for (p_key, t_key), meta in _REGISTRY_META.items() if t_key == target_key and p_key != current}
+            {
+                meta["page"]
+                for (p_key, t_key), meta in _REGISTRY_META.items()
+                if t_key == target_key and p_key != current
+            }
         )
     if not sibling_pages:
         return None

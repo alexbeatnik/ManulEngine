@@ -449,9 +449,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     lines.append(f"    │       Penalty:    ×{expl['penalty']:.1f}")
                 if "ctx_kind" in expl:
                     ctx_label = expl["ctx_kind"].upper().replace("_", " ")
-                    lines.append(
-                        f"    │       Context:    {ctx_label} (raw={expl.get('ctx_prox_raw', 0):.3f})"
-                    )
+                    lines.append(f"    │       Context:    {ctx_label} (raw={expl.get('ctx_prox_raw', 0):.3f})")
             else:
                 lines.append(f'    │  #{rank}  <{tag}> "{name}"  → Score: {score}')
         winner = top[0]
@@ -1986,7 +1984,9 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                         _miss = diagnose_custom_control_miss(_cc_page, _cc_target)
                                         if _miss:
                                             print(f"    {_miss}")
-                                    if not await self._execute_step(page, step, strategic_context, step_idx=action_index):
+                                    if not await self._execute_step(
+                                        page, step, strategic_context, step_idx=action_index
+                                    ):
                                         _step_error = "Action failed"
                                         _step_ok = False
                         except Exception as exc:
