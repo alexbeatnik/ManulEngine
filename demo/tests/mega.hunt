@@ -160,9 +160,13 @@ STEP 7: Data extraction from web table
 STEP 8: Paginated table interaction
     SCROLL DOWN
     CLICK on the '2' link
+    WAIT 2
     CHECK the checkbox for '7'
+    VERIFY that '7' is checked
     CLICK on the '4' link
+    WAIT 2
     CHECK the checkbox for '17'
+    VERIFY that '17' is checked
 
 STEP 9: Scrolling dropdown
     SCROLL DOWN

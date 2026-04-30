@@ -37,7 +37,7 @@ from manul_engine.prompts import (
     lookup_page_name,
     _KEY_MAP,
     PAGE_REGISTRY,
-    _PAGES_WRITE_PATH,
+    _PAGES_DIR_PATH,
     AI_POLICY,
     BROWSER,
     SCREENSHOT,
@@ -150,11 +150,11 @@ def test_lookup_exact_match() -> None:
             "Domain": "Example Site",
             "https://example.com/login": "Login Page",
         }
-        # Patch the effective read path to skip disk reads
-        with patch("manul_engine.prompts._PAGES_WRITE_PATH", Path("/nonexistent")):
-            with patch("manul_engine.prompts._PAGES_READ_PATH", Path("/nonexistent")):
-                result = lookup_page_name("https://example.com/login")
-                _assert(result == "Login Page", "exact URL → Login Page", f"got '{result}'")
+        # Point the registry directory at an empty path so the live re-merge
+        # in lookup_page_name() doesn't clobber the in-memory PAGE_REGISTRY.
+        with patch("manul_engine.prompts._PAGES_DIR_PATH", Path("/nonexistent")):
+            result = lookup_page_name("https://example.com/login")
+            _assert(result == "Login Page", "exact URL → Login Page", f"got '{result}'")
     finally:
         PAGE_REGISTRY.clear()
         PAGE_REGISTRY.update(saved)
@@ -171,10 +171,9 @@ def test_lookup_regex_match() -> None:
             "Domain": "Shop",
             r".*/products/\d+": "Product Detail",
         }
-        with patch("manul_engine.prompts._PAGES_WRITE_PATH", Path("/nonexistent")):
-            with patch("manul_engine.prompts._PAGES_READ_PATH", Path("/nonexistent")):
-                result = lookup_page_name("https://shop.com/products/42")
-                _assert(result == "Product Detail", "regex pattern matches product URL", f"got '{result}'")
+        with patch("manul_engine.prompts._PAGES_DIR_PATH", Path("/nonexistent")):
+            result = lookup_page_name("https://shop.com/products/42")
+            _assert(result == "Product Detail", "regex pattern matches product URL", f"got '{result}'")
     finally:
         PAGE_REGISTRY.clear()
         PAGE_REGISTRY.update(saved)
@@ -190,10 +189,9 @@ def test_lookup_domain_fallback() -> None:
         PAGE_REGISTRY["https://example.com/"] = {
             "Domain": "Example Site",
         }
-        with patch("manul_engine.prompts._PAGES_WRITE_PATH", Path("/nonexistent")):
-            with patch("manul_engine.prompts._PAGES_READ_PATH", Path("/nonexistent")):
-                result = lookup_page_name("https://example.com/unknown-page")
-                _assert(result == "Example Site", "no pattern match → Domain fallback", f"got '{result}'")
+        with patch("manul_engine.prompts._PAGES_DIR_PATH", Path("/nonexistent")):
+            result = lookup_page_name("https://example.com/unknown-page")
+            _assert(result == "Example Site", "no pattern match → Domain fallback", f"got '{result}'")
     finally:
         PAGE_REGISTRY.clear()
         PAGE_REGISTRY.update(saved)
@@ -204,31 +202,91 @@ def test_lookup_domain_fallback() -> None:
 
 def test_lookup_auto_populate() -> None:
     saved = dict(PAGE_REGISTRY)
-    tmp_pages = None
+    tmp_dir = None
     try:
         PAGE_REGISTRY.clear()
-        # Create a temporary pages.json so auto-populate has somewhere to write
-        tmp_pages = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False, encoding="utf-8")
-        tmp_pages.write("{}\n")
-        tmp_pages.close()
-        tmp_path = Path(tmp_pages.name)
+        # Create a temporary pages/ directory so auto-populate has somewhere to write.
+        tmp_dir = Path(tempfile.mkdtemp(prefix="manul_pages_"))
 
-        with patch("manul_engine.prompts._PAGES_WRITE_PATH", tmp_path):
-            with patch("manul_engine.prompts._PAGES_READ_PATH", tmp_path):
-                result = lookup_page_name("https://brand-new-site.io/dashboard")
-                _assert("Auto:" in result, "unknown site → auto-generated placeholder", f"got '{result}'")
-                _assert("brand-new-site.io" in result, "placeholder includes domain", f"got '{result}'")
-        # Verify it was written to disk
-        disk = json.loads(tmp_path.read_text(encoding="utf-8"))
-        _assert("https://brand-new-site.io/" in disk, "auto-populated entry written to pages.json")
+        with patch("manul_engine.prompts._PAGES_DIR_PATH", tmp_dir):
+            result = lookup_page_name("https://brand-new-site.io/dashboard")
+            _assert("Auto:" in result, "unknown site → auto-generated placeholder", f"got '{result}'")
+            _assert("brand-new-site.io" in result, "placeholder includes domain", f"got '{result}'")
+
+            # Verify a per-site fragment was written.
+            fragment = tmp_dir / "brand-new-site.io.json"
+            _assert(fragment.exists(), "auto-populated fragment written to pages/", f"path={fragment}")
+            disk = json.loads(fragment.read_text(encoding="utf-8"))
+            _assert(disk.get("site") == "https://brand-new-site.io/", "fragment carries 'site' field")
+            _assert(
+                "https://brand-new-site.io/dashboard" in disk,
+                "fragment includes the auto-populated URL key",
+            )
     finally:
         PAGE_REGISTRY.clear()
         PAGE_REGISTRY.update(saved)
-        if tmp_pages is not None:
-            try:
-                os.unlink(tmp_pages.name)
-            except OSError:
-                pass
+        if tmp_dir is not None and tmp_dir.exists():
+            import shutil as _sh
+
+            _sh.rmtree(tmp_dir, ignore_errors=True)
+
+
+# ── 6b. pages/ directory loader — lean & wrapped fragment shapes ─────────────
+
+
+def test_pages_dir_lean_and_wrapped() -> None:
+    import shutil
+    from manul_engine.prompts import _load_pages_dir, _safe_site_filename
+
+    tmp = Path(tempfile.mkdtemp(prefix="manul_pages_dir_"))
+    try:
+        # Lean form with explicit "site" field.
+        (tmp / "example.com.json").write_text(
+            json.dumps(
+                {
+                    "site": "https://example.com/",
+                    "Domain": "Example",
+                    ".*/login": "Login Page",
+                }
+            ),
+            encoding="utf-8",
+        )
+        # Wrapped form (back-compat shape).
+        (tmp / "shop.json").write_text(
+            json.dumps({"https://shop.com/": {"Domain": "Shop", ".*/cart": "Cart"}}),
+            encoding="utf-8",
+        )
+        # Malformed: no "site" field, lean form. Should be skipped (and warn).
+        (tmp / "broken.json").write_text(
+            json.dumps({"Domain": "Orphan"}),
+            encoding="utf-8",
+        )
+
+        import warnings as _warnings
+
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("ignore")
+            registry = _load_pages_dir(tmp)
+
+        _assert("https://example.com/" in registry, "lean fragment contributes site key")
+        _assert(registry["https://example.com/"].get("Domain") == "Example", "lean Domain preserved")
+        _assert(
+            registry["https://example.com/"].get(".*/login") == "Login Page",
+            "lean pattern preserved",
+        )
+        _assert("https://shop.com/" in registry, "wrapped fragment contributes site key")
+        _assert(registry["https://shop.com/"].get(".*/cart") == "Cart", "wrapped pattern preserved")
+        _assert("Orphan" not in str(registry), "fragment without 'site' field is skipped")
+
+        # _safe_site_filename slugifies special characters in the netloc.
+        _assert(_safe_site_filename("https://www.shop.com/") == "www.shop.com.json", "safe filename basic")
+        _assert(
+            _safe_site_filename("https://api.shop.com:8080/") == "api.shop.com_8080.json",
+            "safe filename strips port colon",
+        )
+        _assert(_safe_site_filename("") == "site.json", "safe filename has fallback")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 # ── 7. _KEY_MAP completeness ─────────────────────────────────────────────────
@@ -390,6 +448,9 @@ async def run_suite() -> tuple[int, int]:
 
     print("\n  6. lookup_page_name — auto-populate")
     test_lookup_auto_populate()
+
+    print("\n  6b. pages/ directory loader (lean & wrapped fragments)")
+    test_pages_dir_lean_and_wrapped()
 
     print("\n  7. _KEY_MAP completeness")
     test_key_map_expected_keys()

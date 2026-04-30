@@ -358,4 +358,8 @@ class _DebugMixin:
         finally:
             abort_event.set()
             abort_poll_task.cancel()
+            try:
+                await abort_poll_task
+            except asyncio.CancelledError:
+                pass
             await self._remove_debug_modal(page)

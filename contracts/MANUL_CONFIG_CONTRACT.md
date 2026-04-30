@@ -5,7 +5,7 @@
 
 ```json
 {
-  "version": "0.0.9.29",
+  "version": "0.0.9.30",
   "generatedFrom": "manul_engine/prompts.py :: _KEY_MAP, _CFG, get_threshold(), lookup_page_name(); manul_engine/variables.py :: ScopedVariables; manul_engine/helpers.py :: env_bool()",
 
   "configFile": {
@@ -265,32 +265,48 @@
   ],
 
   "pagesRegistry": {
-    "filename": "pages.json",
-    "format": "JSON — nested per-site",
+    "directory": "<project>/pages/",
+    "format": "One JSON fragment per site (file name = <safe_netloc>.json)",
     "resolution": [
-      "CWD (./pages.json) — writable, auto-created if absent",
-      "Package root fallback — read-only"
+      "CWD/pages/*.json — writable, directory auto-created if absent",
+      "Override directory via MANUL_PAGES_DIR env var (absolute or CWD-relative)"
     ],
-    "schema": {
-      "<site_root_url>": {
-        "Domain": "<display_name>",
-        "<regex_or_exact_url>": "<page_name>"
-      }
-    },
-    "example": {
-      "https://example.com/": {
-        "Domain": "Example Site",
-        ".*/login": "Login Page",
-        "https://example.com/dashboard": "Dashboard"
+    "fragmentShapes": {
+      "lean": {
+        "description": "Preferred. site is the explicit site root; remaining keys are pattern→name mappings.",
+        "example": {
+          "site": "https://example.com/",
+          "Domain": "Example Site",
+          ".*/login": "Login Page",
+          "https://example.com/dashboard": "Dashboard"
+        }
+      },
+      "wrapped": {
+        "description": "Back-compat shape mirroring the pre-0.0.9.30 nested form. The single top-level key is the site root.",
+        "example": {
+          "https://example.com/": {
+            "Domain": "Example Site",
+            ".*/login": "Login Page"
+          }
+        }
       }
     },
     "lookupFunction": "lookup_page_name(url: str) -> str",
     "lookupBehavior": [
-      "Re-reads from disk on every call (live edits picked up instantly)",
-      "Finds best-matching site block (longest-prefix wins)",
+      "Re-merges every pages/*.json fragment from disk on every call (live edits picked up instantly)",
+      "Finds best-matching site block (longest-prefix wins across all fragments)",
       "Within site block: exact URL → regex/substring patterns (skipping 'Domain' key) → 'Domain' fallback",
-      "Auto-populates new URLs with placeholder 'Auto: domain/path'"
-    ]
+      "Auto-populates new URLs by writing a per-site fragment pages/<safe_netloc>.json with placeholder 'Auto: domain/path'"
+    ],
+    "introspection": {
+      "cli": "manul pages list",
+      "description": "Print every site → pattern → label mapping discovered under pages/."
+    },
+    "migration": {
+      "cli": "manul pages migrate",
+      "description": "One-shot migration of a legacy pages.json (pre-0.0.9.30 monolithic file) into per-site fragments under pages/. Renames the original to pages.json.bak. The legacy flat file is no longer read by the engine."
+    },
+    "breakingChange": "0.0.9.30 — the monolithic pages.json file is no longer read or written by ManulEngine. Run `manul pages migrate` once to convert."
   },
 
   "scopedVariables": {

@@ -141,39 +141,102 @@ SEMANTIC_CACHE_ENABLED = env_bool("MANUL_SEMANTIC_CACHE_ENABLED", "True")
 # Keys are matched via re.search() against the FULL URL (scheme + domain + path);
 # first match wins.  Unknown URLs are auto-added as "Auto: domain/path" placeholders.
 #
-# _PAGES_WRITE_PATH — always CWD/pages.json (the user's project root); all writes
-#   go here, and it is auto-created if absent so the user can start editing it.
-# _PAGES_READ_PATH  — CWD/pages.json when it exists, otherwise the package root
-#   (useful when running from the ManulEngine dev repo without a local copy).
-_PAGES_WRITE_PATH: Path = Path.cwd() / "pages.json"
-_PAGES_READ_PATH: Path = _PAGES_WRITE_PATH if _PAGES_WRITE_PATH.exists() else _REPO_ROOT / "pages.json"
+# Storage layout (since 0.0.9.30):
+#   <project>/pages/<safe_netloc>.json    — one file per site (the canonical form)
+#
+# Each fragment uses one of two shapes (auto-detected):
+#   Lean:    { "site": "https://example.com/", "Domain": "Example", "/login": "Login" }
+#            ("site" is optional: the filename stem doubles as a fallback when the
+#            file contains no patterns yet, but the field is recommended.)
+#   Wrapped: { "https://example.com/": { "Domain": "Example", "/login": "Login" } }
+#
+# The legacy flat file ``<project>/pages.json`` is no longer read or written.
+# Run ``manul pages migrate`` once to split a pre-0.0.9.30 ``pages.json`` into
+# ``pages/<site>.json`` fragments.
+_PAGES_DIR_PATH: Path = Path(os.getenv("MANUL_PAGES_DIR", "").strip() or (Path.cwd() / "pages"))
+if not _PAGES_DIR_PATH.is_absolute():
+    _PAGES_DIR_PATH = (Path.cwd() / _PAGES_DIR_PATH).resolve()
+
+
+def _safe_site_filename(site_root: str) -> str:
+    """Return ``<safe_netloc>.json`` for *site_root*. Used by auto-fill."""
+    from urllib.parse import urlparse as _urlparse_sf
+
+    netloc = _urlparse_sf(site_root).netloc or site_root
+    safe = _re.sub(r"[^0-9A-Za-z._-]", "_", netloc).strip("_") or "site"
+    return f"{safe}.json"
+
+
+def _normalise_fragment(raw: dict, *, source: Path) -> dict[str, dict[str, str]]:
+    """Turn a single ``pages/*.json`` payload into ``{site_root: {pattern: name}}``.
+
+    Detects the lean vs. wrapped form by inspecting top-level values.
+    Silently drops malformed entries; emits a single ``warnings.warn`` per file
+    when nothing recoverable is present.
+    """
+    import warnings as _warnings
+
+    out: dict[str, dict[str, str]] = {}
+    if not isinstance(raw, dict) or not raw:
+        return out
+
+    # Wrapped form: every top-level value is a dict → keyed by site root URL.
+    if all(isinstance(v, dict) for v in raw.values()):
+        for site_key, site_val in raw.items():
+            site_key = str(site_key).strip()
+            if site_key and isinstance(site_val, dict):
+                out[site_key] = {str(k): str(v) for k, v in site_val.items()}
+        return out
+
+    # Lean form: top-level values are strings (patterns → names).  Site root
+    # comes from the explicit "site" field, falling back to the filename stem
+    # when it looks like a URL (e.g. saved manually as "https___example_com.json").
+    site = str(raw.get("site", "")).strip()
+    if not site:
+        # Without an explicit site field we cannot place the fragment.  Emit a
+        # diagnostic and skip — refusing to silently merge into the wrong key.
+        _warnings.warn(
+            f"ManulEngine: '{source}' has no 'site' field and no wrapped site key; "
+            f'add `"site": "https://your.site/"` at the top of the file.',
+            stacklevel=2,
+        )
+        return out
+    fields = {str(k): str(v) for k, v in raw.items() if k != "site"}
+    if fields:
+        out[site] = fields
+    return out
+
+
+def _load_pages_dir(pages_dir: Path) -> dict[str, dict[str, str]]:
+    """Merge every ``pages_dir/*.json`` fragment into a single registry."""
+    import warnings as _warnings
+
+    merged: dict[str, dict[str, str]] = {}
+    if not pages_dir.is_dir():
+        return merged
+    for fragment_path in sorted(pages_dir.glob("*.json")):
+        try:
+            with open(fragment_path, encoding="utf-8") as _pf:
+                raw = json.load(_pf)
+        except (json.JSONDecodeError, OSError) as exc:
+            _warnings.warn(f"ManulEngine: could not load '{fragment_path}': {exc}", stacklevel=2)
+            continue
+        for site_key, site_val in _normalise_fragment(raw, source=fragment_path).items():
+            existing = merged.setdefault(site_key, {})
+            existing.update(site_val)  # later fragments override earlier ones for the same key
+    return merged
+
 
 # PAGE_REGISTRY: nested dict — { site_root_url: { pattern_or_"Domain": name } }
-# Supports multiple sites.  The top-level key is the site root URL (prefix match).
-PAGE_REGISTRY: dict[str, dict[str, str]] = {}
-if _PAGES_READ_PATH.exists():
-    try:
-        with open(_PAGES_READ_PATH, encoding="utf-8") as _pf:
-            _pages_raw = json.load(_pf)
-        if isinstance(_pages_raw, dict):
-            for _site_key, _site_val in _pages_raw.items():
-                _site_key = str(_site_key).strip()
-                if not _site_key:
-                    continue
-                if isinstance(_site_val, dict):
-                    PAGE_REGISTRY[_site_key] = {str(k): str(v) for k, v in _site_val.items()}
-    except (json.JSONDecodeError, OSError) as _pages_err:
-        import warnings as _warnings
+# Loaded by merging every JSON fragment in _PAGES_DIR_PATH at module import.
+PAGE_REGISTRY: dict[str, dict[str, str]] = _load_pages_dir(_PAGES_DIR_PATH)
 
-        _warnings.warn(f"ManulEngine: could not load pages file '{_PAGES_READ_PATH}': {_pages_err}", stacklevel=2)
-
-# Auto-create pages.json in CWD if it doesn't exist anywhere, so the user has
-# a ready-made file to populate after the first run.
-if not _PAGES_WRITE_PATH.exists():
-    try:
-        _PAGES_WRITE_PATH.write_text("{}\n", encoding="utf-8")
-    except OSError:
-        pass
+# Auto-create the pages/ directory in CWD so the user has a ready-made
+# place for new fragments after the first auto-fill.
+try:
+    _PAGES_DIR_PATH.mkdir(parents=True, exist_ok=True)
+except OSError:
+    pass
 
 AUTO_ANNOTATE: bool = env_bool("MANUL_AUTO_ANNOTATE")
 
@@ -218,11 +281,12 @@ CUSTOM_MODULES_DIRS: "list[str]" = CUSTOM_CONTROLS_DIRS
 
 
 def _auto_populate_registry(url: str) -> str:
-    """Safe read-modify-write of pages.json for an unmapped URL.
+    """Persist a placeholder entry for an unmapped *url* into ``pages/``.
 
-    Always reads from _PAGES_WRITE_PATH before writing so that any entries
-    accumulated since module load (by other lookups or manual edits) are never
-    clobbered.  Only adds keys that are not already present (deep merge).
+    Reads the per-site fragment ``pages/<safe_netloc>.json`` (creating it when
+    absent), merges in ``Domain`` + the exact URL placeholder, and writes the
+    file back as the lean shape with an explicit ``"site"`` field. Existing
+    user-curated entries are never overwritten.
 
     Returns the placeholder string generated for *url*.
     """
@@ -234,41 +298,49 @@ def _auto_populate_registry(url: str) -> str:
     placeholder = f"Auto: {_slug}" if _slug else f"Auto: {url}"
     site_root_auto = f"{_up.scheme}://{netloc}/" if netloc else url
 
-    # 1. Read the current on-disk state from the definitive write target.
-    registry: dict[str, dict[str, str]] = {}
-    if _PAGES_WRITE_PATH.exists():
+    fragment_path = _PAGES_DIR_PATH / _safe_site_filename(site_root_auto)
+
+    # 1. Read the current on-disk fragment (if any).
+    site_block: dict[str, str] = {}
+    fragment_site: str = site_root_auto
+    if fragment_path.exists():
         try:
-            with open(_PAGES_WRITE_PATH, encoding="utf-8") as _rf:
-                _raw = json.load(_rf)
-            if isinstance(_raw, dict):
-                for _sk, _sv in _raw.items():
-                    _sk = str(_sk).strip()
-                    if _sk and isinstance(_sv, dict):
-                        registry[_sk] = {str(k): str(v) for k, v in _sv.items()}
+            with open(fragment_path, encoding="utf-8") as _rf:
+                raw = json.load(_rf)
+            if isinstance(raw, dict):
+                # Inspect: lean form has string values + optional "site" key;
+                # wrapped form has the site URL as the only top-level key.
+                if all(isinstance(v, dict) for v in raw.values()) and raw:
+                    # Wrapped: pull out the matching site (or first) block.
+                    if site_root_auto in raw:
+                        site_block = {str(k): str(v) for k, v in raw[site_root_auto].items()}
+                    else:
+                        first_key = next(iter(raw))
+                        site_block = {str(k): str(v) for k, v in raw[first_key].items()}
+                        fragment_site = str(first_key).strip() or site_root_auto
+                else:
+                    fragment_site = str(raw.get("site", "")).strip() or site_root_auto
+                    site_block = {str(k): str(v) for k, v in raw.items() if k != "site"}
         except (json.JSONDecodeError, OSError):
             pass
 
     # 2. Deep merge: never overwrite existing keys.
-    if site_root_auto not in registry:
-        # New site block: persist both the domain-level label and the specific URL.
-        registry[site_root_auto] = {"Domain": placeholder, url: placeholder}
-    else:
-        # Site block exists; backfill Domain/URL entries only if they are missing.
-        site_block = registry[site_root_auto]
-        if "Domain" not in site_block:
-            site_block["Domain"] = placeholder
-        if url not in site_block:
-            site_block[url] = placeholder
+    if "Domain" not in site_block:
+        site_block["Domain"] = placeholder
+    if url not in site_block:
+        site_block[url] = placeholder
 
-    # 3. Sync the in-memory PAGE_REGISTRY so subsequent lookups in this session
-    #    see the latest state without another disk read.
-    PAGE_REGISTRY.clear()
-    PAGE_REGISTRY.update(registry)
+    # 3. Sync the in-memory PAGE_REGISTRY so subsequent lookups see the update
+    #    without another disk read.
+    site_entry = PAGE_REGISTRY.setdefault(fragment_site, {})
+    site_entry.update(site_block)
 
-    # 4. Write the combined state back to disk.
+    # 4. Persist the lean form back to disk.
     try:
-        with open(_PAGES_WRITE_PATH, "w", encoding="utf-8") as _wf:
-            json.dump(registry, _wf, indent=4, ensure_ascii=False)
+        _PAGES_DIR_PATH.mkdir(parents=True, exist_ok=True)
+        payload = {"site": fragment_site, **site_block}
+        with open(fragment_path, "w", encoding="utf-8") as _wf:
+            json.dump(payload, _wf, indent=4, ensure_ascii=False)
             _wf.write("\n")
     except OSError:
         pass
@@ -277,41 +349,43 @@ def _auto_populate_registry(url: str) -> str:
 
 
 def pages_registry_mtime() -> float:
-    """Return the last-modified time of the *active* pages.json file.
+    """Return the most recent mtime across all ``pages/*.json`` fragments.
 
-    Mirrors the effective-path selection used by ``lookup_page_name()``:
-    if CWD/pages.json is absent or contains only the empty placeholder
-    written by auto-create (≤ 4 bytes), the package-root copy is the
-    active registry and its mtime is returned instead.
-
-    Returns 0.0 if the active file cannot be stat-ed (missing, permission
-    error, etc.), so callers can safely compare without a try/except.
+    Used by callers that cache page-name resolutions per mission and need to
+    invalidate when any fragment is edited on disk. Returns 0.0 when the
+    directory is missing or empty so callers can compare without a try/except.
     """
+    if not _PAGES_DIR_PATH.is_dir():
+        return 0.0
+    latest = 0.0
     try:
-        effective = _PAGES_WRITE_PATH if _PAGES_WRITE_PATH.stat().st_size > 4 else _PAGES_READ_PATH
-    except OSError:
-        effective = _PAGES_READ_PATH
-    try:
-        return effective.stat().st_mtime
+        for fragment in _PAGES_DIR_PATH.glob("*.json"):
+            try:
+                m = fragment.stat().st_mtime
+                if m > latest:
+                    latest = m
+            except OSError:
+                continue
     except OSError:
         return 0.0
+    return latest
 
 
 def lookup_page_name(url: str) -> str:
     """Match *url* against PAGE_REGISTRY and return the mapped page name.
 
-    pages.json uses a nested format::
+    The registry is loaded from per-site fragments under ``<project>/pages/``.
+    Each fragment uses one of two shapes::
 
-        {
-          "https://example.com/": {
-            "Domain": "Example Site",
-            ".*/login": "Login Page",
-            "https://example.com/dashboard": "Dashboard"
-          }
-        }
+        # lean (preferred)
+        { "site": "https://example.com/", "Domain": "Example", ".*/login": "Login Page" }
+
+        # wrapped (mirrors the pre-0.0.9.30 nested format)
+        { "https://example.com/": { "Domain": "Example", ".*/login": "Login Page" } }
 
     Matching logic:
-    1. Re-read pages.json from disk on every call (picks up manual edits instantly).
+    1. Re-read every ``pages/*.json`` fragment from disk on every call so manual
+       edits are picked up within a session.
     2. Find the best-matching site block: the top-level key whose prefix is the
        longest match against the URL (longest-prefix wins, so sub-domain entries
        shadow more general ones).
@@ -320,8 +394,8 @@ def lookup_page_name(url: str) -> str:
        b. Regex via re.search() (invalid regex falls back to substring).
        c. The special ``"Domain"`` key — returned when no page pattern matches
           but the URL belongs to this site.
-    4. If no site block matches, auto-generate a placeholder, add it as a new
-       site entry, and write it back to pages.json.
+    4. If no site block matches, auto-generate a placeholder, add it to the
+       per-site fragment, and write that fragment back to disk.
     """
     import re as _re_lkp
     from urllib.parse import urlparse as _urlparse
@@ -339,34 +413,13 @@ def lookup_page_name(url: str) -> str:
         return candidate_path == site_path or candidate_path.startswith(site_path + "/")
 
     # ── 1. Reload registry from disk ─────────────────────────────────────────
-    # Always prefer _PAGES_WRITE_PATH (CWD) when it exists — it accumulates all
-    # auto-populated entries from previous lookups.  Fall back to the package-root
-    # copy only when CWD has no file at all (fresh checkout without a local copy).
+    # Re-merge every pages/*.json fragment so manual edits and auto-populated
+    # entries from previous lookups in this session are visible.
+    fresh = _load_pages_dir(_PAGES_DIR_PATH)
+    if fresh:
+        PAGE_REGISTRY.clear()
+        PAGE_REGISTRY.update(fresh)
     _live_registry: dict[str, dict[str, str]] = PAGE_REGISTRY
-    # Prefer _PAGES_WRITE_PATH (CWD) when it has real content; an empty file
-    # produced by the auto-create block at module load time is treated as absent
-    # so the richer package/repo copy stays in effect until the user (or
-    # _auto_populate_registry) writes actual entries.
-    try:
-        _cwd_populated = _PAGES_WRITE_PATH.stat().st_size > 4
-    except OSError:
-        _cwd_populated = False
-    _effective_read_path = _PAGES_WRITE_PATH if _cwd_populated else _PAGES_READ_PATH
-    if _effective_read_path.exists():
-        try:
-            with open(_effective_read_path, encoding="utf-8") as _rf:
-                _raw = json.load(_rf)
-            if isinstance(_raw, dict):
-                _parsed_reg: dict[str, dict[str, str]] = {}
-                for _sk, _sv in _raw.items():
-                    _sk = str(_sk).strip()
-                    if _sk and isinstance(_sv, dict):
-                        _parsed_reg[_sk] = {str(k): str(v) for k, v in _sv.items()}
-                PAGE_REGISTRY.clear()
-                PAGE_REGISTRY.update(_parsed_reg)
-                _live_registry = PAGE_REGISTRY
-        except (json.JSONDecodeError, OSError):
-            pass
 
     # ── 2. Find the best (longest-prefix) site block ──────────────────────────
     best_site_key: str | None = None

@@ -1,0 +1,13 @@
+{
+    "site": "https://demoqa.com/",
+    "Domain": "DemoQA",
+    ".*/text-box": "DemoQA: Text Box",
+    ".*/checkbox": "DemoQA: Checkbox",
+    ".*/radio-button": "DemoQA: Radio Button",
+    ".*/webtables": "DemoQA: Web Tables",
+    ".*/buttons": "DemoQA: Buttons",
+    ".*/select-menu": "DemoQA: Select Menu",
+    ".*/date-picker": "DemoQA: Date Picker",
+    ".*/slider": "DemoQA: Slider",
+    ".*/links": "DemoQA: Links"
+}

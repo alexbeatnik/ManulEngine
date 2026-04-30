@@ -1,0 +1,5 @@
+{
+    "site": "https://example.com/",
+    "Domain": "Auto: example.com/login",
+    "https://example.com/login": "Auto: example.com/login"
+}

@@ -14,10 +14,12 @@ Hunt file format: plain text, numbered steps, optional @context / @title headers
 """
 
 import asyncio
+import json
 import os
 import re
 import sys
 import time
+from pathlib import Path
 from typing import NamedTuple
 
 from .helpers import IfBlock, collect_ifblock_lines, parse_hunt_blocks
@@ -82,6 +84,9 @@ Usage:
   manul daemon <directory>    — run scheduled .hunt files as a long-running daemon
   manul pack [dir]           — pack a .hunt library into a distributable .huntlib archive
   manul install <source>     — install a .huntlib archive locally (or --global)
+  manul controls list        — list all @custom_control handlers discovered under controls/
+  manul pages list           — list every site → pattern → label mapping under pages/
+  manul pages migrate        — split a legacy pages.json into pages/<site>.json fragments
 
 Flags:
   --headless                 — run browser in headless mode
@@ -145,10 +150,12 @@ class _Tee:
     def __init__(self, path: str) -> None:
         self._term = sys.stdout
         self._file = open(path, "w", encoding="utf-8")
+        self.encoding: str = getattr(self._term, "encoding", "utf-8")
 
-    def write(self, msg: str) -> None:
-        self._term.write(msg)
+    def write(self, msg: str) -> int:
+        n = self._term.write(msg)
         self._file.write(msg)
+        return n
 
     def flush(self) -> None:
         self._term.flush()
@@ -787,6 +794,93 @@ async def main() -> "int | None":
         _global_flag = "--global" in args
         dest = _install_pkg(_non_flag_args[1], global_install=_global_flag)
         print(f"📦 Installed to: {dest}")
+        return
+
+    if _non_flag_args and _non_flag_args[0] == "pages":
+        from . import prompts as _prompts_pages
+
+        sub = _non_flag_args[1] if len(_non_flag_args) > 1 else "list"
+        pages_dir = _prompts_pages._PAGES_DIR_PATH
+
+        if sub == "list":
+            registry = _prompts_pages._load_pages_dir(pages_dir)
+            if not registry:
+                print(f"No page registrations found in {pages_dir}/. Drop a JSON fragment per site.")
+                return
+            print(f"  PAGES — {pages_dir}")
+            for site in sorted(registry):
+                block = registry[site]
+                domain = block.get("Domain", "(no Domain)")
+                print(f"  • {site}  →  {domain}")
+                for pattern, name in sorted(block.items()):
+                    if pattern == "Domain":
+                        continue
+                    print(f"      {pattern}  →  {name}")
+            return
+
+        if sub == "migrate":
+            legacy = Path.cwd() / "pages.json"
+            if not legacy.exists():
+                print(f"No legacy pages.json found in {Path.cwd()}. Nothing to migrate.")
+                return
+            try:
+                with open(legacy, encoding="utf-8") as _lf:
+                    legacy_data = json.load(_lf)
+            except (json.JSONDecodeError, OSError) as exc:
+                print(f"Error: could not read {legacy}: {exc}", file=sys.stderr)
+                sys.exit(1)
+            if not isinstance(legacy_data, dict):
+                print(f"Error: {legacy} is not a JSON object.", file=sys.stderr)
+                sys.exit(1)
+            pages_dir.mkdir(parents=True, exist_ok=True)
+            written = 0
+            for site_root, block in legacy_data.items():
+                if not isinstance(block, dict):
+                    continue
+                fragment = pages_dir / _prompts_pages._safe_site_filename(str(site_root))
+                payload = {"site": str(site_root), **{str(k): str(v) for k, v in block.items()}}
+                with open(fragment, "w", encoding="utf-8") as _wf:
+                    json.dump(payload, _wf, indent=4, ensure_ascii=False)
+                    _wf.write("\n")
+                print(f"  → {fragment}")
+                written += 1
+            backup = legacy.with_suffix(".json.bak")
+            legacy.rename(backup)
+            print(f"\n✅ Migrated {written} site(s) to {pages_dir}/. Old file moved to {backup}.")
+            return
+
+        print(
+            f"Error: unknown 'pages' subcommand: {sub!r}. Try `manul pages list` or `manul pages migrate`.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    if _non_flag_args and _non_flag_args[0] == "controls":
+        from manul_engine.controls import list_custom_controls, load_custom_controls
+
+        sub = _non_flag_args[1] if len(_non_flag_args) > 1 else "list"
+        if sub != "list":
+            print(f"Error: unknown 'controls' subcommand: {sub!r}. Try `manul controls list`.", file=sys.stderr)
+            sys.exit(1)
+        # Eager-load every controls module from CWD so the listing is complete.
+        from . import prompts as _prompts_cli
+
+        load_custom_controls(
+            str(os.getcwd()),
+            custom_modules_dirs=list(getattr(_prompts_cli, "CUSTOM_CONTROLS_DIRS", ["controls"])),
+        )
+        rows = list_custom_controls()
+        if not rows:
+            print("No @custom_control handlers registered. Drop a .py file under controls/ in your project root.")
+            return
+        page_w = max(len("PAGE"), max(len(r["page"]) for r in rows))
+        target_w = max(len("TARGET"), max(len(r["target"]) for r in rows))
+        handler_w = max(len("HANDLER"), max(len(r["handler"]) for r in rows))
+        print(f"  {'PAGE':<{page_w}}  {'TARGET':<{target_w}}  {'HANDLER':<{handler_w}}  SOURCE")
+        print(f"  {'-' * page_w}  {'-' * target_w}  {'-' * handler_w}  ------")
+        for r in rows:
+            src = os.path.relpath(r["source"]) if r["source"] not in ("<unknown>", "") else r["source"]
+            print(f"  {r['page']:<{page_w}}  {r['target']:<{target_w}}  {r['handler']:<{handler_w}}  {src}")
         return
 
     from . import prompts as _prompts_cli

@@ -235,12 +235,14 @@ def _test_print_explain_format() -> None:
         "total": 0.281,
     }
 
-    old_stdout = sys.stdout
-    sys.stdout = buf = io.StringIO()
+    # _print_explain writes to stderr (since 0.0.9.30) so the breakdown
+    # never pollutes parseable stdout streams — capture from there.
+    old_stderr = sys.stderr
+    sys.stderr = buf = io.StringIO()
     try:
         ManulEngine._print_explain("Click 'Login' button", ["Login"], [el])
     finally:
-        sys.stdout = old_stdout
+        sys.stderr = old_stderr
 
     output = buf.getvalue()
     _assert("EXPLAIN" in output, "Output contains 'EXPLAIN' header")

@@ -5,7 +5,7 @@
 
 ```json
 {
-  "version": "0.0.9.29",
+  "version": "0.0.9.30",
   "generatedFrom": "manul_engine/cli.py :: main(), _run_hunt_file(), parse_hunt_file(), sync_main(); manul_engine/prompts.py :: _KEY_MAP, global config constants; manul_engine/scanner.py :: scan_main(); manul_engine/recorder.py :: record_main(); manul_engine/scheduler.py :: daemon_main(); manul_engine/packager.py :: pack(), install()",
   "entryPoints": {
     "console_script": "manul",
@@ -102,6 +102,32 @@
         }
       ],
       "specificFlags": ["--global"]
+    },
+    {
+      "id": "controls",
+      "syntax": "manul controls list",
+      "description": "List all @custom_control handlers discovered under the configured custom_controls_dirs (default: controls/) in the current working directory. Prints a fixed-width table with PAGE / TARGET / HANDLER / SOURCE columns. Eagerly imports every non-underscore .py file in each scan dir, then calls list_custom_controls().",
+      "positionalArgs": [
+        {
+          "name": "subcommand",
+          "required": false,
+          "default": "list",
+          "description": "Currently only 'list' is supported. Any other value exits 1."
+        }
+      ]
+    },
+    {
+      "id": "pages",
+      "syntax": "manul pages [list|migrate]",
+      "description": "Inspect and migrate the per-site page registry. `list` prints every site → pattern → label mapping discovered under pages/. `migrate` splits a legacy pre-0.0.9.30 pages.json into pages/<safe_netloc>.json fragments and renames the original to pages.json.bak.",
+      "positionalArgs": [
+        {
+          "name": "subcommand",
+          "required": false,
+          "default": "list",
+          "description": "Either 'list' (default) or 'migrate'. Any other value exits 1."
+        }
+      ]
     }
   ],
   "flags": [

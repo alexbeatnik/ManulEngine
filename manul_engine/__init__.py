@@ -32,16 +32,25 @@ Usage (DSL runner — .hunt files):
     await manul.run_mission("1. Navigate to ...")
 
 Custom controls:
-    from manul_engine import ManulEngine, custom_control
+    from manul_engine import ControlContext, ManulEngine, custom_control
 
     @custom_control(page="Login Page", target="Username")
-    async def handle_username(page, action_type, value):
-        await page.locator("#user").fill(value or "")
+    async def handle_username(ctx: ControlContext) -> None:
+        # ctx.page is a live Playwright Page.
+        await ctx.page.locator("#user").fill(ctx.value or "")
+
+    # ctx fields: page, action, value, target, page_name, url, step.
+
+Page registry (since 0.0.9.30):
+    Mappings live as one JSON fragment per site under <project>/pages/<safe_netloc>.json.
+    Lean shape:    {"site": "https://example.com/", "Domain": "Example", ".*/login": "Login"}
+    Wrapped shape: {"https://example.com/": {"Domain": "Example", ".*/login": "Login"}}
+    Override the directory via MANUL_PAGES_DIR. Use `manul pages list` / `manul pages migrate`.
 """
 
 from .api import ManulSession
 from .config import EngineConfig
-from .controls import custom_control
+from .controls import ControlContext, custom_control, list_custom_controls
 from .core import ManulEngine
 from .exceptions import (
     ConditionalSyntaxError,
@@ -68,6 +77,7 @@ from .variables import ScopedVariables
 __all__ = [
     "ConditionalSyntaxError",
     "ConfigurationError",
+    "ControlContext",
     "ElementResolutionError",
     "EngineConfig",
     "ExplainNextDebugger",
@@ -88,4 +98,5 @@ __all__ = [
     "before_all",
     "before_group",
     "custom_control",
+    "list_custom_controls",
 ]
