@@ -183,9 +183,7 @@ class _ActionsMixin:
 
         try:
             if _css_selector:
-                await page.wait_for_selector(
-                    target_element, state=state_mapped, timeout=self._EXPLICIT_WAIT_TIMEOUT_MS
-                )
+                await page.wait_for_selector(target_element, state=state_mapped, timeout=self._EXPLICIT_WAIT_TIMEOUT_MS)
             else:
                 locator = page.get_by_text(target_element, exact=False).first
                 await locator.wait_for(state=state_mapped, timeout=self._EXPLICIT_WAIT_TIMEOUT_MS)

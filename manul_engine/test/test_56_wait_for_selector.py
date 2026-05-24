@@ -22,11 +22,12 @@ Sections 7–10 use a synthetic DOM served via Playwright.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import re
 import sys
-import asyncio
 import tempfile
+from typing import ClassVar
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
@@ -51,18 +52,16 @@ def _assert(condition: bool, name: str, detail: str = "") -> None:
 
 # ── CSS-selector heuristic (mirrors actions.py) ───────────────────────────────
 
+
 def _is_css_target(target: str) -> bool:
     return bool(
         re.match(r"^[#.\[a-z]", target, re.IGNORECASE)
-        and (
-            target.startswith(("#", ".", "["))
-            or re.search(r"[\[>:]", target)
-            or "-" in target
-        )
+        and (target.startswith(("#", ".", "[")) or re.search(r"[\[>:]", target) or "-" in target)
     )
 
 
 # ── Section 1: classify_step — WAIT FOR SELECTOR ─────────────────────────────
+
 
 def test_classify_wait_for_selector():
     print("\n── Section 1: classify_step — WAIT FOR SELECTOR ──")
@@ -90,6 +89,7 @@ def test_classify_wait_for_selector():
 
 
 # ── Section 2: classify_step — existing kinds unaffected ─────────────────────
+
 
 def test_classify_existing_wait_kinds():
     print("\n── Section 2: classify_step — existing kinds not disrupted ──")
@@ -122,6 +122,7 @@ def test_classify_existing_wait_kinds():
 
 # ── Section 3: CSS heuristic — true positives ─────────────────────────────────
 
+
 def test_css_heuristic_positives():
     print("\n── Section 3: CSS-selector heuristic — true positives ──")
 
@@ -143,6 +144,7 @@ def test_css_heuristic_positives():
 
 # ── Section 4: CSS heuristic — true negatives ────────────────────────────────
 
+
 def test_css_heuristic_negatives():
     print("\n── Section 4: CSS-selector heuristic — true negatives ──")
 
@@ -160,6 +162,7 @@ def test_css_heuristic_negatives():
 
 # ── Section 5: parse_explicit_wait does not eat WAIT FOR SELECTOR ─────────────
 
+
 def test_parse_explicit_wait_does_not_match_selector():
     print("\n── Section 5: parse_explicit_wait ignores WAIT FOR SELECTOR ──")
 
@@ -172,6 +175,7 @@ def test_parse_explicit_wait_does_not_match_selector():
 
 
 # ── Section 6: parse_hunt_blocks integration ──────────────────────────────────
+
 
 def test_parse_hunt_blocks_wait_for_selector():
     print("\n── Section 6: parse_hunt_blocks — WAIT FOR SELECTOR in DSL ──")
@@ -231,18 +235,19 @@ async def _serve_html(html: str) -> str:
 
 # ── Minimal stub engine for actions-only testing ──────────────────────────────
 
+
 class _StubEngine:
     """Minimal engine stub — just enough for _ActionsMixin methods under test."""
 
     _EXPLICIT_WAIT_TIMEOUT_MS = 5_000  # short for tests
     _semantic_cache_enabled = False
-    learned_elements: dict = {}
-    memory: dict = {}
+    learned_elements: ClassVar[dict] = {}
+    memory: ClassVar[dict] = {}
     last_xpath = None
     nav_timeout = 10_000
     timeout = 5_000
     debug_mode = False
-    break_steps: set = set()
+    break_steps: ClassVar[set] = set()
     _verify_max_retries = 2
 
     def _frame_for(self, page, el):
@@ -263,6 +268,7 @@ def _make_engine():
 
 # ── Section 7: _handle_wait_for_selector happy path ──────────────────────────
 
+
 async def test_wait_for_selector_happy():
     print("\n── Section 7: _handle_wait_for_selector — happy path ──")
     from playwright.async_api import async_playwright
@@ -276,15 +282,11 @@ async def test_wait_for_selector_happy():
 
             engine = _make_engine()
 
-            ok, msg = await engine._handle_wait_for_selector(
-                page, "WAIT FOR SELECTOR '.result-item'"
-            )
+            ok, msg = await engine._handle_wait_for_selector(page, "WAIT FOR SELECTOR '.result-item'")
             _assert(ok, "wait_for_selector succeeds for existing class", msg)
             _assert("result-item" in msg, "success message contains selector", msg)
 
-            ok2, msg2 = await engine._handle_wait_for_selector(
-                page, "WAIT FOR SELECTOR 'ytd-video-renderer'"
-            )
+            ok2, msg2 = await engine._handle_wait_for_selector(page, "WAIT FOR SELECTOR 'ytd-video-renderer'")
             _assert(ok2, "wait_for_selector succeeds for custom element", msg2)
 
             await browser.close()
@@ -293,6 +295,7 @@ async def test_wait_for_selector_happy():
 
 
 # ── Section 8: _handle_wait_for_selector timeout path ────────────────────────
+
 
 async def test_wait_for_selector_timeout():
     print("\n── Section 8: _handle_wait_for_selector — timeout ──")
@@ -308,9 +311,7 @@ async def test_wait_for_selector_timeout():
             engine = _make_engine()
             engine._EXPLICIT_WAIT_TIMEOUT_MS = 1_000  # fast timeout for test
 
-            ok, msg = await engine._handle_wait_for_selector(
-                page, "WAIT FOR SELECTOR '.nonexistent-element'"
-            )
+            ok, msg = await engine._handle_wait_for_selector(page, "WAIT FOR SELECTOR '.nonexistent-element'")
             _assert(not ok, "wait_for_selector fails when selector absent", msg)
             _assert("Timeout" in msg or "timeout" in msg, "error message mentions timeout", msg)
 
@@ -320,6 +321,7 @@ async def test_wait_for_selector_timeout():
 
 
 # ── Section 9: _handle_wait_for_element CSS branch ───────────────────────────
+
 
 async def test_wait_for_element_css_branch():
     print("\n── Section 9: _handle_wait_for_element — CSS branch ──")
@@ -335,21 +337,15 @@ async def test_wait_for_element_css_branch():
             engine = _make_engine()
 
             # Class selector — routes to wait_for_selector internally
-            ok, msg = await engine._handle_wait_for_element(
-                page, "WAIT FOR '.search-results' TO BE VISIBLE"
-            )
+            ok, msg = await engine._handle_wait_for_element(page, "WAIT FOR '.search-results' TO BE VISIBLE")
             _assert(ok, "CSS class selector branch succeeds", msg)
 
             # Custom element with hyphen
-            ok2, msg2 = await engine._handle_wait_for_element(
-                page, "WAIT FOR 'ytd-video-renderer' TO BE VISIBLE"
-            )
+            ok2, msg2 = await engine._handle_wait_for_element(page, "WAIT FOR 'ytd-video-renderer' TO BE VISIBLE")
             _assert(ok2, "Custom element (hyphen) branch succeeds", msg2)
 
             # id selector
-            ok3, msg3 = await engine._handle_wait_for_element(
-                page, "WAIT FOR '.result-item' TO BE VISIBLE"
-            )
+            ok3, msg3 = await engine._handle_wait_for_element(page, "WAIT FOR '.result-item' TO BE VISIBLE")
             _assert(ok3, "Class selector routes to CSS branch", msg3)
 
             await browser.close()
@@ -358,6 +354,7 @@ async def test_wait_for_element_css_branch():
 
 
 # ── Section 10: _handle_wait_for_element text branch (unchanged) ──────────────
+
 
 async def test_wait_for_element_text_branch():
     print("\n── Section 10: _handle_wait_for_element — text branch unchanged ──")
@@ -372,21 +369,15 @@ async def test_wait_for_element_text_branch():
 
             engine = _make_engine()
 
-            ok, msg = await engine._handle_wait_for_element(
-                page, "WAIT FOR 'Result One' TO BE VISIBLE"
-            )
+            ok, msg = await engine._handle_wait_for_element(page, "WAIT FOR 'Result One' TO BE VISIBLE")
             _assert(ok, "Plain text wait succeeds via get_by_text branch", msg)
 
-            ok2, msg2 = await engine._handle_wait_for_element(
-                page, "WAIT FOR 'Video title here' TO BE VISIBLE"
-            )
+            ok2, msg2 = await engine._handle_wait_for_element(page, "WAIT FOR 'Video title here' TO BE VISIBLE")
             _assert(ok2, "Plain text wait inside custom element succeeds", msg2)
 
             # Absent text → timeout
             engine._EXPLICIT_WAIT_TIMEOUT_MS = 1_000
-            ok3, msg3 = await engine._handle_wait_for_element(
-                page, "WAIT FOR 'Totally Absent Text XYZ' TO BE VISIBLE"
-            )
+            ok3, msg3 = await engine._handle_wait_for_element(page, "WAIT FOR 'Totally Absent Text XYZ' TO BE VISIBLE")
             _assert(not ok3, "Plain text wait times out when absent", msg3)
 
             await browser.close()
@@ -395,6 +386,7 @@ async def test_wait_for_element_text_branch():
 
 
 # ── run_suite ─────────────────────────────────────────────────────────────────
+
 
 async def run_suite() -> tuple[int, int]:
     global _PASS, _FAIL
