@@ -47,6 +47,7 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
     ("navigate", re.compile(r"\bNAVIGATE\b")),
     ("open_app", re.compile(r"\bOPEN\s+APP\b")),
     ("mock", re.compile(r"\bMOCK\s+(?:GET|POST|PUT|PATCH|DELETE)\b")),
+    ("wait_for_selector", re.compile(r"\bWAIT\s+FOR\s+SELECTOR\b")),
     ("wait_for_response", re.compile(r"\bWAIT\s+FOR\s+RESPONSE\b")),
     ("wait", re.compile(r"\bWAIT\b")),
     ("scroll", re.compile(r"\bSCROLL\b")),
@@ -637,7 +638,8 @@ def classify_step(step: str) -> str:
     element labels (e.g. ``Click 'Press Here'``) are not misclassified.
 
     The returned string is one of: ``"logical_step"``, ``"wait_for_element"``,
-    ``"navigate"``, ``"open_app"``, ``"mock"``, ``"wait_for_response"``, ``"wait"``, ``"scroll"``,
+    ``"navigate"``, ``"open_app"``, ``"mock"``, ``"wait_for_selector"``,
+    ``"wait_for_response"``, ``"wait"``, ``"scroll"``,
     ``"extract"``, ``"verify_visual"``, ``"verify_softly"``,
     ``"verify"``, ``"press_enter"``, ``"press"``, ``"right_click"``,
     ``"upload"``, ``"scan_page"``, ``"call_python"``, ``"set_var"``,

@@ -160,16 +160,35 @@ class _ActionsMixin:
         await asyncio.sleep(SCROLL_WAIT)
 
     async def _handle_wait_for_element(self, page, step: str) -> tuple[bool, str]:
-        """Handle ``Wait for 'Target' to be visible/hidden/disappear``."""
+        """Handle ``Wait for 'Target' to be visible/hidden/disappear``.
+
+        If *Target* looks like a CSS selector (starts with ``#``, ``.``, ``[``,
+        a tag name like ``ytd-``, or contains ``>``) the step delegates to
+        ``page.wait_for_selector()`` instead of ``get_by_text()``.
+        """
         target_element, desired_state = parse_explicit_wait(step)
         if not target_element or not desired_state:
             return False, "Malformed explicit wait command"
 
         state_mapped = "hidden" if desired_state in ("hidden", "disappear") else "visible"
-        locator = page.get_by_text(target_element, exact=False).first
+
+        _css_selector = bool(
+            re.match(r"^[#.\[a-z]", target_element, re.IGNORECASE)
+            and (
+                target_element.startswith(("#", ".", "["))
+                or re.search(r"[\[>:]", target_element)
+                or "-" in target_element
+            )
+        )
 
         try:
-            await locator.wait_for(state=state_mapped, timeout=self._EXPLICIT_WAIT_TIMEOUT_MS)
+            if _css_selector:
+                await page.wait_for_selector(
+                    target_element, state=state_mapped, timeout=self._EXPLICIT_WAIT_TIMEOUT_MS
+                )
+            else:
+                locator = page.get_by_text(target_element, exact=False).first
+                await locator.wait_for(state=state_mapped, timeout=self._EXPLICIT_WAIT_TIMEOUT_MS)
         except PlaywrightTimeoutError:
             timeout_s = self._EXPLICIT_WAIT_TIMEOUT_MS // 1000
             return False, f"Timeout waiting {timeout_s}s for element to be {state_mapped}"
@@ -177,6 +196,22 @@ class _ActionsMixin:
             return False, f"Explicit wait failed: {exc}"
 
         return True, f"Element is now {state_mapped}"
+
+    async def _handle_wait_for_selector(self, page, step: str) -> tuple[bool, str]:
+        """Handle ``WAIT FOR SELECTOR '<css-selector>'``."""
+        m = re.search(r"WAIT\s+FOR\s+SELECTOR\s+['\"]([^'\"]+)['\"]", step, re.IGNORECASE)
+        if not m:
+            return False, "Malformed WAIT FOR SELECTOR — expected: WAIT FOR SELECTOR '<css>'"
+        selector = m.group(1)
+        try:
+            await page.wait_for_selector(selector, timeout=self._EXPLICIT_WAIT_TIMEOUT_MS)
+            print(f"    ⏳ Selector '{selector}' found")
+            return True, f"Selector '{selector}' found"
+        except PlaywrightTimeoutError:
+            timeout_s = self._EXPLICIT_WAIT_TIMEOUT_MS // 1000
+            return False, f"Timeout waiting {timeout_s}s for selector '{selector}'"
+        except Exception as exc:
+            return False, f"WAIT FOR SELECTOR failed: {exc}"
 
     async def _handle_press_enter(self, page) -> bool:
         """Press the Enter key on the currently focused element.

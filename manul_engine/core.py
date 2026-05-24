@@ -1316,6 +1316,12 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     _step_error = "MOCK command failed"
                     _step_ok = False
 
+            elif step_kind == "wait_for_selector":
+                _wait_ok, _wait_msg = await self._handle_wait_for_selector(page, step)
+                if not _wait_ok:
+                    _step_error = _wait_msg
+                    _step_ok = False
+
             elif step_kind == "wait_for_response":
                 if not await self._handle_wait_for_response(page, step):
                     _step_error = "WAIT FOR RESPONSE timed out"
@@ -1799,6 +1805,14 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                 if not await self._handle_mock(page, step, hunt_dir=hunt_dir):
                                     _step_error = "MOCK command failed"
                                     _step_ok = False
+
+                            elif step_kind == "wait_for_selector":
+                                _wait_ok, _wait_msg = await self._handle_wait_for_selector(page, step)
+                                if not _wait_ok:
+                                    _step_error = _wait_msg
+                                    _step_ok = False
+                                else:
+                                    _step_success_message = _wait_msg
 
                             elif step_kind == "wait_for_response":
                                 if not await self._handle_wait_for_response(page, step):
