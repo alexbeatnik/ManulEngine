@@ -165,6 +165,35 @@ VERIFY "Search" input has placeholder "Type to search..."
 
 Explicit waits use Playwright's `locator.wait_for()` instead of hardcoded sleeps. Strict assertions resolve the element through heuristics and compare exact text, value, or placeholder with `==`.
 
+`WAIT FOR SELECTOR 'css'` waits for a CSS selector to appear (useful for custom elements like `ytd-video-renderer` that have no stable visible text). The `WAIT FOR 'target' TO BE VISIBLE` form also accepts CSS selectors — if the quoted target looks like a CSS selector it routes to `page.wait_for_selector()` automatically.
+
+### Page scanning for LLM agents
+
+```text
+FULL SCAN
+```
+
+`FULL SCAN` groups every interactive control on the page by its nearest semantic landmark (form, nav, header, dialog, section …) and prints a Markdown table per group. Designed for LLM-driven automation — an LLM can paste the output directly into its context window to decide which element to interact with next.
+
+Example output:
+
+```
+## Form: Login
+| role       | label                            | locator                              | tag      | editable |
+|------------|----------------------------------|--------------------------------------|----------|----------|
+| textbox    | Email                            | #email                               | input    | yes      |
+| textbox    | Password                         | #password                            | input    | yes      |
+| button     | Sign In                          | text=Sign In                         | button   | no       |
+
+## Navigation
+| role       | label                            | locator                              | tag      | editable |
+|------------|----------------------------------|--------------------------------------|----------|----------|
+| link       | Home                             | text=Home                            | a        | no       |
+| link       | About                            | text=About                           | a        | no       |
+```
+
+`SCAN PAGE` remains available for generating draft `.hunt` files from a live page.
+
 ### Shared libraries and scheduling
 
 ```text
@@ -269,7 +298,7 @@ The same runtime and the same DSL serve four use cases:
 - **Custom controls** — `@custom_control(page, target)` decorator lets SDETs handle complex widgets (datepickers, virtual tables, canvas elements) with raw Playwright while the hunt file keeps a single readable step. Handlers receive a typed `ControlContext` (`ctx.page` / `ctx.action` / `ctx.value` / `ctx.target` / `ctx.page_name` / `ctx.url` / `ctx.step`); `manul controls list` shows the registry; misses against a sibling page print a one-line hint.
 - **Lifecycle hooks** — `@before_all`, `@after_all`, `@before_group`, `@after_group` in `manul_hooks.py` for suite-wide setup and teardown.
 - **HTML reports** — `--html-report` generates a self-contained dark-themed report with accordions, screenshots, tag filters, and run-session merging across CLI invocations.
-- **Docker CI runner** — `ghcr.io/alexbeatnik/manul-engine:0.0.9.30` runs headless in CI with `dumb-init`, non-root user, and `MANUL_*` env overrides.
+- **Docker CI runner** — `ghcr.io/alexbeatnik/manul-engine:0.0.9.31` runs headless in CI with `dumb-init`, non-root user, and `MANUL_*` env overrides.
 
 ---
 
@@ -278,14 +307,14 @@ The same runtime and the same DSL serve four use cases:
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.30
+pip install manul-engine==0.0.9.31
 playwright install
 ```
 
 Optional local AI fallback (not required):
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.30"
+pip install "manul-engine[ai]==0.0.9.31"
 ollama pull qwen2.5:0.5b && ollama serve
 ```
 
@@ -347,7 +376,7 @@ Environment variables (`MANUL_HEADLESS`, `MANUL_BROWSER`, `MANUL_MODEL`, `MANUL_
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.30 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.31 \
   --html-report --screenshot on-fail hunts/
 ```
 
@@ -384,12 +413,12 @@ python demo/benchmarks/run_benchmarks.py         # adversarial DOM fixtures
 
 ManulEngine is alpha-stage and solo-developed. If deterministic, explainable browser automation interests you:
 
-- Try it: `pip install manul-engine==0.0.9.30 && playwright install`
+- Try it: `pip install manul-engine==0.0.9.31 && playwright install`
 - File issues: [github.com/alexbeatnik/ManulEngine/issues](https://github.com/alexbeatnik/ManulEngine/issues)
 
 ---
 
-## What's New in v0.0.9.30
+## What's New in v0.0.9.31
 
 - **Page registry split into `pages/` directory (BREAKING):** the monolithic `pages.json` is no longer read or written. Page mappings now live as one JSON fragment per site under `<project>/pages/<safe_netloc>.json`. Each fragment uses the lean `{ "site": "https://…/", "Domain": "…", ".*/login": "…" }` shape (or the wrapped legacy shape for copy-paste). The directory is auto-created; auto-fill writes a new fragment per unmapped site instead of bloating one shared file. Override location via `MANUL_PAGES_DIR`. **Migration:** run `manul pages migrate` once — splits any pre-existing `pages.json` into per-site fragments and renames the original to `pages.json.bak`.
 - **`manul pages list` / `manul pages migrate` CLI:** introspect every site → pattern → label mapping in one place; one-shot migrator for the legacy file.
@@ -419,6 +448,6 @@ ManulEngine is alpha-stage and solo-developed. If deterministic, explainable bro
 
 ## License
 
-**Version:** 0.0.9.30
+**Version:** 0.0.9.31
 
 Apache-2.0.

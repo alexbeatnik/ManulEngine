@@ -6,7 +6,7 @@
 
 ```json
 {
-  "version": "0.0.9.30",
+  "version": "0.0.9.31",
   "generatedFrom": "manul_engine/helpers.py :: classify_step(), detect_mode(), parse_contextual_hint(); manul_engine/core.py :: run_mission(); manul_engine/cli.py :: parse_hunt_file(); manul_engine/actions.py :: _ActionsMixin; manul_engine/scoring.py :: DOMScorer contextual proximity rules; manul_engine/js_scripts.py :: SNAPSHOT_JS geometry export; manul_engine/imports.py :: parse_import_directive(), resolve_imports(), expand_use_directives()",
   "casePolicy": {
     "canonical": "ALL_UPPERCASE",
@@ -151,7 +151,16 @@
       "uiText": "WAIT FOR '' to be visible",
       "snippet": "WAIT FOR '${1:target}' to ${2|be visible,be hidden,disappear|}",
       "regex": "^\\s*(?:\\d+\\.\\s*)?WAIT\\s+FOR\\s+(?P<quote>[\"'])(?P<target>.+?)(?P=quote)\\s+TO\\s+(?:(?:BE\\s+(?P<state_be>VISIBLE|HIDDEN))|(?P<state_disappear>DISAPPEAR))\\s*$",
-      "description": "Explicit wait for a quoted element to reach a desired visibility state (visible, hidden, or disappear). Uses Playwright locator.wait_for(state=...).",
+      "description": "Explicit wait for a quoted element to reach a desired visibility state (visible, hidden, or disappear). If the quoted target looks like a CSS selector (starts with #, ., [, contains -, >, or :) the engine uses page.wait_for_selector(state=...) instead of get_by_text(), so custom elements like 'ytd-video-renderer' work correctly.",
+      "category": "wait"
+    },
+    {
+      "id": "wait_for_selector",
+      "label": "WAIT FOR SELECTOR",
+      "uiText": "WAIT FOR SELECTOR ''",
+      "snippet": "WAIT FOR SELECTOR '${1:css-selector}'",
+      "regex": "\\bWAIT\\s+FOR\\s+SELECTOR\\b",
+      "description": "Explicit wait for a CSS selector to appear in the DOM. Uses page.wait_for_selector() with a 15-second timeout. Prefer this over WAIT FOR text when targeting DOM nodes by tag or class rather than visible text (e.g. WAIT FOR SELECTOR 'ytd-video-renderer').",
       "category": "wait"
     },
     {
@@ -270,6 +279,15 @@
       "regex": "\\bMOCK\\s+(?:GET|POST|PUT|PATCH|DELETE)\\b",
       "description": "Intercepts matching network requests via page.route() and fulfills from a local mock file. Supported HTTP methods: GET, POST, PUT, PATCH, DELETE.",
       "category": "network"
+    },
+    {
+      "id": "full_scan",
+      "label": "FULL SCAN",
+      "uiText": "FULL SCAN",
+      "snippet": "FULL SCAN",
+      "regex": "\\bFULL\\s+SCAN\\b",
+      "description": "Scans the current page and prints all interactive controls grouped by semantic landmark ancestor (form, nav, header, footer, dialog, section …) as Markdown tables. Designed for LLM consumption — each group becomes a ## heading with a role/label/locator/tag/editable table. No file output; output is console-only.",
+      "category": "utility"
     },
     {
       "id": "scan_page",

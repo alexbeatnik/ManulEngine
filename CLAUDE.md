@@ -1,6 +1,6 @@
 # CLAUDE.md — ManulEngine
 
-**Version:** 0.0.9.30
+**Version:** 0.0.9.31
 **Project:** Deterministic, DSL-first browser & desktop automation runtime built on Playwright with optional local LLM (Ollama) self-healing.
 
 This file is the operating manual for Claude Code working in this repo. It is loaded into every Claude session here. Keep it short, factual, and current — don't restate the README.
@@ -30,7 +30,7 @@ manul_engine/
   prompts.py      LLM prompts + global config (THRESHOLDS, BROWSER_ARGS, …)
   config.py       EngineConfig dataclass (injectable; takes priority over prompts.* globals)
   cli.py          manul CLI entry point (sync_main → asyncio runner)
-  test/           ~56 synthetic-DOM unit tests (test_NN_*.py, run via run_tests.py)
+  test/           ~57 synthetic-DOM unit tests (test_NN_*.py, run via run_tests.py)
 contracts/        MANUL_*_CONTRACT.md — frozen public-surface contracts (DSL/API/CLI/etc.)
 custom-instructions/  AI assistant instruction snippets (Cursor/Copilot/Claude)
 demo/             example .hunt suites used in CI smoke runs

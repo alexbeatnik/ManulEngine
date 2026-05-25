@@ -1316,6 +1316,12 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     _step_error = "MOCK command failed"
                     _step_ok = False
 
+            elif step_kind == "wait_for_selector":
+                _wait_ok, _wait_msg = await self._handle_wait_for_selector(page, step)
+                if not _wait_ok:
+                    _step_error = _wait_msg
+                    _step_ok = False
+
             elif step_kind == "wait_for_response":
                 if not await self._handle_wait_for_response(page, step):
                     _step_error = "WAIT FOR RESPONSE timed out"
@@ -1377,6 +1383,11 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     page, step, strategic_context, step_idx=action_index, hunt_dir=hunt_dir
                 ):
                     _step_error = "UPLOAD command failed"
+                    _step_ok = False
+
+            elif step_kind == "full_scan":
+                if not await self._handle_full_scan(page):
+                    _step_error = "FULL SCAN failed"
                     _step_ok = False
 
             elif step_kind == "scan_page":
@@ -1800,6 +1811,14 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                     _step_error = "MOCK command failed"
                                     _step_ok = False
 
+                            elif step_kind == "wait_for_selector":
+                                _wait_ok, _wait_msg = await self._handle_wait_for_selector(page, step)
+                                if not _wait_ok:
+                                    _step_error = _wait_msg
+                                    _step_ok = False
+                                else:
+                                    _step_success_message = _wait_msg
+
                             elif step_kind == "wait_for_response":
                                 if not await self._handle_wait_for_response(page, step):
                                     _step_error = "WAIT FOR RESPONSE timed out"
@@ -1866,6 +1885,11 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                     page, step, strategic_context, step_idx=action_index, hunt_dir=hunt_dir
                                 ):
                                     _step_error = "UPLOAD command failed"
+                                    _step_ok = False
+
+                            elif step_kind == "full_scan":
+                                if not await self._handle_full_scan(page):
+                                    _step_error = "FULL SCAN failed"
                                     _step_ok = False
 
                             elif step_kind == "scan_page":
