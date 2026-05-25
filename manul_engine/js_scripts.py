@@ -1223,37 +1223,51 @@ FULL_SCAN_JS = """() => {
         return 'Page';
     }
 
-    // ── Collect all interactive elements and group them ───────────────────────
+    // ── Collect all interactive elements and group them ─────────────────────
+    // Recurse into Shadow DOM roots so custom elements (ytd-*, mwc-*, etc.)
+    // are included — mirrors the scanRoot() approach used by SCAN_JS.
 
     const seen   = new WeakSet();
-    const groups = {};  // groupName → [{role, label, locator, tag, editable}]
+    const groups = {};  // groupName → [{role, label, locator, tag, editable, shadow}]
 
-    const candidates = document.querySelectorAll(
+    const SELECTOR =
         'button, a[href], input:not([type=hidden]), select, textarea, ' +
         '[role="button"], [role="link"], [role="checkbox"], [role="radio"], ' +
-        '[role="combobox"], [role="switch"], [role="menuitem"], [role="tab"]'
-    );
+        '[role="combobox"], [role="switch"], [role="menuitem"], [role="tab"]';
 
-    for (const el of candidates) {
-        if (seen.has(el) || isHidden(el)) continue;
-        if (!isInteractive(el)) continue;
+    function processElement(el, inShadow) {
+        if (seen.has(el) || isHidden(el)) return;
+        if (!isInteractive(el)) return;
         seen.add(el);
 
-        const label   = bestLabel(el);
-        if (!label) continue;  // skip unlabelled noise
+        const label = bestLabel(el);
+        if (!label) return;  // skip unlabelled noise
 
-        const role    = elementRole(el);
-        const locator = bestLocator(el);
-        const tag     = (el.tagName || '').toLowerCase();
+        const role     = elementRole(el);
+        const locator  = bestLocator(el);
+        const tag      = (el.tagName || '').toLowerCase();
         const editable = ['textbox','combobox'].includes(role) ||
                          tag === 'textarea' ||
                          (tag === 'input' && !['checkbox','radio','button','submit','image'].includes(
                              (el.getAttribute('type') || '').toLowerCase()));
-        const group   = resolveGroup(el);
+        const group    = resolveGroup(el);
+        const suffix   = inShadow ? ' [shadow]' : '';
 
-        if (!groups[group]) groups[group] = [];
-        groups[group].push({ role, label, locator, tag, editable });
+        if (!groups[group + suffix]) groups[group + suffix] = [];
+        groups[group + suffix].push({ role, label, locator, tag, editable });
     }
+
+    function scanRoot(root, inShadow) {
+        for (const el of root.querySelectorAll(SELECTOR)) {
+            processElement(el, inShadow);
+        }
+        // Recurse into every shadow root found under this root
+        for (const el of root.querySelectorAll('*')) {
+            if (el.shadowRoot) scanRoot(el.shadowRoot, true);
+        }
+    }
+
+    scanRoot(document, false);
 
     return JSON.stringify(groups);
 }"""

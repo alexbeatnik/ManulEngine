@@ -1,6 +1,6 @@
 # CLAUDE.md — ManulEngine
 
-**Version:** 0.0.9.31
+**Version:** 0.0.9.32
 **Project:** Deterministic, DSL-first browser & desktop automation runtime built on Playwright with optional local LLM (Ollama) self-healing.
 
 This file is the operating manual for Claude Code working in this repo. It is loaded into every Claude session here. Keep it short, factual, and current — don't restate the README.

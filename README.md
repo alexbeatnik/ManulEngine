@@ -173,7 +173,7 @@ Explicit waits use Playwright's `locator.wait_for()` instead of hardcoded sleeps
 FULL SCAN
 ```
 
-`FULL SCAN` groups every interactive control on the page by its nearest semantic landmark (form, nav, header, dialog, section …) and prints a Markdown table per group. Designed for LLM-driven automation — an LLM can paste the output directly into its context window to decide which element to interact with next.
+`FULL SCAN` groups every interactive control on the page by its nearest semantic landmark (form, nav, header, dialog, section …) and prints a Markdown table per group. Designed for LLM-driven automation — an LLM can paste the output directly into its context window to decide which element to interact with next. Shadow DOM trees are traversed recursively, so controls inside custom elements (e.g. `<ytd-*>`, `<mwc-*>`) appear under a `[shadow]`-suffixed group.
 
 Example output:
 
@@ -298,7 +298,7 @@ The same runtime and the same DSL serve four use cases:
 - **Custom controls** — `@custom_control(page, target)` decorator lets SDETs handle complex widgets (datepickers, virtual tables, canvas elements) with raw Playwright while the hunt file keeps a single readable step. Handlers receive a typed `ControlContext` (`ctx.page` / `ctx.action` / `ctx.value` / `ctx.target` / `ctx.page_name` / `ctx.url` / `ctx.step`); `manul controls list` shows the registry; misses against a sibling page print a one-line hint.
 - **Lifecycle hooks** — `@before_all`, `@after_all`, `@before_group`, `@after_group` in `manul_hooks.py` for suite-wide setup and teardown.
 - **HTML reports** — `--html-report` generates a self-contained dark-themed report with accordions, screenshots, tag filters, and run-session merging across CLI invocations.
-- **Docker CI runner** — `ghcr.io/alexbeatnik/manul-engine:0.0.9.31` runs headless in CI with `dumb-init`, non-root user, and `MANUL_*` env overrides.
+- **Docker CI runner** — `ghcr.io/alexbeatnik/manul-engine:0.0.9.32` runs headless in CI with `dumb-init`, non-root user, and `MANUL_*` env overrides.
 
 ---
 
@@ -307,14 +307,14 @@ The same runtime and the same DSL serve four use cases:
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.31
+pip install manul-engine==0.0.9.32
 playwright install
 ```
 
 Optional local AI fallback (not required):
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.31"
+pip install "manul-engine[ai]==0.0.9.32"
 ollama pull qwen2.5:0.5b && ollama serve
 ```
 
@@ -376,7 +376,7 @@ Environment variables (`MANUL_HEADLESS`, `MANUL_BROWSER`, `MANUL_MODEL`, `MANUL_
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.31 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.32 \
   --html-report --screenshot on-fail hunts/
 ```
 
@@ -413,41 +413,37 @@ python demo/benchmarks/run_benchmarks.py         # adversarial DOM fixtures
 
 ManulEngine is alpha-stage and solo-developed. If deterministic, explainable browser automation interests you:
 
-- Try it: `pip install manul-engine==0.0.9.31 && playwright install`
+- Try it: `pip install manul-engine==0.0.9.32 && playwright install`
 - File issues: [github.com/alexbeatnik/ManulEngine/issues](https://github.com/alexbeatnik/ManulEngine/issues)
 
 ---
 
-## What's New in v0.0.9.31
+## What's New in v0.0.9.32
 
-- **Page registry split into `pages/` directory (BREAKING):** the monolithic `pages.json` is no longer read or written. Page mappings now live as one JSON fragment per site under `<project>/pages/<safe_netloc>.json`. Each fragment uses the lean `{ "site": "https://…/", "Domain": "…", ".*/login": "…" }` shape (or the wrapped legacy shape for copy-paste). The directory is auto-created; auto-fill writes a new fragment per unmapped site instead of bloating one shared file. Override location via `MANUL_PAGES_DIR`. **Migration:** run `manul pages migrate` once — splits any pre-existing `pages.json` into per-site fragments and renames the original to `pages.json.bak`.
-- **`manul pages list` / `manul pages migrate` CLI:** introspect every site → pattern → label mapping in one place; one-shot migrator for the legacy file.
-- **Custom Controls API redesign — `ControlContext` (BREAKING):** `@custom_control` handlers now accept a single `ControlContext` argument instead of the legacy `(page, action_type, value)` triple. The context exposes `page` (live Playwright Page), `action`, `value`, `target`, `page_name`, `url`, and `step` — handlers no longer guess what the engine is passing them. The decorator validates the signature at registration and rejects the legacy form with a one-line migration hint. **Migration:** replace `async def fn(page, action_type, value)` with `async def fn(ctx: ControlContext)` and read `ctx.page` / `ctx.action` / `ctx.value`.
-- **Custom Controls miss-diagnostics:** when a `.hunt` step's quoted target has a `@custom_control` registered for a *different* `page` label, ManulEngine now prints a one-line hint pointing at the likely `pages/` ↔ `@custom_control(page=…)` mismatch instead of silently falling through to heuristic resolution. Eliminates the most common "my handler isn't firing" debugging session.
-- **Visible dispatch log:** the dispatch log line now includes the resolved page label, action mode, and handler qualname (`🎛️  [CUSTOM CONTROL] 'React Datepicker' on 'Checkout Page' (input) → handle_react_datepicker`) — visible without `--debug`.
-- **`manul controls list` CLI command + `list_custom_controls()` API:** introspect the registry from the terminal or from Python.
-- **Internal hygiene:** lifted 8 function-local imports of stdlib modules (`sys`, `base64`) to module scope in `core.py`; collapsed the import-after-statement block into a single PEP-8 import section.
+- **`FULL SCAN` DSL step:** groups every interactive control on the page by its nearest semantic landmark ancestor (`<form>`, `<nav>`, `<header>`, `<footer>`, `<dialog>`, `<section>`, ARIA roles) and prints a compact Markdown table per group. Designed for LLM-driven automation — paste the output into an LLM context window to decide what to interact with next. Shadow DOM trees are traversed recursively; controls inside custom elements appear under a `[shadow]`-suffixed group.
+- **`WAIT FOR SELECTOR '<css>'` DSL step:** explicit CSS-selector wait via `page.wait_for_selector()`. Solves the SPA / YouTube use case where there is no stable visible text, only a DOM tag (`ytd-video-renderer`, `mwc-button`, etc.).
+- **CSS-aware `WAIT FOR '…' TO BE VISIBLE`:** the existing step now auto-detects CSS selectors (starts with `#`, `.`, `[`, contains `-`, `>`, or `:`) and routes to `page.wait_for_selector()` instead of `get_by_text()`. Plain-text targets are unchanged.
 
 <details>
-<summary>v0.0.9.29</summary>
+<summary>v0.0.9.31</summary>
 
-- **Loop constructs (`REPEAT` / `FOR EACH` / `WHILE`):** Iterative execution blocks in `.hunt` files. `REPEAT N TIMES:` for fixed counts, `FOR EACH {var} IN {collection}:` for data iteration, `WHILE <condition>:` for dynamic polling. Full nesting with conditionals, `{i}` auto-counter, WHILE safety limit (100 iterations), empty body validation. 129-assertion test suite.
-- **Complete user guide** — new `docs/` folder with structured documentation: overview, installation, getting started, full DSL syntax reference, reports & explainability, and integration guides.
+- **Page registry split into `pages/` directory (BREAKING):** page mappings now live as one JSON fragment per site under `<project>/pages/<safe_netloc>.json`. Run `manul pages migrate` once to split any pre-existing `pages.json`.
+- **`ControlContext` API for `@custom_control` (BREAKING):** handlers now accept a single `ControlContext` argument exposing `page`, `action`, `value`, `target`, `page_name`, `url`, and `step`. Replace `async def fn(page, action_type, value)` with `async def fn(ctx: ControlContext)`.
+- **`manul pages list` / `manul pages migrate` / `manul controls list` CLI commands.**
+- **Custom Controls miss-diagnostics** and **visible dispatch log** without `--debug`.
 
 </details>
 
 <details>
-<summary>v0.0.9.28</summary>
+<summary>v0.0.9.30</summary>
 
-- **Conditional branching (`IF` / `ELIF` / `ELSE`):** Block-style branching in `.hunt` files based on element presence, visible text, or variable state. Indentation-based body detection, nesting support, and `ConditionalSyntaxError` for malformed blocks. 97-assertion test suite.
-- **What-If Analysis REPL (`ExplainNextDebugger`):** Interactive debug REPL for hypothetical step evaluation. During a debug pause, type `w` (terminal) to enter the REPL or `e` / send `explain-next` (extension protocol) for one-shot evaluation. Combines DOMScorer heuristic scoring with optional LLM analysis to produce a 0–10 confidence rating, element match info, risk assessment, and corrective suggestions. The best heuristic match is highlighted with a persistent magenta outline on the live page. 112-assertion test suite.
-- **What-If execute bug fixes:** `_execute_step()` recursive call now passes `strategic_context` and `step_idx` by keyword. Injected What-If steps run through `substitute_memory()` so `{var}` placeholders resolve before execution.
-- **LLM JSON fence-stripping:** `_parse_llm_json()` now strips markdown code fences before JSON parsing.
+- **Loop constructs (`REPEAT` / `FOR EACH` / `WHILE`):** iterative execution blocks. `REPEAT N TIMES:` for fixed counts, `FOR EACH {var} IN {collection}:` for data iteration, `WHILE <condition>:` for dynamic polling. Full nesting with conditionals, `{i}` auto-counter, WHILE safety limit (100 iterations). 129-assertion test suite.
+- **Complete user guide** — new `docs/` folder with structured documentation.
 
 </details>
 
 ## License
 
-**Version:** 0.0.9.31
+**Version:** 0.0.9.32
 
 Apache-2.0.
