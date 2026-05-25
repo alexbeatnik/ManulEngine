@@ -1385,6 +1385,11 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     _step_error = "UPLOAD command failed"
                     _step_ok = False
 
+            elif step_kind == "full_scan":
+                if not await self._handle_full_scan(page):
+                    _step_error = "FULL SCAN failed"
+                    _step_ok = False
+
             elif step_kind == "scan_page":
                 if not await self._handle_scan_page(page, step):
                     _step_error = "SCAN PAGE failed"
@@ -1880,6 +1885,11 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                     page, step, strategic_context, step_idx=action_index, hunt_dir=hunt_dir
                                 ):
                                     _step_error = "UPLOAD command failed"
+                                    _step_ok = False
+
+                            elif step_kind == "full_scan":
+                                if not await self._handle_full_scan(page):
+                                    _step_error = "FULL SCAN failed"
                                     _step_ok = False
 
                             elif step_kind == "scan_page":

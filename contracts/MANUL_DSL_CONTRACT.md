@@ -281,6 +281,15 @@
       "category": "network"
     },
     {
+      "id": "full_scan",
+      "label": "FULL SCAN",
+      "uiText": "FULL SCAN",
+      "snippet": "FULL SCAN",
+      "regex": "\\bFULL\\s+SCAN\\b",
+      "description": "Scans the current page and prints all interactive controls grouped by semantic landmark ancestor (form, nav, header, footer, dialog, section …) as Markdown tables. Designed for LLM consumption — each group becomes a ## heading with a role/label/locator/tag/editable table. No file output; output is console-only.",
+      "category": "utility"
+    },
+    {
       "id": "scan_page",
       "label": "SCAN PAGE",
       "uiText": "SCAN PAGE",

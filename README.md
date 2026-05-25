@@ -165,6 +165,35 @@ VERIFY "Search" input has placeholder "Type to search..."
 
 Explicit waits use Playwright's `locator.wait_for()` instead of hardcoded sleeps. Strict assertions resolve the element through heuristics and compare exact text, value, or placeholder with `==`.
 
+`WAIT FOR SELECTOR 'css'` waits for a CSS selector to appear (useful for custom elements like `ytd-video-renderer` that have no stable visible text). The `WAIT FOR 'target' TO BE VISIBLE` form also accepts CSS selectors — if the quoted target looks like a CSS selector it routes to `page.wait_for_selector()` automatically.
+
+### Page scanning for LLM agents
+
+```text
+FULL SCAN
+```
+
+`FULL SCAN` groups every interactive control on the page by its nearest semantic landmark (form, nav, header, dialog, section …) and prints a Markdown table per group. Designed for LLM-driven automation — an LLM can paste the output directly into its context window to decide which element to interact with next.
+
+Example output:
+
+```
+## Form: Login
+| role       | label                            | locator                              | tag      | editable |
+|------------|----------------------------------|--------------------------------------|----------|----------|
+| textbox    | Email                            | #email                               | input    | yes      |
+| textbox    | Password                         | #password                            | input    | yes      |
+| button     | Sign In                          | text=Sign In                         | button   | no       |
+
+## Navigation
+| role       | label                            | locator                              | tag      | editable |
+|------------|----------------------------------|--------------------------------------|----------|----------|
+| link       | Home                             | text=Home                            | a        | no       |
+| link       | About                            | text=About                           | a        | no       |
+```
+
+`SCAN PAGE` remains available for generating draft `.hunt` files from a live page.
+
 ### Shared libraries and scheduling
 
 ```text

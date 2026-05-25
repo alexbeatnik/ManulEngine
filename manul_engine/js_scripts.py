@@ -1098,3 +1098,162 @@ SCAN_JS = """() => {
     scanRoot(document, results, seen);
     return JSON.stringify(results);
 }"""
+
+FULL_SCAN_JS = """() => {
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    function isHidden(el) {
+        if (el.getAttribute('aria-hidden') === 'true') return true;
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) return true;
+        try {
+            const st = window.getComputedStyle(el);
+            if (st.display === 'none' || st.visibility === 'hidden' || parseFloat(st.opacity) === 0) return true;
+        } catch (_) {}
+        return false;
+    }
+
+    function bestLabel(el) {
+        const tag  = (el.tagName || '').toUpperCase();
+        const type = (el.getAttribute('type') || '').toLowerCase();
+        if (tag === 'INPUT' && (type === 'radio' || type === 'checkbox')) {
+            if (el.id) {
+                const lbl = document.querySelector('label[for="' + CSS.escape(el.id) + '"]');
+                if (lbl) return lbl.innerText.trim();
+            }
+            const closest = el.closest('label');
+            if (closest) return closest.innerText.trim();
+        }
+        const ariaLabel = el.getAttribute('aria-label') || '';
+        if (ariaLabel.trim()) return ariaLabel.trim();
+        const ph = el.getAttribute('placeholder') || '';
+        if (ph.trim()) return ph.trim();
+        const text = (el.innerText || el.textContent || '').replace(/\\s+/g, ' ').trim();
+        if (text && text.length <= 80) return text;
+        const title = el.getAttribute('title') || '';
+        if (title.trim()) return title.trim();
+        const name = el.getAttribute('name') || '';
+        if (name.trim()) return name.trim();
+        return el.getAttribute('id') || '';
+    }
+
+    function bestLocator(el) {
+        const id = el.getAttribute('id');
+        if (id) return '#' + CSS.escape(id);
+        const testId = el.getAttribute('data-testid') || el.getAttribute('data-test-id');
+        if (testId) return '[data-testid="' + testId + '"]';
+        const label = bestLabel(el).slice(0, 60);
+        if (label) return 'text=' + label;
+        const name = el.getAttribute('name');
+        if (name) return '[name="' + name + '"]';
+        return el.tagName.toLowerCase();
+    }
+
+    function elementRole(el) {
+        const role = (el.getAttribute('role') || '').toLowerCase();
+        if (role) return role;
+        const tag  = (el.tagName || '').toUpperCase();
+        const type = (el.getAttribute('type') || '').toLowerCase();
+        if (tag === 'BUTTON' || type === 'submit' || type === 'button') return 'button';
+        if (tag === 'A') return 'link';
+        if (tag === 'INPUT' && type === 'checkbox') return 'checkbox';
+        if (tag === 'INPUT' && type === 'radio') return 'radio';
+        if (tag === 'SELECT') return 'combobox';
+        if (tag === 'TEXTAREA' || tag === 'INPUT') return 'textbox';
+        return tag.toLowerCase();
+    }
+
+    function isInteractive(el) {
+        const tag  = (el.tagName || '').toUpperCase();
+        const type = (el.getAttribute('type') || '').toLowerCase();
+        if (['BUTTON', 'SELECT', 'TEXTAREA'].includes(tag)) return true;
+        if (tag === 'INPUT' && type !== 'hidden') return true;
+        if (tag === 'A' && el.getAttribute('href') !== null) return true;
+        const role = (el.getAttribute('role') || '').toLowerCase();
+        return ['button','link','checkbox','radio','combobox','switch','menuitem',
+                'tab','option','menuitemcheckbox','menuitemradio'].includes(role);
+    }
+
+    // ── Semantic group resolution ─────────────────────────────────────────────
+    // Walk ancestors to find the best named container.
+
+    const LANDMARK_ROLES = new Set(['form','navigation','search','banner','contentinfo',
+                                    'complementary','main','region','dialog']);
+    const LANDMARK_TAGS  = new Set(['FORM','NAV','HEADER','FOOTER','ASIDE','MAIN','DIALOG',
+                                    'SECTION','ARTICLE']);
+
+    function groupLabel(container) {
+        // aria-label / aria-labelledby first
+        const al = container.getAttribute('aria-label') || '';
+        if (al.trim()) return al.trim();
+        const lby = container.getAttribute('aria-labelledby') || '';
+        if (lby) {
+            const ref = document.getElementById(lby);
+            if (ref) return (ref.innerText || ref.textContent || '').trim();
+        }
+        // <legend> for fieldset, first heading inside container
+        if (container.tagName === 'FIELDSET') {
+            const legend = container.querySelector('legend');
+            if (legend) return legend.innerText.trim();
+        }
+        const h = container.querySelector('h1,h2,h3,h4,h5,h6');
+        if (h && h.innerText.trim()) return h.innerText.trim().slice(0, 60);
+        // Label from id
+        const id = container.getAttribute('id') || '';
+        if (id) {
+            const lbl = document.querySelector('label[for="' + CSS.escape(id) + '"]');
+            if (lbl) return lbl.innerText.trim();
+        }
+        return '';
+    }
+
+    function resolveGroup(el) {
+        let node = el.parentElement;
+        while (node && node !== document.body) {
+            const tag  = (node.tagName || '').toUpperCase();
+            const role = (node.getAttribute('role') || '').toLowerCase();
+            if (LANDMARK_TAGS.has(tag) || LANDMARK_ROLES.has(role)) {
+                const label = groupLabel(node);
+                const tagName = tag.charAt(0) + tag.slice(1).toLowerCase();
+                if (label) return tagName + ': ' + label;
+                return tagName;
+            }
+            node = node.parentElement;
+        }
+        return 'Page';
+    }
+
+    // ── Collect all interactive elements and group them ───────────────────────
+
+    const seen   = new WeakSet();
+    const groups = {};  // groupName → [{role, label, locator, tag, editable}]
+
+    const candidates = document.querySelectorAll(
+        'button, a[href], input:not([type=hidden]), select, textarea, ' +
+        '[role="button"], [role="link"], [role="checkbox"], [role="radio"], ' +
+        '[role="combobox"], [role="switch"], [role="menuitem"], [role="tab"]'
+    );
+
+    for (const el of candidates) {
+        if (seen.has(el) || isHidden(el)) continue;
+        if (!isInteractive(el)) continue;
+        seen.add(el);
+
+        const label   = bestLabel(el);
+        if (!label) continue;  // skip unlabelled noise
+
+        const role    = elementRole(el);
+        const locator = bestLocator(el);
+        const tag     = (el.tagName || '').toLowerCase();
+        const editable = ['textbox','combobox'].includes(role) ||
+                         tag === 'textarea' ||
+                         (tag === 'input' && !['checkbox','radio','button','submit','image'].includes(
+                             (el.getAttribute('type') || '').toLowerCase()));
+        const group   = resolveGroup(el);
+
+        if (!groups[group]) groups[group] = [];
+        groups[group].push({ role, label, locator, tag, editable });
+    }
+
+    return JSON.stringify(groups);
+}"""

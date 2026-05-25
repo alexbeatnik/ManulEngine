@@ -27,6 +27,7 @@ from .js_scripts import (
     EXTRACT_DATA_JS,
     FILTER_CONTAINER_DESCENDANT_XPATHS_JS,
     FIND_CONTAINER_XPATH_JS,
+    FULL_SCAN_JS,
     SCAN_JS,
     STATE_CHECK_JS,
     VISIBLE_TEXT_JS,
@@ -1129,6 +1130,67 @@ class _ActionsMixin:
                 await asyncio.sleep(1)
 
         return False
+
+    # ── FULL SCAN ─────────────────────────────────────────────────────────────
+
+    async def _handle_full_scan(self, page) -> bool:
+        """Handle ``FULL SCAN`` — print page controls grouped by semantic container.
+
+        Groups interactive elements by their nearest landmark ancestor (form, nav,
+        header, footer, dialog, section …) and renders each group as a compact
+        Markdown table so an LLM can reason about the page layout without noise.
+        """
+        import json as _json
+
+        print("    🔬 FULL SCAN: collecting semantic groups …")
+        try:
+            raw = await page.evaluate(FULL_SCAN_JS)
+            groups: dict = _json.loads(raw)
+        except Exception as exc:
+            print(f"    ❌ FULL SCAN: JS evaluation failed: {exc}")
+            return False
+
+        if not groups:
+            print("    ⚠️  FULL SCAN: no interactive elements found")
+            return True
+
+        total = sum(len(v) for v in groups.values())
+        print(f"    📊 FULL SCAN: {total} control(s) across {len(groups)} group(s)\n")
+
+        col_w = {"role": 10, "label": 32, "locator": 36, "tag": 8, "editable": 8}
+        header = (
+            f"| {'role':<{col_w['role']}} | {'label':<{col_w['label']}} "
+            f"| {'locator':<{col_w['locator']}} | {'tag':<{col_w['tag']}} "
+            f"| {'editable':<{col_w['editable']}} |"
+        )
+        separator = (
+            f"|{'-' * (col_w['role'] + 2)}|{'-' * (col_w['label'] + 2)}"
+            f"|{'-' * (col_w['locator'] + 2)}|{'-' * (col_w['tag'] + 2)}"
+            f"|{'-' * (col_w['editable'] + 2)}|"
+        )
+
+        lines: list[str] = []
+        for group_name, controls in groups.items():
+            lines.append(f"\n## {group_name}")
+            lines.append(header)
+            lines.append(separator)
+            for ctrl in controls:
+                role = str(ctrl.get("role", ""))[: col_w["role"]]
+                label = str(ctrl.get("label", ""))[: col_w["label"]]
+                locator = str(ctrl.get("locator", ""))[: col_w["locator"]]
+                tag = str(ctrl.get("tag", ""))[: col_w["tag"]]
+                editable = "yes" if ctrl.get("editable") else "no"
+                lines.append(
+                    f"| {role:<{col_w['role']}} | {label:<{col_w['label']}} "
+                    f"| {locator:<{col_w['locator']}} | {tag:<{col_w['tag']}} "
+                    f"| {editable:<{col_w['editable']}} |"
+                )
+
+        output = "\n".join(lines)
+        print("\n" + "─" * 80)
+        print(output)
+        print("─" * 80)
+        return True
 
     # ── SCAN PAGE ─────────────────────────────────────────────────────────────
 
