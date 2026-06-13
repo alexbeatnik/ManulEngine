@@ -1,11 +1,11 @@
 ---
 name: bump-version
-description: Bump the ManulEngine version atomically across all 18 files using bump_version.py (the single source of truth is pyproject.toml). Invoke when the user says "bump to X.Y.Z", "онови версію", "cut a release", or any phrasing that implies a version change. Refuses to run if the working tree is on an inconsistent version base.
+description: Bump the ManulEngine version atomically across all 17 files using bump_version.py (the single source of truth is pyproject.toml). Invoke when the user says "bump to X.Y.Z", "онови версію", "cut a release", or any phrasing that implies a version change. Refuses to run if the working tree is on an inconsistent version base.
 ---
 
 # bump-version
 
-The canonical source of truth is `pyproject.toml → version`. The repository ships a `bump_version.py` helper that rewrites every other location (READMEs, Dockerfiles, GitHub workflows, contracts, copilot/cursor instruction files, custom-instructions). **Always go through this script — never edit version strings by hand.**
+The canonical source of truth is `pyproject.toml → version`. The repository ships a `bump_version.py` helper that rewrites every other location (READMEs, Dockerfiles, GitHub workflows, contracts, copilot instruction files, custom-instructions mirror). **Always go through this script — never edit version strings by hand.**
 
 ## When to invoke
 
@@ -23,7 +23,7 @@ Do NOT invoke when the user only updated docs and didn't change behavior — ver
 ## Execution order
 
 1. **Read current state.** Run `python bump_version.py --show` and `git status --porcelain` from the repo root. Confirm the displayed version matches the expectation (no half-applied previous bump). If `git status` shows uncommitted version-related drift, surface it and pause.
-2. **Dry-run first.** `python bump_version.py <new> --dry-run` and inspect the per-file replacement count. Expect 35 replacements across 18 files for a clean bump. If the count is wildly off, stop — the regex set in `bump_version.py:TARGETS` may have rotted; investigate before applying.
+2. **Dry-run first.** `python bump_version.py <new> --dry-run` and inspect the per-file replacement count. Expect 31 replacements across 17 files for a clean bump. If the count is wildly off, stop — the regex set in `bump_version.py:TARGETS` may have rotted; investigate before applying.
 3. **Apply.** `python bump_version.py <new>`.
 4. **Verify.** `python bump_version.py --show` again, then `git diff --stat` so the user can see exactly which files moved.
 5. **Sync mirrored files.** `.github/copilot-instructions.md` and `custom-instructions/repo/.github/copilot-instructions.md` are expected to stay byte-identical to their template. If a contract was updated alongside the bump, run a `diff` and surface any mismatch.
@@ -40,4 +40,4 @@ Do NOT invoke when the user only updated docs and didn't change behavior — ver
 
 - Script: `bump_version.py` (project root).
 - Source of truth: `pyproject.toml → [project] version`.
-- Files updated: see `TARGETS` in `bump_version.py` — currently 18 unique files, 35 substitutions.
+- Files updated: see `TARGETS` in `bump_version.py` — currently 17 unique files, 31 substitutions.

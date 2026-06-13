@@ -116,8 +116,7 @@ def _is_connection_error(exc: BaseException) -> bool:
         return True
     text = f"{type(exc).__name__}: {exc}".lower()
     return any(
-        marker in text
-        for marker in ("connection", "refused", "timed out", "max retries", "failed to establish")
+        marker in text for marker in ("connection", "refused", "timed out", "max retries", "failed to establish")
     )
 
 
@@ -160,8 +159,7 @@ class OllamaProvider:
             except Exception as e:  # noqa: BLE001 — provider must fail closed
                 if _is_connection_error(e):
                     _log.warning(
-                        "LLM call failed: cannot reach Ollama (%s) — is `ollama serve` running "
-                        "and is model %r pulled?",
+                        "LLM call failed: cannot reach Ollama (%s) — is `ollama serve` running and is model %r pulled?",
                         e,
                         self.model,
                     )

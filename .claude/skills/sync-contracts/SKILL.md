@@ -55,6 +55,6 @@ The eight files under `contracts/` describe the **frozen public surface** of Man
 
 ## Reference
 
-- Contracts: `/home/alexbeatnik/Documents/ManulEngine/contracts/MANUL_*_CONTRACT.md`
+- Contracts: `contracts/MANUL_*_CONTRACT.md` (repo-root relative)
 - Public API mirror: `manul_engine/__init__.py:__all__`
 - Mirrored AI instructions: `.github/copilot-instructions.md`, `custom-instructions/repo/.github/copilot-instructions.md`

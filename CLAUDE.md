@@ -73,8 +73,8 @@ Single source of truth: `pyproject.toml → version`. Use `bump_version.py <new>
 
 ## Tests
 
-- Run all: `python run_tests.py` (wraps `python -m unittest discover manul_engine/test -v`).
-- Run one: `python -m unittest manul_engine.test.test_36_scoring_math -v`.
+- Run all: `python run_tests.py` (imports each `test_*.py` and calls its `run_laboratory()`/`run_suite()` — these are function-based suites, **not** `unittest.TestCase`).
+- Run one: run the file as a script — `python manul_engine/test/test_36_scoring_math.py`. (`python -m unittest manul_engine.test.test_36_scoring_math` reports "Ran 0 tests" — there are no TestCases.)
 - Tests use synthetic DOM HTML (`/tmp/*.html`) served via Playwright, no external network. They exercise scoring, parsing, lifecycle, recording, scheduling, the full DSL surface, and the reporter. Don't add real-network tests — keep the suite hermetic.
 - The ruff per-file-ignores for `manul_engine/test/*` are intentional; tests intentionally use shadowing, unused locals, and asserts.
 
