@@ -5,7 +5,7 @@
 
 ```json
 {
-  "version": "0.0.9.32",
+  "version": "0.0.9.33",
   "generatedFrom": "manul_engine/prompts.py :: _KEY_MAP, _CFG, get_threshold(), lookup_page_name(); manul_engine/variables.py :: ScopedVariables; manul_engine/helpers.py :: env_bool()",
 
   "configFile": {
@@ -378,6 +378,30 @@
         "type": "integer (seconds)",
         "default": 1800,
         "description": "TTL for HTML report session state merging. Older sessions start fresh."
+      },
+      {
+        "var": "MANUL_LLM_TEMPERATURE",
+        "type": "float",
+        "default": 0.0,
+        "description": "Ollama sampling temperature for the element-picker/planner. 0 = greedy/deterministic (recommended — the engine's contract is reproducible picks). Read once at OllamaProvider construction (manul_engine/llm.py)."
+      },
+      {
+        "var": "MANUL_LLM_NUM_CTX",
+        "type": "integer",
+        "default": 0,
+        "description": "Ollama context-window override (num_ctx). 0 = use the model's default. Read once at OllamaProvider construction."
+      },
+      {
+        "var": "MANUL_LLM_RETRIES",
+        "type": "integer",
+        "default": 1,
+        "description": "Extra attempts after the first when the LLM returns an empty/unparseable reply. A refused connection fails fast (no retry). Read once at OllamaProvider construction."
+      },
+      {
+        "var": "MANUL_LLM_KEEP_ALIVE",
+        "type": "string",
+        "default": "",
+        "description": "Ollama keep_alive (e.g. '5m', '-1'). Empty = server default. Read once at OllamaProvider construction."
       }
     ]
   }

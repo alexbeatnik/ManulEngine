@@ -1,6 +1,6 @@
 # CLAUDE.md — ManulEngine
 
-**Version:** 0.0.9.32
+**Version:** 0.0.9.33
 **Project:** Deterministic, DSL-first browser & desktop automation runtime built on Playwright with optional local LLM (Ollama) self-healing.
 
 This file is the operating manual for Claude Code working in this repo. It is loaded into every Claude session here. Keep it short, factual, and current — don't restate the README.
@@ -22,6 +22,7 @@ manul_engine/
   imports.py      @import / USE block resolution for .hunt libraries
   controls.py     @custom_control registry (page-scoped overrides)
   scoring.py      heuristic element scorer (text · attrs · semantics · proximity · cache)
+  llm.py          LLMProvider (Ollama/Null) + JSON parse, deterministic sampling, sanitize_for_llm
   scanner.py      DOM snapshot → draft .hunt file (manul scan <URL>)
   recorder.py     interactive recorder (manul record <URL>)
   reporter.py     HTML + JSON test reports
@@ -72,8 +73,8 @@ Single source of truth: `pyproject.toml → version`. Use `bump_version.py <new>
 
 ## Tests
 
-- Run all: `python run_tests.py` (wraps `python -m unittest discover manul_engine/test -v`).
-- Run one: `python -m unittest manul_engine.test.test_36_scoring_math -v`.
+- Run all: `python run_tests.py` (imports each `test_*.py` and calls its `run_laboratory()`/`run_suite()` — these are function-based suites, **not** `unittest.TestCase`).
+- Run one: run the file as a script — `python manul_engine/test/test_36_scoring_math.py`. (`python -m unittest manul_engine.test.test_36_scoring_math` reports "Ran 0 tests" — there are no TestCases.)
 - Tests use synthetic DOM HTML (`/tmp/*.html`) served via Playwright, no external network. They exercise scoring, parsing, lifecycle, recording, scheduling, the full DSL surface, and the reporter. Don't add real-network tests — keep the suite hermetic.
 - The ruff per-file-ignores for `manul_engine/test/*` are intentional; tests intentionally use shadowing, unused locals, and asserts.
 

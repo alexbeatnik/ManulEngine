@@ -8,7 +8,6 @@
 > 1. `README.md` — public-facing feature docs and version footer
 > 2. `README_DEV.md` — internal architecture docs and version title/footer
 > 3. `.github/copilot-instructions.md` — AI training context and syntax rules
-> 4. `.cursorrules` — repo-local assistant guidance, pinned version examples, and install commands
 >
 > A feature that appears in one file but not the others is a documentation bug.
 > This `.github/copilot-instructions.md` file is the single canonical source of Copilot/LLM instructions for this repository. Any mirrored copies used by tooling or templates must reference this file or be kept byte-for-byte in sync as generated artifacts.
@@ -62,7 +61,7 @@ manul.py                   Dev CLI entry point (run hunts from repo root without
 run_tests.py               Synthetic DOM test suite runner (dev only)
 bump_version.py            Version bumper — updates all 18 files from pyproject.toml
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.32
+pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.33
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession, EngineConfig, all exception classes
   exceptions.py            Structured exception hierarchy (ManulEngineError base, ConfigurationError, ElementResolutionError, HookExecutionError, HuntImportError, VerificationError, SessionError, ScheduleError, ConditionalSyntaxError)
@@ -643,7 +642,7 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.32 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.33 \
   --html-report --screenshot on-fail hunts/
 ```
 
@@ -952,7 +951,7 @@ The companion extension is published separately from this runtime repository. Wh
 
 ## Version Bump
 
-The repository ships `bump_version.py` at the project root. It reads the canonical version from `pyproject.toml` and updates **every** file that embeds the version string (34 occurrences across 18 files: pyproject.toml, Dockerfile, docker-compose.yml, README.md, README_DEV.md, .cursorrules, .github/copilot-instructions.md, custom-instructions mirror, 8 contracts, CI workflows).
+The repository ships `bump_version.py` at the project root. It reads the canonical version from `pyproject.toml` and updates **every** file that embeds the version string (31 occurrences across 17 files: pyproject.toml, Dockerfile, docker-compose.yml, README.md, README_DEV.md, .github/copilot-instructions.md, custom-instructions mirror, 8 contracts, CI workflows).
 
 ```bash
 python bump_version.py 0.0.9.28 --dry-run   # preview changes

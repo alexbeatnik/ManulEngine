@@ -2,7 +2,7 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.32 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.0.9.33 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
 Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
@@ -27,7 +27,7 @@ ManulEngine/
 ├── run_tests.py                      Synthetic DOM test suite runner (dev only)
 ├── bump_version.py                   Version bumper — updates all 18 files from pyproject.toml
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.32
+├── pyproject.toml                    Build config — package: manul-engine 0.0.9.33
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession, EngineConfig, all exception classes
@@ -616,7 +616,7 @@ playwright install chromium
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.32
+pip install manul-engine==0.0.9.33
 playwright install chromium
 ```
 
@@ -739,7 +739,7 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.32 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.33 \
   --html-report --screenshot on-fail hunts/
 ```
 
@@ -975,13 +975,13 @@ python bump_version.py 0.0.9.28             # apply to all files
 python bump_version.py --show                # print current version
 ```
 
-Covered files: `pyproject.toml`, `Dockerfile`, `docker-compose.yml`, `README.md`, `README_DEV.md`, `.cursorrules`, `.github/copilot-instructions.md`, custom-instructions mirror, all 8 contracts, and CI workflows.
+Covered files: `pyproject.toml`, `Dockerfile`, `docker-compose.yml`, `README.md`, `README_DEV.md`, `.github/copilot-instructions.md`, custom-instructions mirror, all 8 contracts, and CI workflows.
 
 > **Rule:** never edit version strings by hand — always use `bump_version.py` to keep all files in sync.
 
 ---
 
-## Release Notes: v0.0.9.32
+## Release Notes: v0.0.9.33
 
 - **Page registry split into per-site fragments under `pages/` (BREAKING):** the monolithic `<project>/pages.json` file is no longer read or written. The canonical location is `<project>/pages/<safe_netloc>.json`, one JSON fragment per site. Each fragment uses either the lean form `{ "site": "https://…/", "Domain": "…", "<pattern>": "<name>" }` or the wrapped form `{ "https://…/": { "Domain": "…", … } }` (auto-detected by `_normalise_fragment()` in `manul_engine/prompts.py`). `_load_pages_dir()` merges every fragment on every `lookup_page_name()` call so manual edits are visible within the same session. `_auto_populate_registry()` writes to `pages/<safe_netloc>.json` instead of growing one shared file. `pages_registry_mtime()` returns the most recent mtime across all fragments. Override the directory via `MANUL_PAGES_DIR` (absolute or CWD-relative). The legacy `_PAGES_WRITE_PATH` / `_PAGES_READ_PATH` symbols are removed; downstream callers should use `_PAGES_DIR_PATH`. Existing repo + demo fixtures were migrated as part of this change. **Migration:** `manul pages migrate` reads any leftover `pages.json`, fans it out into per-site fragments, and renames the original to `pages.json.bak`.
 - **`manul pages list` / `manul pages migrate` CLI subcommands:** routed in `cli.py:main()` next to `controls`. `list` prints `site → pattern → label` for every fragment; `migrate` performs the one-shot split. New top-level `import json` and `from pathlib import Path` in `cli.py` (previously imported via the standard preamble).
@@ -1015,7 +1015,7 @@ Covered files: `pyproject.toml`, `Dockerfile`, `docker-compose.yml`, `README.md`
 
 </details>
 
-**Version:** 0.0.9.32
+**Version:** 0.0.9.33
 
 **Codename:** Containerised Manul
 

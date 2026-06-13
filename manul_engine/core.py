@@ -283,7 +283,17 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         """Ask the LLM to decompose a free-text task into numbered steps."""
         print("    🧠 AI PLANNER: Generating mission steps...")
         obj = await self._llm_json(self._planner_prompt, task)
-        return obj.get("steps", []) if obj else []
+        if not obj:
+            return []
+        steps = obj.get("steps", [])
+        # Small models sometimes return steps as a single newline-joined string
+        # (or a bare scalar) instead of a list; normalise so the caller's
+        # "\n".join() never char-splits a string into garbage.
+        if isinstance(steps, str):
+            return [ln for ln in (s.strip() for s in steps.splitlines()) if ln]
+        if isinstance(steps, list):
+            return [str(s) for s in steps if str(s).strip()]
+        return []
 
     async def _llm_select_element(
         self, step: str, mode: str, candidates: list[dict], strategic_context: str

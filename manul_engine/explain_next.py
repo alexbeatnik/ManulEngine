@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING
 
 from .helpers import classify_step, detect_mode, extract_quoted
 from .js_scripts import SNAPSHOT_JS
-from .llm import LLMProvider
+from .llm import LLMProvider, sanitize_for_llm, truncate_for_llm
 from .logging_config import logger
 from .scoring import SCALE, score_elements
 
@@ -101,7 +101,7 @@ class PageContext:
         lines: list[str] = [
             f"URL: {self.url}",
             f"Title: {self.title}",
-            f"Visible text (truncated): {self.visible_text_snippet[:500]}",
+            f"Visible text (truncated): {truncate_for_llm(self.visible_text_snippet, 500)}",
             "",
             f"Interactive elements ({min(len(self.elements), max_elements)} of {len(self.elements)} shown):",
         ]
@@ -248,11 +248,13 @@ async def capture_page_context(page: Page) -> PageContext:
     except (OSError, RuntimeError):
         _log.debug("capture_page_context: page context lost during snapshot")
 
+    # Sanitize before storing so base64 blobs / data-* dumps / SVG path noise
+    # never reach the LLM prompt (and the snippet stays within budget).
     return PageContext(
         url=url,
         title=title,
         elements=elements,
-        visible_text_snippet=str(visible_text)[:2000],
+        visible_text_snippet=sanitize_for_llm(str(visible_text))[:2000],
     )
 
 
