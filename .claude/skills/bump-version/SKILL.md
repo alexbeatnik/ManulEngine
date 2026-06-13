@@ -31,10 +31,10 @@ Do NOT invoke when the user only updated docs and didn't change behavior — ver
 
 ## Common mistakes to avoid
 
-- Editing the version in `pyproject.toml` only — `bump_version.py` covers 17 *other* locations including all 8 contract files in `contracts/`.
+- Editing the version in `pyproject.toml` only — `bump_version.py` covers 16 *other* locations including all 8 contract files in `contracts/`.
 - Running the bump while contracts still describe the previous behavior. Bump after contracts are updated, never before.
 - Bumping when no behavioral change shipped — a version bump on no-op churn is noise.
-- Forgetting `.cursorrules` and `custom-instructions/repo/.github/copilot-instructions.md` — they each carry the version twice. The script handles both, but a hand-edit will miss the second occurrence.
+- Forgetting `custom-instructions/repo/.github/copilot-instructions.md` — it carries the version twice. The script handles both, but a hand-edit will miss the second occurrence.
 
 ## Reference
 

@@ -1,6 +1,6 @@
 # CLAUDE.md — ManulEngine
 
-**Version:** 0.0.9.32
+**Version:** 0.0.9.33
 **Project:** Deterministic, DSL-first browser & desktop automation runtime built on Playwright with optional local LLM (Ollama) self-healing.
 
 This file is the operating manual for Claude Code working in this repo. It is loaded into every Claude session here. Keep it short, factual, and current — don't restate the README.
@@ -22,6 +22,7 @@ manul_engine/
   imports.py      @import / USE block resolution for .hunt libraries
   controls.py     @custom_control registry (page-scoped overrides)
   scoring.py      heuristic element scorer (text · attrs · semantics · proximity · cache)
+  llm.py          LLMProvider (Ollama/Null) + JSON parse, deterministic sampling, sanitize_for_llm
   scanner.py      DOM snapshot → draft .hunt file (manul scan <URL>)
   recorder.py     interactive recorder (manul record <URL>)
   reporter.py     HTML + JSON test reports

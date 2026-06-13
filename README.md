@@ -263,6 +263,19 @@ Manual QA writes plain-English `.hunt` steps — no code required. SDETs extend 
 
 `"model": null` is the recommended default. When a local Ollama model is enabled, it acts as a last-resort fallback for genuinely ambiguous elements. The engine is not AI-powered — it is heuristics-first with an optional AI safety net.
 
+When the LLM safety net *is* engaged, the transport is tuned for the same determinism the heuristics promise:
+
+- **Pinned sampling** — every Ollama call sends `temperature=0` (override with `MANUL_LLM_TEMPERATURE`), so the same page yields the same element pick run-to-run.
+- **Retry-once on malformed JSON** — small local models occasionally emit a stray token or a truncated object; one retry (tune with `MANUL_LLM_RETRIES`) recovers most of those, while a genuinely down server fails fast with an actionable *"is `ollama serve` running?"* hint instead of a silent miss.
+- **Sanitized prompts** — page prose handed to the model is stripped of base64 blobs, `data-*` attribute dumps and SVG path noise, then bounded by a character budget, keeping prompts cheap and on-topic.
+
+| Env var | Default | Purpose |
+| --- | --- | --- |
+| `MANUL_LLM_TEMPERATURE` | `0.0` | Sampling temperature (0 = deterministic). |
+| `MANUL_LLM_NUM_CTX` | `0` | Context-window override (0 = model default). |
+| `MANUL_LLM_RETRIES` | `1` | Extra attempts on empty/unparseable replies. |
+| `MANUL_LLM_KEEP_ALIVE` | _(server default)_ | Ollama `keep_alive` (e.g. `5m`, `-1`). |
+
 ---
 
 ## Four Automation Pillars
@@ -298,7 +311,7 @@ The same runtime and the same DSL serve four use cases:
 - **Custom controls** — `@custom_control(page, target)` decorator lets SDETs handle complex widgets (datepickers, virtual tables, canvas elements) with raw Playwright while the hunt file keeps a single readable step. Handlers receive a typed `ControlContext` (`ctx.page` / `ctx.action` / `ctx.value` / `ctx.target` / `ctx.page_name` / `ctx.url` / `ctx.step`); `manul controls list` shows the registry; misses against a sibling page print a one-line hint.
 - **Lifecycle hooks** — `@before_all`, `@after_all`, `@before_group`, `@after_group` in `manul_hooks.py` for suite-wide setup and teardown.
 - **HTML reports** — `--html-report` generates a self-contained dark-themed report with accordions, screenshots, tag filters, and run-session merging across CLI invocations.
-- **Docker CI runner** — `ghcr.io/alexbeatnik/manul-engine:0.0.9.32` runs headless in CI with `dumb-init`, non-root user, and `MANUL_*` env overrides.
+- **Docker CI runner** — `ghcr.io/alexbeatnik/manul-engine:0.0.9.33` runs headless in CI with `dumb-init`, non-root user, and `MANUL_*` env overrides.
 
 ---
 
@@ -307,14 +320,14 @@ The same runtime and the same DSL serve four use cases:
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.32
+pip install manul-engine==0.0.9.33
 playwright install
 ```
 
 Optional local AI fallback (not required):
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.32"
+pip install "manul-engine[ai]==0.0.9.33"
 ollama pull qwen2.5:0.5b && ollama serve
 ```
 
@@ -376,7 +389,7 @@ Environment variables (`MANUL_HEADLESS`, `MANUL_BROWSER`, `MANUL_MODEL`, `MANUL_
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.32 \
+  ghcr.io/alexbeatnik/manul-engine:0.0.9.33 \
   --html-report --screenshot on-fail hunts/
 ```
 
@@ -413,16 +426,26 @@ python demo/benchmarks/run_benchmarks.py         # adversarial DOM fixtures
 
 ManulEngine is alpha-stage and solo-developed. If deterministic, explainable browser automation interests you:
 
-- Try it: `pip install manul-engine==0.0.9.32 && playwright install`
+- Try it: `pip install manul-engine==0.0.9.33 && playwright install`
 - File issues: [github.com/alexbeatnik/ManulEngine/issues](https://github.com/alexbeatnik/ManulEngine/issues)
 
 ---
 
-## What's New in v0.0.9.32
+## What's New in v0.0.9.33
+
+- **Deterministic LLM transport:** every Ollama call now pins `temperature=0` (override via `MANUL_LLM_TEMPERATURE`) so the optional AI safety net resolves the same element the same way run-to-run — matching the determinism the heuristic resolver already guarantees. New `MANUL_LLM_NUM_CTX` / `MANUL_LLM_RETRIES` / `MANUL_LLM_KEEP_ALIVE` knobs round out the transport config.
+- **Retry-once + actionable errors:** a malformed or truncated JSON reply from a small local model is retried once before giving up, while a genuinely unreachable server fails fast with an *"is `ollama serve` running?"* hint instead of a silent miss.
+- **Sanitized LLM prompts:** page prose fed to the model (e.g. the Explain-Next What-If analysis) is stripped of base64 blobs, `data-*` dumps and SVG path noise and bounded by a character budget — cheaper, on-topic prompts (`sanitize_for_llm` / `truncate_for_llm`, ported from the ManulHeart agent layer).
+- **Robustness fixes:** the planner no longer char-splits a string `steps` reply into garbage, and the JSON extractor returns `None` instead of raising on non-object output.
+
+<details>
+<summary>v0.0.9.32 — FULL SCAN, WAIT FOR SELECTOR, CSS-aware waits</summary>
 
 - **`FULL SCAN` DSL step:** groups every interactive control on the page by its nearest semantic landmark ancestor (`<form>`, `<nav>`, `<header>`, `<footer>`, `<dialog>`, `<section>`, ARIA roles) and prints a compact Markdown table per group. Designed for LLM-driven automation — paste the output into an LLM context window to decide what to interact with next. Shadow DOM trees are traversed recursively; controls inside custom elements appear under a `[shadow]`-suffixed group.
 - **`WAIT FOR SELECTOR '<css>'` DSL step:** explicit CSS-selector wait via `page.wait_for_selector()`. Solves the SPA / YouTube use case where there is no stable visible text, only a DOM tag (`ytd-video-renderer`, `mwc-button`, etc.).
 - **CSS-aware `WAIT FOR '…' TO BE VISIBLE`:** the existing step now auto-detects CSS selectors (starts with `#`, `.`, `[`, contains `-`, `>`, or `:`) and routes to `page.wait_for_selector()` instead of `get_by_text()`. Plain-text targets are unchanged.
+
+</details>
 
 <details>
 <summary>v0.0.9.31</summary>
@@ -444,6 +467,6 @@ ManulEngine is alpha-stage and solo-developed. If deterministic, explainable bro
 
 ## License
 
-**Version:** 0.0.9.32
+**Version:** 0.0.9.33
 
 Apache-2.0.

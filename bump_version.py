@@ -52,10 +52,6 @@ TARGETS: list[tuple[str, re.Pattern]] = [
     (".github/copilot-instructions.md", re.compile(rf"(manul-engine:){_VER_RE}()")),
     ("custom-instructions/repo/.github/copilot-instructions.md", re.compile(rf"(version:\s*){_VER_RE}()")),
     ("custom-instructions/repo/.github/copilot-instructions.md", re.compile(rf"(manul-engine:){_VER_RE}()")),
-    (".cursorrules", re.compile(rf'(manulEngineVersion":\s*"){_VER_RE}(")')),
-    (".cursorrules", re.compile(rf"(manul-engine==){_VER_RE}()")),
-    (".cursorrules", re.compile(rf"(manul-engine\[ai\]==){_VER_RE}()")),
-    (".cursorrules", re.compile(rf"(Treat\s+`){_VER_RE}(`)")),
 ]
 
 # Contracts — all have "version": "X.Y.Z" in a JSON block
