@@ -156,7 +156,7 @@ class OllamaProvider:
         for attempt in range(attempts):
             try:
                 resp = await asyncio.to_thread(self._chat, system, user)
-            except Exception as e:  # noqa: BLE001 — provider must fail closed
+            except Exception as e:  # provider must fail closed — never propagate
                 if _is_connection_error(e):
                     _log.warning(
                         "LLM call failed: cannot reach Ollama (%s) — is `ollama serve` running and is model %r pulled?",
