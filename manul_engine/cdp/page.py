@@ -178,7 +178,7 @@ class CDPElement:
     async def is_checked(self, *, timeout: float | None = None) -> bool:
         return bool(await self._call("function(){ return !!this.checked; }"))
 
-    async def screenshot(self, *, type: str = "png", timeout: float | None = None) -> bytes:  # noqa: A002
+    async def screenshot(self, *, type: str = "png", timeout: float | None = None) -> bytes:
         """Capture a PNG of just this element (clipped to its box)."""
         box = await self._call(_proto.BOX_CENTER_FN)
         if not box or box["width"] <= 0 or box["height"] <= 0:
@@ -482,7 +482,7 @@ class CDPPage:
             for cb in self._new_page_cbs:
                 try:
                     cb(info)
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     _log.debug("new_page cb error: %s", exc)
 
     def _on_binding_called(self, params: dict, session_id: str | None) -> None:
@@ -497,14 +497,14 @@ class CDPPage:
         payload = params.get("payload", "")
         try:
             cb(payload)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             _log.debug("binding %s cb error: %s", name, exc)
 
     def _fire_close(self) -> None:
         for cb in self._close_cbs:
             try:
                 cb()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 _log.debug("close cb error: %s", exc)
 
     # ── low-level send + evaluate ────────────────────────────────────────
@@ -625,7 +625,7 @@ class CDPPage:
         while asyncio.get_running_loop().time() < deadline:
             try:
                 ready = await self.evaluate("document.readyState")
-            except Exception:  # noqa: BLE001 — eval can fail mid-navigation
+            except Exception:
                 ready = None
             if ready == "complete" or (target == "interactive" and ready in ("interactive", "complete")):
                 if state == "networkidle":
@@ -731,7 +731,7 @@ class CDPPage:
             try:
                 if predicate(_Resp(resp.get("url", ""), resp.get("status", 0))):
                     fut.set_result(resp)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 _log.debug("wait_for_response predicate error: %s", exc)
 
         off = self._conn.on("Network.responseReceived", _cb)
@@ -787,7 +787,7 @@ class CDPPage:
             for cb in self._dialog_cbs:
                 try:
                     cb(dialog)
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     _log.debug("dialog cb error: %s", exc)
         else:
             asyncio.create_task(dialog.accept())  # noqa: RUF006 — default: accept
@@ -798,12 +798,12 @@ class CDPPage:
         self._closed = True
         try:
             await self._browser._close_target(self._target_id)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             _log.debug("close target error: %s", exc)
         for cb in self._close_cbs:
             try:
                 cb()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 _log.debug("close cb error: %s", exc)
 
 

@@ -30,9 +30,10 @@ from typing import TYPE_CHECKING
 from .cdp import CDPBrowser
 
 if TYPE_CHECKING:
-    from .cdp import CDPFrame, CDPPage  # noqa: F401
-
     from ._types import ElementSnapshot  # noqa: F401
+    from .cdp import CDPBrowser as BrowserContext
+    from .cdp import CDPFrame as Frame  # noqa: F401 — name kept for annotations
+    from .cdp import CDPPage as Page
 
 
 class _AsyncNull:

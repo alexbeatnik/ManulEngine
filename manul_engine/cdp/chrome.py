@@ -144,10 +144,10 @@ class ChromeProcess:
         try:
             self._proc.terminate()
             await asyncio.to_thread(self._proc.wait, 10)
-        except Exception:  # noqa: BLE001
+        except Exception:
             try:
                 self._proc.kill()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 _log.debug("chrome kill error: %s", exc)
         if self._owns_dir:
             shutil.rmtree(self._user_data_dir, ignore_errors=True)
@@ -184,7 +184,7 @@ async def launch_chrome(
             args.append(a)
 
     # Chrome must outlive any single task context — start detached, kill via close().
-    proc = subprocess.Popen(  # noqa: S603 — args are internally constructed
+    proc = subprocess.Popen(
         args,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -228,7 +228,7 @@ async def _wait_for_cdp(endpoint: str, timeout: float) -> None:
         try:
             await asyncio.to_thread(_http_get_json, f"{endpoint}/json/version")
             return
-        except Exception as exc:  # noqa: BLE001 — retry until reachable
+        except Exception as exc:
             last_exc = exc
             await asyncio.sleep(0.1)
     raise TimeoutError(f"CDP endpoint {endpoint} not reachable: {last_exc}")

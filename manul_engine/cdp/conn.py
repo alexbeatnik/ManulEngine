@@ -77,7 +77,7 @@ class Conn:
         self._closed.set()
         try:
             await self._ws.close()
-        except Exception as exc:  # noqa: BLE001 — best-effort teardown
+        except Exception as exc:
             _log.debug("ws close error: %s", exc)
         for fut in list(self._pending.values()):
             if not fut.done():
@@ -145,7 +145,7 @@ class Conn:
                 self._dispatch(msg)
         except asyncio.CancelledError:
             raise
-        except Exception as exc:  # noqa: BLE001 — socket died; tear down
+        except Exception as exc:
             _log.debug("cdp read loop ended: %s", exc)
         finally:
             await self.close()
@@ -180,5 +180,5 @@ class Conn:
                 result = handler(params, session_id)
                 if isinstance(result, Awaitable):
                     asyncio.create_task(result)  # noqa: RUF006 — fire-and-forget event handler
-            except Exception as exc:  # noqa: BLE001 — one bad handler must not kill the loop
+            except Exception as exc:
                 _log.debug("cdp event handler for %s failed: %s", method, exc)

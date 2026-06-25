@@ -19,7 +19,6 @@ from .logging_config import logger
 
 if TYPE_CHECKING:
     from .cdp import CDPPage as Page
-
     from .variables import ScopedVariables
 
 _log = logger.getChild("conditionals")

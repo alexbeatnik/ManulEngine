@@ -179,7 +179,7 @@ class CDPBrowser:
             for cb in self._new_target_cbs:
                 try:
                     cb(info)
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     _log.debug("new target cb error: %s", exc)
 
     def _on_target_destroyed(self, params: dict, _session: str | None) -> None:
@@ -221,7 +221,7 @@ class CDPBrowser:
         if self._conn is not None:
             try:
                 await self._conn.close()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 _log.debug("conn close error: %s", exc)
         if self._chrome is not None:
             await self._chrome.close()

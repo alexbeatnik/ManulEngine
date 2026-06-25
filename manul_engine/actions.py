@@ -8,10 +8,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .cdp import CDPPage  # noqa: F401
 
-# The CDP backend surfaces wait timeouts as the builtin TimeoutError; keep the
-# old name so existing ``except`` clauses continue to read clearly.
-PlaywrightTimeoutError = TimeoutError
-
 from .helpers import (
     ACTION_WAIT,
     NAV_WAIT,
@@ -37,6 +33,10 @@ from .js_scripts import (
 from .logging_config import logger
 
 _log = logger.getChild("actions")
+
+# The CDP backend surfaces wait timeouts as the builtin TimeoutError; keep the
+# old name so existing ``except`` clauses continue to read clearly.
+PlaywrightTimeoutError = TimeoutError
 
 
 class _ActionsMixin:
