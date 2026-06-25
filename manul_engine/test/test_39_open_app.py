@@ -144,7 +144,7 @@ async def _test_handle_open_app_existing_page() -> None:
 
 
 async def _test_handle_open_app_wait_for_page() -> None:
-    print("\n  ── _handle_open_app(): wait_for_event('page') ────────────────")
+    print("\n  ── _handle_open_app(): wait_for_new_page() ────────────────")
 
     from manul_engine.actions import _ActionsMixin
 
@@ -160,17 +160,16 @@ async def _test_handle_open_app_wait_for_page() -> None:
     mock_page.url = "file:///app/index.html"
     mock_page.wait_for_load_state = AsyncMock()
 
-    # Context with NO pages yet — engine must wait for the "page" event
+    # Context with NO pages yet — engine must wait for a new page target.
     mock_ctx = MagicMock()
     mock_ctx.pages = []  # empty
-    mock_ctx.wait_for_event = AsyncMock(return_value=mock_page)
+    mock_ctx.wait_for_new_page = AsyncMock(return_value=mock_page)
 
     success, returned_page = await engine._handle_open_app(MagicMock(), mock_ctx)
 
-    _assert(success is True, "Returns success=True after waiting for page event")
-    _assert(returned_page is mock_page, "Returns the page from wait_for_event")
-    mock_ctx.wait_for_event.assert_awaited_once()
-    _assert("page" in str(mock_ctx.wait_for_event.call_args), "Waited for 'page' event")
+    _assert(success is True, "Returns success=True after waiting for a new page")
+    _assert(returned_page is mock_page, "Returns the page from wait_for_new_page")
+    mock_ctx.wait_for_new_page.assert_awaited_once()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -193,7 +192,7 @@ async def _test_handle_open_app_failure() -> None:
 
     mock_ctx = MagicMock()
     mock_ctx.pages = []
-    mock_ctx.wait_for_event = AsyncMock(side_effect=TimeoutError("No window opened"))
+    mock_ctx.wait_for_new_page = AsyncMock(side_effect=TimeoutError("No window opened"))
 
     mock_original_page = MagicMock()
     success, returned_page = await engine._handle_open_app(mock_original_page, mock_ctx)

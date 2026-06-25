@@ -335,24 +335,11 @@ def _test_memory() -> None:
 async def _test_lifecycle() -> None:
     print("\n  ── lifecycle (start/close) ─────────────────────────────────")
 
-    mock_browser = AsyncMock()
-    mock_context = AsyncMock()
     mock_page = MagicMock()
-    mock_context.new_page = AsyncMock(return_value=mock_page)
-    mock_browser.new_context = AsyncMock(return_value=mock_context)
+    mock_browser = AsyncMock()
+    mock_browser.new_page = AsyncMock(return_value=mock_page)
 
-    mock_chromium = AsyncMock()
-    mock_chromium.launch = AsyncMock(return_value=mock_browser)
-
-    mock_pw = MagicMock()
-    mock_pw.chromium = mock_chromium
-
-    with patch("manul_engine.api.async_playwright") as mock_ap:
-        mock_cm = AsyncMock()
-        mock_cm.__aenter__ = AsyncMock(return_value=mock_pw)
-        mock_cm.__aexit__ = AsyncMock(return_value=False)
-        mock_ap.return_value = mock_cm
-
+    with patch("manul_engine.api.CDPBrowser.launch", AsyncMock(return_value=mock_browser)):
         s = ManulSession(headless=True, disable_cache=True)
         await s.start()
 
@@ -371,24 +358,11 @@ async def _test_lifecycle() -> None:
 async def _test_context_manager() -> None:
     print("\n  ── async context manager ──────────────────────────────────")
 
-    mock_browser = AsyncMock()
-    mock_context = AsyncMock()
     mock_page = MagicMock()
-    mock_context.new_page = AsyncMock(return_value=mock_page)
-    mock_browser.new_context = AsyncMock(return_value=mock_context)
+    mock_browser = AsyncMock()
+    mock_browser.new_page = AsyncMock(return_value=mock_page)
 
-    mock_chromium = AsyncMock()
-    mock_chromium.launch = AsyncMock(return_value=mock_browser)
-
-    mock_pw = MagicMock()
-    mock_pw.chromium = mock_chromium
-
-    with patch("manul_engine.api.async_playwright") as mock_ap:
-        mock_cm = AsyncMock()
-        mock_cm.__aenter__ = AsyncMock(return_value=mock_pw)
-        mock_cm.__aexit__ = AsyncMock(return_value=False)
-        mock_ap.return_value = mock_cm
-
+    with patch("manul_engine.api.CDPBrowser.launch", AsyncMock(return_value=mock_browser)):
         async with ManulSession(headless=True, disable_cache=True) as session:
             _assert(session._page is mock_page, "__aenter__ assigns page")
 

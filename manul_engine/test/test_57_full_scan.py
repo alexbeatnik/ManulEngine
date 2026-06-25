@@ -172,11 +172,11 @@ def _make_engine():
 
 async def test_full_scan_happy():
     print("\n── Section 3: _handle_full_scan — happy path ──")
-    from playwright.async_api import async_playwright
+    from manul_engine.cdp import CDPBrowser
 
     url, path = await _write_html(_HTML_RICH)
     try:
-        async with async_playwright() as p:
+        async with CDPBrowser(headless=True) as p:
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page()
             await page.goto(url)
@@ -199,11 +199,11 @@ async def test_full_scan_happy():
 
 async def test_full_scan_empty_page():
     print("\n── Section 4: _handle_full_scan — empty page ──")
-    from playwright.async_api import async_playwright
+    from manul_engine.cdp import CDPBrowser
 
     url, path = await _write_html(_HTML_EMPTY)
     try:
-        async with async_playwright() as p:
+        async with CDPBrowser(headless=True) as p:
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page()
             await page.goto(url)
@@ -222,11 +222,11 @@ async def test_full_scan_empty_page():
 
 async def test_full_scan_in_if_block():
     print("\n── Section 5: FULL SCAN inside IF block ──")
-    from playwright.async_api import async_playwright
+    from manul_engine.cdp import CDPBrowser
 
     url, path = await _write_html(_HTML_RICH)
     try:
-        async with async_playwright() as p:
+        async with CDPBrowser(headless=True) as p:
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page()
             await page.goto(url)

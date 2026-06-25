@@ -271,11 +271,11 @@ def _make_engine():
 
 async def test_wait_for_selector_happy():
     print("\n── Section 7: _handle_wait_for_selector — happy path ──")
-    from playwright.async_api import async_playwright
+    from manul_engine.cdp import CDPBrowser
 
     url, path = await _serve_html(_HTML_WITH_SELECTOR)
     try:
-        async with async_playwright() as p:
+        async with CDPBrowser(headless=True) as p:
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page()
             await page.goto(url)
@@ -299,11 +299,11 @@ async def test_wait_for_selector_happy():
 
 async def test_wait_for_selector_timeout():
     print("\n── Section 8: _handle_wait_for_selector — timeout ──")
-    from playwright.async_api import async_playwright
+    from manul_engine.cdp import CDPBrowser
 
     url, path = await _serve_html(_HTML_EMPTY)
     try:
-        async with async_playwright() as p:
+        async with CDPBrowser(headless=True) as p:
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page()
             await page.goto(url)
@@ -325,11 +325,11 @@ async def test_wait_for_selector_timeout():
 
 async def test_wait_for_element_css_branch():
     print("\n── Section 9: _handle_wait_for_element — CSS branch ──")
-    from playwright.async_api import async_playwright
+    from manul_engine.cdp import CDPBrowser
 
     url, path = await _serve_html(_HTML_WITH_SELECTOR)
     try:
-        async with async_playwright() as p:
+        async with CDPBrowser(headless=True) as p:
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page()
             await page.goto(url)
@@ -358,11 +358,11 @@ async def test_wait_for_element_css_branch():
 
 async def test_wait_for_element_text_branch():
     print("\n── Section 10: _handle_wait_for_element — text branch unchanged ──")
-    from playwright.async_api import async_playwright
+    from manul_engine.cdp import CDPBrowser
 
     url, path = await _serve_html(_HTML_WITH_SELECTOR)
     try:
-        async with async_playwright() as p:
+        async with CDPBrowser(headless=True) as p:
             browser = await p.chromium.launch(headless=True)
             page = await browser.new_page()
             await page.goto(url)

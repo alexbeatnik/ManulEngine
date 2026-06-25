@@ -507,11 +507,11 @@ async def test_element_exists_browser():
     """Test _element_exists and _text_present with a real Playwright page."""
     print("\n── Section 8: Playwright-backed element/text conditions ──")
 
-    from playwright.async_api import async_playwright
+    from manul_engine.cdp import CDPBrowser
     from manul_engine.conditionals import _element_exists, _text_present, evaluate_condition
     from manul_engine.variables import ScopedVariables
 
-    async with async_playwright() as pw:
+    async with CDPBrowser(headless=True) as pw:
         browser = await pw.chromium.launch(headless=True)
         page = await browser.new_page()
         await page.set_content(_CONDITIONAL_DOM)

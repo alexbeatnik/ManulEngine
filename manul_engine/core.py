@@ -27,12 +27,22 @@ from os import environ as _environ
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from playwright.async_api import async_playwright
+from .cdp import CDPBrowser
 
 if TYPE_CHECKING:
-    from playwright.async_api import BrowserContext, Frame, Page  # noqa: F401
+    from .cdp import CDPFrame, CDPPage  # noqa: F401
 
     from ._types import ElementSnapshot  # noqa: F401
+
+
+class _AsyncNull:
+    """Trivial async context manager (replaces the old async_playwright scope)."""
+
+    async def __aenter__(self) -> None:
+        return None
+
+    async def __aexit__(self, *_exc: object) -> bool:
+        return False
 
 from . import prompts
 from . import prompts as _prompts_mod  # alias for CUSTOM_CONTROLS_DIRS access
@@ -784,17 +794,19 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             print(f"    ⚠️  Auto-Nav: {_ann_exc}")
 
     async def _launch_browser(self, p, hunt_file: str | None = None):
-        """Launch browser via Playwright and return ``(browser, ctx, page)``.
+        """Launch Chrome via the native CDP backend and return ``(browser, page, page)``.
 
-        Handles Electron CDP connections, per-OS sandbox flags, ``channel``
-        and ``executable_path`` options.  On Electron failure a
-        ``MissionResult`` with status ``"fail"`` is returned instead.
+        Handles Electron CDP connections, sandbox flags, ``channel`` and
+        ``executable_path`` options.  On Electron failure a ``MissionResult``
+        with status ``"fail"`` is returned as the first tuple element instead.
+        The ``p`` parameter is unused (kept for call-site compatibility).
         """
         if self.browser == "electron":
             _cdp_port = _environ.get("MANUL_CDP_PORT", "9222")
             _cdp_url = f"http://localhost:{_cdp_port}"
             try:
-                browser = await p.chromium.connect_over_cdp(_cdp_url)
+                browser = await CDPBrowser.connect_over_cdp(_cdp_url)
+                page = await browser.first_page()
             except Exception as _cdp_exc:
                 print(
                     f"    ❌ Failed to connect to Electron via CDP at {_cdp_url}: {_cdp_exc}\n"
@@ -805,36 +817,25 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     file=hunt_file or "", name=Path(hunt_file).name if hunt_file else "", status="fail"
                 )
                 return _fail, None, None
-            if browser.contexts:
-                ctx = browser.contexts[0]
-                page = ctx.pages[0] if ctx.pages else await ctx.new_page()
-            else:
-                ctx = await browser.new_context()
-                page = await ctx.new_page()
-            return browser, ctx, page
+            return browser, browser, page
 
-        _launch_args: list[str] = ["--start-maximized"] if self.browser == "chromium" else []
+        if self.channel and self.browser != "chromium":
+            raise ConfigurationError(
+                f"'channel' is only supported for Chromium; got browser={self.browser!r}, channel={self.channel!r}"
+            )
+        _extra_args: list[str] = ["--start-maximized"] if self.browser == "chromium" else []
         _is_root = hasattr(os, "getuid") and os.getuid() == 0
         if self.browser == "chromium" and (_is_root or os.path.exists("/.dockerenv")):
-            _launch_args.insert(0, "--no-sandbox")
-        _launch_args = _launch_args + [a for a in self.browser_args if a not in _launch_args]
-        _launch_opts: dict = dict(headless=self.headless, args=_launch_args)
-        if self.channel:
-            if self.browser != "chromium":
-                raise ConfigurationError(
-                    f"'channel' is only supported for Chromium; got browser={self.browser!r}, channel={self.channel!r}"
-                )
-            _launch_opts["channel"] = self.channel
-        if self.executable_path:
-            _launch_opts["executable_path"] = self.executable_path
-        browser = await getattr(p, self.browser).launch(**_launch_opts)
-        ctx = (
-            await browser.new_context(no_viewport=True)
-            if not self.headless
-            else await browser.new_context(viewport={"width": 1920, "height": 1080})
+            _extra_args.insert(0, "--no-sandbox")
+        _extra_args = _extra_args + [a for a in self.browser_args if a not in _extra_args]
+        browser = await CDPBrowser.launch(
+            headless=self.headless,
+            channel=self.channel,
+            executable_path=self.executable_path,
+            extra_args=_extra_args,
         )
-        page = await ctx.new_page()
-        return browser, ctx, page
+        page = await browser.new_page()
+        return browser, browser, page
 
     async def _parse_task(self, task: str) -> str:
         """Detect task format and produce executable step text.
@@ -1585,7 +1586,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             custom_modules_dirs=self._custom_controls_dirs,
         )
 
-        async with async_playwright() as p:
+        async with _AsyncNull() as p:
             browser, ctx, page = await self._launch_browser(p, hunt_file)
             # Electron CDP failure returns (MissionResult, None, None).
             if ctx is None or page is None:

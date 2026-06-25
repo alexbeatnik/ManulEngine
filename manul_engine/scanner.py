@@ -143,7 +143,7 @@ async def scan_page(
     browser:
         Playwright browser engine: 'chromium', 'firefox', or 'webkit'.
     """
-    from playwright.async_api import async_playwright
+    from .cdp import CDPBrowser
 
     # ── Normalise URL ─────────────────────────────────────────────────────────
     if not url.startswith(("http://", "https://")):
@@ -158,11 +158,9 @@ async def scan_page(
     print(f"\n🔍 Manul Scanner — scanning {url}")
     print("   Browser:", browser, "| Headless:", headless)
 
-    async with async_playwright() as pw:
-        launcher = getattr(pw, browser)
-        b = await launcher.launch(headless=headless)
-        page = await b.new_page()
-
+    b = await CDPBrowser.launch(headless=headless)
+    page = await b.new_page()
+    try:
         try:
             print("   Navigating …")
             await page.goto(url, wait_until="networkidle", timeout=30_000)
@@ -179,6 +177,7 @@ async def scan_page(
 
         print("   Running DOM scanner …")
         raw = await page.evaluate(SCAN_JS)
+    finally:
         await b.close()
 
     elements: list[dict] = json.loads(raw)

@@ -195,7 +195,7 @@ async def _test_engine_integration() -> None:
     mission = "1. CALL PYTHON api_helpers.fetch_otp into {magic_code}\n2. Fill 'Security Code' with '{magic_code}'\n"
 
     with (
-        patch("manul_engine.core.async_playwright", return_value=mock_playwright),
+        patch.object(type(engine), "_launch_browser", AsyncMock(return_value=(fake_browser, fake_ctx, fake_page))),
         patch.object(engine, "_execute_step", side_effect=_fake_execute_step),
         patch("manul_engine.hooks._resolve_module", return_value=(otp_mod, False)),
         patch("manul_engine.core.load_custom_controls"),
@@ -235,7 +235,7 @@ async def _test_engine_integration() -> None:
         engine2 = ManulEngine(model=None, disable_cache=True)
     mission2 = "1. CALL PYTHON api_helpers.fetch_otp to {token}\n2. Fill 'Token' with '{token}'\n"
     with (
-        patch("manul_engine.core.async_playwright", return_value=mock_playwright),
+        patch.object(type(engine), "_launch_browser", AsyncMock(return_value=(fake_browser, fake_ctx, fake_page))),
         patch.object(engine2, "_execute_step", side_effect=_fake_execute_step),
         patch("manul_engine.hooks._resolve_module", return_value=(otp_mod, False)),
         patch("manul_engine.core.load_custom_controls"),

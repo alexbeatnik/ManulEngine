@@ -5,10 +5,12 @@ import os
 import re
 from typing import TYPE_CHECKING
 
-from playwright.async_api import TimeoutError as PlaywrightTimeoutError
-
 if TYPE_CHECKING:
-    from playwright.async_api import Page  # noqa: F401
+    from .cdp import CDPPage  # noqa: F401
+
+# The CDP backend surfaces wait timeouts as the builtin TimeoutError; keep the
+# old name so existing ``except`` clauses continue to read clearly.
+PlaywrightTimeoutError = TimeoutError
 
 from .helpers import (
     ACTION_WAIT,
@@ -131,16 +133,16 @@ class _ActionsMixin:
         """
         try:
             if ctx.pages:
-                # Filter out initial about:blank pages created by ctx.new_page()
+                # Filter out initial about:blank pages created at launch.
                 real = [p for p in ctx.pages if getattr(p, "url", None) not in ("", "about:blank")]
                 if real:
                     page = real[-1]
                 elif len(ctx.pages) == 1:
-                    page = await ctx.wait_for_event("page", timeout=self.nav_timeout)
+                    page = await ctx.wait_for_new_page(timeout=self.nav_timeout / 1000.0)
                 else:
                     page = ctx.pages[-1]
             else:
-                page = await ctx.wait_for_event("page", timeout=self.nav_timeout)
+                page = await ctx.wait_for_new_page(timeout=self.nav_timeout / 1000.0)
             await page.wait_for_load_state("domcontentloaded", timeout=self.nav_timeout)
             self.last_xpath = None
             await asyncio.sleep(NAV_WAIT)
@@ -186,8 +188,9 @@ class _ActionsMixin:
             if _css_selector:
                 await page.wait_for_selector(target_element, state=state_mapped, timeout=self._EXPLICIT_WAIT_TIMEOUT_MS)
             else:
-                locator = page.get_by_text(target_element, exact=False).first
-                await locator.wait_for(state=state_mapped, timeout=self._EXPLICIT_WAIT_TIMEOUT_MS)
+                await page.wait_for_selector(
+                    f"text={target_element}", state=state_mapped, timeout=self._EXPLICIT_WAIT_TIMEOUT_MS
+                )
         except PlaywrightTimeoutError:
             timeout_s = self._EXPLICIT_WAIT_TIMEOUT_MS // 1000
             return False, f"Timeout waiting {timeout_s}s for element to be {state_mapped}"
@@ -259,7 +262,7 @@ class _ActionsMixin:
                 print("    ❌ PRESS: could not resolve target element")
                 return False
             frame = self._frame_for(page, el)
-            loc = frame.locator(f"xpath={el['xpath']}").first
+            loc = (await frame.query(f"xpath={el['xpath']}"))
             await loc.press(key_combo, timeout=self.timeout)
             print(f"    ⌨️  Pressed '{key_combo}' on '{self._fmt_el_name(el['name'])}'")
         else:
@@ -289,7 +292,7 @@ class _ActionsMixin:
             print("    ❌ RIGHT CLICK: could not resolve target element")
             return False
         frame = self._frame_for(page, el)
-        loc = frame.locator(f"xpath={el['xpath']}").first
+        loc = (await frame.query(f"xpath={el['xpath']}"))
         is_shad = el.get("is_shadow")
         try:
             if not is_shad:
@@ -359,7 +362,7 @@ class _ActionsMixin:
             print("    ❌ UPLOAD: could not resolve target element")
             return False
         frame = self._frame_for(page, el)
-        loc = frame.locator(f"xpath={el['xpath']}").first
+        loc = (await frame.query(f"xpath={el['xpath']}"))
         try:
             if not el.get("is_shadow"):
                 await loc.scroll_into_view_if_needed(timeout=2000)
@@ -373,7 +376,7 @@ class _ActionsMixin:
         if tag == "label":
             linked_id = str(el.get("html_id", ""))
             if linked_id:
-                linked_loc = frame.locator(f"#{linked_id}").first
+                linked_loc = (await frame.query(f"#{linked_id}"))
                 try:
                     linked_tag = await linked_loc.evaluate("e => e.tagName.toLowerCase()")
                     linked_type = await linked_loc.evaluate("e => (e.type || '').toLowerCase()")
@@ -481,7 +484,7 @@ class _ActionsMixin:
             )
 
         frame = self._frame_for(page, el)
-        loc = frame.locator(f"xpath={el['xpath']}").first
+        loc = (await frame.query(f"xpath={el['xpath']}"))
         locator_text = f"{element_type} '{target}' -> xpath={el['xpath']}"
         return loc, locator_text
 
@@ -550,7 +553,7 @@ class _ActionsMixin:
                 best = scored[0]
                 xpath = best["xpath"]
                 _cf = self._frame_for(page, best)
-                loc = _cf.locator(f"xpath={xpath}").first
+                loc = (await _cf.query(f"xpath={xpath}"))
                 if _in_debug and not _debug_paused:
                     try:
                         if not best.get("is_shadow"):
@@ -689,7 +692,7 @@ class _ActionsMixin:
                     if scored:
                         best = scored[0]
                         _vf = self._frame_for(page, best)
-                        loc = _vf.locator(f"xpath={best['xpath']}").first
+                        loc = await _vf.query(f"xpath={best['xpath']}")
                         try:
                             if not best.get("is_shadow"):
                                 await loc.scroll_into_view_if_needed(timeout=2000)
@@ -701,7 +704,9 @@ class _ActionsMixin:
                 else:
                     for t in expected:
                         try:
-                            loc = page.get_by_text(t, exact=False).first
+                            loc = await page.query(f"text={t}")
+                            if loc is None:
+                                continue
                             await loc.scroll_into_view_if_needed(timeout=2000)
                             await self._debug_highlight(page, loc)
                             break
@@ -742,8 +747,8 @@ class _ActionsMixin:
         src_snap = next((el for el in raw_els if (el.get("frame_index", 0), el["id"]) == _src_key), raw_els[0])
         src_frame = self._frame_for(page, src_snap)
         dest_frame = self._frame_for(page, dest)
-        src_loc = src_frame.locator(f"xpath={src_snap['xpath']}").first
-        dest_loc = dest_frame.locator(f"xpath={dest['xpath']}").first
+        src_loc = await src_frame.query(f"xpath={src_snap['xpath']}")
+        dest_loc = await dest_frame.query(f"xpath={dest['xpath']}")
 
         try:
             await src_loc.drag_to(dest_loc, timeout=5000)
@@ -961,7 +966,7 @@ class _ActionsMixin:
 
             if mode == "locate":
                 try:
-                    loc = frame.locator(f"xpath={xpath}").first
+                    loc = (await frame.query(f"xpath={xpath}"))
                     if not is_shad:
                         await loc.scroll_into_view_if_needed(timeout=2000)
                         await self._highlight(page, loc)
@@ -975,7 +980,7 @@ class _ActionsMixin:
             if mode == "drag":
                 return await self._do_drag(page, step, expected, el)
 
-            loc = frame.locator(f"xpath={xpath}").first
+            loc = (await frame.query(f"xpath={xpath}"))
             _in_debug = getattr(self, "debug_mode", False) or step_idx in getattr(self, "break_steps", set())
             try:
                 if not is_shad:
@@ -1069,14 +1074,18 @@ class _ActionsMixin:
                             option_text = expected[0]
                             print(f"    🖱️  Selecting option '{option_text}'")
                             try:
-                                opt_loc = frame.locator(
-                                    f"[role='option']:has-text('{option_text}'), [role='menuitem']:has-text('{option_text}')"
-                                ).first
-                                await opt_loc.click(timeout=3000)
+                                opt_loc = await frame.query(
+                                    f"xpath=(//*[@role='option' or @role='menuitem']"
+                                    f"[contains(normalize-space(.), \"{option_text}\")])[1]"
+                                )
+                                if opt_loc is None:
+                                    raise RuntimeError("role-based option not found")
+                                await opt_loc.click()
                             except Exception:
                                 try:
-                                    opt_loc = frame.locator(f"text='{option_text}'").last
-                                    await opt_loc.click(timeout=3000)
+                                    opt_loc = await frame.query(f"text={option_text}", last=True)
+                                    if opt_loc is not None:
+                                        await opt_loc.click()
                                 except Exception as exc2:
                                     _log.debug("Option click fallback also failed: %s", exc2)
                     await asyncio.sleep(ACTION_WAIT)
@@ -1370,7 +1379,7 @@ class _ActionsMixin:
             return False
 
         frame = self._frame_for(page, el)
-        loc = frame.locator(f"xpath={el['xpath']}").first
+        loc = (await frame.query(f"xpath={el['xpath']}"))
 
         # Take element screenshot
         try:

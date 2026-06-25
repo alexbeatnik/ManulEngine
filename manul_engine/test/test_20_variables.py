@@ -338,7 +338,7 @@ async def _test_interpolation() -> None:
     task = "1. Fill 'Email' with '{user_email}'\n2. Fill 'Password' with '{password}'"
 
     with (
-        patch("manul_engine.core.async_playwright", return_value=mock_playwright),
+        patch.object(type(engine), "_launch_browser", AsyncMock(return_value=(fake_browser, fake_ctx, fake_page))),
         patch.object(engine, "_execute_step", side_effect=_fake_execute_step),
         patch("manul_engine.core.load_custom_controls"),
     ):
@@ -395,7 +395,7 @@ async def _test_interpolation() -> None:
     with patch("manul_engine.core.load_custom_controls"):
         engine3 = ManulEngine(model=None, disable_cache=True)
     with (
-        patch("manul_engine.core.async_playwright", return_value=mock_playwright),
+        patch.object(type(engine), "_launch_browser", AsyncMock(return_value=(fake_browser, fake_ctx, fake_page))),
         patch.object(engine3, "_execute_step", side_effect=_fake_execute_step),
         patch("manul_engine.core.load_custom_controls"),
     ):

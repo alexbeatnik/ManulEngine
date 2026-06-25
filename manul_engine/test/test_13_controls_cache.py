@@ -8,7 +8,7 @@ import datetime
 import json
 import shutil
 from pathlib import Path
-from playwright.async_api import async_playwright
+from manul_engine.cdp import CDPBrowser
 
 from manul_engine import ManulEngine
 from manul_engine import prompts
@@ -44,7 +44,7 @@ async def run_suite() -> bool:
         prompts.CONTROLS_CACHE_ENABLED = True
         prompts.CONTROLS_CACHE_DIR = str(temp_cache_root)
 
-        async with async_playwright() as p:
+        async with CDPBrowser(headless=True) as p:
             browser = await p.chromium.launch(headless=True)
             ctx = await browser.new_context(no_viewport=True)
             page = await ctx.new_page()

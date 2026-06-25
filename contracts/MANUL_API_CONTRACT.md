@@ -11,7 +11,7 @@
   "importPath": "from manul_engine import ManulSession",
 
   "class": "ManulSession",
-  "description": "High-level async context manager for programmatic browser automation. Manages its own Playwright lifecycle. All element resolution routes through the full ManulEngine pipeline (cache → heuristics → optional LLM fallback).",
+  "description": "High-level async context manager for programmatic browser automation. Manages its own Chrome/CDP lifecycle. All element resolution routes through the full ManulEngine pipeline (cache → heuristics → optional LLM fallback).",
 
   "constructor": {
     "parameters": [
@@ -22,7 +22,7 @@
       { "name": "ai_threshold",    "type": "int | None",       "default": null,   "description": "Custom LLM fallback threshold." },
       { "name": "disable_cache",   "type": "bool",             "default": false,  "description": "Disable persistent controls cache." },
       { "name": "semantic_cache",  "type": "bool | None",      "default": null,   "description": "Enable in-session semantic cache." },
-      { "name": "channel",         "type": "str | None",       "default": null,   "description": "Playwright browser channel (e.g. 'chrome', 'msedge')." },
+      { "name": "channel",         "type": "str | None",       "default": null,   "description": "Chrome/Chromium channel binary (e.g. 'chrome', 'msedge')." },
       { "name": "executable_path", "type": "str | None",       "default": null,   "description": "Custom browser or Electron executable path." }
     ]
   },
@@ -30,17 +30,17 @@
   "lifecycle": {
     "contextManager": {
       "usage": "async with ManulSession(...) as session: ...",
-      "entry": "Calls start() — launches Playwright, spawns browser, opens initial page.",
-      "exit": "Calls close() — tears down browser and Playwright."
+      "entry": "Calls start() — launches Chrome via CDP and opens the initial page.",
+      "exit": "Calls close() — closes the page and the Chrome process."
     },
     "explicit": {
       "start": { "signature": "() -> ManulSession", "description": "Launch browser and open page. Returns self for chaining." },
-      "close": { "signature": "() -> None", "description": "Close browser and tear down Playwright." }
+      "close": { "signature": "() -> None", "description": "Close the page and the Chrome process." }
     }
   },
 
   "properties": [
-    { "name": "page",   "type": "playwright.async_api.Page",   "description": "Active Playwright Page object. Useful for advanced one-off Playwright calls." },
+    { "name": "page",   "type": "manul_engine.cdp.CDPPage",   "description": "Active CDPPage object. Useful for advanced one-off CDP calls (await page.query(...), page.evaluate(...))." },
     { "name": "engine", "type": "ManulEngine",                  "description": "Underlying ManulEngine instance (read-only)." },
     { "name": "memory", "type": "ScopedVariables",              "description": "Shortcut to engine's scoped variable store." }
   ],
@@ -183,7 +183,7 @@
       "module": "manul_engine.controls",
       "kind": "dataclass(slots=True)",
       "fields": [
-        { "name": "page",      "type": "playwright.async_api.Page", "description": "Live Playwright Page. Use ctx.page.locator(...) etc." },
+        { "name": "page",      "type": "manul_engine.cdp.CDPPage", "description": "Live CDPPage. Use await ctx.page.query(...), ctx.page.evaluate(...) etc." },
         { "name": "action",    "type": "str",                       "description": "DSL mode: 'input' | 'clickable' | 'select' | 'hover' | 'drag' | 'locate'." },
         { "name": "value",     "type": "str | None",                "description": "Type/select value. None for click/hover/locate." },
         { "name": "target",    "type": "str",                       "description": "Quoted target token from the step (preserves case)." },

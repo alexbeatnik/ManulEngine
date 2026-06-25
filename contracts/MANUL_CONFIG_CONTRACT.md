@@ -56,7 +56,7 @@
       "type": "string",
       "default": "chromium",
       "allowedValues": ["chromium", "firefox", "webkit", "electron"],
-      "description": "Playwright browser engine. `electron` is a legacy/runtime-config-only value still accepted via JSON config or MANUL_BROWSER for CDP/Electron compatibility, but the CLI `--browser` flag remains limited to `chromium`, `firefox`, or `webkit`. For Electron/desktop automation, prefer `executable_path` with the OPEN APP command.",
+      "description": "Browser engine driven over CDP. `electron` is a legacy/runtime-config-only value still accepted via JSON config or MANUL_BROWSER for CDP/Electron compatibility, but the CLI `--browser` flag remains limited to `chromium`, `firefox`, or `webkit`. For Electron/desktop automation, prefer `executable_path` with the OPEN APP command.",
       "cliFlag": "--browser"
     },
     {
@@ -73,9 +73,9 @@
       "envVar": "MANUL_CHANNEL",
       "type": "string | null",
       "default": null,
-      "description": "Playwright browser channel — use an installed browser instead of the bundled one.",
+      "description": "Chrome/Chromium channel — selects an installed browser binary (chrome, msedge, chromium, ...).",
       "examples": [null, "chrome", "chrome-beta", "msedge"],
-      "validation": "Must be a valid Playwright channel identifier or null."
+      "validation": "Must be a valid Chrome channel identifier (chrome/chrome-beta/msedge/chromium/...) or null."
     },
     {
       "key": "executable_path",

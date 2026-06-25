@@ -37,7 +37,8 @@ Custom controls:
     @custom_control(page="Login Page", target="Username")
     async def handle_username(ctx: ControlContext) -> None:
         # ctx.page is a live Playwright Page.
-        await ctx.page.locator("#user").fill(ctx.value or "")
+        el = await ctx.page.query("#user")
+        await el.fill(ctx.value or "")
 
     # ctx fields: page, action, value, target, page_name, url, step.
 

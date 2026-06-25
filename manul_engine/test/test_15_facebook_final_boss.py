@@ -3,7 +3,7 @@ import os
 import asyncio
 import datetime
 from pathlib import Path
-from playwright.async_api import async_playwright
+from manul_engine.cdp import CDPBrowser
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
@@ -109,7 +109,7 @@ async def run_suite() -> bool:
     total = len(TESTS)
 
     try:
-        async with async_playwright() as p:
+        async with CDPBrowser(headless=True) as p:
             browser = await p.chromium.launch(headless=True)
             ctx = await browser.new_context(no_viewport=True)
             page = await ctx.new_page()

@@ -1,7 +1,7 @@
 import sys, os, asyncio
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
-from playwright.async_api import async_playwright
+from manul_engine.cdp import CDPBrowser
 from manul_engine import ManulEngine
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -384,7 +384,7 @@ async def run_suite() -> bool:
 
     manul = ManulEngine(headless=True, disable_cache=True)
 
-    async with async_playwright() as p:
+    async with CDPBrowser(headless=True) as p:
         browser = await p.chromium.launch()
         # Automatically close alerts, same behavior as Playwright's default
         ctx = await browser.new_context()

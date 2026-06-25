@@ -334,7 +334,7 @@ async def record_session(
     str
         Absolute path to the saved .hunt file.
     """
-    from playwright.async_api import async_playwright
+    from .cdp import CDPBrowser
 
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
@@ -376,22 +376,15 @@ async def record_session(
     print(f"   Browser: {browser} | Output: {output_abs}")
     print("   Interact with the page. Close the browser or press Ctrl+C to finish.\n")
 
-    async with async_playwright() as pw:
-        launcher = getattr(pw, browser)
-        b = await launcher.launch(headless=False)
-        context = await b.new_context()
+    b = await CDPBrowser.launch(headless=False)
+    page = await b.new_page()
 
-        # Inject the recorder script into every new page/frame automatically.
-        await context.add_init_script(_RECORDER_JS)
+    # Expose the Python bridge so JS can call window.recordManulEvent(), then
+    # inject the recorder script into every new document automatically.
+    await page.expose_binding("recordManulEvent", on_event)
+    await page.add_init_script(_RECORDER_JS)
 
-        page = await context.new_page()
-
-        # Expose the Python bridge so JS can call window.recordManulEvent().
-        await page.expose_function("recordManulEvent", on_event)
-
-        # Re-inject on navigations (add_init_script covers new documents,
-        # but expose_function bindings persist across navigations in the
-        # same page automatically in Playwright).
+    try:
         try:
             await page.goto(url, wait_until="domcontentloaded", timeout=30_000)
         except Exception as exc:
@@ -403,11 +396,11 @@ async def record_session(
             await _wait_for_close(page)
         except (KeyboardInterrupt, asyncio.CancelledError):
             print("\n⏹  Recording stopped by user.")
-        finally:
-            try:
-                await b.close()
-            except Exception:
-                pass
+    finally:
+        try:
+            await b.close()
+        except Exception:
+            pass
 
     # ── Write the .hunt file ──────────────────────────────────────────────
     _write_hunt_file(output_abs, url, recorded_lines)
@@ -424,7 +417,7 @@ async def _wait_for_close(page) -> None:
         if not closed.done():
             closed.set_result(True)
 
-    page.on("close", _on_close)
+    page.on_close(_on_close)
     try:
         await closed
     except asyncio.CancelledError:

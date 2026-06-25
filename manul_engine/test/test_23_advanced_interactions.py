@@ -22,7 +22,7 @@ import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
-from playwright.async_api import TimeoutError as PlaywrightTimeoutError
+PlaywrightTimeoutError = TimeoutError  # CDP surfaces wait timeouts as builtin TimeoutError
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
@@ -148,9 +148,11 @@ def _mock_page():
     mock_loc.set_input_files = AsyncMock()
     mock_loc.scroll_into_view_if_needed = AsyncMock()
     mock_loc.wait_for = AsyncMock()
-    mock_loc.first = mock_loc
-    page.locator = MagicMock(return_value=mock_loc)
-    page.get_by_text = MagicMock(return_value=mock_loc)
+    # CDP page: query() resolves a selector to an element handle; no separate
+    # frame, so page.frames is empty (so _frame_for() falls back to the page).
+    page.frames = []
+    page.query = AsyncMock(return_value=mock_loc)
+    page.wait_for_selector = AsyncMock(return_value=mock_loc)
     page._mock_locator = mock_loc
     return page
 
@@ -390,8 +392,7 @@ async def _test_handle_wait_for_element_visible() -> None:
     ok, message = await engine._handle_wait_for_element(page, 'Wait for "Welcome, User" to be visible')
     _assert(ok, "Explicit wait visible returns True")
     _assert(message == "Element is now visible", "Visible wait success message", message)
-    page.get_by_text.assert_called_once_with("Welcome, User", exact=False)
-    page._mock_locator.wait_for.assert_awaited_once_with(state="visible", timeout=15_000)
+    page.wait_for_selector.assert_awaited_once_with("text=Welcome, User", state="visible", timeout=15_000)
 
 
 async def _test_handle_wait_for_element_disappear() -> None:
@@ -402,14 +403,14 @@ async def _test_handle_wait_for_element_disappear() -> None:
     ok, message = await engine._handle_wait_for_element(page, "Wait for 'Loading...' to disappear")
     _assert(ok, "Explicit wait disappear returns True")
     _assert(message == "Element is now hidden", "Disappear maps to hidden", message)
-    page._mock_locator.wait_for.assert_awaited_once_with(state="hidden", timeout=15_000)
+    page.wait_for_selector.assert_awaited_once_with("text=Loading...", state="hidden", timeout=15_000)
 
 
 async def _test_handle_wait_for_element_timeout() -> None:
     print("\n  ── _handle_wait_for_element — timeout ─────────────────")
     engine = _make_engine()
     page = _mock_page()
-    page._mock_locator.wait_for = AsyncMock(side_effect=PlaywrightTimeoutError("boom"))
+    page.wait_for_selector = AsyncMock(side_effect=PlaywrightTimeoutError("boom"))
 
     ok, message = await engine._handle_wait_for_element(page, 'Wait for "Submit" to be hidden')
     _assert(not ok, "Explicit wait timeout returns False")

@@ -38,7 +38,7 @@ from .logging_config import logger
 from .scoring import SCALE, score_elements
 
 if TYPE_CHECKING:
-    from playwright.async_api import Page
+    from .cdp import CDPPage as Page
 
 _log = logger.getChild("explain_next")
 
@@ -487,9 +487,10 @@ class ExplainNextDebugger:
             await eng._clear_debug_highlight(page)  # type: ignore[attr-defined]
             frames = page.frames
             frame = frames[hit.frame_index] if 0 <= hit.frame_index < len(frames) else page
-            loc = frame.locator(f"xpath={hit.xpath}").first
-            await loc.scroll_into_view_if_needed(timeout=2000)
-            await eng._debug_highlight(page, loc)  # type: ignore[attr-defined]
+            loc = await frame.query(f"xpath={hit.xpath}")
+            if loc is not None:
+                await loc.scroll_into_view_if_needed(timeout=2000)
+                await eng._debug_highlight(page, loc)  # type: ignore[attr-defined]
         except Exception as exc:
             _log.debug("highlight_match: could not highlight element: %s", exc)
 

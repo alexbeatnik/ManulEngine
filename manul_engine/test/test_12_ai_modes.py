@@ -4,7 +4,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 import asyncio
-from playwright.async_api import async_playwright
+from manul_engine.cdp import CDPBrowser
 
 from manul_engine import ManulEngine
 
@@ -75,7 +75,7 @@ async def run_suite() -> bool:
             failures.append(msg)
 
         # ── 3) Always-AI calls picker even when heuristics are confident ──
-        async with async_playwright() as p:
+        async with CDPBrowser(headless=True) as p:
             browser = await p.chromium.launch(headless=True)
             ctx = await browser.new_context(no_viewport=True)
             page = await ctx.new_page()

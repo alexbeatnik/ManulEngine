@@ -550,7 +550,7 @@
       "id": "drag",
       "triggers": ["drag", "drop"],
       "triggerRule": "Both 'drag' AND 'drop' must be present as word-boundary tokens.",
-      "description": "Drag-and-drop interaction via Playwright or manual mouse events."
+      "description": "Drag-and-drop interaction via CDP Input mouse events."
     },
     {
       "id": "select",

@@ -338,7 +338,7 @@ async def _test_engine_integration() -> None:
     mission = "1. CALL PYTHON calc.multiply \"6\" \"7\" into {product}\n2. Fill 'Result' with '{product}'\n"
 
     with (
-        patch("manul_engine.core.async_playwright", return_value=mock_playwright),
+        patch.object(type(engine), "_launch_browser", AsyncMock(return_value=(fake_browser, fake_ctx, fake_page))),
         patch.object(engine, "_execute_step", side_effect=_fake_execute_step),
         patch("manul_engine.hooks._resolve_module", return_value=(calc_mod, False)),
         patch("manul_engine.core.load_custom_controls"),
@@ -367,7 +367,7 @@ async def _test_engine_integration() -> None:
     mission2 = "1. CALL PYTHON calc.multiply {base} \"5\" into {result}\n2. Fill 'Total' with '{result}'\n"
 
     with (
-        patch("manul_engine.core.async_playwright", return_value=mock_playwright),
+        patch.object(type(engine), "_launch_browser", AsyncMock(return_value=(fake_browser, fake_ctx, fake_page))),
         patch.object(engine2, "_execute_step", side_effect=_fake_execute_step),
         patch("manul_engine.hooks._resolve_module", return_value=(calc_mod, False)),
         patch("manul_engine.core.load_custom_controls"),
@@ -398,7 +398,7 @@ async def _test_engine_integration() -> None:
     token_mod = _make_module({"get_token": _get_token})
     mission3 = "1. CALL PYTHON auth.get_token into {token}\n2. Fill 'Token' with '{token}'\n"
     with (
-        patch("manul_engine.core.async_playwright", return_value=mock_playwright),
+        patch.object(type(engine), "_launch_browser", AsyncMock(return_value=(fake_browser, fake_ctx, fake_page))),
         patch.object(engine3, "_execute_step", side_effect=_fake_execute_step),
         patch("manul_engine.hooks._resolve_module", return_value=(token_mod, False)),
         patch("manul_engine.core.load_custom_controls"),

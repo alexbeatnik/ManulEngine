@@ -126,7 +126,7 @@
         { "input": "e or explain-next",  "action": "One-shot What-If evaluation of the current step (prints format_report, stays paused)." },
         { "input": "h",                  "action": "Re-scroll to highlighted element." },
         { "input": "w or what-if",       "action": "Enter ExplainNextDebugger REPL." },
-        { "input": "pause",              "action": "Open Playwright Inspector (page.pause())." },
+        { "input": "pause",              "action": "Enter the interactive debug pause." },
         { "input": "c or continue",      "action": "Set _debug_continue=True, skip all future pauses." }
       ]
     },
@@ -301,7 +301,7 @@
       "file": "manul_engine/explain_next.py",
       "signature": "(elements, step, search_texts, target_field) -> _HeuristicHit | None",
       "async": false,
-      "description": "Run DOMScorer against the snapshot to find the best candidate. Strictly read-only — no Playwright calls. Returns None when no elements available.",
+      "description": "Run DOMScorer against the snapshot to find the best candidate. Strictly read-only — no input/CDP mutations. Returns None when no elements available.",
       "scoringCall": "score_elements(elements, step, mode, search_texts, target_field, is_blind, learned_elements={}, last_xpath=None, explain=False)"
     }
   },
@@ -321,7 +321,7 @@
   },
 
   "safetyGuarantees": {
-    "readOnly": "evaluate() never mutates page state. Only read-only Playwright calls (url, title, evaluate for snapshot/text) are used.",
+    "readOnly": "evaluate() never mutates page state. Only read-only CDP calls (url, title, evaluate for snapshot/text) are used.",
     "noNavigation": "No page.goto(), page.click(), page.fill(), or any navigation-triggering calls.",
     "highlightOnly": "The only visual side effect is _debug_highlight (CSS attribute + style tag) which is cleanly removable via _clear_debug_highlight.",
     "exceptionSafety": "All page interactions are wrapped in try/except (OSError, RuntimeError) to handle page destruction gracefully.",

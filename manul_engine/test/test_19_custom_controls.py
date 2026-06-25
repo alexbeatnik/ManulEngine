@@ -220,7 +220,7 @@ async def _test_interception() -> None:
         step_text = "2. Fill 'React Datepicker' with '2026-12-25'"
 
         with (
-            patch("manul_engine.core.async_playwright", return_value=mock_playwright),
+            patch.object(type(engine), "_launch_browser", AsyncMock(return_value=(fake_browser, fake_ctx, fake_page))),
             patch("manul_engine.core.prompts.lookup_page_name", return_value="Checkout Page"),
             patch.object(engine, "_execute_step", execute_step_mock),
             patch("manul_engine.core.load_custom_controls"),
@@ -266,7 +266,7 @@ async def _test_interception() -> None:
         step_text_normal = "2. Click the 'Submit' button"
 
         with (
-            patch("manul_engine.core.async_playwright", return_value=mock_playwright),
+            patch.object(type(engine), "_launch_browser", AsyncMock(return_value=(fake_browser, fake_ctx, fake_page))),
             patch("manul_engine.core.prompts.lookup_page_name", return_value="Checkout Page"),
             patch.object(engine, "_execute_step", execute_step_mock),
             patch("manul_engine.core.load_custom_controls"),

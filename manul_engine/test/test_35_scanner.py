@@ -1,7 +1,7 @@
 import sys, os, asyncio
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
-from playwright.async_api import async_playwright
+from manul_engine.cdp import CDPBrowser
 from manul_engine.scanner import build_hunt, _is_useful, _map_to_step
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -184,7 +184,7 @@ async def _test_scan_js_integration():
     import json
     from manul_engine.js_scripts import SCAN_JS
 
-    async with async_playwright() as p:
+    async with CDPBrowser(headless=True) as p:
         browser = await p.chromium.launch()
         page = await browser.new_page()
         await page.set_content(SCAN_DOM)
