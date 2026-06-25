@@ -46,11 +46,11 @@ def _assert(condition: bool, name: str, detail: str = "") -> None:
 def _test_constructor() -> None:
     print("\n  ── Constructor & configuration ─────────────────────────────")
 
-    s = ManulSession(headless=True, browser="firefox", disable_cache=True)
+    s = ManulSession(headless=True, browser="electron", disable_cache=True)
 
     _assert(s.engine is not None, "engine attribute exists")
     _assert(s.engine.headless is True, "headless passed through")
-    _assert(s.engine.browser == "firefox", "browser passed through")
+    _assert(s.engine.browser == "electron", "browser passed through")
     _assert(s.engine._controls_cache_enabled is False, "disable_cache passed through")
     _assert(s._page is None, "page is None before start()")
     _assert(isinstance(s.memory, ScopedVariables), "memory is ScopedVariables")

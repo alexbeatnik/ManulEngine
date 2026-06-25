@@ -361,7 +361,7 @@ def test_ai_policy_valid() -> None:
 
 
 def test_browser_valid() -> None:
-    _assert(BROWSER in ("chromium", "firefox", "webkit", "electron"), f"BROWSER is '{BROWSER}'")
+    _assert(BROWSER in ("chromium", "electron"), f"BROWSER is '{BROWSER}'")
 
 
 def test_screenshot_valid() -> None:

@@ -2,11 +2,11 @@
 """
 🎬 Semantic Test Recorder — `manul record <URL>`
 
-Launches a headed Playwright browser, injects event listeners that capture
+Launches a headed Chrome over CDP, injects event listeners that capture
 user interactions (clicks, typing, selects, Enter), translates them into
 plain-English Hunt DSL steps, and saves the result to a `.hunt` file.
 
-Unlike Playwright codegen, no CSS/XPath selectors are generated — only
+Unlike Playwright/Chrome codegen, no CSS/XPath selectors are generated — only
 semantic labels extracted from the DOM (data-qa, aria-label, placeholder,
 name, visible text).
 """
@@ -327,7 +327,7 @@ async def record_session(
         Absolute or relative path for the generated .hunt file.
         When *None*, defaults to ``tests_home/recorded_mission.hunt``.
     browser:
-        Playwright browser engine: ``chromium``, ``firefox``, or ``webkit``.
+        Kept for CLI compatibility; the CDP backend always drives Chrome/Chromium.
 
     Returns
     -------
@@ -450,7 +450,7 @@ def _write_hunt_file(path: str, url: str, lines: list[str]) -> None:
 async def record_main(args: list[str]) -> None:
     """Async entry point called from ``cli.main()`` when subcommand is ``record``."""
 
-    _VALID_BROWSERS = {"chromium", "firefox", "webkit"}
+    _VALID_BROWSERS = {"chromium"}
     browser = "chromium"
     if "--browser" in args:
         idx = args.index("--browser")
@@ -463,12 +463,12 @@ async def record_main(args: list[str]) -> None:
                 sys.exit(1)
             args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
         else:
-            print("Error: --browser requires a value (chromium|firefox|webkit).", file=sys.stderr)
+            print("Error: --browser requires a value (only 'chromium' is supported).", file=sys.stderr)
             sys.exit(1)
 
     if not args:
         print(
-            "Usage: manul record <URL> [output.hunt] [--browser chromium|firefox|webkit]",
+            "Usage: manul record <URL> [output.hunt] [--browser chromium]",
             file=sys.stderr,
         )
         sys.exit(1)

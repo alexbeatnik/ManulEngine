@@ -55,8 +55,8 @@
       "envVar": "MANUL_BROWSER",
       "type": "string",
       "default": "chromium",
-      "allowedValues": ["chromium", "firefox", "webkit", "electron"],
-      "description": "Browser engine driven over CDP. `electron` is a legacy/runtime-config-only value still accepted via JSON config or MANUL_BROWSER for CDP/Electron compatibility, but the CLI `--browser` flag remains limited to `chromium`, `firefox`, or `webkit`. For Electron/desktop automation, prefer `executable_path` with the OPEN APP command.",
+      "allowedValues": ["chromium", "electron"],
+      "description": "Launch mode for the CDP backend, which always drives Chrome/Chromium. `chromium` launches a fresh system Chrome; `electron` attaches to an already-running Chrome/Electron over CDP (MANUL_CDP_PORT). Firefox/WebKit are no longer supported (CDP is Chromium-only). Use `channel`/`executable_path` to pick which Chrome binary to launch. Unknown values fall back to `chromium`.",
       "cliFlag": "--browser"
     },
     {

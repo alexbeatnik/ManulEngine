@@ -255,6 +255,19 @@ When `--explain` is enabled, every resolved step prints a per-channel breakdown 
 └─ Decision: selected "Login" with score 0.593
 ```
 
+### Native CDP, no Playwright
+
+ManulEngine talks to the browser through its **own** Chrome DevTools Protocol client — a thin async WebSocket transport in [`manul_engine/cdp/`](manul_engine/cdp/) with a single runtime dependency (`websockets`). There is no Playwright, no Node.js, and no bundled browser download: the engine launches the Chrome/Chromium you already have on `PATH` (or attaches to a running one) and drives it directly.
+
+Why own the protocol layer:
+
+- **One small dependency, fully inspectable.** The whole browser driver is a handful of readable Python files (`conn.py` transport, `chrome.py` launcher, `page.py` page/frame/element model) rather than a large vendored toolchain. What the engine sends to Chrome is exactly what you can read.
+- **Trusted input by default.** Clicks and keystrokes are dispatched via CDP `Input.*` events at real coordinates, and form values go through the native value setter so React/Vue/Angular state updates fire — no `force` hacks needed.
+- **Per-frame execution contexts.** A selector is resolved once inside the owning frame's execution context, then every operation runs against that handle — so same-origin iframes (and OOPIF child targets) are first-class, not an afterthought.
+- **CDP is Chromium-only by design.** Because the protocol is Chrome's, the engine drives Chrome/Chromium only. Firefox/WebKit are intentionally not supported; pick the concrete binary with `channel` (`chrome`, `msedge`, `chromium`, …) or `executable_path`.
+
+This is the same philosophy as the Go sibling [ManulHeart](https://github.com/alexbeatnik/ManulHeart): plain-English `.hunt` files, deterministic heuristics, and a hand-written CDP layer instead of a heavyweight automation framework.
+
 ### Dual-persona workflow
 
 Manual QA writes plain-English `.hunt` steps — no code required. SDETs extend the same files with Python hooks (`[SETUP]` / `[TEARDOWN]`, `CALL PYTHON`), lifecycle orchestration (`@before_all` / `@after_all`), and `@custom_control` handlers for complex widgets. Both personas work on the same artifact.
@@ -360,7 +373,7 @@ manul --headless --html-report tests/            # CI mode with reports
 |---|---|---|
 | `model` | `null` | Ollama model name. `null` = heuristics-only. |
 | `headless` | `false` | Hide the browser window. |
-| `browser` | `"chromium"` | `chromium`, `firefox`, or `webkit`. |
+| `browser` | `"chromium"` | `chromium` (launch system Chrome) or `electron` (attach to a running Chrome/Electron over CDP). |
 | `browser_args` | `[]` | Extra browser launch flags. |
 | `ai_threshold` | auto | Score threshold before LLM fallback. |
 | `ai_always` | `false` | Always invoke LLM picker (requires `model`). |
@@ -374,8 +387,8 @@ manul --headless --html-report tests/            # CI mode with reports
 | `workers` | `1` | Max parallel hunt files. |
 | `tests_home` | `"tests"` | Default output for new hunts and scans. |
 | `auto_annotate` | `false` | Insert `# 📍 Auto-Nav:` comments on URL changes. |
-| `channel` | `null` | Installed browser channel (`chrome`, `msedge`). |
-| `executable_path` | `null` | Path to Electron or custom browser executable. |
+| `channel` | `null` | Chrome/Chromium binary to launch (`chrome`, `msedge`, `chromium`, …). |
+| `executable_path` | `null` | Explicit path to a Chrome/Chromium (or Electron) executable. |
 | `retries` | `0` | Retry failed hunts N times. |
 | `screenshot` | `"on-fail"` | `none`, `on-fail`, or `always`. |
 | `html_report` | `false` | Generate `reports/manul_report.html`. |
@@ -433,6 +446,8 @@ ManulEngine is alpha-stage and solo-developed. If deterministic, explainable bro
 
 ## What's New in v0.1.0
 
+- **Playwright removed — native Chrome DevTools Protocol backend (BREAKING):** the entire browser layer is now ManulEngine's own CDP client in [`manul_engine/cdp/`](manul_engine/cdp/), driving system Chrome/Chromium over a raw WebSocket. The only runtime dependency is `websockets` (no Playwright, no Node.js, no bundled browser download). `ManulSession.page` is now a `manul_engine.cdp.CDPPage`; per-frame iframe routing uses real per-frame execution contexts. **Install requires a system Chrome/Chromium on `PATH`** (`playwright install` is gone).
+- **`browser` is Chromium-only:** `firefox` / `webkit` are no longer accepted (CDP is Chrome's protocol). `browser` now selects launch mode — `chromium` (launch) or `electron` (attach to a running Chrome/Electron over CDP); choose the binary with `channel` / `executable_path`.
 - **Deterministic LLM transport:** every Ollama call now pins `temperature=0` (override via `MANUL_LLM_TEMPERATURE`) so the optional AI safety net resolves the same element the same way run-to-run — matching the determinism the heuristic resolver already guarantees. New `MANUL_LLM_NUM_CTX` / `MANUL_LLM_RETRIES` / `MANUL_LLM_KEEP_ALIVE` knobs round out the transport config.
 - **Retry-once + actionable errors:** a malformed or truncated JSON reply from a small local model is retried once before giving up, while a genuinely unreachable server fails fast with an *"is `ollama serve` running?"* hint instead of a silent miss.
 - **Sanitized LLM prompts:** page prose fed to the model (e.g. the Explain-Next What-If analysis) is stripped of base64 blobs, `data-*` dumps and SVG path noise and bounded by a character budget — cheaper, on-topic prompts (`sanitize_for_llm` / `truncate_for_llm`, ported from the ManulHeart agent layer).

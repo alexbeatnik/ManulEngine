@@ -20,7 +20,7 @@ Usage::
     engine = ManulEngine(config=cfg)
 
     # Or construct programmatically:
-    cfg = EngineConfig(model=None, headless=True, browser="firefox")
+    cfg = EngineConfig(model=None, headless=True, channel="chrome")
     engine = ManulEngine(config=cfg)
 """
 
@@ -65,7 +65,7 @@ class EngineConfig:
 
     Construct via :meth:`from_file` (JSON + env overlay) or directly::
 
-        cfg = EngineConfig(headless=True, browser="firefox")
+        cfg = EngineConfig(headless=True, channel="chrome")
     """
 
     model: str | None = None
@@ -220,7 +220,7 @@ class EngineConfig:
             ccd = ("controls",)
 
         # ── browser validation ──
-        _valid_browsers = ("chromium", "firefox", "webkit", "electron")
+        _valid_browsers = ("chromium", "electron")
         _b = _str("browser", "MANUL_BROWSER", "chromium").lower()
         browser = _b if _b in _valid_browsers else "chromium"
 
@@ -268,7 +268,7 @@ class EngineConfig:
         """
         from .exceptions import ConfigurationError
 
-        _valid_browsers = ("chromium", "firefox", "webkit", "electron")
+        _valid_browsers = ("chromium", "electron")
         if self.browser not in _valid_browsers:
             raise ConfigurationError(f"Invalid browser {self.browser!r}; must be one of {_valid_browsers}")
 

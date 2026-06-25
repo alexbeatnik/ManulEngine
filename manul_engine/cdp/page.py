@@ -678,7 +678,12 @@ class CDPPage:
         await self.wait_for_load(state=wait_until)
 
     async def screenshot(
-        self, path: str | None = None, *, full_page: bool = False, clip: dict | None = None
+        self,
+        path: str | None = None,
+        *,
+        full_page: bool = False,
+        clip: dict | None = None,
+        type: str = "png",
     ) -> bytes:
         params: dict[str, Any] = {"format": "png", "captureBeyondViewport": full_page}
         if clip is not None:

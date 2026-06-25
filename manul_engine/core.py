@@ -119,7 +119,9 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         # None model → heuristics-only mode (AI fully disabled)
         self.model = model if model is not None else (_cfg.model if _cfg else prompts.DEFAULT_MODEL)
         self.headless = headless if headless is not None else (_cfg.headless if _cfg else prompts.HEADLESS_MODE)
-        _VALID_BROWSERS = ("chromium", "firefox", "webkit", "electron")
+        # The CDP backend always drives Chrome/Chromium; 'electron' attaches to a
+        # running Chrome/Electron over CDP instead of launching a fresh browser.
+        _VALID_BROWSERS = ("chromium", "electron")
         _b = (browser or (_cfg.browser if _cfg else prompts.BROWSER)).strip().lower()
         self.browser: str = _b if _b in _VALID_BROWSERS else "chromium"
         self.browser_args: list[str] = (

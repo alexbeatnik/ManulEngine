@@ -90,7 +90,7 @@ Usage:
 
 Flags:
   --headless                 — run browser in headless mode
-  --browser <name>           — browser to use: chromium (default), firefox, webkit
+  --browser <name>           — chromium (default) or electron (attach to a running Chrome/Electron over CDP)
   --workers <n>              — max hunt files to run in parallel (default: 1)
   --tags <tag1,tag2,...>     — only run hunt files whose @tags: header contains at least one matching tag
   --debug                    — interactive step-by-step mode with visual element highlighting
@@ -123,8 +123,7 @@ Examples:
   manul tests/hunt_example.hunt
   manul tests/my_script.hunt
   manul --headless tests/
-  manul --browser firefox tests/
-  manul --headless --browser webkit tests/hunt_example.hunt
+  manul --browser chromium tests/
   manul --workers 4 tests/
   manul --tags smoke tests/
   manul --tags smoke,regression tests/
@@ -133,7 +132,7 @@ Examples:
   manul record https://example.com
   manul record https://example.com tests/my_test.hunt
   manul daemon tests/ --headless
-  manul daemon tests/ --headless --browser firefox --screenshot on-fail
+  manul daemon tests/ --headless --browser chromium --screenshot on-fail
 
 Notes:
   Any file with the .hunt extension is accepted.
@@ -901,14 +900,15 @@ async def main() -> "int | None":
             print("Error: --break-lines values must be integers.", file=sys.stderr)
             sys.exit(1)
 
-    # Extract --browser <name> flag
-    _VALID_BROWSERS = {"chromium", "firefox", "webkit"}
+    # Extract --browser <name> flag. The CDP backend always drives Chrome/Chromium;
+    # 'electron' attaches to a running Chrome/Electron over CDP instead of launching.
+    _VALID_BROWSERS = {"chromium", "electron"}
     browser: str | None = None
     _browser_raw, args = _pop_flag(args, "--browser")
     if _browser_raw is not None:
         candidate = _browser_raw.strip().lower()
         if candidate not in _VALID_BROWSERS:
-            print(f"Error: unsupported browser '{_browser_raw}'. Allowed: chromium, firefox, webkit.", file=sys.stderr)
+            print(f"Error: unsupported browser '{_browser_raw}'. Allowed: chromium, electron.", file=sys.stderr)
             sys.exit(1)
         browser = candidate
 
