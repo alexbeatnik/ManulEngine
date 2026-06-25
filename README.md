@@ -13,7 +13,7 @@
 [![ManulAI Local Agent](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manulai-local-agent?label=ManulAI%20Local%20Agent&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manulai-local-agent)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-d97706)](#status)
 
-Write browser automation in plain English. ManulEngine interprets `.hunt` files through deterministic DOM heuristics on top of Playwright — no selectors, no cloud APIs, no AI required.
+Write browser automation in plain English. ManulEngine interprets `.hunt` files through deterministic DOM heuristics, driving Chrome directly over the Chrome DevTools Protocol (CDP) — no Playwright, no selectors, no cloud APIs, no AI required.
 
 > **Status: Alpha.** Solo-developed, actively battle-tested. Bugs are expected, APIs may evolve, and there are no promises about stability or production readiness. The core claim is transparency: when a step works, you can see exactly why; when it fails, you get the scoring breakdown to diagnose it.
 
@@ -163,7 +163,7 @@ VERIFY "Save" button has text "Save Changes"
 VERIFY "Search" input has placeholder "Type to search..."
 ```
 
-Explicit waits use Playwright's `locator.wait_for()` instead of hardcoded sleeps. Strict assertions resolve the element through heuristics and compare exact text, value, or placeholder with `==`.
+Explicit waits poll element visibility over CDP instead of hardcoded sleeps. Strict assertions resolve the element through heuristics and compare exact text, value, or placeholder with `==`.
 
 `WAIT FOR SELECTOR 'css'` waits for a CSS selector to appear (useful for custom elements like `ytd-video-renderer` that have no stable visible text). The `WAIT FOR 'target' TO BE VISIBLE` form also accepts CSS selectors — if the quoted target looks like a CSS selector it routes to `page.wait_for_selector()` automatically.
 
@@ -287,7 +287,7 @@ The same runtime and the same DSL serve four use cases:
 | **QA / E2E testing** | Write plain-English flows, verify outcomes, attach HTML reports and screenshots. No selectors in the test source. |
 | **RPA workflows** | Log into portals, fill forms, extract values, hand off to Python for backend or filesystem steps. |
 | **Synthetic monitoring** | Pair `.hunt` files with `@schedule:` and `manul daemon` for recurring health checks. |
-| **AI agent targets** | Constrained DSL execution is safer than raw Playwright for external agents — the runtime still owns scoring, retries, and validation. |
+| **AI agent targets** | Constrained DSL execution is safer than raw CDP/scripting for external agents — the runtime still owns scoring, retries, and validation. |
 
 ---
 
@@ -308,10 +308,10 @@ The same runtime and the same DSL serve four use cases:
       await session.verify("Welcome")
   ```
 - **Smart recorder** — Captures semantic intent (e.g., `Select 'Option' from 'Dropdown'`) instead of brittle pointer events.
-- **Custom controls** — `@custom_control(page, target)` decorator lets SDETs handle complex widgets (datepickers, virtual tables, canvas elements) with raw Playwright while the hunt file keeps a single readable step. Handlers receive a typed `ControlContext` (`ctx.page` / `ctx.action` / `ctx.value` / `ctx.target` / `ctx.page_name` / `ctx.url` / `ctx.step`); `manul controls list` shows the registry; misses against a sibling page print a one-line hint.
+- **Custom controls** — `@custom_control(page, target)` decorator lets SDETs handle complex widgets (datepickers, virtual tables, canvas elements) with raw CDP while the hunt file keeps a single readable step. Handlers receive a typed `ControlContext` (`ctx.page` / `ctx.action` / `ctx.value` / `ctx.target` / `ctx.page_name` / `ctx.url` / `ctx.step`); `manul controls list` shows the registry; misses against a sibling page print a one-line hint.
 - **Lifecycle hooks** — `@before_all`, `@after_all`, `@before_group`, `@after_group` in `manul_hooks.py` for suite-wide setup and teardown.
 - **HTML reports** — `--html-report` generates a self-contained dark-themed report with accordions, screenshots, tag filters, and run-session merging across CLI invocations.
-- **Docker CI runner** — `ghcr.io/alexbeatnik/manul-engine:0.0.9.33` runs headless in CI with `dumb-init`, non-root user, and `MANUL_*` env overrides.
+- **Docker CI runner** — `ghcr.io/alexbeatnik/manul-engine:0.1.0` runs headless in CI with `dumb-init`, non-root user, and `MANUL_*` env overrides.
 
 ---
 
@@ -320,14 +320,14 @@ The same runtime and the same DSL serve four use cases:
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.33
-playwright install
+pip install manul-engine==0.1.0
+# Requires a system-installed Google Chrome / Chromium on PATH.
 ```
 
 Optional local AI fallback (not required):
 
 ```bash
-pip install "manul-engine[ai]==0.0.9.33"
+pip install "manul-engine[ai]==0.1.0"
 ollama pull qwen2.5:0.5b && ollama serve
 ```
 
@@ -389,7 +389,7 @@ Environment variables (`MANUL_HEADLESS`, `MANUL_BROWSER`, `MANUL_MODEL`, `MANUL_
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.33 \
+  ghcr.io/alexbeatnik/manul-engine:0.1.0 \
   --html-report --screenshot on-fail hunts/
 ```
 
@@ -413,7 +413,7 @@ git clone https://github.com/alexbeatnik/ManulEngine.git
 cd ManulEngine
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-playwright install
+# Requires a system-installed Google Chrome / Chromium on PATH.
 
 python run_tests.py                              # synthetic + unit suite
 python demo/run_demo.py                          # integration hunts (needs network)
@@ -426,12 +426,12 @@ python demo/benchmarks/run_benchmarks.py         # adversarial DOM fixtures
 
 ManulEngine is alpha-stage and solo-developed. If deterministic, explainable browser automation interests you:
 
-- Try it: `pip install manul-engine==0.0.9.33 && playwright install`
+- Try it: `pip install manul-engine==0.1.0` (needs system Chrome/Chromium)
 - File issues: [github.com/alexbeatnik/ManulEngine/issues](https://github.com/alexbeatnik/ManulEngine/issues)
 
 ---
 
-## What's New in v0.0.9.33
+## What's New in v0.1.0
 
 - **Deterministic LLM transport:** every Ollama call now pins `temperature=0` (override via `MANUL_LLM_TEMPERATURE`) so the optional AI safety net resolves the same element the same way run-to-run — matching the determinism the heuristic resolver already guarantees. New `MANUL_LLM_NUM_CTX` / `MANUL_LLM_RETRIES` / `MANUL_LLM_KEEP_ALIVE` knobs round out the transport config.
 - **Retry-once + actionable errors:** a malformed or truncated JSON reply from a small local model is retried once before giving up, while a genuinely unreachable server fails fast with an *"is `ollama serve` running?"* hint instead of a silent miss.
@@ -467,6 +467,6 @@ ManulEngine is alpha-stage and solo-developed. If deterministic, explainable bro
 
 ## License
 
-**Version:** 0.0.9.33
+**Version:** 0.1.0
 
 Apache-2.0.

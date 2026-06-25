@@ -177,11 +177,17 @@ _ELEMENT_EXISTS_JS = """
     const attr = (el, n) => ((el.getAttribute && el.getAttribute(n)) || '').toLowerCase();
     for (const el of document.querySelectorAll('*')) {
         const txt = (el.textContent || '').trim().toLowerCase();
-        const matches =
-            txt === t || txt.includes(t) ||
+        // Only treat a TEXT hit as a match on the leaf-most element that owns
+        // it — otherwise a visible ancestor (body, wrapper div) whose
+        // textContent merely contains a hidden child's text would match.
+        const childHasText = Array.from(el.children).some(
+            (c) => (c.textContent || '').toLowerCase().includes(t)
+        );
+        const textMatch = (txt === t || txt.includes(t)) && !childHasText;
+        const attrMatch =
             attr(el, 'aria-label') === t || attr(el, 'placeholder') === t ||
             attr(el, 'title') === t || attr(el, 'name') === t || attr(el, 'value') === t;
-        if (matches && visible(el)) return true;
+        if ((textMatch || attrMatch) && visible(el)) return true;
     }
     return false;
 }

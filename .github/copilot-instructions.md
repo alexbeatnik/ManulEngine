@@ -61,7 +61,7 @@ manul.py                   Dev CLI entry point (run hunts from repo root without
 run_tests.py               Synthetic DOM test suite runner (dev only)
 bump_version.py            Version bumper — updates all 18 files from pyproject.toml
 manul_engine_configuration.json  Project configuration (JSON, replaces .env)
-pyproject.toml             Build config — package name: manul-engine, version: 0.0.9.33
+pyproject.toml             Build config — package name: manul-engine, version: 0.1.0
 manul_engine/
   __init__.py              public API — re-exports ManulEngine, ManulSession, EngineConfig, all exception classes
   exceptions.py            Structured exception hierarchy (ManulEngineError base, ConfigurationError, ElementResolutionError, HookExecutionError, HuntImportError, VerificationError, SessionError, ScheduleError, ConditionalSyntaxError)
@@ -642,7 +642,7 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.33 \
+  ghcr.io/alexbeatnik/manul-engine:0.1.0 \
   --html-report --screenshot on-fail hunts/
 ```
 

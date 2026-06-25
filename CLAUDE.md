@@ -1,7 +1,7 @@
 # CLAUDE.md — ManulEngine
 
-**Version:** 0.0.9.33
-**Project:** Deterministic, DSL-first browser & desktop automation runtime built on Playwright with optional local LLM (Ollama) self-healing.
+**Version:** 0.1.0
+**Project:** Deterministic, DSL-first browser & desktop automation runtime driving system Chrome directly over the Chrome DevTools Protocol (CDP, in `manul_engine/cdp/`) with optional local LLM (Ollama) self-healing. (Playwright was removed in 0.1.0 — single runtime dep: `websockets`.)
 
 This file is the operating manual for Claude Code working in this repo. It is loaded into every Claude session here. Keep it short, factual, and current — don't restate the README.
 
@@ -27,6 +27,10 @@ manul_engine/
   recorder.py     interactive recorder (manul record <URL>)
   reporter.py     HTML + JSON test reports
   scheduler.py    daemon mode (cron-style @schedule:)
+  cdp/            native Chrome DevTools Protocol backend (replaces Playwright):
+                    conn.py (WebSocket JSON-RPC), chrome.py (launch system Chrome),
+                    page.py (CDPPage/CDPFrame/CDPElement, per-frame exec contexts),
+                    browser.py (CDPBrowser), protocol.py + keys.py (JS/key maps)
   variables.py    ScopedVariables (5 levels: row > step > mission > global > import)
   prompts.py      LLM prompts + global config (THRESHOLDS, BROWSER_ARGS, …)
   config.py       EngineConfig dataclass (injectable; takes priority over prompts.* globals)
@@ -75,7 +79,7 @@ Single source of truth: `pyproject.toml → version`. Use `bump_version.py <new>
 
 - Run all: `python run_tests.py` (imports each `test_*.py` and calls its `run_laboratory()`/`run_suite()` — these are function-based suites, **not** `unittest.TestCase`).
 - Run one: run the file as a script — `python manul_engine/test/test_36_scoring_math.py`. (`python -m unittest manul_engine.test.test_36_scoring_math` reports "Ran 0 tests" — there are no TestCases.)
-- Tests use synthetic DOM HTML (`/tmp/*.html`) served via Playwright, no external network. They exercise scoring, parsing, lifecycle, recording, scheduling, the full DSL surface, and the reporter. Don't add real-network tests — keep the suite hermetic.
+- Tests use synthetic DOM HTML loaded via `CDPPage.set_content()` / `file://`, driven by system Chrome over CDP, no external network. They exercise scoring, parsing, lifecycle, recording, scheduling, the full DSL surface, and the reporter. Don't add real-network tests — keep the suite hermetic.
 - The ruff per-file-ignores for `manul_engine/test/*` are intentional; tests intentionally use shadowing, unused locals, and asserts.
 
 ## Style & tone
