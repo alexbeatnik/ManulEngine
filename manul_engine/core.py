@@ -968,7 +968,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                         print(f"    🔴 BREAKPOINT at line {ba_line}")
                         await self._debug_prompt(page, ba, action_index)
                     elif step_kind != "action":
-                        print(f"    🔴 BREAKPOINT at line {ba_line} — opening Playwright Inspector…")
+                        print(f"    🔴 BREAKPOINT at line {ba_line} — pausing (live Chrome stays interactive)…")
                         await page.pause()
                     else:
                         # Action step (click/fill/etc.) — inject into break_steps
@@ -1242,7 +1242,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                         print(f"    🔴 BREAKPOINT at line {ba_line}")
                         await self._debug_prompt(page, ba, action_index)
                     elif step_kind != "action":
-                        print(f"    🔴 BREAKPOINT at line {ba_line} — opening Playwright Inspector…")
+                        print(f"    🔴 BREAKPOINT at line {ba_line} — pausing (live Chrome stays interactive)…")
                         await page.pause()
                     else:
                         if self.break_steps is None:
@@ -1435,7 +1435,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     print("      🔎 DEBUG/PAUSE step (conditional branch)")
                     await self._debug_prompt(page, step, action_index)
                 else:
-                    print("      🔎 DEBUG/PAUSE step — opening Playwright Inspector…")
+                    print("      🔎 DEBUG/PAUSE step — pausing (live Chrome stays interactive)…")
                     await page.pause()
 
             elif step_kind == "done":
@@ -1764,7 +1764,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                 print(f"    🔴 BREAKPOINT at action {action_index}")
                                 await self._debug_prompt(page, step, action_index)
                             else:
-                                print(f"    🔴 BREAKPOINT at action {action_index} — opening Playwright Inspector…")
+                                print(f"    🔴 BREAKPOINT at action {action_index} — pausing (live Chrome stays interactive)…")
                                 await page.pause()
                         elif not self.debug_mode and _should_break and not _is_system_step:
                             # Action step (click/fill/etc.) — inject into break_steps
@@ -1958,7 +1958,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                         print("    🔎 DEBUG/PAUSE step")
                                         await self._debug_prompt(page, step, action_index)
                                     else:
-                                        print("    🔎 DEBUG/PAUSE step — opening Playwright Inspector…")
+                                        print("    🔎 DEBUG/PAUSE step — pausing (live Chrome stays interactive)…")
                                         await page.pause()
 
                             elif step_kind == "done":

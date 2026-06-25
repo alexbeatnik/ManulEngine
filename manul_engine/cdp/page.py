@@ -768,6 +768,17 @@ class CDPPage:
     async def wait_for_timeout(self, timeout_ms: float) -> None:
         await asyncio.sleep(timeout_ms / 1000.0)
 
+    async def pause(self) -> None:
+        """Substitute for Playwright's ``page.pause()`` — the CDP backend has no
+        external Inspector. In an interactive TTY this blocks until the user
+        presses Enter (the live Chrome window stays fully interactive meanwhile);
+        otherwise it is a no-op so headless/CI runs never hang."""
+        import sys
+
+        if sys.stdin and sys.stdin.isatty():
+            print("    ⏸  Paused — the live Chrome window is interactive. Press Enter here to resume…")
+            await asyncio.to_thread(input)
+
     def on(self, event: str, callback: Any) -> None:
         """Minimal Playwright-style event hook. Supports ``"close"`` and ``"dialog"``."""
         if event == "close":
