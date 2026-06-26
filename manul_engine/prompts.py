@@ -35,8 +35,6 @@ _KEY_MAP: dict[str, str] = {
     "browser": "MANUL_BROWSER",
     "timeout": "MANUL_TIMEOUT",
     "nav_timeout": "MANUL_NAV_TIMEOUT",
-    "controls_cache_enabled": "MANUL_CONTROLS_CACHE_ENABLED",
-    "controls_cache_dir": "MANUL_CONTROLS_CACHE_DIR",
     "semantic_cache_enabled": "MANUL_SEMANTIC_CACHE_ENABLED",
     "log_name_maxlen": "MANUL_LOG_NAME_MAXLEN",
     "log_thought_maxlen": "MANUL_LOG_THOUGHT_MAXLEN",
@@ -113,19 +111,10 @@ EXECUTABLE_PATH: "str | None" = _raw_executable_path or None
 TIMEOUT = int(os.getenv("MANUL_TIMEOUT", "5000"))
 NAV_TIMEOUT = int(os.getenv("MANUL_NAV_TIMEOUT", "30000"))
 
-# ── Persistent controls cache ────────────────────────────────────────────────
-CONTROLS_CACHE_ENABLED = env_bool("MANUL_CONTROLS_CACHE_ENABLED", "True")
-_cache_dir_raw = os.getenv("MANUL_CONTROLS_CACHE_DIR", "cache")
-_cache_dir_path = Path(_cache_dir_raw)
-# Relative paths are always resolved against CWD (the user's project root),
-# not against the package installation directory.
-if not _cache_dir_path.is_absolute():
-    _cache_dir_path = Path.cwd() / _cache_dir_path
-CONTROLS_CACHE_DIR = str(_cache_dir_path.resolve())
-
 # ── In-session semantic cache (learned_elements) ──────────────────────────────
-# Remembers resolved elements within a single run (+200,000 score boost).
-# Separate from the persistent controls cache — resets every time ManulEngine starts.
+# Remembers resolved elements within a single run (+200,000 score boost) and
+# feeds the scorer as one channel — it never bypasses scoring, so it cannot
+# return a stale element. Resets every time ManulEngine starts.
 SEMANTIC_CACHE_ENABLED = env_bool("MANUL_SEMANTIC_CACHE_ENABLED", "True")
 
 # ── Page Tracker & Auto-Annotator ────────────────────────────────────────────

@@ -57,13 +57,11 @@ async def run_tests(log_path: str) -> bool:
     Returns True if every suite passed, False otherwise.
     Writes a full log to *log_path*.
     """
-    # Force deterministic execution for the synthetic suite (caches off).
-    os.environ["MANUL_CONTROLS_CACHE_ENABLED"] = "False"
+    # Force deterministic execution for the synthetic suite (semantic cache off).
     os.environ["MANUL_SEMANTIC_CACHE_ENABLED"] = "False"
     try:
         from manul_engine import prompts as _prompts
 
-        _prompts.CONTROLS_CACHE_ENABLED = False
         _prompts.SEMANTIC_CACHE_ENABLED = False
     except Exception:
         pass

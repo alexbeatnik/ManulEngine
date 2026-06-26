@@ -6,8 +6,9 @@ Provides a high-level async context manager that owns the Playwright
 lifecycle and exposes clean methods (``navigate``, ``click``, ``fill``,
 ``verify``, ``extract``, etc.) for use in pure Python scripts.
 
-Each method internally routes through the full ManulEngine smart-resolution
-pipeline: Controls Cache → DOM Heuristics → optional LLM fallback.
+Each method internally routes through the full ManulEngine deterministic
+resolution pipeline: DOM snapshot → heuristic scoring (with in-session
+semantic cache) → trusted CDP action.
 
 Usage::
 
@@ -172,7 +173,7 @@ class ManulSession:
     async def click(self, target: str, *, double: bool = False) -> bool:
         """Click an element described in plain English.
 
-        Internally runs: Controls Cache → DOM Heuristics → LLM fallback.
+        Internally runs: DOM snapshot → heuristic scoring → trusted CDP click.
 
         Args:
             target: Plain-English description (e.g. ``"Log in button"``).

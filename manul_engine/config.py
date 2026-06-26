@@ -37,14 +37,6 @@ from .logging_config import logger
 log = logger.getChild("config")
 
 
-def _resolve_cache_dir(raw_dir: str) -> str:
-    """Normalize cache directory: resolve relative paths against CWD."""
-    p = Path(raw_dir)
-    if not p.is_absolute():
-        p = Path.cwd() / p
-    return str(p.resolve())
-
-
 def _find_config_file() -> Path | None:
     """Locate ``manul_engine_configuration.json`` (CWD first, then package root)."""
     cwd_path = Path.cwd() / "manul_engine_configuration.json"
@@ -75,8 +67,6 @@ class EngineConfig:
     executable_path: str | None = None
     timeout: int = 5000
     nav_timeout: int = 30000
-    controls_cache_enabled: bool = True
-    controls_cache_dir: str = "cache"
     semantic_cache_enabled: bool = True
     auto_annotate: bool = False
     retries: int = 0
@@ -215,8 +205,6 @@ class EngineConfig:
             executable_path=_optional_str("executable_path", "MANUL_EXECUTABLE_PATH"),
             timeout=_int("timeout", "MANUL_TIMEOUT", 5000),
             nav_timeout=_int("nav_timeout", "MANUL_NAV_TIMEOUT", 30000),
-            controls_cache_enabled=_bool("controls_cache_enabled", "MANUL_CONTROLS_CACHE_ENABLED", True),
-            controls_cache_dir=_resolve_cache_dir(_str("controls_cache_dir", "MANUL_CONTROLS_CACHE_DIR", "cache")),
             semantic_cache_enabled=_bool("semantic_cache_enabled", "MANUL_SEMANTIC_CACHE_ENABLED", True),
             auto_annotate=_bool("auto_annotate", "MANUL_AUTO_ANNOTATE"),
             retries=_int("retries", "MANUL_RETRIES", 0),

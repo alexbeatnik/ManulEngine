@@ -71,7 +71,6 @@ Create `manul_engine_configuration.json` in your project root. All keys are opti
 ```json
 {
   "browser": "chromium",
-  "controls_cache_enabled": true,
   "semantic_cache_enabled": true
 }
 ```
@@ -96,7 +95,6 @@ The extension provides:
 - Config sidebar for `manul_engine_configuration.json`
 - Interactive debug runner with gutter breakpoints
 - Hover-based explain tooltips during debug pauses
-- Controls cache browser
 
 ## MCP Server for GitHub Copilot
 

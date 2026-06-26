@@ -55,7 +55,7 @@ RUN groupadd --gid 1000 manul \
 # Working directory
 # ---------------------------------------------------------------------------
 WORKDIR /workspace
-RUN mkdir -p /workspace/reports /workspace/cache \
+RUN mkdir -p /workspace/reports \
     && chown -R manul:manul /workspace
 
 # ---------------------------------------------------------------------------

@@ -1299,9 +1299,7 @@ Pauses execution at that point. In `--debug` mode, highlights the resolved eleme
 | `executable_path` | `null` | Path to a Chrome/Chromium (or Electron) executable. |
 | `timeout` | `5000` | Default action timeout (ms). |
 | `nav_timeout` | `30000` | Navigation timeout (ms). |
-| `controls_cache_enabled` | `true` | Persistent per-site controls cache (file-based). |
-| `controls_cache_dir` | `"cache"` | Cache directory (relative or absolute). |
-| `semantic_cache_enabled` | `true` | In-session semantic cache (+200k score boost). |
+| `semantic_cache_enabled` | `true` | In-session semantic cache (+200k score boost; feeds the scorer, never bypasses it). |
 | `custom_controls_dirs` | `["controls"]` | Directories scanned for `@custom_control` modules. |
 | `tests_home` | `"tests"` | Default directory for new hunts and scans. |
 | `auto_annotate` | `false` | Insert `# 📍 Auto-Nav:` comments on URL changes. |

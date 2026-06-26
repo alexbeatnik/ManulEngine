@@ -310,8 +310,6 @@
       { "key": "browser_args",           "envVar": "MANUL_BROWSER_ARGS",           "type": "string[]",      "default": "[]" },
       { "key": "timeout",                "envVar": "MANUL_TIMEOUT",                "type": "integer",       "default": "5000" },
       { "key": "nav_timeout",            "envVar": "MANUL_NAV_TIMEOUT",            "type": "integer",       "default": "30000" },
-      { "key": "controls_cache_enabled", "envVar": "MANUL_CONTROLS_CACHE_ENABLED", "type": "boolean",       "default": "true" },
-      { "key": "controls_cache_dir",     "envVar": "MANUL_CONTROLS_CACHE_DIR",     "type": "string",        "default": "cache" },
       { "key": "semantic_cache_enabled",  "envVar": "MANUL_SEMANTIC_CACHE_ENABLED", "type": "boolean",       "default": "true" },
       { "key": "custom_controls_dirs",   "envVar": "MANUL_CUSTOM_CONTROLS_DIRS",   "type": "string[]",      "default": "[\"controls\"]" },
       { "key": "log_name_maxlen",        "envVar": "MANUL_LOG_NAME_MAXLEN",        "type": "integer",       "default": "0" },

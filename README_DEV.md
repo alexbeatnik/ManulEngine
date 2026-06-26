@@ -48,7 +48,6 @@ ManulEngine/
 │   ├── scoring.py                    Heuristic element-scoring algorithm (20+ rules)
 │   ├── scanner.py                    Smart Page Scanner: scan_page(), build_hunt(), scan_main()
 │   ├── core.py                       ManulEngine class (resolution, mission runner)
-│   ├── cache.py                      Persistent per-site controls cache mixin
 │   ├── debug.py                      _DebugMixin (element highlighting, debug prompt, breakpoint protocol, What-If REPL integration)
 │   ├── explain_next.py               ExplainNextDebugger — interactive What-If dry-run REPL (PageContext, WhatIfResult, heuristic pre-check; deterministic, no LLM)
 │   ├── agent_cli.py                  Agent CLI: schema/map/read/run-step (JSON for external LLM drivers)
@@ -63,8 +62,6 @@ ManulEngine/
 │       ├── test_00_engine.py         Engine micro-suite (synthetic DOM via local HTML)
 │       ├── test_01_ecommerce.py      Scenario pack: ecommerce
 │       ├── ...
-│       ├── test_12_ai_modes.py       Unit: Always-AI/strict/rejection
-│       ├── test_13_controls_cache.py Unit: persistent controls cache
 │       ├── test_14_qa_classics.py    Unit: legacy HTML patterns, tables, fieldsets
 │       ├── test_15_facebook_final_boss.py
 │       ├── test_16_hooks.py          Unit: [SETUP]/[TEARDOWN] hooks (56 assertions, no browser)
@@ -91,7 +88,6 @@ ManulEngine/
 │       ├── test_37_enterprise_dsl.py Unit: Enterprise DSL — @data:, MOCK, VERIFY VISUAL/SOFTLY, explicit waits, reporter warnings (75 assertions, no browser)
 │       ├── test_38_set_and_indent.py Unit: SET command & indentation robustness (v0.0.9.2)
 │       ├── test_39_open_app.py       Unit: OPEN APP command — classify_step, RE_SYSTEM_STEP, _handle_open_app (41 assertions, no browser)
-│       ├── test_40_self_healing_cache.py Unit: Self-Healing Controls Cache — stale detection, HEALED logging, cache auto-update (16 assertions)
 │       ├── test_41_recorder.py      Unit: Semantic Test Recorder — JS bridge, DSL generator, step aggregation (no browser)
 │       ├── test_42_scheduler.py     Unit: Built-in Scheduler — parse_schedule, next_run_delay, ParsedHunt integration (51 assertions, no browser)
 │       ├── test_43_scoped_variables.py Unit: ScopedVariables 5-level hierarchy, scope isolation, dict compat (44 assertions, no browser)
@@ -175,9 +171,9 @@ ManulEngine is not a test library bolted onto a browser driver. It is a **runtim
             │                     │                     │
             ▼                     ▼                     ▼
 ┌────────────────┐  ┌───────────────────┐  ┌───────────────────┐
-│ Custom Controls │  │ Python Hooks       │  │ Persistent Cache  │
-│ (controls.py)   │  │ [SETUP]/[TEARDOWN] │  │ (cache.py)        │
-│ @custom_control │  │ CALL PYTHON        │  │ Per-site storage  │
+│ Custom Controls │  │ Python Hooks       │  │ Semantic Cache    │
+│ (controls.py)   │  │ [SETUP]/[TEARDOWN] │  │ (scoring.py)      │
+│ @custom_control │  │ CALL PYTHON        │  │ In-session reuse  │
 └────────────────┘  │ @before_all        │  └───────────────────┘
                     └───────────────────┘
                                   │
@@ -618,8 +614,6 @@ The public README is expected to keep the full current runtime surface area plus
   "browser_args": [],
   "timeout": 5000,
   "nav_timeout": 30000,
-  "controls_cache_enabled": true,
-  "controls_cache_dir": "cache",
   "semantic_cache_enabled": true,
   "custom_controls_dirs": ["controls"],
   "log_name_maxlen": 0,
@@ -635,20 +629,13 @@ The public README is expected to keep the full current runtime surface area plus
 }
 ```
 
-Cache layout:
+The only cache is the in-session **semantic cache** (`learned_elements`): it remembers
+elements resolved earlier in the same run and feeds the scorer as one channel — it never
+bypasses scoring, so it cannot return a stale element, and it resets on every run. There is
+no persistent on-disk cache.
 
-```text
-cache/
-    example.com/
-        root/
-            controls.json
-        text-box/
-            controls.json
-```
-
-Relative `controls_cache_dir` is resolved against CWD (the directory where you invoke `manul`), not the package installation path.
-
-Synthetic tests (`python run_tests.py`) disable cache by default for deterministic, side-effect-free results.
+Synthetic tests (`python run_tests.py`) disable the semantic cache by default for
+deterministic, side-effect-free results.
 
 ---
 
@@ -810,8 +797,6 @@ VERIFY "Notes" element has value "treasure map"
 The engine is battle-tested with **3228** synthetic DOM/unit tests across 55 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, visibility edge cases, attribute-semantic icon matching, camelCase developer attributes, contextual UI disambiguation across repeated controls, conditional branching logic, and loop constructs.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
-* **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py`.
-* **AI modes regression suite:** `manul_engine/test/test_12_ai_modes.py`.
 * **QA Classics regression suite:** `manul_engine/test/test_14_qa_classics.py`.
 * **Custom Controls unit suite:** `manul_engine/test/test_19_custom_controls.py`.
 * **Static Variables unit suite:** `manul_engine/test/test_20_variables.py`.
@@ -834,7 +819,6 @@ The engine is battle-tested with **3228** synthetic DOM/unit tests across 55 tes
 * **Enterprise DSL unit suite:** `manul_engine/test/test_37_enterprise_dsl.py`.
 * **SET & Indentation unit suite:** `manul_engine/test/test_38_set_and_indent.py`.
 * **OPEN APP unit suite:** `manul_engine/test/test_39_open_app.py`.
-* **Self-Healing Cache unit suite:** `manul_engine/test/test_40_self_healing_cache.py`.
 * **Recorder unit suite:** `manul_engine/test/test_41_recorder.py`.
 * **Scheduler unit suite:** `manul_engine/test/test_42_scheduler.py`.
 * **Scoped Variables unit suite:** `manul_engine/test/test_43_scoped_variables.py`.
@@ -912,8 +896,7 @@ The published extension provides:
 | --- | --- |
 | **Hunt language support** | Syntax highlighting, bracket matching, and comment toggling for `.hunt` files |
 | **Test Explorer integration** | Hunt files appear in VS Code's native Test Explorer; **real-time** step-level pass/fail reporting while the hunt is running |
-| **Config sidebar** | Webview panel to edit `manul_engine_configuration.json` visually; **Workers** combobox; **Add Default Prompts** button; live Ollama model discovery via `localhost:11434` |
-| **Cache browser** | Tree-view sidebar showing the controls cache hierarchy (`site → page → controls.json`) |
+| **Config sidebar** | Webview panel to edit `manul_engine_configuration.json` visually; **Workers** combobox |
 | **Run commands** | `ManulEngine: Run Hunt File` (output panel) and `ManulEngine: Run Hunt File in Terminal` (raw CLI) |
 | **Debug run profile** | Test Explorer exposes a **Debug** run profile alongside the normal one; places gutter breakpoints (red dots) in `.hunt` files, pauses at each with a floating QuickPick overlay — **⏭ Next Step** / **▶ Continue All**. The Test Explorer **Stop** button aborts the run cleanly. |
 | **Step Builder** | Sidebar buttons for every step type including **Open App**, **Set Variable**, **Verify Softly**, **Verify Visual**, **Mock Request**, **Wait Response**, **Wait Visible / Hidden**, **Debug / Pause**, **CALL PYTHON into {var}**, and **Live Page Scanner** |

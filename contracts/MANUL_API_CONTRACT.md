@@ -11,15 +11,15 @@
   "importPath": "from manul_engine import ManulSession",
 
   "class": "ManulSession",
-  "description": "High-level async context manager for programmatic browser automation. Manages its own Chrome/CDP lifecycle. All element resolution routes through the deterministic ManulEngine pipeline (cache → heuristics).",
+  "description": "High-level async context manager for programmatic browser automation. Manages its own Chrome/CDP lifecycle. All element resolution routes through the deterministic ManulEngine heuristic scoring pipeline.",
 
   "constructor": {
     "parameters": [
       { "name": "headless",        "type": "bool | None",      "default": null,   "description": "Run browser headless. None = read from config." },
       { "name": "browser",         "type": "str | None",       "default": null,   "description": "'chromium' (launch) or 'electron' (attach over CDP). None = read from config." },
       { "name": "browser_args",    "type": "list[str] | None", "default": null,   "description": "Extra browser launch flags." },
-      { "name": "disable_cache",   "type": "bool",             "default": false,  "description": "Disable persistent controls cache." },
-      { "name": "semantic_cache",  "type": "bool | None",      "default": null,   "description": "Enable in-session semantic cache." },
+      { "name": "disable_cache",   "type": "bool",             "default": false,  "description": "Disable the in-session semantic cache (learned_elements)." },
+      { "name": "semantic_cache",  "type": "bool | None",      "default": null,   "description": "Enable in-session semantic cache. None = read from config." },
       { "name": "channel",         "type": "str | None",       "default": null,   "description": "Chrome/Chromium channel binary (e.g. 'chrome', 'msedge')." },
       { "name": "executable_path", "type": "str | None",       "default": null,   "description": "Custom browser or Electron executable path." }
     ]

@@ -88,12 +88,7 @@ class _ActionsMixin:
     def _remember_resolved_control(
         self,
         *,
-        page,
         cache_key: tuple,
-        mode: str,
-        search_texts: list[str],
-        target_field: str | None,
-        contextual_hint=None,
         element: dict,
     ) -> None:
         if getattr(self, "_semantic_cache_enabled", True):
@@ -101,19 +96,6 @@ class _ActionsMixin:
                 "name": str(element.get("name", "")),
                 "tag": str(element.get("tag_name", "")),
             }
-        persist = getattr(self, "_persist_control_cache_entry", None)
-        if callable(persist):
-            try:
-                persist(
-                    page=page,
-                    mode=mode,
-                    search_texts=search_texts,
-                    target_field=target_field,
-                    contextual_hint=contextual_hint,
-                    element=element,
-                )
-            except (OSError, ValueError, TypeError) as exc:
-                print(f"    ⚠️  CONTROL CACHE: persist skipped ({type(exc).__name__})")
 
     async def _handle_navigate(self, page, step: str) -> bool:
         url = re.search(r'(https?://[^\s\'"<>]+)', step)
@@ -1120,16 +1102,8 @@ class _ActionsMixin:
                                     await asyncio.sleep(3.0)
                     await asyncio.sleep(ACTION_WAIT)
 
-                # ── Common post-action: cache resolved control ────────────
-                self._remember_resolved_control(
-                    page=page,
-                    cache_key=cache_key,
-                    mode=mode,
-                    search_texts=search_texts,
-                    target_field=target_field,
-                    contextual_hint=ctx_hint,
-                    element=el,
-                )
+                # ── Common post-action: remember resolved control (semantic cache) ──
+                self._remember_resolved_control(cache_key=cache_key, element=el)
                 return True
 
             except Exception:

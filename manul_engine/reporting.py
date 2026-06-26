@@ -32,7 +32,6 @@ class StepResult:
     error: str | None = None  # traceback / message on failure
     screenshot: str | None = None  # base64-encoded PNG, or None
     logical_step: str | None = None  # active STEP label when this step ran
-    healed: bool = False  # True when a stale cache entry was re-resolved via heuristics
 
 
 @dataclass
@@ -98,7 +97,6 @@ def _step_from_dict(data: dict) -> StepResult:
         error=data.get("error"),
         screenshot=data.get("screenshot"),
         logical_step=data.get("logical_step"),
-        healed=bool(data.get("healed", False)),
     )
 
 

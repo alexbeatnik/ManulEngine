@@ -94,27 +94,12 @@
       "description": "Navigation timeout for NAVIGATE, page loads, and WAIT FOR RESPONSE.",
       "minimum": 0
     },
-      "key": "controls_cache_enabled",
-      "envVar": "MANUL_CONTROLS_CACHE_ENABLED",
-      "type": "boolean",
-      "default": true,
-      "description": "Enable persistent per-site controls cache. File-based, survives between runs. Stored in controls_cache_dir.",
-      "uiLabel": "Persistent Controls Cache"
-    },
-    {
-      "key": "controls_cache_dir",
-      "envVar": "MANUL_CONTROLS_CACHE_DIR",
-      "type": "string",
-      "default": "cache",
-      "description": "Directory for persistent controls cache files. Relative to CWD or absolute path.",
-      "structure": "cache/<site_hash>/<page_hash>/controls.json"
-    },
     {
       "key": "semantic_cache_enabled",
       "envVar": "MANUL_SEMANTIC_CACHE_ENABLED",
       "type": "boolean",
       "default": true,
-      "description": "Enable in-session semantic cache (learned_elements). Provides +200,000 scaled score boost within a single run. Resets when ManulEngine instance is destroyed.",
+      "description": "Enable in-session semantic cache (learned_elements). Feeds the scorer as one channel (never bypasses scoring); provides a +200,000 scaled score boost within a single run. Resets when the ManulEngine instance is destroyed.",
       "uiLabel": "Semantic Cache"
     },
     {

@@ -5,8 +5,6 @@
   "executable_path": null,
   "timeout": 5000,
   "nav_timeout": 30000,
-  "controls_cache_enabled": false,
-  "controls_cache_dir": "cache",
   "semantic_cache_enabled": true,
   "log_name_maxlen": 0,
   "log_thought_maxlen": 0,

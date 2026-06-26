@@ -47,7 +47,6 @@ class _AsyncNull:
 from . import prompts
 from . import prompts as _prompts_mod  # alias for CUSTOM_CONTROLS_DIRS access
 from .actions import _ActionsMixin
-from .cache import _ControlsCacheMixin
 from .config import EngineConfig
 from .controls import ControlContext, diagnose_custom_control_miss, get_custom_control, load_custom_controls
 from .debug import _DebugMixin
@@ -91,7 +90,7 @@ def _confidence(score: int) -> float:
     return score / SCALE
 
 
-class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
+class ManulEngine(_DebugMixin, _ActionsMixin):
     def __init__(
         self,
         headless: "bool | None" = None,
@@ -141,13 +140,9 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         self.last_xpath: str | None = None
         self.learned_elements: dict = {}  # semantic cache: cache_key → {name, tag}
 
-        if disable_cache:
-            self._controls_cache_enabled = False
-        elif _cfg:
-            self._controls_cache_enabled = _cfg.controls_cache_enabled
-        else:
-            self._controls_cache_enabled = bool(getattr(prompts, "CONTROLS_CACHE_ENABLED", True))
-
+        # Semantic cache (in-memory, per-session): feeds the scorer as one
+        # channel — it never bypasses scoring, so it cannot return a stale
+        # element. ``disable_cache`` turns it off.
         if semantic_cache is not None:
             self._semantic_cache_enabled = semantic_cache
         elif disable_cache:
@@ -156,17 +151,6 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             self._semantic_cache_enabled = _cfg.semantic_cache_enabled
         else:
             self._semantic_cache_enabled = bool(getattr(prompts, "SEMANTIC_CACHE_ENABLED", True))
-
-        _default_cache_dir = str(Path(__file__).resolve().parents[1] / "cache")
-        if _cfg:
-            _cache_dir = _cfg.controls_cache_dir
-        else:
-            _cache_dir = str(getattr(prompts, "CONTROLS_CACHE_DIR", _default_cache_dir))
-        self._controls_cache_root = Path(_cache_dir)
-        self._controls_cache_site: str | None = None
-        self._controls_cache_url: str | None = None
-        self._controls_cache_path: Path | None = None
-        self._controls_cache_data: dict[str, dict] = {}
 
         # ── Timeouts ──────────────────────────────────────────────────────
         self.timeout: int = _cfg.timeout if _cfg else prompts.TIMEOUT
@@ -195,9 +179,6 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         # Tracks how many annotation lines have been inserted into the hunt file
         # during this run, so subsequent NAVIGATE steps can offset their line numbers.
         self._annotate_line_offset: int = 0
-        # Self-healing flag: set by _resolve_element when a stale cache entry
-        # is detected and the element is re-resolved via heuristics.
-        self._last_step_healed: bool = False
         # Deferred @custom_control loading: stored here, applied on first run_mission().
         self._required_controls: set[str] | None = required_controls
         # Custom controls directories (prefer EngineConfig, fallback to prompts).
@@ -223,9 +204,6 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         self.learned_elements.clear()
         self.last_xpath = None
         self._annotate_line_offset = 0
-
-    # ── Persistent controls cache ─────────────────────────────────────
-    # All cache methods live in engine/cache.py (_ControlsCacheMixin).
 
     # ── Visual feedback & debug prompt ────────
     # All debug methods (_highlight, _debug_highlight, _clear_debug_highlight,
@@ -400,8 +378,6 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         """
         _skip = failed_ids or set()
         is_blind = not search_texts and not target_field
-        self._last_step_healed = False
-        _had_stale_cache = False
 
         els = []
         for attempt in range(5):
@@ -423,25 +399,6 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     if attempt < 4:
                         await self._scroll_and_wait(page)
                     continue
-
-            cached_control = self._resolve_from_control_cache(
-                page=page,
-                mode=mode,
-                search_texts=search_texts,
-                target_field=target_field,
-                contextual_hint=contextual_hint,
-                candidates=els,
-            )
-            if cached_control is not None:
-                is_disabled = bool(cached_control.get("disabled"))
-                aria_disabled_raw = str(cached_control.get("aria_disabled", "")).strip().lower()
-                is_aria_disabled = aria_disabled_raw == "true"
-                if not (is_disabled or is_aria_disabled):
-                    return cached_control
-            elif self._controls_cache_enabled:
-                _cache_key = self._control_cache_key(mode, search_texts, target_field, contextual_hint)
-                if _cache_key in self._controls_cache_data:
-                    _had_stale_cache = True
 
             # Quick exact-match pass
             exact = []
@@ -496,31 +453,21 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         if self.explain_mode and top:
             self._print_explain(step, search_texts, top[:3])
 
-        # Self-healing: stale cache entry detected — flag for heuristic paths below.
-        # The cache is updated by _remember_resolved_control after the action succeeds.
         _conf = _confidence(best_score)
-        if _had_stale_cache:
-            print(f"    🔄 STALE CACHE: Entry invalidated — re-resolving (confidence {_conf:.3f})")
 
         # ── Deterministic resolution (no LLM in the loop) ────────────────
         # Resolution is purely heuristic: the highest-confidence gate that
         # matches wins; otherwise the top-ranked candidate is used.
         if _conf >= THRESHOLD_SEMANTIC_CACHE:
             print(f"    🧠 SEMANTIC CACHE: Reusing learned element (confidence {_conf:.3f})")
-            if _had_stale_cache:
-                self._last_step_healed = True
             return top[0]
 
         if _conf >= THRESHOLD_CONTEXT_REUSE:
             label = "High confidence" if _conf >= THRESHOLD_HIGH_CONFIDENCE else "Context reuse"
             print(f"    ⚙️  DOM HEURISTICS: {label} match (confidence {_conf:.3f})")
-            if _had_stale_cache:
-                self._last_step_healed = True
             return top[0]
 
         print(f"    ⚙️  DOM HEURISTICS: best candidate (confidence {_conf:.3f})")
-        if _had_stale_cache:
-            self._last_step_healed = True
         return top[0]
 
     # ── Mission runner ────────────────────────
@@ -1317,7 +1264,6 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             _sr_status = "fail"
             print(f"    [❌ ACTION FAIL] {_step_error}")
 
-        _healed = self._last_step_healed
         _step_result = StepResult(
             index=action_index,
             text=re.sub(r"^\s*\d+\.\s*", "", step),
@@ -1326,11 +1272,9 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             error=_step_error,
             screenshot=_ss_b64,
             logical_step=getattr(block, "block_name", ""),
-            healed=_healed,
         )
         _step_results.append(_step_result)
         block_steps.append(_step_result)
-        self._last_step_healed = False
 
         return _step_ok, page, _step_error, _done
 
@@ -1827,7 +1771,6 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                 _sr_status = "warning"
                             else:
                                 _sr_status = "fail"
-                            _healed = self._last_step_healed
                             _step_result = StepResult(
                                 index=action_index,
                                 text=_RE_NUMBERED_PREFIX.sub("", step),
@@ -1836,11 +1779,9 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                 error=_step_error,
                                 screenshot=_ss_b64,
                                 logical_step=block.block_name,
-                                healed=_healed,
                             )
                             _step_results.append(_step_result)
                             block_steps.append(_step_result)
-                            self._last_step_healed = False
 
                             if _sr_status == "pass":
                                 if _step_success_message is not None:

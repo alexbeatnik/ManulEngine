@@ -367,9 +367,7 @@ Create `manul_engine_configuration.json` in the workspace root. All keys are opt
 
 ```json
 {
-  "model": null,
   "browser": "chromium",
-  "controls_cache_enabled": true,
   "semantic_cache_enabled": true
 }
 ```
@@ -391,9 +389,7 @@ manul --headless --html-report tests/            # CI mode with reports
 | `headless` | `false` | Hide the browser window. |
 | `browser` | `"chromium"` | `chromium` (launch system Chrome) or `electron` (attach to a running Chrome/Electron over CDP). |
 | `browser_args` | `[]` | Extra browser launch flags. |
-| `controls_cache_enabled` | `true` | Persistent per-site controls cache. |
-| `controls_cache_dir` | `"cache"` | Cache directory (relative or absolute). |
-| `semantic_cache_enabled` | `true` | In-session semantic cache (+200k score boost). |
+| `semantic_cache_enabled` | `true` | In-session semantic cache (+200k score boost; feeds the scorer, never bypasses it). |
 | `custom_controls_dirs` | `["controls"]` | Directories scanned for `@custom_control` modules. |
 | `timeout` | `5000` | Action timeout (ms). |
 | `nav_timeout` | `30000` | Navigation timeout (ms). |

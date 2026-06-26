@@ -15,7 +15,6 @@ manul_engine/
   api.py          ManulSession  — high-level async context manager (Python-only users)
   core.py         ManulEngine   — DSL runner (.hunt files); composed from mixins
   actions.py      _ActionsMixin — click / fill / select / hover / drag executors
-  cache.py        _ControlsCacheMixin — persistent per-site element cache (cache/<site>.json)
   debug.py        _DebugMixin   — interactive debug pause + extension-protocol handshake
   helpers.py      pure functions: parse_hunt_blocks, classify_step, substitute_memory, …
   hooks.py        @before_all / @after_group lifecycle + CALL PYTHON
@@ -42,7 +41,7 @@ demo/             example .hunt suites used in CI smoke runs
 docs/, prompts/, reports/, cache/   runtime artifacts and docs
 ```
 
-`ManulEngine` inherits from three mixins (`_DebugMixin, _ControlsCacheMixin, _ActionsMixin`). Action handlers live in `actions.py`; the orchestration loop lives in `core.py:run_mission`. The conditional-branch path lives in `core.py:_dispatch_step` and intentionally mirrors the main loop — these two paths are sibling executors, **not** duplicates. Don't merge them blindly.
+`ManulEngine` inherits from two mixins (`_DebugMixin, _ActionsMixin`). Action handlers live in `actions.py`; the orchestration loop lives in `core.py:run_mission`. The conditional-branch path lives in `core.py:_dispatch_step` and intentionally mirrors the main loop — these two paths are sibling executors, **not** duplicates. Don't merge them blindly.
 
 ## Public surface (do NOT silently break)
 
@@ -90,4 +89,4 @@ Match the existing logging idiom: `_log = logger.getChild("<module>")` at the to
 
 - Adding a new step kind: register it in `helpers.classify_step`, add the dispatch branch in **both** `core.py:run_mission` (main loop) and `core.py:_dispatch_step` (conditional-branch executor), then add a `test_NN_*.py` covering at least the happy path and one failure path.
 - Touching `BROWSER_ARGS` / `HEADLESS_MODE` / `BROWSER` defaults: update `prompts.py`, `config.py`, the README "Configuration" table, and `MANUL_CONFIG_CONTRACT.md`.
-- Editing the controls cache schema: bump cache version in `cache.py` and ensure stale entries are migrated, never silently ignored.
+- The only cache is the in-session **semantic cache** (`learned_elements`, `semantic_cache_enabled`): it feeds the scorer as one channel and never bypasses scoring. There is no persistent on-disk controls cache — it was removed because a cached entry could resolve to a different live element.

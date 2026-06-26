@@ -6,12 +6,11 @@ Package structure:
     manul_engine/
         __init__.py    — public API (re-exports ManulEngine, ManulSession)
         api.py         — ManulSession: high-level async context manager for Python scripts
-        prompts.py     — configuration, thresholds, LLM prompts
+        prompts.py     — configuration and thresholds
         helpers.py     — pure utility functions and timing constants
         js_scripts.py  — JavaScript injected into the browser page
-        scoring.py     — heuristic element-scoring algorithm
-        cache.py       — persistent per-site controls cache mixin
-        core.py        — ManulEngine class (LLM, resolution, mission runner)
+        scoring.py     — heuristic element-scoring algorithm (incl. in-session semantic cache)
+        core.py        — ManulEngine class (resolution, mission runner)
         actions.py     — action execution mixin (click, type, select, hover, drag…)
         test/
             test_*.py  — synthetic DOM unit tests

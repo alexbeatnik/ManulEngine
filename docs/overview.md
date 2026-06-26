@@ -53,7 +53,7 @@ Everything runs **locally**. No cloud APIs, no telemetry, and a single runtime d
 | **DOMScorer** | `scoring.py` | Normalised 0.0–1.0 heuristic scoring across five weighted channels: `cache`, `semantics`, `text`, `attributes`, `proximity` |
 | **TreeWalker Snapshot** | `js_scripts.py` | JavaScript injected into each frame — walks the DOM, prunes non-interactive nodes, checks visibility |
 | **Actions Mixin** | `actions.py` | Click, fill, select, hover, drag, scroll, verify, extract, explicit waits |
-| **Controls Cache** | `cache.py` | Persistent per-site element resolution cache — avoids re-scoring known elements |
+| **Semantic Cache** | `scoring.py`, `core.py` | In-session learned-elements cache — feeds the scorer as one channel (never bypasses scoring); resets each run |
 | **Custom Controls** | `controls.py` | `@custom_control` decorator to handle complex widgets with raw Playwright |
 | **Python Hooks** | `hooks.py` | `[SETUP]` / `[TEARDOWN]` block execution, `CALL PYTHON` inline steps |
 | **Lifecycle Hooks** | `lifecycle.py` | `@before_all` / `@after_all` / `@before_group` / `@after_group` global hooks |

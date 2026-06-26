@@ -184,10 +184,9 @@ my-project/
 │   └── datepicker.py                  # Custom control handlers
 ├── scripts/
 │   └── db_helpers.py                  # Python helpers for CALL PYTHON
-├── reports/
-│   ├── manul_report.html              # Generated HTML report
-│   └── run_history.json               # Run history (JSON Lines)
-└── cache/                             # Persistent controls cache (auto-generated)
+└── reports/
+    ├── manul_report.html              # Generated HTML report
+    └── run_history.json               # Run history (JSON Lines)
 ```
 
 ## Next Steps

@@ -13,7 +13,6 @@ services:
     volumes:
       - ./hunts:/workspace/hunts:ro
       - ./reports:/workspace/reports
-      - ./cache:/workspace/cache
       - ./controls:/workspace/controls:ro
       - ./scripts:/workspace/scripts:ro
     environment:

@@ -31,7 +31,7 @@ async with ManulSession(headless=True) as session:
 | `headless` | `False` | Hide the browser window |
 | `browser` | `"chromium"` | `"chromium"` (launch) or `"electron"` (attach over CDP) |
 | `browser_args` | `[]` | Extra browser launch flags |
-| `disable_cache` | `False` | Disable persistent controls cache |
+| `disable_cache` | `False` | Disable the in-session semantic cache (learned_elements) |
 | `semantic_cache` | `True` | Enable in-session semantic cache |
 | `channel` | `None` | Chrome/Chromium binary (`chrome`, `msedge`, `chromium`, …) |
 | `executable_path` | `None` | Path to a Chrome/Chromium / Electron executable |
@@ -111,8 +111,8 @@ from manul_engine import ManulSession, EngineConfig
 
 config = EngineConfig(
     headless=True,
-    browser="firefox",
-    controls_cache_enabled=True,
+    browser="chromium",
+    semantic_cache_enabled=True,
     timeout=10000,
 )
 # EngineConfig can also be loaded from a file:
@@ -276,7 +276,6 @@ docker run --rm --shm-size=1g \
 |-------|------|---------|
 | `/workspace/hunts` | `ro` | Hunt files |
 | `/workspace/reports` | `rw` | HTML reports and run history |
-| `/workspace/cache` | `rw` | Persistent controls cache |
 | `/workspace/controls` | `ro` | Custom control Python files |
 | `/workspace/scripts` | `ro` | Python helpers for `CALL PYTHON` |
 
@@ -376,7 +375,6 @@ code --install-extension manul-engine.manul-engine
 | **Test Explorer** | Run and debug `.hunt` files from the Testing sidebar |
 | **Syntax highlighting** | Language support for `.hunt` files |
 | **Config sidebar** | Visual editor for `manul_engine_configuration.json` |
-| **Cache browser** | Browse and manage the persistent controls cache |
 | **Debug runner** | Gutter breakpoints, step-through with QuickPick controls |
 | **Explain tooltips** | Hover over resolved steps during debug for scoring breakdown |
 | **Scheduler dashboard** | Visual manager for `@schedule:` headers and run history |

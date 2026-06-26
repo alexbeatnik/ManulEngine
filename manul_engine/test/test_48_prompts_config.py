@@ -214,8 +214,6 @@ def test_key_map_expected_keys() -> None:
         "browser",
         "timeout",
         "nav_timeout",
-        "controls_cache_enabled",
-        "controls_cache_dir",
         "semantic_cache_enabled",
         "log_name_maxlen",
         "log_thought_maxlen",
