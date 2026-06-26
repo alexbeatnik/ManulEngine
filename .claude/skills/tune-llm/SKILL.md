@@ -41,14 +41,14 @@ The LLM is a **last-resort fallback**, not the primary resolver. The heuristic `
 
 - New / changed `MANUL_LLM_*` env var → `contracts/MANUL_CONFIG_CONTRACT.md` (`environmentVariables.runtimeOnly`) + the README env table.
 - Changed What-If response schema or `LLMProvider` surface → `contracts/MANUL_DEBUG_CONTRACT.md` (`llmIntegration.responseSchema`).
-- **Changing `_threshold_for_model` numbers or scoring weights is "Ask first"** per CLAUDE.md — it shifts test goldens (`test_36_scoring_math`, `test_30_heuristic_weights`) and `contracts/MANUL_SCORING_CONTRACT.md`. Confirm with the user before touching thresholds.
+- **Changing `_threshold_for_model` numbers or scoring weights is "Ask first"** per CLAUDE.md — it shifts test goldens (`test_34_scoring_math`, `test_28_heuristic_weights`) and `contracts/MANUL_SCORING_CONTRACT.md`. Confirm with the user before touching thresholds.
 - Any contract-affecting change → bump the version (`bump-version` skill) in the same change.
 
 ## Testing
 
-- Transport logic is testable **without Playwright or a real server** by stubbing the `ollama` module — see how `test_53_explain_next.py` injects a `MockLLM` with `call_json`. Cover: retry-recovers-malformed, connection-error-fails-fast (one attempt), `temperature==0` passed, non-dict reply → `None`.
-- `test_53_explain_next.py` (112 assertions) exercises the What-If path end-to-end with `NullProvider` (heuristics-only) and a mock LLM. Run it after any change here:
-  `.venv/bin/python manul_engine/test/test_53_explain_next.py`.
+- Transport logic is testable **without Playwright or a real server** by stubbing the `ollama` module — see how `test_49_explain_next.py` injects a `MockLLM` with `call_json`. Cover: retry-recovers-malformed, connection-error-fails-fast (one attempt), `temperature==0` passed, non-dict reply → `None`.
+- `test_49_explain_next.py` (112 assertions) exercises the What-If path end-to-end with `NullProvider` (heuristics-only) and a mock LLM. Run it after any change here:
+  `.venv/bin/python manul_engine/test/test_49_explain_next.py`.
 
 ## Common pitfalls
 

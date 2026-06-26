@@ -62,44 +62,44 @@ ManulEngine/
 │       ├── test_00_engine.py         Engine micro-suite (synthetic DOM via local HTML)
 │       ├── test_01_ecommerce.py      Scenario pack: ecommerce
 │       ├── ...
-│       ├── test_14_qa_classics.py    Unit: legacy HTML patterns, tables, fieldsets
-│       ├── test_15_facebook_final_boss.py
-│       ├── test_16_hooks.py          Unit: [SETUP]/[TEARDOWN] hooks (56 assertions, no browser)
-│       ├── test_17_frontend_hell.py  Unit: frontend anti-patterns (overlays, z-index traps, React portals)
-│       ├── test_18_disambiguation.py Unit: ambiguous element targeting
-│       ├── test_19_custom_controls.py Unit: Custom Controls registry + engine interception (28 assertions, no browser)
-│       ├── test_20_variables.py      Unit: @var: static variable declaration + @script alias parsing (23 assertions, no browser)
-│       ├── test_21_dynamic_vars.py   Unit: CALL PYTHON ... into {var} dynamic variable capture
-│       ├── test_22_tags.py           Unit: @tags: / --tags CLI filter (20 assertions, no browser)
-│       ├── test_23_advanced_interactions.py  Unit: PRESS/RIGHT CLICK/UPLOAD/explicit waits (58 assertions, no browser)
-│       ├── test_24_reporting.py      Unit: StepResult/MissionResult/RunSummary dataclasses (67 assertions)
-│       ├── test_25_reporter.py       Unit: HTML report generator (70 assertions, no browser)
-│       ├── test_26_wikipedia_search.py Unit: name_attr heuristic scoring (20 assertions, no browser)
-│       ├── test_27_lifecycle_hooks.py  Unit: Global Lifecycle Hook system (57 assertions, no browser)
-│       ├── test_28_logical_steps.py    Unit: Logical STEP ordering and parser (58 assertions, no browser)
-│       ├── test_29_iframe_routing.py   Synthetic: Cross-frame element resolution (25 assertions)
-│       ├── test_30_heuristic_weights.py Synthetic+Unit: DOMScorer priority hierarchy (32 assertions)
-│       ├── test_31_visibility_treewalker.py Synthetic+Unit: TreeWalker PRUNE/checkVisibility (20 assertions)
-│       ├── test_32_verify_enabled.py Synthetic: VERIFY ENABLED/DISABLED state verification (20 assertions)
-│       ├── test_33_call_python_args.py Unit: CALL PYTHON with positional arguments + unresolved @script alias handling (50 assertions, no browser)
-│       ├── test_34_verify_checked.py Synthetic: VERIFY checked/NOT checked (20 assertions)
-│       ├── test_35_scanner.py       Synthetic+Unit: Smart Page Scanner build_hunt() (44 assertions)
-│       ├── test_36_scoring_math.py   Unit: exact numerical scoring validation (29 assertions, no browser)
-│       ├── test_37_enterprise_dsl.py Unit: Enterprise DSL — @data:, MOCK, VERIFY VISUAL/SOFTLY, explicit waits, reporter warnings (75 assertions, no browser)
-│       ├── test_38_set_and_indent.py Unit: SET command & indentation robustness (v0.0.9.2)
-│       ├── test_39_open_app.py       Unit: OPEN APP command — classify_step, RE_SYSTEM_STEP, _handle_open_app (41 assertions, no browser)
-│       ├── test_41_recorder.py      Unit: Semantic Test Recorder — JS bridge, DSL generator, step aggregation (no browser)
-│       ├── test_42_scheduler.py     Unit: Built-in Scheduler — parse_schedule, next_run_delay, ParsedHunt integration (51 assertions, no browser)
-│       ├── test_43_scoped_variables.py Unit: ScopedVariables 5-level hierarchy, scope isolation, dict compat (44 assertions, no browser)
-│       ├── test_44_explain_mode.py   Unit: DOMScorer explain output, channel breakdown, --explain CLI flag (33 assertions, no browser)
-│       ├── test_45_api.py            Unit: ManulSession public Python API facade (50 assertions, no browser)
-│       ├── test_46_attribute_semantic.py Unit: attribute-semantic icon matching, camelCase dev attrs, cart badges, false-positive resistance (34 assertions, no browser)
-│       ├── test_47_contextual_proximity.py Unit: contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser rules (67 assertions, no browser)
-│       ├── test_48_prompts_config.py  Unit: Configuration loading, threshold derivation, page-name lookup, _KEY_MAP, env_bool (83 assertions, no browser)
-│       ├── test_50_imports.py         Unit: @import/@export/USE directive system (84 assertions, no browser)
-│       ├── test_51_packager.py        Unit: Pack/install .huntlib archives and lockfile (21 assertions, no browser)
-│       ├── test_52_exports.py         Unit: @export validation, wildcard exports, access control (19 assertions, no browser)
-│       └── test_53_explain_next.py    Unit: ExplainNextDebugger What-If Analysis REPL + debug protocol (112 assertions, no browser)
+│       ├── test_12_qa_classics.py    Unit: legacy HTML patterns, tables, fieldsets
+│       ├── test_13_facebook_final_boss.py
+│       ├── test_14_hooks.py          Unit: [SETUP]/[TEARDOWN] hooks (56 assertions, no browser)
+│       ├── test_15_frontend_hell.py  Unit: frontend anti-patterns (overlays, z-index traps, React portals)
+│       ├── test_16_disambiguation.py Unit: ambiguous element targeting
+│       ├── test_17_custom_controls.py Unit: Custom Controls registry + engine interception (28 assertions, no browser)
+│       ├── test_18_variables.py      Unit: @var: static variable declaration + @script alias parsing (23 assertions, no browser)
+│       ├── test_19_dynamic_vars.py   Unit: CALL PYTHON ... into {var} dynamic variable capture
+│       ├── test_20_tags.py           Unit: @tags: / --tags CLI filter (20 assertions, no browser)
+│       ├── test_21_advanced_interactions.py  Unit: PRESS/RIGHT CLICK/UPLOAD/explicit waits (58 assertions, no browser)
+│       ├── test_22_reporting.py      Unit: StepResult/MissionResult/RunSummary dataclasses (67 assertions)
+│       ├── test_23_reporter.py       Unit: HTML report generator (70 assertions, no browser)
+│       ├── test_24_wikipedia_search.py Unit: name_attr heuristic scoring (20 assertions, no browser)
+│       ├── test_25_lifecycle_hooks.py  Unit: Global Lifecycle Hook system (57 assertions, no browser)
+│       ├── test_26_logical_steps.py    Unit: Logical STEP ordering and parser (58 assertions, no browser)
+│       ├── test_27_iframe_routing.py   Synthetic: Cross-frame element resolution (25 assertions)
+│       ├── test_28_heuristic_weights.py Synthetic+Unit: DOMScorer priority hierarchy (32 assertions)
+│       ├── test_29_visibility_treewalker.py Synthetic+Unit: TreeWalker PRUNE/checkVisibility (20 assertions)
+│       ├── test_30_verify_enabled.py Synthetic: VERIFY ENABLED/DISABLED state verification (20 assertions)
+│       ├── test_31_call_python_args.py Unit: CALL PYTHON with positional arguments + unresolved @script alias handling (50 assertions, no browser)
+│       ├── test_32_verify_checked.py Synthetic: VERIFY checked/NOT checked (20 assertions)
+│       ├── test_33_scanner.py       Synthetic+Unit: Smart Page Scanner build_hunt() (44 assertions)
+│       ├── test_34_scoring_math.py   Unit: exact numerical scoring validation (29 assertions, no browser)
+│       ├── test_35_enterprise_dsl.py Unit: Enterprise DSL — @data:, MOCK, VERIFY VISUAL/SOFTLY, explicit waits, reporter warnings (75 assertions, no browser)
+│       ├── test_36_set_and_indent.py Unit: SET command & indentation robustness (v0.0.9.2)
+│       ├── test_37_open_app.py       Unit: OPEN APP command — classify_step, RE_SYSTEM_STEP, _handle_open_app (41 assertions, no browser)
+│       ├── test_38_recorder.py      Unit: Semantic Test Recorder — JS bridge, DSL generator, step aggregation (no browser)
+│       ├── test_39_scheduler.py     Unit: Built-in Scheduler — parse_schedule, next_run_delay, ParsedHunt integration (51 assertions, no browser)
+│       ├── test_40_scoped_variables.py Unit: ScopedVariables 5-level hierarchy, scope isolation, dict compat (44 assertions, no browser)
+│       ├── test_41_explain_mode.py   Unit: DOMScorer explain output, channel breakdown, --explain CLI flag (33 assertions, no browser)
+│       ├── test_42_api.py            Unit: ManulSession public Python API facade (50 assertions, no browser)
+│       ├── test_43_attribute_semantic.py Unit: attribute-semantic icon matching, camelCase dev attrs, cart badges, false-positive resistance (34 assertions, no browser)
+│       ├── test_44_contextual_proximity.py Unit: contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser rules (67 assertions, no browser)
+│       ├── test_45_prompts_config.py  Unit: Configuration loading, threshold derivation, page-name lookup, _KEY_MAP, env_bool (83 assertions, no browser)
+│       ├── test_46_imports.py         Unit: @import/@export/USE directive system (84 assertions, no browser)
+│       ├── test_47_packager.py        Unit: Pack/install .huntlib archives and lockfile (21 assertions, no browser)
+│       ├── test_48_exports.py         Unit: @export validation, wildcard exports, access control (19 assertions, no browser)
+│       └── test_49_explain_next.py    Unit: ExplainNextDebugger What-If Analysis REPL + debug protocol (112 assertions, no browser)
 ├── demo/                             Integration demo hunts and supporting assets
 │   ├── run_demo.py                   Runner script (sets CWD, calls manul CLI)
 │   ├── manul_engine_configuration.json Demo-specific config (heuristics-only)
@@ -305,7 +305,7 @@ def seed_smoke(ctx: GlobalContext) -> None:
 - **Parallel workers:** `ctx.variables` is serialised as JSON into the `MANUL_GLOBAL_VARS` env var before worker subprocesses are spawned. Workers call `deserialize_global_vars()` at startup to inherit the shared state. `{placeholder}` substitution works identically in parallel and sequential modes.
 - `registry.clear()` is called at the start of each `main()` invocation to prevent stale registrations from a previous run (important for the test runner).
 
-Unit tests: `manul_engine/test/test_27_lifecycle_hooks.py` (57 assertions, no browser).
+Unit tests: `manul_engine/test/test_25_lifecycle_hooks.py` (57 assertions, no browser).
 
 ### 🧹 [SETUP] / [TEARDOWN] Hooks and Inline `CALL PYTHON` Steps
 
@@ -397,13 +397,13 @@ CALL PYTHON api_helpers.fetch_otp into {dynamic_otp}
 Fill 'Security Code' with '{dynamic_otp}'
 ```
 
-`execute_hook_line` captures the return value from `func()`, converts it to a string, and stores it in `HookResult.return_value`. `run_mission` then writes it to `self.memory[var_name]`, making it available for `{placeholder}` substitution in every subsequent step — exactly like `EXTRACT` or `@var:` variables. Both `into` and `to` are accepted as the keyword. Dynamic-variable unit tests live in `manul_engine/test/test_21_dynamic_vars.py`.
+`execute_hook_line` captures the return value from `func()`, converts it to a string, and stores it in `HookResult.return_value`. `run_mission` then writes it to `self.memory[var_name]`, making it available for `{placeholder}` substitution in every subsequent step — exactly like `EXTRACT` or `@var:` variables. Both `into` and `to` are accepted as the keyword. Dynamic-variable unit tests live in `manul_engine/test/test_19_dynamic_vars.py`.
 
 When a hook helper returns a dict such as `{"tenant_id": 42, "otp": 123456}`, `bind_hook_result()` flattens it into shared variables. That makes both `{tenant_id}` and `{otp}` available immediately to later hook lines and to the browser mission without additional glue code.
 
 `parse_hunt_file()` in `cli.py` returns a **12-field `ParsedHunt` NamedTuple** `(mission, context, title, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags, data_file, schedule, exports, imports)`. It also strips header-only `@script:` declarations, validates that they use dotted Python import paths, and rewrites `CALL PYTHON {alias}.func` usages to their real module paths before returning the mission and hook lines. `parse_hunt_file()` also resolves `@import:` directives via `resolve_imports()` and expands `USE` directives via `expand_use_directives()` before returning the mission text. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
 
-The full hook unit test suite (`56 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
+The full hook unit test suite (`56 tests, no browser`) lives in `manul_engine/test/test_14_hooks.py`.
 
 ### 📋 Static Variable Declaration (`@var:`) and Script Aliases (`@script:`)
 
@@ -428,7 +428,7 @@ CALL PYTHON {issue_login_token} into {login_token_2}
 
 **Design rule:** When generating or suggesting `.hunt` test files, **never** hardcode test data (emails, passwords, usernames, search queries, IDs, etc.) directly into `Fill` or `Type` steps. Always declare them at the top via `@var:` and reference them via `{placeholder}`. This keeps test logic separate from test data.
 
-Unit tests: `manul_engine/test/test_20_variables.py` (23 assertions, no browser).
+Unit tests: `manul_engine/test/test_18_variables.py` (23 assertions, no browser).
 
 ### 🏷️ Arbitrary Tags (`@tags:`) and `--tags` CLI Filter
 
@@ -455,7 +455,7 @@ manul path/to/hunts/ --tags smoke,critical      # OR logic — run files with ei
 
 **How it works:** `parse_hunt_file()` now extracts `@tags:` into the `tags: list[str]` field. The CLI also exposes `_read_tags(path)` — a fast header-only scanner that stops at the first action or STEP header line — used to pre-filter files in `main()` without running the full parse twice. Tag filtering prints a one-line summary (`🏷️ --tags '...': N skipped, M matched.`) before the run starts.
 
-Unit tests: `manul_engine/test/test_22_tags.py` (20 assertions, no browser).
+Unit tests: `manul_engine/test/test_20_tags.py` (20 assertions, no browser).
 
 ### 🎛️ Custom Controls & Page Object Model
 
@@ -797,42 +797,42 @@ VERIFY "Notes" element has value "treasure map"
 The engine is battle-tested with **3228** synthetic DOM/unit tests across 55 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, visibility edge cases, attribute-semantic icon matching, camelCase developer attributes, contextual UI disambiguation across repeated controls, conditional branching logic, and loop constructs.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
-* **QA Classics regression suite:** `manul_engine/test/test_14_qa_classics.py`.
-* **Custom Controls unit suite:** `manul_engine/test/test_19_custom_controls.py`.
-* **Static Variables unit suite:** `manul_engine/test/test_20_variables.py`.
-* **Dynamic Variables unit suite:** `manul_engine/test/test_21_dynamic_vars.py`.
-* **Tags unit suite:** `manul_engine/test/test_22_tags.py`.
-* **Advanced interactions unit suite:** `manul_engine/test/test_23_advanced_interactions.py`.
-* **Reporting unit suite:** `manul_engine/test/test_24_reporting.py`.
-* **HTML reporter unit suite:** `manul_engine/test/test_25_reporter.py`.
-* **Wikipedia Search Input unit suite:** `manul_engine/test/test_26_wikipedia_search.py`.
-* **Lifecycle Hooks unit suite:** `manul_engine/test/test_27_lifecycle_hooks.py`.
-* **Logical Steps unit suite:** `manul_engine/test/test_28_logical_steps.py`.
-* **iframe Routing synthetic suite:** `manul_engine/test/test_29_iframe_routing.py`.
-* **Heuristic Weights synthetic+unit suite:** `manul_engine/test/test_30_heuristic_weights.py`.
-* **Visibility & TreeWalker synthetic+unit suite:** `manul_engine/test/test_31_visibility_treewalker.py`.
-* **VERIFY ENABLED/DISABLED synthetic suite:** `manul_engine/test/test_32_verify_enabled.py`.
-* **CALL PYTHON with arguments unit suite:** `manul_engine/test/test_33_call_python_args.py`.
-* **VERIFY checked/NOT checked synthetic suite:** `manul_engine/test/test_34_verify_checked.py`.
-* **Smart Page Scanner synthetic+unit suite:** `manul_engine/test/test_35_scanner.py`.
-* **Scoring Math unit suite:** `manul_engine/test/test_36_scoring_math.py`.
-* **Enterprise DSL unit suite:** `manul_engine/test/test_37_enterprise_dsl.py`.
-* **SET & Indentation unit suite:** `manul_engine/test/test_38_set_and_indent.py`.
-* **OPEN APP unit suite:** `manul_engine/test/test_39_open_app.py`.
-* **Recorder unit suite:** `manul_engine/test/test_41_recorder.py`.
-* **Scheduler unit suite:** `manul_engine/test/test_42_scheduler.py`.
-* **Scoped Variables unit suite:** `manul_engine/test/test_43_scoped_variables.py`.
-* **Explain Mode unit suite:** `manul_engine/test/test_44_explain_mode.py`.
-* **Public Python API unit suite:** `manul_engine/test/test_45_api.py`.
-* **Attribute-semantic heuristic suite:** `manul_engine/test/test_46_attribute_semantic.py`.
-* **Contextual navigator unit suite:** `manul_engine/test/test_47_contextual_proximity.py`.
-* **Prompts & Config unit suite:** `manul_engine/test/test_48_prompts_config.py`.
-* **Imports unit suite:** `manul_engine/test/test_50_imports.py`.
-* **Packager unit suite:** `manul_engine/test/test_51_packager.py`.
-* **Exports unit suite:** `manul_engine/test/test_52_exports.py`.
-* **Explain Next unit suite:** `manul_engine/test/test_53_explain_next.py`.
-* **Conditionals unit suite:** `manul_engine/test/test_54_conditionals.py`.
-* **Loops unit suite:** `manul_engine/test/test_55_loops.py`.
+* **QA Classics regression suite:** `manul_engine/test/test_12_qa_classics.py`.
+* **Custom Controls unit suite:** `manul_engine/test/test_17_custom_controls.py`.
+* **Static Variables unit suite:** `manul_engine/test/test_18_variables.py`.
+* **Dynamic Variables unit suite:** `manul_engine/test/test_19_dynamic_vars.py`.
+* **Tags unit suite:** `manul_engine/test/test_20_tags.py`.
+* **Advanced interactions unit suite:** `manul_engine/test/test_21_advanced_interactions.py`.
+* **Reporting unit suite:** `manul_engine/test/test_22_reporting.py`.
+* **HTML reporter unit suite:** `manul_engine/test/test_23_reporter.py`.
+* **Wikipedia Search Input unit suite:** `manul_engine/test/test_24_wikipedia_search.py`.
+* **Lifecycle Hooks unit suite:** `manul_engine/test/test_25_lifecycle_hooks.py`.
+* **Logical Steps unit suite:** `manul_engine/test/test_26_logical_steps.py`.
+* **iframe Routing synthetic suite:** `manul_engine/test/test_27_iframe_routing.py`.
+* **Heuristic Weights synthetic+unit suite:** `manul_engine/test/test_28_heuristic_weights.py`.
+* **Visibility & TreeWalker synthetic+unit suite:** `manul_engine/test/test_29_visibility_treewalker.py`.
+* **VERIFY ENABLED/DISABLED synthetic suite:** `manul_engine/test/test_30_verify_enabled.py`.
+* **CALL PYTHON with arguments unit suite:** `manul_engine/test/test_31_call_python_args.py`.
+* **VERIFY checked/NOT checked synthetic suite:** `manul_engine/test/test_32_verify_checked.py`.
+* **Smart Page Scanner synthetic+unit suite:** `manul_engine/test/test_33_scanner.py`.
+* **Scoring Math unit suite:** `manul_engine/test/test_34_scoring_math.py`.
+* **Enterprise DSL unit suite:** `manul_engine/test/test_35_enterprise_dsl.py`.
+* **SET & Indentation unit suite:** `manul_engine/test/test_36_set_and_indent.py`.
+* **OPEN APP unit suite:** `manul_engine/test/test_37_open_app.py`.
+* **Recorder unit suite:** `manul_engine/test/test_38_recorder.py`.
+* **Scheduler unit suite:** `manul_engine/test/test_39_scheduler.py`.
+* **Scoped Variables unit suite:** `manul_engine/test/test_40_scoped_variables.py`.
+* **Explain Mode unit suite:** `manul_engine/test/test_41_explain_mode.py`.
+* **Public Python API unit suite:** `manul_engine/test/test_42_api.py`.
+* **Attribute-semantic heuristic suite:** `manul_engine/test/test_43_attribute_semantic.py`.
+* **Contextual navigator unit suite:** `manul_engine/test/test_44_contextual_proximity.py`.
+* **Prompts & Config unit suite:** `manul_engine/test/test_45_prompts_config.py`.
+* **Imports unit suite:** `manul_engine/test/test_46_imports.py`.
+* **Packager unit suite:** `manul_engine/test/test_47_packager.py`.
+* **Exports unit suite:** `manul_engine/test/test_48_exports.py`.
+* **Explain Next unit suite:** `manul_engine/test/test_49_explain_next.py`.
+* **Conditionals unit suite:** `manul_engine/test/test_50_conditionals.py`.
+* **Loops unit suite:** `manul_engine/test/test_51_loops.py`.
 * **Integration hunts:** Real-site E2E flows under `demo/tests/*.hunt` — run with `python demo/run_demo.py` (requires system Chrome + network).
 
 Run the synthetic suite:
@@ -938,11 +938,11 @@ Covered files: `pyproject.toml`, `Dockerfile`, `docker-compose.yml`, `README.md`
 - **Custom Controls miss-diagnostics:** new `diagnose_custom_control_miss(page_name, target_name)` in `manul_engine/controls.py` consults the new `_REGISTRY_META` map (populated alongside `_CUSTOM_CONTROLS` at registration) and returns a one-line hint when the same `target` is registered for a *different* `page` label. Both dispatch sites print the hint just before falling through to `_execute_step()`. Eliminates the most common "my @custom_control isn't firing" debugging session by surfacing the likely `pages.json` ↔ `@custom_control(page=…)` mismatch immediately.
 - **`list_custom_controls()` API + `manul controls list` CLI:** new public function returning `[{page, target, handler, source}, …]` sorted by `(page, target)`. New CLI subcommand routed in `cli.py:main()` after `install`; eagerly calls `load_custom_controls()` against CWD and prints a fixed-width table (PAGE / TARGET / HANDLER / SOURCE).
 - **Visible dispatch log:** the dispatch log line in both executors now reads `🎛️  [CUSTOM CONTROL] '<target>' on '<page_name>' (<action>) → <handler.__qualname__>`; previously the conditional-branch path omitted both `<page_name>` and the handler name, making routing invisible without `--debug`.
-- **`test_19_custom_controls.py` rewritten:** legacy 3-arg signatures across registry / interception / lazy-load tests migrated to the new shape; added Section 4 covering signature rejection (TypeError contents, registry not mutated), `diagnose_custom_control_miss()` (sibling-page hit, no-sibling miss returns `None`, target-on-current-page returns `None`), and `list_custom_controls()` (count, sort, full metadata). Total assertions in this file ≈ 35.
+- **`test_17_custom_controls.py` rewritten:** legacy 3-arg signatures across registry / interception / lazy-load tests migrated to the new shape; added Section 4 covering signature rejection (TypeError contents, registry not mutated), `diagnose_custom_control_miss()` (sibling-page hit, no-sibling miss returns `None`, target-on-current-page returns `None`), and `list_custom_controls()` (count, sort, full metadata). Total assertions in this file ≈ 35.
 - **Internal hygiene in `core.py`:** lifted 6× `import sys as _sys` and 2× `import base64 as _b64` from per-call function-locals to module-level `import sys` / `import base64`; collapsed the import-after-statement block (`from . import prompts as _prompts_mod` and three siblings placed after `_log = logger.getChild("core")`) into a single PEP-8 import section. The `_DebugMixin._debug_prompt()` `finally` block now `await`s the cancelled `abort_poll_task` and swallows `CancelledError` — silences a stray `Task was destroyed but it is pending!` warning when a debug pause is aborted via the in-browser modal. The `_Tee` wrapper in `cli.py` now reports an `encoding` attribute and returns the byte count from `write()` so it satisfies the `IO[str]` protocol cleanly.
-- **Loop constructs (`REPEAT` / `FOR EACH` / `WHILE`):** (carried over from 0.0.9.29) New iterative execution blocks with indentation-based bodies. `REPEAT N TIMES:` for fixed iterations, `FOR EACH {var} IN {collection}:` for comma-separated data iteration, `WHILE <condition>:` for condition-driven loops with 100-iteration safety limit. Automatic `{i}` counter (1-based) on every iteration. Full nesting: loops inside conditionals, conditionals inside loops, loops inside loops. Parser in `helpers.py` (`LoopBlock` dataclass, `_consume_loop_block()`), executor in `core.py` (`_execute_loop()`, `_run_loop_body()`). 129-assertion test suite (`test_55_loops.py`).
-- **Conditional blocks (`IF` / `ELIF` / `ELSE`):** Block-style branching based on element existence, visible text, variable comparisons, contains checks, and truthy evaluation. Indentation-based body detection. Nested conditionals supported. Parser in `helpers.py` (`IfBlock`, `ConditionalBranch`), evaluator in `conditionals.py` (`evaluate_condition()`), executor in `core.py` (`_evaluate_conditional()`). 97-assertion test suite (`test_54_conditionals.py`).
-- **What-If Analysis REPL (`ExplainNextDebugger`):** New `explain_next.py` module with interactive debug REPL for hypothetical step evaluation. During a debug pause, type `w` (terminal) to enter the REPL or `e` / send `explain-next` (extension protocol) for one-shot evaluation. Combines DOMScorer heuristic scoring with optional LLM analysis to produce a 0–10 confidence rating, element match info, risk assessment, and corrective suggestions. The best heuristic match is highlighted with a persistent magenta outline on the live page via the engine's `_debug_highlight` / `_clear_debug_highlight` methods. Classes: `PageContext` (read-only snapshot), `WhatIfResult` (structured result with `confidence_label` property and `format_report()`), `_HeuristicHit` (best candidate from scoring), `ExplainNextDebugger` (REPL controller). REPL commands: `!execute [N]`, `!history`, `!context`, `!quit`. Extension protocol: `explain-next` token emits `\x00MANUL_EXPLAIN_NEXT\x00{json}` marker with serialized `WhatIfResult` via `_result_to_dict()`; the `what-if` interactive REPL is disabled in extension protocol mode (stdin reserved for control tokens). Hooked into `debug.py` via `_get_explain_next()` lazy factory and `_what_if_execute_step` attribute in `core.py`. 112-assertion test suite (`test_53_explain_next.py`).
+- **Loop constructs (`REPEAT` / `FOR EACH` / `WHILE`):** (carried over from 0.0.9.29) New iterative execution blocks with indentation-based bodies. `REPEAT N TIMES:` for fixed iterations, `FOR EACH {var} IN {collection}:` for comma-separated data iteration, `WHILE <condition>:` for condition-driven loops with 100-iteration safety limit. Automatic `{i}` counter (1-based) on every iteration. Full nesting: loops inside conditionals, conditionals inside loops, loops inside loops. Parser in `helpers.py` (`LoopBlock` dataclass, `_consume_loop_block()`), executor in `core.py` (`_execute_loop()`, `_run_loop_body()`). 129-assertion test suite (`test_51_loops.py`).
+- **Conditional blocks (`IF` / `ELIF` / `ELSE`):** Block-style branching based on element existence, visible text, variable comparisons, contains checks, and truthy evaluation. Indentation-based body detection. Nested conditionals supported. Parser in `helpers.py` (`IfBlock`, `ConditionalBranch`), evaluator in `conditionals.py` (`evaluate_condition()`), executor in `core.py` (`_evaluate_conditional()`). 97-assertion test suite (`test_50_conditionals.py`).
+- **What-If Analysis REPL (`ExplainNextDebugger`):** New `explain_next.py` module with interactive debug REPL for hypothetical step evaluation. During a debug pause, type `w` (terminal) to enter the REPL or `e` / send `explain-next` (extension protocol) for one-shot evaluation. Combines DOMScorer heuristic scoring with optional LLM analysis to produce a 0–10 confidence rating, element match info, risk assessment, and corrective suggestions. The best heuristic match is highlighted with a persistent magenta outline on the live page via the engine's `_debug_highlight` / `_clear_debug_highlight` methods. Classes: `PageContext` (read-only snapshot), `WhatIfResult` (structured result with `confidence_label` property and `format_report()`), `_HeuristicHit` (best candidate from scoring), `ExplainNextDebugger` (REPL controller). REPL commands: `!execute [N]`, `!history`, `!context`, `!quit`. Extension protocol: `explain-next` token emits `\x00MANUL_EXPLAIN_NEXT\x00{json}` marker with serialized `WhatIfResult` via `_result_to_dict()`; the `what-if` interactive REPL is disabled in extension protocol mode (stdin reserved for control tokens). Hooked into `debug.py` via `_get_explain_next()` lazy factory and `_what_if_execute_step` attribute in `core.py`. 112-assertion test suite (`test_49_explain_next.py`).
 - **What-If execute bug fixes:** `_execute_step()` recursive call for What-If replacement now passes `strategic_context` and `step_idx` by keyword (was misordered as positional args, breaking debug/breakpoint behavior). Injected What-If steps in `core.py` now run through `substitute_memory()` so `{var}` placeholders are resolved before execution.
 - **LLM JSON fence-stripping:** `_parse_llm_json()` in `llm.py` now strips markdown code fences (```` ``` ````) before JSON parsing, improving robustness with models that wrap JSON responses in triple-backtick blocks.
 

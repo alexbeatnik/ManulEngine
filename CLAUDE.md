@@ -31,14 +31,14 @@ manul_engine/
                     page.py (CDPPage/CDPFrame/CDPElement, per-frame exec contexts),
                     browser.py (CDPBrowser), protocol.py + keys.py (JS/key maps)
   variables.py    ScopedVariables (5 levels: row > step > mission > global > import)
-  prompts.py      LLM prompts + global config (THRESHOLDS, BROWSER_ARGS, …)
+  prompts.py      global config (THRESHOLDS, BROWSER_ARGS, …)
   config.py       EngineConfig dataclass (injectable; takes priority over prompts.* globals)
   cli.py          manul CLI entry point (sync_main → asyncio runner)
-  test/           ~57 synthetic-DOM unit tests (test_NN_*.py, run via run_tests.py)
+  test/           54 synthetic-DOM unit tests (test_00..test_53, run via run_tests.py)
 contracts/        MANUL_*_CONTRACT.md — frozen public-surface contracts (DSL/API/CLI/etc.)
 custom-instructions/  AI assistant instruction snippets (Cursor/Copilot/Claude)
 demo/             example .hunt suites used in CI smoke runs
-docs/, prompts/, reports/, cache/   runtime artifacts and docs
+docs/, prompts/, reports/   runtime artifacts and docs
 ```
 
 `ManulEngine` inherits from two mixins (`_DebugMixin, _ActionsMixin`). Action handlers live in `actions.py`; the orchestration loop lives in `core.py:run_mission`. The conditional-branch path lives in `core.py:_dispatch_step` and intentionally mirrors the main loop — these two paths are sibling executors, **not** duplicates. Don't merge them blindly.
@@ -77,7 +77,7 @@ Single source of truth: `pyproject.toml → version`. Use `bump_version.py <new>
 ## Tests
 
 - Run all: `python run_tests.py` (imports each `test_*.py` and calls its `run_laboratory()`/`run_suite()` — these are function-based suites, **not** `unittest.TestCase`).
-- Run one: run the file as a script — `python manul_engine/test/test_36_scoring_math.py`. (`python -m unittest manul_engine.test.test_36_scoring_math` reports "Ran 0 tests" — there are no TestCases.)
+- Run one: run the file as a script — `python manul_engine/test/test_34_scoring_math.py`. (`python -m unittest manul_engine.test.test_34_scoring_math` reports "Ran 0 tests" — there are no TestCases.)
 - Tests use synthetic DOM HTML loaded via `CDPPage.set_content()` / `file://`, driven by system Chrome over CDP, no external network. They exercise scoring, parsing, lifecycle, recording, scheduling, the full DSL surface, and the reporter. Don't add real-network tests — keep the suite hermetic.
 - The ruff per-file-ignores for `manul_engine/test/*` are intentional; tests intentionally use shadowing, unused locals, and asserts.
 

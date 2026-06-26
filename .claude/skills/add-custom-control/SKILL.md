@@ -42,7 +42,7 @@ async def handle_username(ctx: ControlContext) -> None:
 2. **Write the module.** Create/extend a `.py` file under a custom-controls directory (default `controls/`, configurable via `custom_controls_dirs` / `MANUL_CUSTOM_CONTROLS_DIRS`). Decorate the handler with `@custom_control(page=…, target=…)`. Matching is **case-insensitive** on both page and target.
 3. **Keep it idempotent & self-contained.** Modules are JIT-loaded once per directory (`_LOADED_DIRS`/`_LOADED_FILES`); import side effects run at load. Don't rely on engine internals — use only `ctx`.
 4. **Return shape.** Returning `None` is fine (success unless it raises). If your widget interaction can fail, raise — the engine records the step failure. Don't swallow exceptions silently.
-5. **Test.** Add to `manul_engine/test/test_19_custom_controls.py` (the canonical template): register a handler against a synthetic DOM, assert `get_custom_control(page, target)` resolves (case-insensitive), drive a mission/step through it, and assert a deliberate **miss** produces a hint via `diagnose_custom_control_miss`.
+5. **Test.** Add to `manul_engine/test/test_17_custom_controls.py` (the canonical template): register a handler against a synthetic DOM, assert `get_custom_control(page, target)` resolves (case-insensitive), drive a mission/step through it, and assert a deliberate **miss** produces a hint via `diagnose_custom_control_miss`.
 
 ## Common pitfalls
 
@@ -58,5 +58,5 @@ async def handle_username(ctx: ControlContext) -> None:
 - Public exports: `manul_engine/__init__.py:__all__` (`ControlContext`, `custom_control`, `list_custom_controls`)
 - Engine dispatch (reference only — don't edit): `core.py` resolves a handler via `get_custom_control` in **both** the main loop (~L1483) and the conditional-branch `_dispatch_step` (~L1992).
 - Page labels: `pages/<site>.json` + `prompts.lookup_page_name()`; inspect with `manul pages list`.
-- Test template: `manul_engine/test/test_19_custom_controls.py`.
+- Test template: `manul_engine/test/test_17_custom_controls.py`.
 - Contract: custom controls are referenced in `contracts/MANUL_API_CONTRACT.md` — keep the `ControlContext` surface in sync if you change it (changing it is "Ask first").

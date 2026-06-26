@@ -23,8 +23,8 @@ Use the project venv interpreter (`.venv/bin/python`). If there is no venv or `i
 
 1. **Sanity check the environment.** `.venv/bin/python -c "import playwright"`. If it errors, run **setup-dev-env**, then retry. Stop if it still fails.
 2. **Full suite (default).** `.venv/bin/python run_tests.py` from the repo root. This calls `_test_runner.run_tests`, which imports every `test_*.py` and invokes its `run_laboratory()`/`run_suite()`, forcing heuristics-only mode (`MANUL_AI_THRESHOLD=0`, caches off). It writes a full log and prints a per-suite `pass/total` summary.
-3. **Single suite (when targeted).** Run the file **as a script** — `.venv/bin/python manul_engine/test/test_NN_<name>.py` (e.g. `test_36_scoring_math`). Each file has a `__main__` block that calls its own runner. (`python -m unittest …` does NOT work — these aren't TestCases.)
-4. **No-browser suites run anywhere.** Pure-logic suites (e.g. `test_36_scoring_math`, `test_53_explain_next`) need no browser and run as scripts even where Playwright has no installable browser. Use these to validate scoring/parsing/LLM-transport changes on any host.
+3. **Single suite (when targeted).** Run the file **as a script** — `.venv/bin/python manul_engine/test/test_NN_<name>.py` (e.g. `test_34_scoring_math`). Each file has a `__main__` block that calls its own runner. (`python -m unittest …` does NOT work — these aren't TestCases.)
+4. **No-browser suites run anywhere.** Pure-logic suites (e.g. `test_34_scoring_math`, `test_49_explain_next`) need no browser and run as scripts even where Playwright has no installable browser. Use these to validate scoring/parsing/LLM-transport changes on any host.
 5. **Quick syntax-only check (no Playwright needed).** `.venv/bin/python -m py_compile manul_engine/*.py` — confirm parse-level correctness when you can't run the suite.
 
 > **Browser caveat (this host).** Playwright has **no installable browser** for ubuntu26.04, and the browser-backed suites call `p.chromium.launch()` with no channel, so they require the bundled Chromium and will **not** run here. Run the no-browser suites, state the limitation explicitly, and defer the full browser suite to a supported host or CI. See **setup-dev-env** for the `channel='chrome'` workaround for engine *runs* (it does not retrofit the existing tests).
@@ -39,7 +39,7 @@ Use the project venv interpreter (`.venv/bin/python`). If there is no venv or `i
 
 - Tests are hermetic — they spawn `chromium` via Playwright against `/tmp/*.html` fixtures. A failure that reads "ERR_NETWORK" usually means a fixture wasn't written; investigate the test's `setUp`, not the network.
 - Some tests deliberately monkey-patch module globals in `prompts.py`. Run failing tests in isolation before deciding the failure is real — order-dependent failures point to a missing fixture cleanup, not a code bug.
-- Scoring tests (`test_36_scoring_math`, `test_30_heuristic_weights`, `test_47_contextual_proximity`) carry **golden numbers**. If they fail after editing `scoring.py`, you likely changed a weight — confirm with the user before "fixing" the test by updating goldens.
+- Scoring tests (`test_34_scoring_math`, `test_28_heuristic_weights`, `test_44_contextual_proximity`) carry **golden numbers**. If they fail after editing `scoring.py`, you likely changed a weight — confirm with the user before "fixing" the test by updating goldens.
 - Tests have ruff per-file-ignores in `pyproject.toml` (`F841`, `F811`, etc.). Don't try to clean those up — they're intentional.
 
 ## Reference

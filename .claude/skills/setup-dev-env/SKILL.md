@@ -62,8 +62,8 @@ For engine runs via `ManulSession` / the `manul` CLI, set **`MANUL_CHANNEL=chrom
 
 - **Pure-logic tests need no browser** and run as-is — they are plain scripts with a `__main__` runner, not unittest-discoverable:
   ```bash
-  .venv/bin/python manul_engine/test/test_53_explain_next.py   # 112 assertions, exercises llm.py + explain_next.py
-  .venv/bin/python manul_engine/test/test_36_scoring_math.py   # scoring goldens, no DOM
+  .venv/bin/python manul_engine/test/test_49_explain_next.py   # 112 assertions, exercises llm.py + explain_next.py
+  .venv/bin/python manul_engine/test/test_34_scoring_math.py   # scoring goldens, no DOM
   ```
 - **Browser-backed tests** (`test_01_ecommerce.py` … `test_15_*`, etc.) call `p.chromium.launch()` **directly with no channel**, so they require the bundled Chromium — they will **not** run on this host without patching each test to pass `channel="chrome"`. Do not claim the full suite passed here; run the no-browser tests, state the browser-test limitation explicitly, and defer to `run-hunt-tests` on a supported host.
 
