@@ -154,6 +154,21 @@ class CDPBrowser:
                 return await self._attach_page(info["targetId"])
         return await self.new_page()
 
+    async def page_matching(self, url_substr: str = "") -> CDPPage:
+        """Attach to the page target whose URL contains *url_substr*.
+
+        Empty substring → the first page target. Chrome lists targets
+        most-recently-active first, so this picks the tab the user is on.
+        """
+        if not url_substr:
+            return await self.first_page()
+        targets = (await self._send("Target.getTargets")).get("targetInfos", [])
+        needle = url_substr.lower()
+        for info in targets:
+            if info.get("type") == "page" and needle in info.get("url", "").lower():
+                return await self._attach_page(info["targetId"])
+        raise RuntimeError(f"no page target with URL containing {url_substr!r}")
+
     async def _attach_page(self, target_id: str) -> CDPPage:
         attached = await self._send("Target.attachToTarget", {"targetId": target_id, "flatten": True})
         session_id = attached.get("sessionId")

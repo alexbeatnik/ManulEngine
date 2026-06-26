@@ -194,6 +194,24 @@ Example output:
 
 `SCAN PAGE` remains available for generating draft `.hunt` files from a live page.
 
+### Agent commands — drive the engine from an external LLM
+
+For agentic use, ManulEngine exposes a small set of **JSON-emitting CLI commands** (mirroring the Go sibling [ManulHeart](https://github.com/alexbeatnik/ManulHeart)). They attach to an **already-running Chrome over CDP**, so an external model keeps one browser open and issues stateless calls against it. The JSON payload goes to **stdout**; all engine logs go to **stderr**, so a driver can pipe the output straight into a prompt.
+
+```bash
+# 1. start Chrome once with remote debugging
+google-chrome --remote-debugging-port=9222 &
+
+# 2. let the model see the page, act, and read — by human label, never CSS/XPath
+manul schema                                   # DSL grammar + agent JSON shapes (no browser)
+manul map --tab example.com                    # compact landmark-grouped page map → JSON
+manul run-step "Click the 'Login' button"      # run one instruction → step-outcome JSON
+manul read 'Order total'                       # read one labelled value → {value, found, reason}
+manul read --selector '#cart'                  # sanitized region text → {text, selector}
+```
+
+Shared flags: `--cdp <url>` (default `http://127.0.0.1:9222`) and `--tab <url-substr>` to pick a tab. `run-step` returns a non-zero exit code when the step fails, and surfaces `near` candidates (with `0.0–1.0` scores) on a failed or low-confidence match so the agent can retarget without a re-scan. `manul schema` is the machine-readable contract a driver pins instead of stuffing full docs into every prompt.
+
 ### Shared libraries and scheduling
 
 ```text
@@ -448,6 +466,7 @@ ManulEngine is alpha-stage and solo-developed. If deterministic, explainable bro
 
 - **Playwright removed — native Chrome DevTools Protocol backend (BREAKING):** the entire browser layer is now ManulEngine's own CDP client in [`manul_engine/cdp/`](manul_engine/cdp/), driving system Chrome/Chromium over a raw WebSocket. The only runtime dependency is `websockets` (no Playwright, no Node.js, no bundled browser download). `ManulSession.page` is now a `manul_engine.cdp.CDPPage`; per-frame iframe routing uses real per-frame execution contexts. **Install requires a system Chrome/Chromium on `PATH`** (`playwright install` is gone).
 - **`browser` is Chromium-only:** `firefox` / `webkit` are no longer accepted (CDP is Chrome's protocol). `browser` now selects launch mode — `chromium` (launch) or `electron` (attach to a running Chrome/Electron over CDP); choose the binary with `channel` / `executable_path`.
+- **Agent CLI commands for external LLM drivers:** new `manul schema` / `map` / `read` / `run-step` subcommands emit compact JSON (stdout) while engine logs stay on stderr, attaching to an already-running Chrome over CDP — the surface an external model uses to see the page, act, and read by human label. Mirrors ManulHeart's agent commands.
 - **Deterministic LLM transport:** every Ollama call now pins `temperature=0` (override via `MANUL_LLM_TEMPERATURE`) so the optional AI safety net resolves the same element the same way run-to-run — matching the determinism the heuristic resolver already guarantees. New `MANUL_LLM_NUM_CTX` / `MANUL_LLM_RETRIES` / `MANUL_LLM_KEEP_ALIVE` knobs round out the transport config.
 - **Retry-once + actionable errors:** a malformed or truncated JSON reply from a small local model is retried once before giving up, while a genuinely unreachable server fails fast with an *"is `ollama serve` running?"* hint instead of a silent miss.
 - **Sanitized LLM prompts:** page prose fed to the model (e.g. the Explain-Next What-If analysis) is stripped of base64 blobs, `data-*` dumps and SVG path noise and bounded by a character budget — cheaper, on-topic prompts (`sanitize_for_llm` / `truncate_for_llm`, ported from the ManulHeart agent layer).

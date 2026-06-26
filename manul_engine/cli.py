@@ -88,6 +88,13 @@ Usage:
   manul pages list           — list every site → pattern → label mapping under pages/
   manul pages migrate        — split a legacy pages.json into pages/<site>.json fragments
 
+Agent commands (emit JSON for an external LLM driver; attach to a running Chrome over CDP):
+  manul schema               — the DSL grammar + agent JSON shapes (no browser needed)
+  manul map [--tab S]        — compact landmark-grouped map of the open page → JSON
+  manul read '<label>'       — read one labelled value (or --selector '<css>' region text) → JSON
+  manul run-step '<step>'    — run one DSL instruction against the open page → step-outcome JSON
+                               (shared flags: --cdp <url> [default http://127.0.0.1:9222], --tab <url-substr>)
+
 Flags:
   --headless                 — run browser in headless mode
   --browser <name>           — chromium (default) or electron (attach to a running Chrome/Electron over CDP)
@@ -794,6 +801,16 @@ async def main() -> "int | None":
         dest = _install_pkg(_non_flag_args[1], global_install=_global_flag)
         print(f"📦 Installed to: {dest}")
         return
+
+    # ── Agent-facing commands (JSON for external LLM drivers) ─────────────────
+    if _non_flag_args and _non_flag_args[0] in ("schema", "map", "read", "run-step"):
+        from manul_engine.agent_cli import agent_main
+
+        _agent_cmd = _non_flag_args[0]
+        _agent_idx = args.index(_agent_cmd)
+        _agent_args = args[_agent_idx + 1 :]
+        _code = await agent_main(_agent_cmd, _agent_args)
+        sys.exit(_code)
 
     if _non_flag_args and _non_flag_args[0] == "pages":
         from . import prompts as _prompts_pages

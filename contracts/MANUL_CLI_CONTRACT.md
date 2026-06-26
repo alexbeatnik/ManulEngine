@@ -128,6 +128,42 @@
           "description": "Either 'list' (default) or 'migrate'. Any other value exits 1."
         }
       ]
+    },
+    {
+      "id": "schema",
+      "syntax": "manul schema [--json]",
+      "description": "Agent command. Emits the DSL grammar + agent JSON shapes (verbs, hunt_rules, step_outcome, page_map, failure_reasons, agent_commands) as a compact JSON contract for an external LLM driver. No browser needed; payload on stdout, logs on stderr. --json is accepted for symmetry (output is always JSON).",
+      "positionalArgs": []
+    },
+    {
+      "id": "map",
+      "syntax": "manul map [--cdp <url>] [--tab <url-substr>] [--max-per-group <n>] [--include-unlabeled]",
+      "description": "Agent command. Attaches to an already-running Chrome over CDP (default http://127.0.0.1:9222) and emits a compact, landmark-grouped JSON map of the open page ({url, groups:[{name, elements:[{label, role, editable?}], truncated?}]}), deduped and per-group capped (default 8). Groups are ordered Page → content landmarks → chrome.",
+      "positionalArgs": []
+    },
+    {
+      "id": "read",
+      "syntax": "manul read '<label>' [--cdp <url>] [--tab <url-substr>] [--selector '<css>'] [--max-chars <n>]",
+      "description": "Agent command. Attaches over CDP and reads off the open page without a full scan. Targeted form resolves a human label and extracts its value → {value, found, reason}. With --selector, returns the sanitized visible text of that CSS region → {text, selector}, optionally truncated to --max-chars.",
+      "positionalArgs": [
+        {
+          "name": "label",
+          "required": false,
+          "description": "Human-visible label to read; omit when using --selector."
+        }
+      ]
+    },
+    {
+      "id": "run-step",
+      "syntax": "manul run-step '<instruction>' [--cdp <url>] [--tab <url-substr>] [--compact]",
+      "description": "Agent command. Attaches over CDP and runs one plain-English DSL instruction against the open page, emitting a compact step-outcome JSON {ok, step, action, value?, url?, reason, error?, score?, near?}. Exit code is non-zero when ok is false. 'near' lists top candidates on failure or a low-confidence (<0.35) match.",
+      "positionalArgs": [
+        {
+          "name": "instruction",
+          "required": true,
+          "description": "One DSL line, e.g. \"Click the 'Login' button\"."
+        }
+      ]
     }
   ],
   "flags": [
