@@ -1,4 +1,4 @@
-# manul_engine/test/test_50_imports.py
+# manul_engine/test/test_46_imports.py
 """
 Test suite for the @import: / @export: / USE system.
 
@@ -506,7 +506,7 @@ async def run_suite() -> tuple[int, int]:
     _PASS = _FAIL = 0
 
     print("\n" + "=" * 60)
-    print("  TEST 50 — @import / @export / USE System")
+    print("  TEST 46 — @import / @export / USE System")
     print("=" * 60)
 
     _test_parse_import_directive()

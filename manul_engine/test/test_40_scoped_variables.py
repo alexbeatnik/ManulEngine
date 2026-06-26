@@ -1,4 +1,4 @@
-# manul_engine/test/test_43_scoped_variables.py
+# manul_engine/test/test_40_scoped_variables.py
 """
 Unit-test suite for ScopedVariables — strict four-level variable scoping.
 

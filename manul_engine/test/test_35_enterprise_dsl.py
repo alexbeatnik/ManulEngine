@@ -1,4 +1,4 @@
-# manul_engine/test/test_37_enterprise_dsl.py
+# manul_engine/test/test_35_enterprise_dsl.py
 """
 Unit-test suite for v0.0.9.1 Enterprise DSL features:
   A. Data-Driven Testing (@data:)
@@ -498,7 +498,7 @@ async def run_suite() -> tuple[int, int]:
     _PASS = _FAIL = 0
 
     print("\n" + "=" * 60)
-    print("  TEST 37 — Enterprise DSL Features (v0.0.9.1)")
+    print("  TEST 35 — Enterprise DSL Features (v0.0.9.1)")
     print("=" * 60)
 
     # A: classify_step for new keywords

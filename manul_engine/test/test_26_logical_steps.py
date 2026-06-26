@@ -1,4 +1,4 @@
-# manul_engine/test/test_28_logical_steps.py
+# manul_engine/test/test_26_logical_steps.py
 """
 Unit-test suite for the STEP logical-grouping feature.
 
@@ -344,7 +344,7 @@ async def run_suite() -> bool:
     global _PASS, _FAIL
     _PASS = _FAIL = 0
 
-    print("\n📋  test_28_logical_steps — STEP DSL grouping\n")
+    print("\n📋  test_26_logical_steps — STEP DSL grouping\n")
 
     _test_classify_step()
     _test_parse_logical_step()

@@ -1,4 +1,4 @@
-# manul_engine/test/test_26_wikipedia_search.py
+# manul_engine/test/test_24_wikipedia_search.py
 """
 Unit-test suite for heuristic scoring of Wikipedia Vector 2022-style
 search inputs — no browser required.

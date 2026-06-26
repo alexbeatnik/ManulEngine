@@ -1,4 +1,4 @@
-# manul_engine/test/test_25_reporter.py
+# manul_engine/test/test_23_reporter.py
 """
 Unit-test suite for the HTML report generator (reporter.py).
 
@@ -374,7 +374,7 @@ async def run_suite() -> bool:
     _FAIL = 0
 
     print("\n" + "━" * 56)
-    print("  test_25_reporter — HTML report generator")
+    print("  test_23_reporter — HTML report generator")
     print("━" * 56)
 
     _test_generate_report_creates_file()

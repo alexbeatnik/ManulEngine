@@ -1,4 +1,4 @@
-# manul_engine/test/test_33_call_python_args.py
+# manul_engine/test/test_31_call_python_args.py
 """
 Unit-test suite for CALL PYTHON with positional arguments.
 
@@ -420,7 +420,7 @@ async def run_suite() -> bool:
     _PASS = _FAIL = 0
 
     print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    print("  test_33_call_python_args — CALL PYTHON with arguments")
+    print("  test_31_call_python_args — CALL PYTHON with arguments")
     print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
     _test_parse_call_args()

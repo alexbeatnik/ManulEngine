@@ -1,4 +1,4 @@
-# manul_engine/test/test_24_reporting.py
+# manul_engine/test/test_22_reporting.py
 """
 Unit-test suite for the reporting data models, CLI flag parsing,
 retry logic, and screenshot mode configuration.
@@ -289,7 +289,7 @@ async def run_suite() -> bool:
     _FAIL = 0
 
     print("\n" + "━" * 56)
-    print("  test_24_reporting — data models, CLI flags, retries")
+    print("  test_22_reporting — data models, CLI flags, retries")
     print("━" * 56)
 
     _test_step_result()

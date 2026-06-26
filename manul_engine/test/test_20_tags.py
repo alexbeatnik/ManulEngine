@@ -1,4 +1,4 @@
-# manul_engine/test/test_22_tags.py
+# manul_engine/test/test_20_tags.py
 """
 Unit-test suite for the @tags: hunt-file header and --tags CLI filter.
 
@@ -246,7 +246,7 @@ async def run_suite() -> bool:
     _FAIL = 0
 
     print("\n" + "\u2501" * 56)
-    print("  test_22_tags \u2014 @tags: header and --tags CLI filter")
+    print("  test_20_tags \u2014 @tags: header and --tags CLI filter")
     print("\u2501" * 56)
 
     _test_parser()

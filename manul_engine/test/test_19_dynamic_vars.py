@@ -1,4 +1,4 @@
-# manul_engine/test/test_21_dynamic_vars.py
+# manul_engine/test/test_19_dynamic_vars.py
 """
 Unit-test suite for Dynamic Variables via ``CALL PYTHON ... into {var}``.
 
@@ -257,7 +257,7 @@ async def run_suite() -> bool:
     _PASS = _FAIL = 0
 
     print("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
-    print("  test_21_dynamic_vars — CALL PYTHON ... into {var}")
+    print("  test_19_dynamic_vars — CALL PYTHON ... into {var}")
     print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
     _test_hook_parser()

@@ -1,4 +1,4 @@
-# manul_engine/test/test_56_wait_for_selector.py
+# manul_engine/test/test_52_wait_for_selector.py
 """
 Unit-test suite for WAIT FOR SELECTOR and CSS-selector detection in
 WAIT FOR '...' TO BE VISIBLE.

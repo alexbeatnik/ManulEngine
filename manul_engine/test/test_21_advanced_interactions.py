@@ -1,4 +1,4 @@
-# manul_engine/test/test_23_advanced_interactions.py
+# manul_engine/test/test_21_advanced_interactions.py
 """
 Unit-test suite for advanced interaction DSL commands:
   • PRESS [Key]  /  PRESS [Key] on 'Target'
@@ -429,7 +429,7 @@ async def run_suite() -> bool:
     _PASS = 0
     _FAIL = 0
 
-    print("\n═══ test_23_advanced_interactions ═══════════════════════")
+    print("\n═══ test_21_advanced_interactions ═══════════════════════")
 
     # Synchronous parser tests
     _test_classify_step()

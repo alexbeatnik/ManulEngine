@@ -1,4 +1,4 @@
-# manul_engine/test/test_45_api.py
+# manul_engine/test/test_42_api.py
 """
 Unit-test suite for ManulSession (Public Python API).
 
@@ -449,7 +449,7 @@ async def run_suite() -> bool:
     global _PASS, _FAIL
     _PASS = _FAIL = 0
 
-    print("\n📋  test_45_api — ManulSession Public Python API\n")
+    print("\n📋  test_42_api — ManulSession Public Python API\n")
 
     _test_constructor()
     _test_page_guard()

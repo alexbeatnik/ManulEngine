@@ -1,4 +1,4 @@
-# manul_engine/test/test_39_open_app.py
+# manul_engine/test/test_37_open_app.py
 """
 Unit-test suite for the OPEN APP command (v0.0.9.2):
   A. classify_step() returns "open_app" for all syntactic variants.
@@ -425,7 +425,7 @@ async def run_suite() -> tuple[int, int]:
     global _PASS, _FAIL
     _PASS = _FAIL = 0
 
-    print("\n═══ test_39_open_app ═══════════════════════════════════════════")
+    print("\n═══ test_37_open_app ═══════════════════════════════════════════")
 
     # Sync tests
     _test_classify_open_app()

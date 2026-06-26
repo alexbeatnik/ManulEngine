@@ -1,4 +1,4 @@
-# manul_engine/test/test_51_packager.py
+# manul_engine/test/test_47_packager.py
 """
 Test suite for manul_engine/packager.py — pack, install, lockfile.
 
@@ -228,7 +228,7 @@ async def run_suite() -> tuple[int, int]:
     _PASS = _FAIL = 0
 
     print("\n" + "=" * 60)
-    print("  TEST 51 — Packager (pack / install / lockfile)")
+    print("  TEST 47 — Packager (pack / install / lockfile)")
     print("=" * 60)
 
     _test_pack()

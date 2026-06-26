@@ -1,4 +1,4 @@
-# manul_engine/test/test_27_lifecycle_hooks.py
+# manul_engine/test/test_25_lifecycle_hooks.py
 """
 Unit-test suite for the Global Lifecycle Hook system.
 

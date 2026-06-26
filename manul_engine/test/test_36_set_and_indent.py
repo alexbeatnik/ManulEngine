@@ -1,4 +1,4 @@
-# manul_engine/test/test_38_set_and_indent.py
+# manul_engine/test/test_36_set_and_indent.py
 """
 Unit-test suite for v0.0.9.2 features:
   A. Indentation robustness — indented .hunt lines parse identically to flush ones.
@@ -330,7 +330,7 @@ async def run_suite() -> tuple[int, int]:
     _PASS = _FAIL = 0
 
     print("\n" + "=" * 60)
-    print("  TEST 38 — SET Command & Indentation Robustness (v0.0.9.2)")
+    print("  TEST 36 — SET Command & Indentation Robustness (v0.0.9.2)")
     print("=" * 60)
 
     # A: Indentation robustness

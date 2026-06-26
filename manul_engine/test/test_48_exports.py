@@ -1,4 +1,4 @@
-# manul_engine/test/test_52_exports.py
+# manul_engine/test/test_48_exports.py
 """
 Test suite for @export: validation, wildcard exports, and edge cases.
 
@@ -218,7 +218,7 @@ async def run_suite() -> tuple[int, int]:
     _PASS = _FAIL = 0
 
     print("\n" + "=" * 60)
-    print("  TEST 52 — @export validation & edge cases")
+    print("  TEST 48 — @export validation & edge cases")
     print("=" * 60)
 
     _test_wildcard_export()
