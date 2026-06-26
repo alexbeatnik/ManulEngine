@@ -1204,8 +1204,7 @@ Set `executable_path` in the configuration and use `OPEN APP` instead of `NAVIGA
 **`manul_engine_configuration.json`:**
 ```json
 {
-  "model": null,
-  "browser": "chromium",
+  "browser": "electron",
   "executable_path": "/path/to/electron-app"
 }
 ```
@@ -1293,17 +1292,13 @@ Pauses execution at that point. In `--debug` mode, highlights the resolved eleme
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `model` | `null` | Ollama model name. `null` = heuristics-only (no AI). |
 | `headless` | `false` | Hide the browser window. |
-| `browser` | `"chromium"` | Browser engine: `chromium`, `firefox`, or `webkit`. |
+| `browser` | `"chromium"` | Launch mode: `chromium` (launch system Chrome) or `electron` (attach over CDP). |
 | `browser_args` | `[]` | Extra launch flags (array of strings). |
-| `channel` | `null` | Installed browser channel: `"chrome"`, `"chrome-beta"`, `"msedge"`. |
-| `executable_path` | `null` | Path to Electron or custom browser executable. |
+| `channel` | `null` | Chrome/Chromium binary: `"chrome"`, `"chrome-beta"`, `"msedge"`, `"chromium"`. |
+| `executable_path` | `null` | Path to a Chrome/Chromium (or Electron) executable. |
 | `timeout` | `5000` | Default action timeout (ms). |
 | `nav_timeout` | `30000` | Navigation timeout (ms). |
-| `ai_threshold` | auto | Score threshold before LLM fallback. |
-| `ai_always` | `false` | Always invoke the LLM picker (requires `model`). |
-| `ai_policy` | `"prior"` | Heuristic score treatment: `"prior"` (hint) or `"strict"` (force). |
 | `controls_cache_enabled` | `true` | Persistent per-site controls cache (file-based). |
 | `controls_cache_dir` | `"cache"` | Cache directory (relative or absolute). |
 | `semantic_cache_enabled` | `true` | In-session semantic cache (+200k score boost). |
@@ -1315,7 +1310,7 @@ Pauses execution at that point. In `--debug` mode, highlights the resolved eleme
 | `html_report` | `false` | Generate `reports/manul_report.html`. |
 | `explain_mode` | `false` | Per-channel scoring breakdown in output. |
 | `log_name_maxlen` | `0` | Truncate element names in logs (0 = no limit). |
-| `log_thought_maxlen` | `0` | Truncate LLM thought strings (0 = no limit). |
+| `log_thought_maxlen` | `0` | Truncate verbose diagnostic strings in logs (0 = no limit). |
 
 ### Environment Variable Overrides
 
@@ -1323,7 +1318,6 @@ Environment variables (`MANUL_*`) always override JSON values:
 
 | Variable | Overrides |
 |----------|-----------|
-| `MANUL_MODEL` | `model` |
 | `MANUL_HEADLESS` | `headless` |
 | `MANUL_BROWSER` | `browser` |
 | `MANUL_BROWSER_ARGS` | `browser_args` (comma/space-separated) |
@@ -1333,19 +1327,6 @@ Environment variables (`MANUL_*`) always override JSON values:
 | `MANUL_EXPLAIN` | `explain_mode` |
 | `MANUL_CUSTOM_CONTROLS_DIRS` | `custom_controls_dirs` (comma-separated) |
 | `MANUL_LOG_LEVEL` | Logging verbosity |
-
-### AI threshold auto-calculation
-
-When `model` is set but `ai_threshold` is not:
-
-| Model size | Threshold |
-|------------|-----------|
-| < 1B params | 500 |
-| 1–4B | 750 |
-| 5–9B | 1000 |
-| 10–19B | 1500 |
-| 20B+ | 2000 |
-| `null` (no model) | 0 |
 
 ---
 

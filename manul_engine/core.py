@@ -17,7 +17,6 @@ drag-and-drop, click/type/select/hover via _execute_step).
 import asyncio
 import base64
 import inspect
-import json
 import os
 import re
 import sys
@@ -69,7 +68,6 @@ from .helpers import (
 )
 from .hooks import bind_hook_result, execute_hook_line
 from .js_scripts import SNAPSHOT_JS
-from .llm import create_provider
 from .logging_config import logger
 from .reporting import BlockResult, MissionResult, StepResult
 from .scoring import SCALE, score_elements
@@ -96,11 +94,9 @@ def _confidence(score: int) -> float:
 class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
     def __init__(
         self,
-        model: "str | None" = None,
         headless: "bool | None" = None,
         browser: "str | None" = None,
         browser_args: "list[str] | None" = None,
-        ai_threshold: "int | None" = None,
         debug_mode: bool = False,
         break_steps: "set[int] | None" = None,
         break_file_lines: "set[int] | None" = None,
@@ -116,8 +112,6 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         # Priority: explicit kwargs > EngineConfig > prompts module globals.
         _cfg = config
 
-        # None model → heuristics-only mode (AI fully disabled)
-        self.model = model if model is not None else (_cfg.model if _cfg else prompts.DEFAULT_MODEL)
         self.headless = headless if headless is not None else (_cfg.headless if _cfg else prompts.HEADLESS_MODE)
         # The CDP backend always drives Chrome/Chromium; 'electron' attaches to a
         # running Chrome/Electron over CDP instead of launching a fresh browser.
@@ -181,22 +175,10 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             _cfg.verify_max_retries if _cfg else int(getattr(prompts, "VERIFY_MAX_RETRIES", 15))
         )
 
-        # ── AI settings (stored per-instance, not read from module globals at runtime) ──
-        _ai_always_default = _cfg.ai_always if _cfg else bool(getattr(prompts, "AI_ALWAYS", False))
-        self._ai_always: bool = _kwargs.pop("ai_always", _ai_always_default)
-        _ai_policy_default = _cfg.ai_policy if _cfg else str(getattr(prompts, "AI_POLICY", "prior"))
-        self._ai_policy: str = _kwargs.pop("ai_policy", _ai_policy_default)
-
         # ── Auto-annotate ─────────────────────────────────────────────────
         _auto_annotate_default = _cfg.auto_annotate if _cfg else prompts.AUTO_ANNOTATE
         self._auto_annotate: bool = _kwargs.pop("auto_annotate", _auto_annotate_default)
 
-        # Resolve model-specific settings once at construction time.
-        # get_threshold returns 0 when self.model is None → AI is disabled.
-        _ai_thr = ai_threshold if ai_threshold is not None else (_cfg.ai_threshold if _cfg else None)
-        self._threshold = prompts.get_threshold(self.model, _ai_thr)
-        self._executor_prompt = prompts.get_executor_prompt(self.model)
-        self._planner_prompt = prompts.PLANNER_SYSTEM_PROMPT
         self.debug_mode = debug_mode
         if explain_mode is not None:
             self.explain_mode = explain_mode
@@ -224,13 +206,9 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             if _cfg
             else list(getattr(_prompts_mod, "CUSTOM_CONTROLS_DIRS", ["controls"]))
         )
-        # LLM provider (delegates to Ollama or no-op for heuristics-only mode).
-        self._llm = create_provider(self.model)
         # What-if REPL: when the debugger's Explain Next session chooses a step
         # to execute, it is stored here and injected into the mission flow.
         self._what_if_execute_step: str | None = None
-        if self.model is None:
-            print("    ℹ️  No model configured — running in heuristics-only mode (AI disabled).")
         if self.debug_mode:
             print("    🐛 Debug mode ON — engine will pause before each step.")
 
@@ -248,137 +226,6 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
 
     # ── Persistent controls cache ─────────────────────────────────────
     # All cache methods live in engine/cache.py (_ControlsCacheMixin).
-
-    # ── LLM helpers ───────────────────────────
-
-    def _passes_anti_phantom_guard(
-        self,
-        *,
-        mode: str,
-        is_blind: bool,
-        search_texts: list[str],
-        target_field: str | None,
-        ai_choice: dict,
-    ) -> bool:
-        if mode not in ("input", "select") or is_blind:
-            return True
-
-        search_terms = [t.lower() for t in search_texts]
-        if target_field:
-            search_terms.append(target_field.lower())
-
-        guard_words = set(re.findall(r"\b[a-z0-9]{2,}\b", " ".join(search_terms)))
-        element_text = (
-            f"{ai_choice.get('name', '')} "
-            f"{ai_choice.get('html_id', '')} "
-            f"{ai_choice.get('data_qa', '')} "
-            f"{ai_choice.get('aria_label', '')} "
-            f"{ai_choice.get('placeholder', '')}"
-        ).lower()
-
-        if not guard_words or any(w in element_text for w in guard_words):
-            return True
-
-        missing = search_texts[0] if search_texts else target_field
-        compact_name = compact_log_field(ai_choice.get("name", ""), "MANUL_LOG_NAME_MAXLEN")
-
-        print(f"    👻 ANTI-PHANTOM GUARD: AI chose '{compact_name}', but target '{missing}' is missing. Rejecting.")
-        return False
-
-    async def _llm_json(self, system: str, user: str) -> dict | None:
-        """Send a system+user prompt to the local LLM and parse JSON response.
-
-        Delegates to the configured LLMProvider (Ollama or NullProvider).
-        """
-        return await self._llm.call_json(system, user)
-
-    async def _llm_plan(self, task: str) -> list[str]:
-        """Ask the LLM to decompose a free-text task into numbered steps."""
-        print("    🧠 AI PLANNER: Generating mission steps...")
-        obj = await self._llm_json(self._planner_prompt, task)
-        if not obj:
-            return []
-        steps = obj.get("steps", [])
-        # Small models sometimes return steps as a single newline-joined string
-        # (or a bare scalar) instead of a list; normalise so the caller's
-        # "\n".join() never char-splits a string into garbage.
-        if isinstance(steps, str):
-            return [ln for ln in (s.strip() for s in steps.splitlines()) if ln]
-        if isinstance(steps, list):
-            return [str(s) for s in steps if str(s).strip()]
-        return []
-
-    async def _llm_select_element(
-        self, step: str, mode: str, candidates: list[dict], strategic_context: str
-    ) -> "int | None":
-        """Ask the LLM to pick the best element from scored candidates."""
-        payload = [
-            {
-                "id": el["id"],
-                "score": int(el.get("score", 0)),
-                "name": el["name"],
-                "tag": el.get("tag_name", ""),
-                "input_type": el.get("input_type", ""),
-                "role": el.get("role", ""),
-                "data_qa": el.get("data_qa", ""),
-                "html_id": el.get("html_id", ""),
-                "class_name": el.get("class_name", ""),
-                "icon_classes": el.get("icon_classes", ""),
-                "aria_label": el.get("aria_label", ""),
-                "placeholder": el.get("placeholder", ""),
-                "disabled": el.get("disabled", False),
-                "aria_disabled": el.get("aria_disabled", ""),
-                "is_select": el.get("is_select", False),
-                "is_shadow": el.get("is_shadow", False),
-                "contenteditable": el.get("is_contenteditable", False),
-            }
-            for el in candidates
-        ]
-        prompt = f"STEP: {step}\nMODE: {mode.upper()}\nELEMENTS:\n{json.dumps(payload, ensure_ascii=False)}"
-        system = self._executor_prompt.replace("{strategic_context}", strategic_context)
-        obj = await self._llm_json(system, prompt)
-        if not obj or not isinstance(obj, dict):
-            # In pure-AI mode we must not silently fall back to heuristics.
-            return None if self._ai_always else 0
-
-        raw_id = obj.get("id", None)
-        if raw_id is None:  # fallback for generic keys
-            for key in ["id", '"id"', "ID"]:
-                if key in obj:
-                    raw_id = obj[key]
-                    break
-
-        if raw_id is None or str(raw_id).lower() == "null":
-            thought = obj.get("thought", "No matching element found.")
-            print(f"    🚫 AI REJECTED CANDIDATES: '{thought}'")
-            return None
-
-        try:
-            chosen_id = int(raw_id) if raw_id is not None else None
-        except (TypeError, ValueError):
-            chosen_id = None
-
-        thought = obj.get("thought", "")
-        if chosen_id is not None:
-            idx = next((i for i, el in enumerate(candidates) if el["id"] == chosen_id), 0)
-        else:
-            idx = 0
-
-        # Optional deterministic guard for id-strict synthetic tests.
-        # When MANUL_AI_POLICY=strict, enforce best score even if the LLM picked a neighbor.
-        if self._ai_always and self._ai_policy == "strict" and candidates:
-            best_idx = max(range(len(candidates)), key=lambda i: int(candidates[i].get("score", 0)))
-            if int(candidates[idx].get("score", 0)) < int(candidates[best_idx].get("score", 0)):
-                print(
-                    f"    🧷 AI OVERRIDE (strict): enforcing best score (ai={candidates[idx].get('score', 0)} "
-                    f"< best={candidates[best_idx].get('score', 0)})"
-                )
-                idx = best_idx
-        compact_name = compact_log_field(candidates[idx].get("name", ""), "MANUL_LOG_NAME_MAXLEN")
-        compact_thought = compact_log_field(thought, "MANUL_LOG_THOUGHT_MAXLEN")
-
-        print(f"    🎯 AI DECISION: '{compact_name}' — {compact_thought}")
-        return idx
 
     # ── Visual feedback & debug prompt ────────
     # All debug methods (_highlight, _debug_highlight, _clear_debug_highlight,
@@ -521,7 +368,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             anchor_rect=anchor_rect,
             container_elements=container_elements,
             viewport_height=viewport_height,
-            early_exit_score=self._threshold if self._threshold > 0 else None,
+            early_exit_score=None,
         )
 
     # ── Element resolution ────────────────────
@@ -655,36 +502,9 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         if _had_stale_cache:
             print(f"    🔄 STALE CACHE: Entry invalidated — re-resolving (confidence {_conf:.3f})")
 
-        # Pure-AI mode: usually asks the LLM, but fast-tracks if there is only 1 candidate.
-        # Guard: ai_always has no effect without a model — fall through to heuristics.
-        if self._ai_always and self.model is not None:
-            if len(scored) == 1:
-                print("    ⚡ FAST-TRACK: Found exactly 1 candidate, bypassing AI.")
-                idx = 0
-            else:
-                print(f"    🧠 AI AGENT: Always-AI enabled, analysing {len(top)} candidates…")
-                idx = await self._llm_select_element(step, mode, top, strategic_context)
-
-            if idx is None:
-                self._last_step_healed = False
-                if failed_ids is not None:
-                    for c in top:
-                        failed_ids.add((c.get("frame_index", 0), c["id"]))
-                return None
-            ai_choice = top[idx]
-
-            if not self._passes_anti_phantom_guard(
-                mode=mode,
-                is_blind=is_blind,
-                search_texts=search_texts,
-                target_field=target_field,
-                ai_choice=ai_choice,
-            ):
-                self._last_step_healed = False
-                return None
-
-            return ai_choice
-
+        # ── Deterministic resolution (no LLM in the loop) ────────────────
+        # Resolution is purely heuristic: the highest-confidence gate that
+        # matches wins; otherwise the top-ranked candidate is used.
         if _conf >= THRESHOLD_SEMANTIC_CACHE:
             print(f"    🧠 SEMANTIC CACHE: Reusing learned element (confidence {_conf:.3f})")
             if _had_stale_cache:
@@ -698,55 +518,10 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                 self._last_step_healed = True
             return top[0]
 
-        if best_score >= self._threshold:
-            label = "High confidence" if best_score >= self._threshold * 2 else "Keyword"
-            print(f"    ⚙️  DOM HEURISTICS: {label} match (confidence {_conf:.3f})")
-            if _had_stale_cache:
-                self._last_step_healed = True
-            return top[0]
-
-        # Explicit AI disable switch: threshold <= 0 means "never call the LLM".
-        # (Useful for deterministic runs and environments without Ollama.)
-        if self._threshold <= 0:
-            print(f"    ⚙️  DOM HEURISTICS: AI disabled; using best candidate (confidence {_conf:.3f})")
-            if _had_stale_cache:
-                self._last_step_healed = True
-            return top[0]
-
-        # Genuinely ambiguous → ask the LLM, unless there's only 1 candidate left
-        if len(scored) == 1:
-            print("    ⚡ FAST-TRACK: Found exactly 1 candidate, bypassing AI.")
-            idx = 0
-        else:
-            print(f"    🧠 AI AGENT: Ambiguity detected, analysing {len(top)} candidates…")
-            try:
-                idx = await self._llm_select_element(step, mode, top, strategic_context)
-            except Exception as exc:
-                print(
-                    f"    ⚠️  LLM selection failed ({type(exc).__name__}: {exc}), falling back to top heuristic candidate"
-                )
-                idx = 0
-
-        if idx is None:
-            self._last_step_healed = False
-            if failed_ids is not None:
-                for c in top:
-                    failed_ids.add((c.get("frame_index", 0), c["id"]))
-            return None
-
-        ai_choice = top[idx]
-
-        if not self._passes_anti_phantom_guard(
-            mode=mode,
-            is_blind=is_blind,
-            search_texts=search_texts,
-            target_field=target_field,
-            ai_choice=ai_choice,
-        ):
-            self._last_step_healed = False
-            return None
-
-        return ai_choice
+        print(f"    ⚙️  DOM HEURISTICS: best candidate (confidence {_conf:.3f})")
+        if _had_stale_cache:
+            self._last_step_healed = True
+        return top[0]
 
     # ── Mission runner ────────────────────────
 
@@ -843,8 +618,10 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
     async def _parse_task(self, task: str) -> str:
         """Detect task format and produce executable step text.
 
-        Handles STEP-grouped, numbered, and free-text formats.
-        Free-text tasks are decomposed by the LLM planner.
+        Handles STEP-grouped, numbered, and unnumbered action-line formats.
+        Free-text natural-language tasks are not decomposed — ManulEngine is
+        deterministic and has no planner; author explicit `.hunt` steps (or
+        let an external LLM generate them).
         """
         _has_step_markers = bool(re.search(r"^\s*STEP\s*\d*\s*:", task, re.MULTILINE | re.IGNORECASE))
         _is_numbered = bool(re.match(r"^\s*\d+\.", task))
@@ -853,12 +630,11 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             return task
         if _is_numbered:
             return "\n".join(s.strip() for s in re.split(r"(?=\b\d+\.\s)", task) if s.strip())
-        parsed_task = "\n".join(await self._llm_plan(task))
-        if not parsed_task:
-            print(
-                "    ❌ No plan produced. If you're running without Ollama, provide a numbered or unnumbered step list."
-            )
-        return parsed_task
+        print(
+            "    ❌ No recognizable steps. ManulEngine has no free-text planner — "
+            "provide STEP blocks, a numbered list, or unnumbered action lines."
+        )
+        return ""
 
     async def _evaluate_conditional(
         self,
@@ -1579,8 +1355,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
 
         Returns a :class:`MissionResult` (truthy when status != "fail").
         """
-        mode_label = f"[{self.model}]  — Transparent AI" if self.model else "— Heuristics-only (no AI)"
-        print(f"\n🐾 ManulEngine {mode_label}  |  browser: {self.browser}")
+        print(f"\n🐾 ManulEngine — deterministic heuristics  |  browser: {self.browser}")
 
         # ── Ensure @custom_control handlers required for this mission are loaded ──
         load_custom_controls(

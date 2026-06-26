@@ -1,14 +1,10 @@
 # manul_engine/test/test_48_prompts_config.py
 """
-Unit-test suite for prompts.py — configuration loading, threshold derivation,
+Unit-test suite for prompts.py — configuration loading,
 page name lookup, and environment variable override logic.
 
 Tests:
-  1. get_threshold — model-size auto-derivation.
-  2. get_threshold — custom_threshold override.
-  3. get_threshold — None (heuristics-only) returns 0.
-  4. _threshold_for_model — boundary values.
-  5. lookup_page_name — exact URL match.
+  1. lookup_page_name — exact URL match.
   6. lookup_page_name — regex pattern match.
   7. lookup_page_name — Domain fallback.
   8. lookup_page_name — auto-population for unknown URL.
@@ -32,13 +28,10 @@ from unittest.mock import patch
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from manul_engine.prompts import (
-    _threshold_for_model,
-    get_threshold,
     lookup_page_name,
     _KEY_MAP,
     PAGE_REGISTRY,
     _PAGES_DIR_PATH,
-    AI_POLICY,
     BROWSER,
     SCREENSHOT,
     VERIFY_MAX_RETRIES,
@@ -60,83 +53,6 @@ def _assert(condition: bool, name: str, detail: str = "") -> None:
         _FAIL += 1
         suffix = f" ({detail})" if detail else ""
         print(f"    ❌  {name}{suffix}")
-
-
-# ── 1. _threshold_for_model — auto-derivation ────────────────────────────────
-
-
-def test_threshold_none_model() -> None:
-    _assert(_threshold_for_model(None) == 0, "None model → 0 (heuristics-only)")
-    _assert(_threshold_for_model("") == 0, "empty model → 0")
-
-
-def test_threshold_sub_1b() -> None:
-    _assert(_threshold_for_model("qwen2.5:0.5b") == 500, "0.5b model → 500")
-    _assert(_threshold_for_model("tiny-0.1b") == 500, "0.1b model → 500")
-
-
-def test_threshold_1_to_4b() -> None:
-    _assert(_threshold_for_model("llama3:1b") == 750, "1b model → 750")
-    _assert(_threshold_for_model("phi-3:3.8b") == 750, "3.8b model → 750")
-
-
-def test_threshold_5_to_9b() -> None:
-    _assert(_threshold_for_model("llama3:7b") == 1000, "7b model → 1000")
-    _assert(_threshold_for_model("mistral:5b") == 1000, "5b model → 1000")
-
-
-def test_threshold_10_to_19b() -> None:
-    _assert(_threshold_for_model("codellama:13b") == 1500, "13b model → 1500")
-
-
-def test_threshold_20b_plus() -> None:
-    _assert(_threshold_for_model("llama3:70b") == 2000, "70b model → 2000")
-    _assert(_threshold_for_model("mixtral:22b") == 2000, "22b model → 2000")
-
-
-def test_threshold_no_size_in_name() -> None:
-    _assert(_threshold_for_model("gpt-4") == 500, "no size tag → default 500")
-    _assert(_threshold_for_model("custom-model") == 500, "unparseable → default 500")
-
-
-# ── 2. get_threshold — priority chain ────────────────────────────────────────
-
-
-def test_get_threshold_custom_wins() -> None:
-    _assert(get_threshold("qwen2.5:7b", custom_threshold=42) == 42, "custom_threshold overrides model-derived")
-
-
-def test_get_threshold_env_wins_over_model() -> None:
-    from manul_engine import prompts as _p
-
-    original = _p.ENV_AI_THRESHOLD
-    try:
-        _p.ENV_AI_THRESHOLD = 999
-        _assert(get_threshold("qwen2.5:7b") == 999, "ENV_AI_THRESHOLD overrides model")
-    finally:
-        _p.ENV_AI_THRESHOLD = original
-
-
-def test_get_threshold_custom_wins_over_env() -> None:
-    from manul_engine import prompts as _p
-
-    original = _p.ENV_AI_THRESHOLD
-    try:
-        _p.ENV_AI_THRESHOLD = 999
-        _assert(get_threshold("qwen2.5:7b", custom_threshold=42) == 42, "custom_threshold beats ENV_AI_THRESHOLD")
-    finally:
-        _p.ENV_AI_THRESHOLD = original
-
-
-def test_get_threshold_none_model_no_overrides() -> None:
-    from manul_engine import prompts as _p
-
-    original = _p.ENV_AI_THRESHOLD
-    try:
-        _p.ENV_AI_THRESHOLD = None
-        _assert(get_threshold(None) == 0, "None model, no overrides → 0")
-    finally:
-        _p.ENV_AI_THRESHOLD = original
 
 
 # ── 3. lookup_page_name — exact match ────────────────────────────────────────
@@ -294,14 +210,10 @@ def test_pages_dir_lean_and_wrapped() -> None:
 
 def test_key_map_expected_keys() -> None:
     expected = {
-        "model",
         "headless",
         "browser",
         "timeout",
         "nav_timeout",
-        "ai_threshold",
-        "ai_always",
-        "ai_policy",
         "controls_cache_enabled",
         "controls_cache_dir",
         "semantic_cache_enabled",
@@ -354,10 +266,6 @@ def test_env_bool_default() -> None:
 
 
 # ── 9. Module-level defaults ─────────────────────────────────────────────────
-
-
-def test_ai_policy_valid() -> None:
-    _assert(AI_POLICY in ("prior", "strict"), f"AI_POLICY is '{AI_POLICY}'")
 
 
 def test_browser_valid() -> None:
@@ -422,22 +330,7 @@ async def run_suite() -> tuple[int, int]:
     print("\n🧪 Prompts & Config Test Suite")
     print("=" * 50)
 
-    print("\n  1. _threshold_for_model — auto-derivation")
-    test_threshold_none_model()
-    test_threshold_sub_1b()
-    test_threshold_1_to_4b()
-    test_threshold_5_to_9b()
-    test_threshold_10_to_19b()
-    test_threshold_20b_plus()
-    test_threshold_no_size_in_name()
-
-    print("\n  2. get_threshold — priority chain")
-    test_get_threshold_custom_wins()
-    test_get_threshold_env_wins_over_model()
-    test_get_threshold_custom_wins_over_env()
-    test_get_threshold_none_model_no_overrides()
-
-    print("\n  3. lookup_page_name — exact match")
+    print("\n  1. lookup_page_name — exact match")
     test_lookup_exact_match()
 
     print("\n  4. lookup_page_name — regex match")
@@ -462,7 +355,6 @@ async def run_suite() -> tuple[int, int]:
     test_env_bool_default()
 
     print("\n  9. Module-level constants")
-    test_ai_policy_valid()
     test_browser_valid()
     test_screenshot_valid()
 

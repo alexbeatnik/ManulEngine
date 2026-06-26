@@ -36,7 +36,6 @@ class _DebugMixin:
         current_last_xpath = getattr(self, "last_xpath", None)
         if self._explain_next_debugger is None:
             self._explain_next_debugger = ExplainNextDebugger(
-                llm=self._llm,  # type: ignore[attr-defined]
                 learned_elements=getattr(self, "learned_elements", None),
                 last_xpath=current_last_xpath,
                 engine=self,

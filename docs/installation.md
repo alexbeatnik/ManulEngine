@@ -14,7 +14,6 @@
 
 | Tool | Purpose |
 |------|---------|
-| **Ollama** | Local AI self-healing fallback (not required for normal operation) |
 | **VS Code** | For the companion Manul Engine Extension (Test Explorer, debug runner) |
 | **Docker** | For CI/CD runner image |
 
@@ -49,26 +48,6 @@ pip install manul-engine==0.0.9.29
 playwright install
 ```
 
-## Optional: AI Self-Healing Fallback
-
-ManulEngine works fully without AI — `"model": null` is the recommended default. If you want the optional LLM fallback for genuinely ambiguous elements:
-
-```bash
-pip install "manul-engine[ai]==0.0.9.29"
-```
-
-Then install and start Ollama:
-
-1. Install Ollama from [ollama.com](https://ollama.com)
-2. Pull a model:
-   ```bash
-   ollama pull qwen2.5:0.5b
-   ```
-3. Start the server:
-   ```bash
-   ollama serve
-   ```
-
 ## Install from Source (Development)
 
 ```bash
@@ -76,7 +55,7 @@ git clone https://github.com/alexbeatnik/ManulEngine.git
 cd ManulEngine
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-playwright install
+# Requires a system Google Chrome / Chromium on PATH (the CDP target).
 ```
 
 Verify the installation:
@@ -91,7 +70,6 @@ Create `manul_engine_configuration.json` in your project root. All keys are opti
 
 ```json
 {
-  "model": null,
   "browser": "chromium",
   "controls_cache_enabled": true,
   "semantic_cache_enabled": true
@@ -162,6 +140,5 @@ manul smoke.hunt
 | Problem | Solution |
 |---------|----------|
 | `manul: command not found` | Ensure `pip install` was run in the active venv. Try `python -m manul_engine` as a fallback. |
-| Playwright browser not found | Run `playwright install` after `pip install manul-engine`. |
-| Permission errors on Linux | Playwright may need system dependencies: `playwright install-deps`. |
-| Ollama connection refused | Start the Ollama server: `ollama serve`. Not needed if `model` is `null`. |
+| Chrome/Chromium not found | Install Google Chrome or Chromium and ensure it is on `PATH` (or set `executable_path` / `MANUL_CHANNEL`). |
+| Sandbox errors on Linux/CI | Add `--no-sandbox` via `MANUL_BROWSER_ARGS` (already set in the Docker image). |

@@ -102,7 +102,9 @@ async def run_suite() -> bool:
             "st": ["Mobile number or email"],
             "exp": "_R_6ad",
         },
-        {"n": "10", "step": "Fill 'Password'", "m": "input", "st": ["Password"], "exp": "_R_cla"},
+        # Two fields are labelled "Password" (login + registration). With no LLM in
+        # the loop, "Fill 'Password'" resolves deterministically to the first match.
+        {"n": "10", "step": "Fill 'Password'", "m": "input", "st": ["Password"], "exp": "_R_1h"},
         {"n": "11", "step": "Click 'Submit'", "m": "clickable", "st": ["Submit"], "exp": "reg_submit_click"},
     ]
 
@@ -116,24 +118,6 @@ async def run_suite() -> bool:
             await page.set_content(FB_EXTREME_DOM)
 
             manul = ManulEngine(headless=True, disable_cache=True)
-            manul.model = "mock"  # satisfy AI_ALWAYS guard; real LLM is mocked below
-            manul._ai_always = True
-
-            # Mock LLM for CI environment where Ollama is not present
-            async def _mock_llm_select_element(step, mode, candidates, strategic_context):
-                print(f"    🧠 AI AGENT MOCK: Always-AI enabled, analysing {len(candidates)} candidates…")
-                # For step 10 (Password), return the index of the second password field (Registration)
-                if "Password" in step:
-                    for i, c in enumerate(candidates):
-                        if c.get("html_id") and c["html_id"].startswith("_R_cla"):
-                            print(f"    🎯 AI DECISION MOCK: Selected '{c['name']}' — Registration password")
-                            return i
-                # Otherwise, return the index of the highest scored element (or the first one)
-                if candidates:
-                    return 0
-                return None
-
-            manul._llm_select_element = _mock_llm_select_element
 
             for t in TESTS:
                 print(f"\n🐾 Step {t['n']}: {t['step']}")

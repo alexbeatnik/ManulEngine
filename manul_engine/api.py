@@ -63,22 +63,18 @@ class ManulSession:
 
     def __init__(
         self,
-        model: str | None = None,
         headless: bool | None = None,
         browser: str | None = None,
         browser_args: list[str] | None = None,
-        ai_threshold: int | None = None,
         disable_cache: bool = False,
         semantic_cache: bool | None = None,
         channel: str | None = None,
         executable_path: str | None = None,
     ) -> None:
         self._engine = ManulEngine(
-            model=model,
             headless=headless,
             browser=browser,
             browser_args=browser_args,
-            ai_threshold=ai_threshold,
             disable_cache=disable_cache,
             semantic_cache=semantic_cache,
             channel=channel,

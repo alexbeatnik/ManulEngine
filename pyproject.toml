@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "manul-engine"
 version = "0.1.0"
-description = "Deterministic DSL-first browser automation platform driving Chrome over the DevTools Protocol (CDP) with optional local AI self-healing (Ollama)"
+description = "Deterministic DSL-first browser automation runtime driving Chrome over the DevTools Protocol (CDP) — for humans and LLM agents"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"
@@ -18,7 +18,7 @@ keywords = [
     "web-testing",
     "heuristics",
     "dsl",
-    "ollama",
+    "llm-agents",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -35,13 +35,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-ai = [
-    "ollama>=0.6.1",
-]
 dev = [
     "build",
     "twine",
-    "ollama>=0.6.1",
     "ruff>=0.4.0",
     "mypy>=1.10.0",
 ]

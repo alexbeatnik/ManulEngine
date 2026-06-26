@@ -58,10 +58,6 @@ def _test_constructor() -> None:
     s2 = ManulSession()
     _assert(s2.engine is not None, "default constructor succeeds")
 
-    s3 = ManulSession(model="qwen2.5:0.5b", ai_threshold=500)
-    _assert(s3.engine.model == "qwen2.5:0.5b", "model passed through")
-    _assert(s3.engine._threshold == 500, "ai_threshold passed through")
-
 
 # ── Section 2: Page property guard ───────────────────────────────────────────
 

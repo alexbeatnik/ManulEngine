@@ -34,15 +34,6 @@
 
   "keys": [
     {
-      "key": "model",
-      "envVar": "MANUL_MODEL",
-      "type": "string | null",
-      "default": null,
-      "description": "Ollama model name for LLM fallback. null = heuristics-only mode (AI fully disabled, threshold forced to 0). No Ollama dependency needed when null.",
-      "examples": [null, "qwen2.5:0.5b", "llama3.2:1b"],
-      "validation": "Free-form string or null. Model must be pulled locally via `ollama pull <model>` before use."
-    },
-    {
       "key": "headless",
       "envVar": "MANUL_HEADLESS",
       "type": "boolean",
@@ -103,48 +94,6 @@
       "description": "Navigation timeout for NAVIGATE, page loads, and WAIT FOR RESPONSE.",
       "minimum": 0
     },
-    {
-      "key": "ai_threshold",
-      "envVar": "MANUL_AI_THRESHOLD",
-      "type": "integer | null",
-      "default": null,
-      "description": "Score threshold (scaled integer) below which the LLM fallback is triggered. null = auto-derive from model size. Ignored when model is null.",
-      "autoCalculation": {
-        "function": "_threshold_for_model(model_name)",
-        "rules": [
-          { "modelSize": "null (no model)",      "threshold": 0 },
-          { "modelSize": "< 1B parameters",      "threshold": 500 },
-          { "modelSize": "1B – 4B parameters",   "threshold": 750 },
-          { "modelSize": "5B – 9B parameters",   "threshold": 1000 },
-          { "modelSize": "10B – 19B parameters",  "threshold": 1500 },
-          { "modelSize": "20B+ parameters",       "threshold": 2000 }
-        ],
-        "sizeExtraction": "Regex on model name — extracts first number before 'b' (e.g., qwen2.5:0.5b → 0.5)"
-      },
-      "resolutionOrder": [
-        "Explicit ManulEngine constructor parameter (custom_threshold)",
-        "MANUL_AI_THRESHOLD env var or config key",
-        "Auto-calculated from model name",
-        "0 when model is null"
-      ]
-    },
-    {
-      "key": "ai_always",
-      "envVar": "MANUL_AI_ALWAYS",
-      "type": "boolean",
-      "default": false,
-      "description": "Force LLM picker for every element resolution (bypasses heuristic short-circuits). Has no effect and is forced to false when model is null.",
-      "guard": "VS Code config panel forces false when model field is empty."
-    },
-    {
-      "key": "ai_policy",
-      "envVar": "MANUL_AI_POLICY",
-      "type": "string",
-      "default": "prior",
-      "allowedValues": ["prior", "strict"],
-      "description": "How to treat heuristic score in the LLM picker. 'prior' = score as a hint. 'strict' = force max-score element."
-    },
-    {
       "key": "controls_cache_enabled",
       "envVar": "MANUL_CONTROLS_CACHE_ENABLED",
       "type": "boolean",
@@ -192,7 +141,7 @@
       "envVar": "MANUL_LOG_THOUGHT_MAXLEN",
       "type": "integer",
       "default": 0,
-      "description": "If > 0, truncates LLM 'thought' strings in console log output.",
+      "description": "If > 0, truncates verbose 'thought'/diagnostic strings in console log output.",
       "minimum": 0
     },
     {
@@ -378,30 +327,6 @@
         "type": "integer (seconds)",
         "default": 1800,
         "description": "TTL for HTML report session state merging. Older sessions start fresh."
-      },
-      {
-        "var": "MANUL_LLM_TEMPERATURE",
-        "type": "float",
-        "default": 0.0,
-        "description": "Ollama sampling temperature for the element-picker/planner. 0 = greedy/deterministic (recommended — the engine's contract is reproducible picks). Read once at OllamaProvider construction (manul_engine/llm.py)."
-      },
-      {
-        "var": "MANUL_LLM_NUM_CTX",
-        "type": "integer",
-        "default": 0,
-        "description": "Ollama context-window override (num_ctx). 0 = use the model's default. Read once at OllamaProvider construction."
-      },
-      {
-        "var": "MANUL_LLM_RETRIES",
-        "type": "integer",
-        "default": 1,
-        "description": "Extra attempts after the first when the LLM returns an empty/unparseable reply. A refused connection fails fast (no retry). Read once at OllamaProvider construction."
-      },
-      {
-        "var": "MANUL_LLM_KEEP_ALIVE",
-        "type": "string",
-        "default": "",
-        "description": "Ollama keep_alive (e.g. '5m', '-1'). Empty = server default. Read once at OllamaProvider construction."
       }
     ]
   }

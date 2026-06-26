@@ -20,7 +20,7 @@ Usage::
     engine = ManulEngine(config=cfg)
 
     # Or construct programmatically:
-    cfg = EngineConfig(model=None, headless=True, channel="chrome")
+    cfg = EngineConfig(headless=True, channel="chrome")
     engine = ManulEngine(config=cfg)
 """
 
@@ -68,7 +68,6 @@ class EngineConfig:
         cfg = EngineConfig(headless=True, channel="chrome")
     """
 
-    model: str | None = None
     headless: bool = False
     browser: str = "chromium"
     browser_args: tuple[str, ...] = ()
@@ -76,9 +75,6 @@ class EngineConfig:
     executable_path: str | None = None
     timeout: int = 5000
     nav_timeout: int = 30000
-    ai_threshold: int | None = None
-    ai_always: bool = False
-    ai_policy: str = "prior"
     controls_cache_enabled: bool = True
     controls_cache_dir: str = "cache"
     semantic_cache_enabled: bool = True
@@ -176,24 +172,6 @@ class EngineConfig:
                 return str(val).strip()
             return None
 
-        def _optional_int(key: str, env: str) -> int | None:
-            env_val = os.getenv(env)
-            if env_val is not None:
-                try:
-                    return int(env_val)
-                except ValueError:
-                    return None
-            val = raw.get(key)
-            if val is not None:
-                try:
-                    return int(val)
-                except (TypeError, ValueError):
-                    return None
-            return None
-
-        # ── model ──
-        model = _optional_str("model", "MANUL_MODEL")
-
         # ── browser_args (special: list type) ──
         browser_args: list[str] = []
         if "MANUL_BROWSER_ARGS" in os.environ:
@@ -230,7 +208,6 @@ class EngineConfig:
         screenshot = _ss if _ss in _valid_ss else "on-fail"
 
         cfg = cls(
-            model=model,
             headless=_bool("headless", "MANUL_HEADLESS"),
             browser=browser,
             browser_args=tuple(browser_args),
@@ -238,9 +215,6 @@ class EngineConfig:
             executable_path=_optional_str("executable_path", "MANUL_EXECUTABLE_PATH"),
             timeout=_int("timeout", "MANUL_TIMEOUT", 5000),
             nav_timeout=_int("nav_timeout", "MANUL_NAV_TIMEOUT", 30000),
-            ai_threshold=_optional_int("ai_threshold", "MANUL_AI_THRESHOLD"),
-            ai_always=_bool("ai_always", "MANUL_AI_ALWAYS"),
-            ai_policy=_str("ai_policy", "MANUL_AI_POLICY", "prior"),
             controls_cache_enabled=_bool("controls_cache_enabled", "MANUL_CONTROLS_CACHE_ENABLED", True),
             controls_cache_dir=_resolve_cache_dir(_str("controls_cache_dir", "MANUL_CONTROLS_CACHE_DIR", "cache")),
             semantic_cache_enabled=_bool("semantic_cache_enabled", "MANUL_SEMANTIC_CACHE_ENABLED", True),
@@ -290,9 +264,6 @@ class EngineConfig:
 
         if self.retries < 0:
             raise ConfigurationError(f"retries must be non-negative; got {self.retries}")
-
-        if self.ai_always and self.model is None:
-            raise ConfigurationError("ai_always=True requires a model to be configured")
 
     # ── Convenience ───────────────────────────────────────────────────────
 

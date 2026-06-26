@@ -468,7 +468,7 @@
       "label": "@context:",
       "uiText": "@context: description",
       "snippet": "@context: ${1:description}",
-      "description": "Strategic context passed to the engine and LLM planner. Placed at the top of the file."
+      "description": "Strategic context for the mission (documentation / agent hint). Placed at the top of the file."
     },
     {
       "id": "title",

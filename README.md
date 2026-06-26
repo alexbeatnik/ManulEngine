@@ -309,22 +309,9 @@ This is the same philosophy as the Go sibling [ManulHeart](https://github.com/al
 
 Manual QA writes plain-English `.hunt` steps — no code required. SDETs extend the same files with Python hooks (`[SETUP]` / `[TEARDOWN]`, `CALL PYTHON`), lifecycle orchestration (`@before_all` / `@after_all`), and `@custom_control` handlers for complex widgets. Both personas work on the same artifact.
 
-### Optional AI, off by default
+### No AI in the loop — fully deterministic
 
-`"model": null` is the recommended default. When a local Ollama model is enabled, it acts as a last-resort fallback for genuinely ambiguous elements. The engine is not AI-powered — it is heuristics-first with an optional AI safety net.
-
-When the LLM safety net *is* engaged, the transport is tuned for the same determinism the heuristics promise:
-
-- **Pinned sampling** — every Ollama call sends `temperature=0` (override with `MANUL_LLM_TEMPERATURE`), so the same page yields the same element pick run-to-run.
-- **Retry-once on malformed JSON** — small local models occasionally emit a stray token or a truncated object; one retry (tune with `MANUL_LLM_RETRIES`) recovers most of those, while a genuinely down server fails fast with an actionable *"is `ollama serve` running?"* hint instead of a silent miss.
-- **Sanitized prompts** — page prose handed to the model is stripped of base64 blobs, `data-*` attribute dumps and SVG path noise, then bounded by a character budget, keeping prompts cheap and on-topic.
-
-| Env var | Default | Purpose |
-| --- | --- | --- |
-| `MANUL_LLM_TEMPERATURE` | `0.0` | Sampling temperature (0 = deterministic). |
-| `MANUL_LLM_NUM_CTX` | `0` | Context-window override (0 = model default). |
-| `MANUL_LLM_RETRIES` | `1` | Extra attempts on empty/unparseable replies. |
-| `MANUL_LLM_KEEP_ALIVE` | _(server default)_ | Ollama `keep_alive` (e.g. `5m`, `-1`). |
+ManulEngine has **no LLM inside it**. Element resolution is 100% the deterministic `DOMScorer` — same page state + same step ⇒ same result, every run, with no model to install, no temperature to pin, and no network calls. The *intelligence* lives in the external agent that drives the engine via the [agent commands](#agent-commands--drive-the-engine-from-an-external-llm) (`map` / `run-step` / `read` / `schema`); the runtime itself stays a predictable execution layer. (An optional in-process Ollama fallback existed in early development — it was removed in favour of this clean split.)
 
 ---
 
@@ -374,13 +361,6 @@ pip install manul-engine==0.1.0
 # Requires a system-installed Google Chrome / Chromium on PATH.
 ```
 
-Optional local AI fallback (not required):
-
-```bash
-pip install "manul-engine[ai]==0.1.0"
-ollama pull qwen2.5:0.5b && ollama serve
-```
-
 ### Configure
 
 Create `manul_engine_configuration.json` in the workspace root. All keys are optional:
@@ -408,13 +388,9 @@ manul --headless --html-report tests/            # CI mode with reports
 
 | Key | Default | Description |
 |---|---|---|
-| `model` | `null` | Ollama model name. `null` = heuristics-only. |
 | `headless` | `false` | Hide the browser window. |
 | `browser` | `"chromium"` | `chromium` (launch system Chrome) or `electron` (attach to a running Chrome/Electron over CDP). |
 | `browser_args` | `[]` | Extra browser launch flags. |
-| `ai_threshold` | auto | Score threshold before LLM fallback. |
-| `ai_always` | `false` | Always invoke LLM picker (requires `model`). |
-| `ai_policy` | `"prior"` | Heuristic score as prior hint or strict constraint. |
 | `controls_cache_enabled` | `true` | Persistent per-site controls cache. |
 | `controls_cache_dir` | `"cache"` | Cache directory (relative or absolute). |
 | `semantic_cache_enabled` | `true` | In-session semantic cache (+200k score boost). |
@@ -431,7 +407,7 @@ manul --headless --html-report tests/            # CI mode with reports
 | `html_report` | `false` | Generate `reports/manul_report.html`. |
 | `explain_mode` | `false` | Per-channel scoring breakdown in output. |
 
-Environment variables (`MANUL_HEADLESS`, `MANUL_BROWSER`, `MANUL_MODEL`, `MANUL_WORKERS`, etc.) always override JSON config.
+Environment variables (`MANUL_HEADLESS`, `MANUL_BROWSER`, `MANUL_CHANNEL`, `MANUL_WORKERS`, etc.) always override JSON config.
 
 ### Docker
 
@@ -483,13 +459,10 @@ ManulEngine is alpha-stage and solo-developed. If deterministic, explainable bro
 
 ## What's New in v0.1.0
 
+- **Ollama / in-process LLM removed (BREAKING):** ManulEngine is now purely deterministic — there is no in-engine model. The `model`, `ai_threshold`, `ai_always`, `ai_policy` settings (and `MANUL_MODEL` / `MANUL_AI_*` / `MANUL_LLM_*` env vars) are gone, along with the free-text task planner and the What-If *LLM* analysis (the deterministic explain-next dry-run stays). Intelligence now lives in the external agent that drives the engine via the agent commands.
 - **Playwright removed — native Chrome DevTools Protocol backend (BREAKING):** the entire browser layer is now ManulEngine's own CDP client in [`manul_engine/cdp/`](manul_engine/cdp/), driving system Chrome/Chromium over a raw WebSocket. The only runtime dependency is `websockets` (no Playwright, no Node.js, no bundled browser download). `ManulSession.page` is now a `manul_engine.cdp.CDPPage`; per-frame iframe routing uses real per-frame execution contexts. **Install requires a system Chrome/Chromium on `PATH`** (`playwright install` is gone).
 - **`browser` is Chromium-only:** `firefox` / `webkit` are no longer accepted (CDP is Chrome's protocol). `browser` now selects launch mode — `chromium` (launch) or `electron` (attach to a running Chrome/Electron over CDP); choose the binary with `channel` / `executable_path`.
 - **Agent CLI commands for external LLM drivers:** new `manul schema` / `map` / `read` / `run-step` subcommands emit compact JSON (stdout) while engine logs stay on stderr, attaching to an already-running Chrome over CDP — the surface an external model uses to see the page, act, and read by human label. Mirrors ManulHeart's agent commands.
-- **Deterministic LLM transport:** every Ollama call now pins `temperature=0` (override via `MANUL_LLM_TEMPERATURE`) so the optional AI safety net resolves the same element the same way run-to-run — matching the determinism the heuristic resolver already guarantees. New `MANUL_LLM_NUM_CTX` / `MANUL_LLM_RETRIES` / `MANUL_LLM_KEEP_ALIVE` knobs round out the transport config.
-- **Retry-once + actionable errors:** a malformed or truncated JSON reply from a small local model is retried once before giving up, while a genuinely unreachable server fails fast with an *"is `ollama serve` running?"* hint instead of a silent miss.
-- **Sanitized LLM prompts:** page prose fed to the model (e.g. the Explain-Next What-If analysis) is stripped of base64 blobs, `data-*` dumps and SVG path noise and bounded by a character budget — cheaper, on-topic prompts (`sanitize_for_llm` / `truncate_for_llm`, ported from the ManulHeart agent layer).
-- **Robustness fixes:** the planner no longer char-splits a string `steps` reply into garbage, and the JSON extractor returns `None` instead of raising on non-object output.
 
 <details>
 <summary>v0.0.9.32 — FULL SCAN, WAIT FOR SELECTOR, CSS-aware waits</summary>

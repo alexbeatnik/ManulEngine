@@ -10,9 +10,7 @@ Tests:
   5.  Heuristic-only evaluation with matching element
   6.  Heuristic-only evaluation with no matching element
   7.  Heuristic-only evaluation for system commands (NAVIGATE, WAIT)
-  8.  LLM-backed evaluation parses response correctly
-  9.  LLM returns invalid JSON — falls back to heuristics
-  10. LLM returns None — falls back to heuristics
+  10. Heuristic dry-run of a system command
   11. evaluate() history tracking
   12. Multiple evaluations accumulate in history
   13. _heuristic_pre_check with empty element list
@@ -22,8 +20,7 @@ Tests:
   17. PageContext.to_prompt_text includes disabled state
   18. evaluate() extracts quoted targets for scoring
   19. System command evaluation gives high score
-  20. NullProvider-based debugger works (heuristics-only)
-  21. WHAT_IF_SYSTEM_PROMPT is well-formed
+  20. Debugger starts with empty history (heuristics-only)
   22. capture_page_context returns PageContext (mock page)
   23. WhatIfResult suggestion field included in report
   24. WhatIfResult with zero score shows IMPOSSIBLE label
@@ -45,13 +42,11 @@ from manul_engine.explain_next import (
     ExplainNextDebugger,
     PageContext,
     WhatIfResult,
-    WHAT_IF_SYSTEM_PROMPT,
     capture_page_context,
     _heuristic_pre_check,
     _HeuristicHit,
     _VISIBLE_TEXT_JS,
 )
-from manul_engine.llm import NullProvider
 from manul_engine.scoring import SCALE
 
 # ── Test helpers ──────────────────────────────────────────────────────────────
@@ -116,16 +111,6 @@ def _run(coro):
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             return pool.submit(asyncio.run, coro).result()
     return asyncio.run(coro)
-
-
-class FakeLLM:
-    """Mock LLM provider that returns a canned response dict."""
-
-    def __init__(self, response: dict | None = None):
-        self._response = response
-
-    async def call_json(self, system: str, user: str) -> dict | None:
-        return self._response
 
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
@@ -201,7 +186,7 @@ def test_04_format_report_structure():
 
 def test_05_heuristic_only_with_match():
     """Heuristic-only evaluation when a strong match exists."""
-    debugger = ExplainNextDebugger(llm=NullProvider())
+    debugger = ExplainNextDebugger()
     els = [
         _make_el(name="Login button", data_qa="login-btn", id=1),
         _make_el(name="Cancel link", tag_name="a", id=2),
@@ -228,7 +213,7 @@ def test_05_heuristic_only_with_match():
 
 def test_06_heuristic_only_no_match():
     """Heuristic-only evaluation when no element matches."""
-    debugger = ExplainNextDebugger(llm=NullProvider())
+    debugger = ExplainNextDebugger()
     result = debugger._heuristic_only_result(
         step="Click the 'Nonexistent' button",
         step_class="action",
@@ -244,7 +229,7 @@ def test_06_heuristic_only_no_match():
 
 def test_07_system_command_high_score():
     """System commands like NAVIGATE, WAIT get high scores without element resolution."""
-    debugger = ExplainNextDebugger(llm=NullProvider())
+    debugger = ExplainNextDebugger()
     for kind in ("navigate", "wait", "scroll", "press_enter", "done"):
         result = debugger._heuristic_only_result(
             step=f"NAVIGATE to https://example.com",
@@ -257,49 +242,9 @@ def test_07_system_command_high_score():
         _assert(result.score >= 8, f"system command '{kind}' → high score", f"got {result.score}")
 
 
-def test_08_llm_backed_evaluation():
-    """LLM-backed evaluation parses a valid response correctly."""
-    llm_response = {
-        "score": 9,
-        "target_found": True,
-        "target_element": "<button> Submit",
-        "explanation": "Clicks the submit button to send the form",
-        "risk": "Form will be submitted",
-        "suggestion": None,
-    }
-    debugger = ExplainNextDebugger(llm=FakeLLM(llm_response))
-
-    # Mock async page
-    mock_page = AsyncMock()
-    mock_page.url = "https://example.com/form"
-    mock_page.title = AsyncMock(return_value="Form Page")
-    mock_page.frames = []
-    mock_page.evaluate = AsyncMock(return_value="Submit your form")
-
-    result = _run(debugger.evaluate(mock_page, "Click the 'Submit' button"))
-    _assert(result.score == 9, "LLM score preserved", f"got {result.score}")
-    _assert(result.target_found, "target_found from LLM")
-    _assert("submit" in result.explanation.lower(), "explanation from LLM")
-
-
-def test_09_llm_invalid_response():
-    """LLM returns None — falls back to heuristics."""
-    debugger = ExplainNextDebugger(llm=FakeLLM(None))
-
-    mock_page = AsyncMock()
-    mock_page.url = "https://example.com"
-    mock_page.title = AsyncMock(return_value="Test")
-    mock_page.frames = []
-    mock_page.evaluate = AsyncMock(return_value="")
-
-    result = _run(debugger.evaluate(mock_page, "Click the 'Missing' button"))
-    _assert(isinstance(result, WhatIfResult), "returns WhatIfResult on LLM failure")
-    _assert("Heuristic-only" in result.risk, "risk mentions heuristic fallback")
-
-
 def test_10_llm_returns_none():
-    """NullProvider always returns None — heuristic fallback."""
-    debugger = ExplainNextDebugger(llm=NullProvider())
+    """Heuristic-only dry-run of a system command."""
+    debugger = ExplainNextDebugger()
 
     mock_page = AsyncMock()
     mock_page.url = "https://example.com"
@@ -315,7 +260,7 @@ def test_10_llm_returns_none():
 
 def test_11_history_tracking():
     """evaluate() appends to history."""
-    debugger = ExplainNextDebugger(llm=NullProvider())
+    debugger = ExplainNextDebugger()
 
     mock_page = AsyncMock()
     mock_page.url = "https://example.com"
@@ -330,7 +275,7 @@ def test_11_history_tracking():
 
 def test_12_multiple_history():
     """Multiple evaluations accumulate."""
-    debugger = ExplainNextDebugger(llm=NullProvider())
+    debugger = ExplainNextDebugger()
 
     mock_page = AsyncMock()
     mock_page.url = "https://example.com"
@@ -404,16 +349,8 @@ def test_17_prompt_text_disabled_element():
 
 
 def test_18_evaluate_extracts_quoted():
-    """evaluate() extracts quoted targets for heuristic scoring."""
-    llm_response = {
-        "score": 5,
-        "target_found": True,
-        "target_element": "Email field",
-        "explanation": "Would fill the email field",
-        "risk": "None",
-        "suggestion": None,
-    }
-    debugger = ExplainNextDebugger(llm=FakeLLM(llm_response))
+    """evaluate() preserves the step and produces a heuristic result."""
+    debugger = ExplainNextDebugger()
 
     mock_page = AsyncMock()
     mock_page.url = "https://example.com"
@@ -422,13 +359,13 @@ def test_18_evaluate_extracts_quoted():
     mock_page.evaluate = AsyncMock(return_value="")
 
     result = _run(debugger.evaluate(mock_page, "Fill 'Email' field with 'test@test.com'"))
-    _assert(result.score == 5, "score from LLM")
+    _assert(isinstance(result, WhatIfResult), "returns WhatIfResult")
     _assert(result.step == "Fill 'Email' field with 'test@test.com'", "step preserved")
 
 
 def test_19_system_navigate_evaluation():
     """NAVIGATE command gets high score in heuristic-only mode."""
-    debugger = ExplainNextDebugger(llm=NullProvider())
+    debugger = ExplainNextDebugger()
 
     mock_page = AsyncMock()
     mock_page.url = "https://example.com"
@@ -440,21 +377,10 @@ def test_19_system_navigate_evaluation():
     _assert(result.score >= 8, "NAVIGATE gets high score", f"got {result.score}")
 
 
-def test_20_null_provider_debugger():
-    """ExplainNextDebugger works with NullProvider (heuristics-only)."""
-    debugger = ExplainNextDebugger(llm=NullProvider())
-    _assert(isinstance(debugger._llm, NullProvider), "uses NullProvider")
+def test_20_debugger_starts_empty():
+    """ExplainNextDebugger is heuristic-only and starts with empty history."""
+    debugger = ExplainNextDebugger()
     _assert(len(debugger.history) == 0, "history starts empty")
-
-
-def test_21_system_prompt_well_formed():
-    """WHAT_IF_SYSTEM_PROMPT contains essential instructions."""
-    _assert("HYPOTHETICAL" in WHAT_IF_SYSTEM_PROMPT, "mentions hypothetical")
-    _assert("Confidence" in WHAT_IF_SYSTEM_PROMPT or "confidence" in WHAT_IF_SYSTEM_PROMPT, "mentions confidence")
-    _assert("0–10" in WHAT_IF_SYSTEM_PROMPT or "0-10" in WHAT_IF_SYSTEM_PROMPT, "mentions 0-10 scale")
-    _assert("JSON" in WHAT_IF_SYSTEM_PROMPT, "mentions JSON output format")
-    _assert("score" in WHAT_IF_SYSTEM_PROMPT, "mentions score field")
-    _assert("explanation" in WHAT_IF_SYSTEM_PROMPT, "mentions explanation field")
 
 
 def test_22_capture_page_context_mock():
@@ -514,53 +440,9 @@ def test_24_zero_score_impossible():
     _assert("IMPOSSIBLE" in report, "IMPOSSIBLE in report output")
 
 
-def test_25_llm_score_clamping():
-    """LLM score is clamped to 0-10 range."""
-    llm_response = {
-        "score": 15,
-        "target_found": True,
-        "target_element": "btn",
-        "explanation": "ok",
-        "risk": "",
-        "suggestion": None,
-    }
-    debugger = ExplainNextDebugger(llm=FakeLLM(llm_response))
-
-    mock_page = AsyncMock()
-    mock_page.url = "https://example.com"
-    mock_page.title = AsyncMock(return_value="Test")
-    mock_page.frames = []
-    mock_page.evaluate = AsyncMock(return_value="")
-
-    result = _run(debugger.evaluate(mock_page, "Click 'X'"))
-    _assert(result.score == 10, "score clamped to 10", f"got {result.score}")
-
-
-def test_26_llm_negative_score_clamped():
-    """Negative LLM score is clamped to 0."""
-    llm_response = {
-        "score": -5,
-        "target_found": False,
-        "target_element": None,
-        "explanation": "bad",
-        "risk": "fail",
-        "suggestion": None,
-    }
-    debugger = ExplainNextDebugger(llm=FakeLLM(llm_response))
-
-    mock_page = AsyncMock()
-    mock_page.url = "https://x.com"
-    mock_page.title = AsyncMock(return_value="T")
-    mock_page.frames = []
-    mock_page.evaluate = AsyncMock(return_value="")
-
-    result = _run(debugger.evaluate(mock_page, "Click 'Y'"))
-    _assert(result.score == 0, "score clamped to 0", f"got {result.score}")
-
-
 def test_27_history_property_returns_copy():
     """history property returns a copy, not the internal list."""
-    debugger = ExplainNextDebugger(llm=NullProvider())
+    debugger = ExplainNextDebugger()
 
     mock_page = AsyncMock()
     mock_page.url = "https://example.com"
@@ -649,7 +531,6 @@ def test_31_result_to_dict_zero_score():
 def _make_debug_mixin():
     """Create a minimal _DebugMixin instance with required attributes."""
     mixin = _DebugMixin()
-    mixin._llm = NullProvider()
     mixin.learned_elements = {}
     mixin.last_xpath = None
     mixin._debug_continue = False
@@ -855,8 +736,6 @@ ALL_TESTS = [
     test_05_heuristic_only_with_match,
     test_06_heuristic_only_no_match,
     test_07_system_command_high_score,
-    test_08_llm_backed_evaluation,
-    test_09_llm_invalid_response,
     test_10_llm_returns_none,
     test_11_history_tracking,
     test_12_multiple_history,
@@ -867,13 +746,10 @@ ALL_TESTS = [
     test_17_prompt_text_disabled_element,
     test_18_evaluate_extracts_quoted,
     test_19_system_navigate_evaluation,
-    test_20_null_provider_debugger,
-    test_21_system_prompt_well_formed,
+    test_20_debugger_starts_empty,
     test_22_capture_page_context_mock,
     test_23_suggestion_in_report,
     test_24_zero_score_impossible,
-    test_25_llm_score_clamping,
-    test_26_llm_negative_score_clamped,
     test_27_history_property_returns_copy,
     test_28_visible_text_js_is_readonly,
     test_29_explain_next_marker_value,

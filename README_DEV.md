@@ -50,8 +50,8 @@ ManulEngine/
 │   ├── core.py                       ManulEngine class (resolution, mission runner)
 │   ├── cache.py                      Persistent per-site controls cache mixin
 │   ├── debug.py                      _DebugMixin (element highlighting, debug prompt, breakpoint protocol, What-If REPL integration)
-│   ├── explain_next.py               ExplainNextDebugger — interactive What-If Analysis REPL (PageContext, WhatIfResult, heuristic pre-check, LLM dry-run)
-│   ├── llm.py                        LLMProvider protocol + OllamaProvider / NullProvider
+│   ├── explain_next.py               ExplainNextDebugger — interactive What-If dry-run REPL (PageContext, WhatIfResult, heuristic pre-check; deterministic, no LLM)
+│   ├── agent_cli.py                  Agent CLI: schema/map/read/run-step (JSON for external LLM drivers)
 │   ├── logging_config.py             Centralized logging hierarchy (stderr, MANUL_LOG_LEVEL)
 │   ├── actions.py                    Action execution mixin (click, type, select, hover, drag, scan_page)
 │   ├── reporting.py                  StepResult, MissionResult, RunSummary dataclasses; run_history + report-session state persistence
@@ -217,7 +217,7 @@ Most "AI testing" tools are cloud-dependent wrappers that trade speed and reliab
 
 **Dual Persona Workflow — Testing for Humans, Power for Engineers.** QA engineers write `.hunt` files in a plain-English DSL — no programming required. SDETs extend the same files with Python hooks, Custom Controls, and data-driven parameters. Both personas work on the same artifact.
 
-**Optional AI Fallback — Off by Default.** AI (Ollama / local micro-LLMs) is **turned off by default** (`"model": null`). When enabled, it acts as a self-healing fallback — only invoked when heuristic confidence drops below a threshold. No cloud calls. No per-click charges. No flaky non-determinism in your CI pipeline.
+**Fully Deterministic — No In-Engine AI.** Element resolution is 100% the `DOMScorer` heuristic; there is no in-process model. No cloud calls, no per-click charges, no non-determinism in CI. LLM-driven automation happens *outside* the engine via the agent CLI (`manul map`/`run-step`/`read`/`schema`).
 
 ### 🔍 Explainability Layers
 
@@ -569,25 +569,9 @@ Modern websites love to hide elements behind invisible overlays, custom dropdown
 
 The DOM snapshotter walks shadow roots via `TreeWalker` and scans same-origin iframes by iterating `page.frames` (per-frame CDP execution contexts). Every element dict carries a `frame_index`; `_frame_for(page, el)` routes all downstream CDP calls to the correct `CDPFrame`. Cross-origin frames are silently skipped with retry logic (3 attempts, 1.5s backoff on `closed` errors).
 
-### 👻 Anti-Phantom Guard & AI Rejection
+### 🧠 Deterministic resolution — no LLM in the loop
 
-When the optional AI fallback is enabled, strict protection against LLM hallucinations is enforced. If the model is unsure it returns `{"id": null}`; the engine treats that as a rejection, blacklists the candidates, and retries with self-healing.
-
-### 🤖 Optional AI Fallback (Ollama)
-
-When enabled via `"model": "qwen2.5:0.5b"` in config, the local LLM acts purely as a self-healing safety net — only invoked when heuristic confidence drops below a configurable threshold. The heuristic `score` is passed as a **prior** (hint) — the model can override only with a clear reason.
-
-If `ai_threshold` is `null` (default) and a model is set, Manul auto-calculates from the model size:
-
-| Model size | Auto threshold |
-| --- | --- |
-| `< 1b` | `500` |
-| `1b – 4b` | `750` |
-| `5b – 9b` | `1000` |
-| `10b – 19b` | `1500` |
-| `20b+` | `2000` |
-
-Set `"model": null` (the default) to run in **heuristics-only mode** — no Ollama, no AI, fully deterministic. This is the recommended mode for CI pipelines.
+ManulEngine has no in-engine model. Element resolution is 100% the `DOMScorer`: the highest-confidence heuristic gate wins, otherwise the top-ranked candidate is used. Same page state + same step ⇒ same result, every run — ideal for CI. Agentic intelligence lives in the *external* LLM that drives the engine via the agent commands (`manul map` / `run-step` / `read` / `schema`). (An optional in-process Ollama fallback existed in early development and was removed.)
 
 ---
 
@@ -620,14 +604,6 @@ pip install manul-engine==0.1.0
 # Requires system Google Chrome / Chromium on PATH
 ```
 
-Optional — local LLM via Ollama:
-
-```bash
-pip install ollama==0.6.1
-ollama pull qwen2.5:0.5b
-ollama serve
-```
-
 ## ⚙️ Configuration (manul_engine_configuration.json)
 
 Create `manul_engine_configuration.json` in your project root. All keys are optional.
@@ -637,15 +613,11 @@ The public README is expected to keep the full current runtime surface area plus
 
 ```json
 {
-  "model": "qwen2.5:0.5b",
   "headless": false,
   "browser": "chromium",
   "browser_args": [],
   "timeout": 5000,
   "nav_timeout": 30000,
-  "ai_always": false,
-  "ai_policy": "prior",
-  "ai_threshold": null,
   "controls_cache_enabled": true,
   "controls_cache_dir": "cache",
   "semantic_cache_enabled": true,
@@ -662,8 +634,6 @@ The public README is expected to keep the full current runtime surface area plus
   "html_report": false
 }
 ```
-
-> Set `"model": null` (or omit) → heuristics-only mode, no Ollama needed.
 
 Cache layout:
 
@@ -884,11 +854,7 @@ The engine is battle-tested with **3228** synthetic DOM/unit tests across 55 tes
 Run the synthetic suite:
 
 ```bash
-# From repo root (dev mode)
-python run_tests.py
-
-# Heuristics-only (no Ollama), deterministic:
-# Set "model": null in manul_engine_configuration.json
+# From repo root (dev mode) — fully deterministic, no external services
 python run_tests.py
 ```
 

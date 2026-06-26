@@ -28,15 +28,13 @@ async with ManulSession(headless=True) as session:
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `model` | `None` | Ollama model name (`None` = heuristics-only) |
 | `headless` | `False` | Hide the browser window |
-| `browser` | `"chromium"` | `"chromium"`, `"firefox"`, or `"webkit"` |
+| `browser` | `"chromium"` | `"chromium"` (launch) or `"electron"` (attach over CDP) |
 | `browser_args` | `[]` | Extra browser launch flags |
-| `ai_threshold` | `None` | Score threshold for LLM fallback |
 | `disable_cache` | `False` | Disable persistent controls cache |
 | `semantic_cache` | `True` | Enable in-session semantic cache |
-| `channel` | `None` | Installed browser channel |
-| `executable_path` | `None` | Path to Electron / custom browser |
+| `channel` | `None` | Chrome/Chromium binary (`chrome`, `msedge`, `chromium`, …) |
+| `executable_path` | `None` | Path to a Chrome/Chromium / Electron executable |
 
 ### Core methods
 
@@ -248,7 +246,6 @@ jobs:
 ```bash
 export MANUL_HEADLESS=true
 export MANUL_BROWSER_ARGS="--no-sandbox --disable-dev-shm-usage"
-export MANUL_MODEL=                  # empty = heuristics-only
 ```
 
 ---

@@ -11,15 +11,13 @@
   "importPath": "from manul_engine import ManulSession",
 
   "class": "ManulSession",
-  "description": "High-level async context manager for programmatic browser automation. Manages its own Chrome/CDP lifecycle. All element resolution routes through the full ManulEngine pipeline (cache → heuristics → optional LLM fallback).",
+  "description": "High-level async context manager for programmatic browser automation. Manages its own Chrome/CDP lifecycle. All element resolution routes through the deterministic ManulEngine pipeline (cache → heuristics).",
 
   "constructor": {
     "parameters": [
-      { "name": "model",           "type": "str | None",       "default": null,   "description": "Ollama model name. None = heuristics-only." },
       { "name": "headless",        "type": "bool | None",      "default": null,   "description": "Run browser headless. None = read from config." },
-      { "name": "browser",         "type": "str | None",       "default": null,   "description": "'chromium' | 'firefox' | 'webkit'. None = read from config." },
+      { "name": "browser",         "type": "str | None",       "default": null,   "description": "'chromium' (launch) or 'electron' (attach over CDP). None = read from config." },
       { "name": "browser_args",    "type": "list[str] | None", "default": null,   "description": "Extra browser launch flags." },
-      { "name": "ai_threshold",    "type": "int | None",       "default": null,   "description": "Custom LLM fallback threshold." },
       { "name": "disable_cache",   "type": "bool",             "default": false,  "description": "Disable persistent controls cache." },
       { "name": "semantic_cache",  "type": "bool | None",      "default": null,   "description": "Enable in-session semantic cache." },
       { "name": "channel",         "type": "str | None",       "default": null,   "description": "Chrome/Chromium channel binary (e.g. 'chrome', 'msedge')." },

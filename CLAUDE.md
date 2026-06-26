@@ -1,7 +1,7 @@
 # CLAUDE.md — ManulEngine
 
 **Version:** 0.1.0
-**Project:** Deterministic, DSL-first browser & desktop automation runtime driving system Chrome directly over the Chrome DevTools Protocol (CDP, in `manul_engine/cdp/`) with optional local LLM (Ollama) self-healing. (Playwright was removed in 0.1.0 — single runtime dep: `websockets`.)
+**Project:** Deterministic, DSL-first browser & desktop automation runtime driving system Chrome directly over the Chrome DevTools Protocol (CDP, in `manul_engine/cdp/`). Fully deterministic — NO in-engine LLM; external LLM agents drive it via the agent CLI (`manul map`/`run-step`/`read`/`schema`). (Playwright AND the optional Ollama layer were both removed during 0.1.0 — single runtime dep: `websockets`.)
 
 This file is the operating manual for Claude Code working in this repo. It is loaded into every Claude session here. Keep it short, factual, and current — don't restate the README.
 
@@ -22,7 +22,7 @@ manul_engine/
   imports.py      @import / USE block resolution for .hunt libraries
   controls.py     @custom_control registry (page-scoped overrides)
   scoring.py      heuristic element scorer (text · attrs · semantics · proximity · cache)
-  llm.py          LLMProvider (Ollama/Null) + JSON parse, deterministic sampling, sanitize_for_llm
+  agent_cli.py    agent-facing CLI: schema/map/read/run-step (JSON for external LLM drivers)
   scanner.py      DOM snapshot → draft .hunt file (manul scan <URL>)
   recorder.py     interactive recorder (manul record <URL>)
   reporter.py     HTML + JSON test reports
