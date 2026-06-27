@@ -319,6 +319,19 @@ def _test_set_not_confused_with_labels() -> None:
     _assert(classify_step("Fill 'Offset' field with '100'") == "action", "'Offset' label not classified as set_var")
 
 
+def _test_print_step() -> None:
+    """PRINT classification + message extraction (ManulHeart CmdPrint parity)."""
+    from manul_engine.helpers import extract_print_message
+
+    print("\n  ── PRINT step ─────────────────────────────────────────────────")
+    _assert(classify_step('PRINT "hello {x}"') == "print", "PRINT classified as print")
+    _assert(classify_step("3. PRINT value is {x}") == "print", "numbered PRINT classified as print")
+    _assert(classify_step("Click the 'PRINT' button") == "action", "'PRINT' label stays action")
+    _assert(extract_print_message('PRINT "hello {x}"') == "hello {x}", "double-quoted message extracted")
+    _assert(extract_print_message("PRINT 'quoted'") == "quoted", "single-quoted message extracted")
+    _assert(extract_print_message("2. PRINT bare message") == "bare message", "bare message extracted (prefix stripped)")
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Entry point
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -348,6 +361,7 @@ async def run_suite() -> tuple[int, int]:
     _test_set_substitute_memory()
     _test_var_and_set_coexistence()
     _test_set_not_confused_with_labels()
+    _test_print_step()
 
     total = _PASS + _FAIL
     print(f"\n  {'=' * 50}")

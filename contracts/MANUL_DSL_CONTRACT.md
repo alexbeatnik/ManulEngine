@@ -317,6 +317,15 @@
       "category": "data"
     },
     {
+      "id": "print",
+      "label": "PRINT",
+      "uiText": "PRINT \"message {variable}\"",
+      "snippet": "PRINT \"${1:message}\"",
+      "regex": "^\\s*(?:\\d+\\.\\s*)?PRINT\\b",
+      "description": "Logs a message to the run output, with {placeholder} variables substituted and a single layer of surrounding quotes stripped. No element resolution. Mirrors ManulHeart's PRINT (CmdPrint).",
+      "category": "utility"
+    },
+    {
       "id": "debug",
       "label": "DEBUG",
       "uiText": "DEBUG",

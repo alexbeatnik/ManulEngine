@@ -61,6 +61,7 @@ from .helpers import (
     classify_step,
     compact_log_field,
     detect_mode,
+    extract_print_message,
     extract_quoted,
     parse_explicit_wait,
     parse_hunt_blocks,
@@ -1180,6 +1181,9 @@ class ManulEngine(_DebugMixin, _ActionsMixin):
                 print("      📋 DEBUG VARS — current variable state:")
                 print(self.memory.dump())
 
+            elif step_kind == "print":
+                print(f"      📢 PRINT: {extract_print_message(step)}")
+
             elif step_kind == "debug":
                 if not sys.stdin.isatty():
                     print("      🔎 DEBUG/PAUSE step (conditional branch)")
@@ -1699,6 +1703,9 @@ class ManulEngine(_DebugMixin, _ActionsMixin):
                             elif step_kind == "debug_vars":
                                 print("    📋 DEBUG VARS — current variable state:")
                                 print(self.memory.dump())
+
+                            elif step_kind == "print":
+                                print(f"    📢 PRINT: {extract_print_message(step)}")
 
                             elif step_kind == "debug":
                                 if not self.debug_mode:

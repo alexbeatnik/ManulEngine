@@ -63,6 +63,7 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
     ("scan_page", re.compile(r"\bSCAN\s+PAGE\b")),
     ("call_python", re.compile(r"\bCALL\s+PYTHON\b")),
     ("set_var", re.compile(r"^\s*(?:\d+\.\s*)?SET\b")),
+    ("print", re.compile(r"^\s*(?:\d+\.\s*)?PRINT\b")),
     ("debug_vars", re.compile(r"\bDEBUG\s+VARS\b")),
     ("debug", re.compile(r"\b(?:DEBUG|PAUSE)\b")),
     ("done", re.compile(r"\bDONE\b")),
@@ -78,7 +79,7 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
 # Legacy pre-compiled system-step pattern kept for backwards compatibility.
 # Prefer classify_step() for step classification.
 RE_SYSTEM_STEP = re.compile(
-    r"""\b(?:STEP\s*\d*\s*:|WAIT\s+FOR\s+(?:"[^"]+"|'[^']+')\s+TO\s+(?:BE\s+(?:VISIBLE|HIDDEN)|DISAPPEAR)|NAVIGATE|OPEN\s+APP|MOCK\s+(?:GET|POST|PUT|PATCH|DELETE)|WAIT\s+FOR\s+RESPONSE|WAIT|SCROLL|EXTRACT|VERIFY\s+VISUAL|VERIFY\s+SOFTLY|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|SET|DEBUG\s+VARS|DEBUG|PAUSE|DONE|USE|IF\b.+:|ELIF\b.+:|ELSE\s*:|REPEAT\s+\d+\s+TIMES\s*:|FOR\s+EACH\b.+\bIN\b.+:|WHILE\b.+:)(?:\b|$)""",
+    r"""\b(?:STEP\s*\d*\s*:|WAIT\s+FOR\s+(?:"[^"]+"|'[^']+')\s+TO\s+(?:BE\s+(?:VISIBLE|HIDDEN)|DISAPPEAR)|NAVIGATE|OPEN\s+APP|MOCK\s+(?:GET|POST|PUT|PATCH|DELETE)|WAIT\s+FOR\s+RESPONSE|WAIT|SCROLL|EXTRACT|VERIFY\s+VISUAL|VERIFY\s+SOFTLY|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|SET|PRINT|DEBUG\s+VARS|DEBUG|PAUSE|DONE|USE|IF\b.+:|ELIF\b.+:|ELSE\s*:|REPEAT\s+\d+\s+TIMES\s*:|FOR\s+EACH\b.+\bIN\b.+:|WHILE\b.+:)(?:\b|$)""",
     re.IGNORECASE,
 )
 
@@ -644,7 +645,7 @@ def classify_step(step: str) -> str:
     ``"extract"``, ``"verify_visual"``, ``"verify_softly"``,
     ``"verify"``, ``"press_enter"``, ``"press"``, ``"right_click"``,
     ``"upload"``, ``"full_scan"``, ``"scan_page"``, ``"call_python"``, ``"set_var"``,
-    ``"debug_vars"``, ``"debug"``, ``"done"``, ``"use_import"``,
+    ``"print"``, ``"debug_vars"``, ``"debug"``, ``"done"``, ``"use_import"``,
     ``"if_block"``, ``"elif_block"``, ``"else_block"``,
     ``"repeat_loop"``, ``"for_each_loop"``, ``"while_loop"``,
     or ``"action"``.
@@ -665,6 +666,22 @@ def classify_step(step: str) -> str:
         if pattern.search(s_up):
             return kind
     return "action"
+
+
+_RE_PRINT_PREFIX = re.compile(r"^\s*(?:\d+\.\s*)?PRINT\s+", re.IGNORECASE)
+
+
+def extract_print_message(step: str) -> str:
+    """Return the message of a ``PRINT`` step (text after the PRINT keyword).
+
+    A single layer of matching surrounding quotes is stripped. The caller is
+    expected to have already substituted ``{variables}`` (mirrors ManulHeart's
+    ``CmdPrint`` which resolves variables then logs the text).
+    """
+    msg = _RE_PRINT_PREFIX.sub("", step).strip()
+    if len(msg) >= 2 and msg[0] in "\"'" and msg[-1] == msg[0]:
+        msg = msg[1:-1]
+    return msg
 
 
 # ── Pure helpers ──────────────────────────────────────────────────────────────
