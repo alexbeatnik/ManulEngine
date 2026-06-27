@@ -254,6 +254,11 @@ def _write_automation_prefs(user_data_dir: str) -> None:
         "credentials_enable_autosignin": False,
         "profile": {
             "password_manager_enabled": False,
+            # "Warn you if passwords are exposed in a data breach" — Chrome's
+            # password leak/strength check. The --disable-features flag usually
+            # kills it; this pref disables the user-facing toggle for good so the
+            # breach/weak-password bubble never interrupts form-fill automation.
+            "password_manager_leak_detection": False,
             "default_content_setting_values": {"notifications": 2},
         },
         "autofill": {"profile_enabled": False, "credit_card_enabled": False},
