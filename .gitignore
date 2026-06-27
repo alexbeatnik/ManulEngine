@@ -202,6 +202,9 @@ cython_debug/
 # Manul runtime artifacts (reports, logs)
 reports/
 
+# SCREENSHOT step output (manul writes PNGs here under CWD)
+screenshots/
+
 # Accidentally generated stdlib-shadowing files
 os
 sys

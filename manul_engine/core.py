@@ -1105,6 +1105,11 @@ class ManulEngine(_DebugMixin, _ActionsMixin):
             elif step_kind == "scroll":
                 await self._handle_scroll(page, step)
 
+            elif step_kind == "screenshot":
+                _ss_ok, _ss_info = await self._handle_screenshot(page, step)
+                if not _ss_ok:
+                    _step_error = _ss_info
+
             elif step_kind == "extract":
                 if not await self._handle_extract(page, step):
                     _step_error = "Extract failed"
@@ -1604,6 +1609,12 @@ class ManulEngine(_DebugMixin, _ActionsMixin):
 
                             elif step_kind == "scroll":
                                 await self._handle_scroll(page, step)
+
+                            elif step_kind == "screenshot":
+                                _ss_ok, _ss_info = await self._handle_screenshot(page, step)
+                                if not _ss_ok:
+                                    _step_error = _ss_info
+                                    _step_ok = False
 
                             elif step_kind == "extract":
                                 if not await self._handle_extract(page, step):

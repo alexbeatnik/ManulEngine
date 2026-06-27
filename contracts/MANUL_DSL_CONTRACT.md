@@ -326,6 +326,15 @@
       "category": "utility"
     },
     {
+      "id": "screenshot",
+      "label": "SCREENSHOT",
+      "uiText": "SCREENSHOT [\"name\"]",
+      "snippet": "SCREENSHOT \"${1:name}\"",
+      "regex": "^\\s*(?:\\d+\\.\\s*)?SCREENSHOT\\b",
+      "description": "Captures a full-page PNG on demand into screenshots/<name>.png under the CWD (auto-named when no label is given). Mirrors ManulHeart's SCREENSHOT command.",
+      "category": "utility"
+    },
+    {
       "id": "debug",
       "label": "DEBUG",
       "uiText": "DEBUG",

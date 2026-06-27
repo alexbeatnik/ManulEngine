@@ -332,6 +332,19 @@ def _test_print_step() -> None:
     _assert(extract_print_message("2. PRINT bare message") == "bare message", "bare message extracted (prefix stripped)")
 
 
+def _test_screenshot_step() -> None:
+    """SCREENSHOT classification + name extraction (ManulHeart parity)."""
+    from manul_engine.helpers import extract_screenshot_name
+
+    print("\n  ── SCREENSHOT step ────────────────────────────────────────────")
+    _assert(classify_step("SCREENSHOT") == "screenshot", "bare SCREENSHOT classified")
+    _assert(classify_step('SCREENSHOT "after login"') == "screenshot", "named SCREENSHOT classified")
+    _assert(classify_step("Click the 'Screenshot' button") == "action", "'Screenshot' label stays action")
+    _assert(extract_screenshot_name("SCREENSHOT") == "", "bare SCREENSHOT → empty name (auto)")
+    _assert(extract_screenshot_name('SCREENSHOT "after login"') == "after_login", "name slugified")
+    _assert(extract_screenshot_name("2. SCREENSHOT cart.png") == "cart", "numbered + .png stripped")
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Entry point
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -362,6 +375,7 @@ async def run_suite() -> tuple[int, int]:
     _test_var_and_set_coexistence()
     _test_set_not_confused_with_labels()
     _test_print_step()
+    _test_screenshot_step()
 
     total = _PASS + _FAIL
     print(f"\n  {'=' * 50}")

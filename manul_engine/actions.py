@@ -3,6 +3,7 @@ import asyncio
 import hashlib
 import os
 import re
+import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -15,6 +16,7 @@ from .helpers import (
     compact_log_field,
     detect_mode,
     extract_quoted,
+    extract_screenshot_name,
     parse_contextual_hint,
     parse_explicit_wait,
     parse_verify_strict_assertion,
@@ -143,6 +145,26 @@ class _ActionsMixin:
         else:
             await page.evaluate("window.scrollBy(0, window.innerHeight)")
         await asyncio.sleep(SCROLL_WAIT)
+
+    async def _handle_screenshot(self, page, step: str) -> "tuple[bool, str]":
+        """Capture a full-page screenshot on demand (``SCREENSHOT [\"name\"]``).
+
+        Saves a PNG under ``screenshots/`` in the CWD. ManulHeart parity for the
+        explicit ``SCREENSHOT`` DSL step. Returns ``(ok, path_or_error)``.
+        """
+        name = extract_screenshot_name(step)
+        if not name:
+            name = f"screenshot_{int(time.time() * 1000)}"
+        out_dir = os.path.join(os.getcwd(), "screenshots")
+        try:
+            os.makedirs(out_dir, exist_ok=True)
+            out_path = os.path.join(out_dir, f"{name}.png")
+            await page.screenshot(path=out_path, full_page=True)
+            print(f"    📸 SCREENSHOT saved: {out_path}")
+            return True, out_path
+        except Exception as exc:
+            print(f"    ⚠️  SCREENSHOT failed: {exc}")
+            return False, f"Screenshot failed: {exc}"
 
     async def _handle_wait_for_element(self, page, step: str) -> tuple[bool, str]:
         """Handle ``Wait for 'Target' to be visible/hidden/disappear``.
