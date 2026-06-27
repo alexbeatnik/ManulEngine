@@ -108,6 +108,9 @@ Flags:
   --explain                  — print detailed heuristic score breakdown for each element resolution
   --executable-path <path>   — absolute path to a custom browser or Electron app executable
   --cdp <url>                — attach to a running browser at this CDP endpoint (e.g. http://127.0.0.1:9222) instead of launching
+  --json                     — print the final run result as JSON to stdout (human logs go to stderr)
+  --jsonl                    — stream per-step JSON Lines + a final summary line to stdout (human logs go to stderr)
+  --disable-cache            — disable the in-session semantic cache for a fully cold, deterministic run
 
 Pack/install flags:
   --output <dir>             — output directory for `manul pack` (default: current dir)
@@ -154,18 +157,21 @@ Notes:
 
 # ── Tee stdout → log file ─────────────────────────────────────────────────────
 class _Tee:
-    def __init__(self, path: str) -> None:
-        self._term = sys.stdout
+    def __init__(self, path: str, mirror: "object | None" = None) -> None:
+        self._term = sys.stdout  # real stdout — used for isatty + restore
+        # Where human-readable output is mirrored. In --json/--jsonl mode this is
+        # sys.stderr so the real stdout stays clean for the machine payload.
+        self._mirror = mirror if mirror is not None else self._term
         self._file = open(path, "w", encoding="utf-8")
         self.encoding: str = getattr(self._term, "encoding", "utf-8")
 
     def write(self, msg: str) -> int:
-        n = self._term.write(msg)
+        n = self._mirror.write(msg)
         self._file.write(msg)
         return n
 
     def flush(self) -> None:
-        self._term.flush()
+        self._mirror.flush()
         self._file.flush()
 
     def isatty(self) -> bool:
@@ -480,6 +486,7 @@ async def _run_hunt_file(
     explain: bool = False,
     executable_path: "str | None" = None,
     cdp_endpoint: "str | None" = None,
+    disable_cache: bool = False,
 ) -> MissionResult:
     filename = os.path.basename(path)
     print(f"\n{'=' * 60}")
@@ -556,6 +563,7 @@ async def _run_hunt_file(
         required_controls=_required_controls or None,
         executable_path=executable_path,
         cdp_endpoint=cdp_endpoint,
+        disable_cache=disable_cache,
     )
     mission_result = MissionResult(file=path, name=filename, status="fail")
     # Feed global lifecycle vars and per-file @var: declarations as separate scopes
@@ -908,7 +916,19 @@ async def main() -> "int | None":
     debug = "--debug" in args
     html_report = "--html-report" in args
     explain = "--explain" in args
-    args = [a for a in args if a not in ("--headless", "--debug", "--html-report", "--explain")]
+    # Machine output (mirrors ManulHeart): --json prints the final RunSummary as
+    # JSON; --jsonl streams per-step JSON Lines + a final summary line. Either
+    # routes human logs to stderr so stdout carries only the payload.
+    json_out = "--json" in args
+    jsonl_out = "--jsonl" in args
+    # --disable-cache (ManulHeart parity): turn off the in-session semantic cache
+    # for a fully cold, deterministic run.
+    disable_cache = "--disable-cache" in args
+    args = [
+        a
+        for a in args
+        if a not in ("--headless", "--debug", "--html-report", "--explain", "--json", "--jsonl", "--disable-cache")
+    ]
 
     # Extract --break-lines <n,n,...> flag (gutter breakpoints from VS Code).
     break_lines: set[int] = set()
@@ -1033,7 +1053,8 @@ async def main() -> "int | None":
     _reports_dir = os.path.join(os.getcwd(), "reports")
     os.makedirs(_reports_dir, exist_ok=True)
     log_file = os.path.join(_reports_dir, "last_run.log")
-    tee = _Tee(log_file)
+    _json_mode = json_out or jsonl_out
+    tee = _Tee(log_file, mirror=(sys.stderr if _json_mode else None))
     sys.stdout = tee
 
     run_summary: RunSummary | None = None
@@ -1132,6 +1153,7 @@ async def main() -> "int | None":
                     explain=explain,
                     executable_path=executable_path,
                     cdp_endpoint=cdp_endpoint,
+                    disable_cache=disable_cache,
                 )
                 mission_result.tags = file_tags
                 # ── Retry loop ────────────────────────────────────────────
@@ -1149,6 +1171,7 @@ async def main() -> "int | None":
                             explain=explain,
                             executable_path=executable_path,
                             cdp_endpoint=cdp_endpoint,
+                            disable_cache=disable_cache,
                         )
                         mission_result.tags = file_tags
                         mission_result.attempts = attempt
@@ -1199,6 +1222,8 @@ async def main() -> "int | None":
                     flags += ["--executable-path", executable_path]
                 if cdp_endpoint:
                     flags += ["--cdp", cdp_endpoint]
+                if disable_cache:
+                    flags.append("--disable-cache")
                 if retries:
                     flags += ["--retries", str(retries)]
                 if screenshot_mode is not None:
@@ -1338,6 +1363,43 @@ async def main() -> "int | None":
 
         sys.stdout = tee._term
         tee.close()
+
+        # ── Machine output (stdout reserved for the payload) ───────────────
+        if _json_mode and run_summary is not None:
+            _emit_run_json(run_summary, jsonl=jsonl_out)
+
+
+def _emit_run_json(run_summary: "RunSummary", *, jsonl: bool) -> None:
+    """Write the run result to stdout as JSON (``--json``) or JSON Lines
+    (``--jsonl``: one object per step, then a final ``summary`` line).
+
+    Mirrors ManulHeart's machine-output routing. Base64 screenshots are
+    stripped to keep the payload lean for LLM/CI consumers.
+    """
+    from dataclasses import asdict
+
+    payload = asdict(run_summary)
+    for _m in payload.get("missions", []):
+        for _s in _m.get("steps", []):
+            _s.pop("screenshot", None)
+        for _b in _m.get("blocks", []):
+            for _a in _b.get("actions", []):
+                _a.pop("screenshot", None)
+
+    out = sys.stdout
+    if jsonl:
+        for _m in payload.get("missions", []):
+            for _s in _m.get("steps", []):
+                out.write(json.dumps({"type": "step", "mission": _m.get("name", ""), **_s}, ensure_ascii=False) + "\n")
+        summary = {k: v for k, v in payload.items() if k != "missions"}
+        summary["type"] = "summary"
+        summary["missions"] = [
+            {k: v for k, v in _m.items() if k not in ("steps", "blocks")} for _m in payload.get("missions", [])
+        ]
+        out.write(json.dumps(summary, ensure_ascii=False) + "\n")
+    else:
+        out.write(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+    out.flush()
 
 
 def sync_main() -> None:

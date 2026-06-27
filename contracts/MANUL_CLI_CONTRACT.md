@@ -268,6 +268,36 @@
       "appliesTo": ["run"]
     },
     {
+      "id": "json",
+      "flag": "--json",
+      "type": "boolean",
+      "default": false,
+      "configKey": null,
+      "envVar": null,
+      "description": "Print the final RunSummary as indented JSON to stdout; human logs are routed to stderr. Base64 screenshots are stripped. Mirrors ManulHeart's --json.",
+      "appliesTo": ["run"]
+    },
+    {
+      "id": "jsonl",
+      "flag": "--jsonl",
+      "type": "boolean",
+      "default": false,
+      "configKey": null,
+      "envVar": null,
+      "description": "Stream per-step JSON Lines (one object per step, type=step) followed by a final type=summary line to stdout; human logs are routed to stderr. Mirrors ManulHeart's --jsonl.",
+      "appliesTo": ["run"]
+    },
+    {
+      "id": "disable_cache",
+      "flag": "--disable-cache",
+      "type": "boolean",
+      "default": false,
+      "configKey": "semantic_cache_enabled",
+      "envVar": "MANUL_SEMANTIC_CACHE_ENABLED",
+      "description": "Disable the in-session semantic cache (learned_elements) for a fully cold, deterministic run. Mirrors ManulHeart's --disable-cache. Inverse of semantic_cache_enabled.",
+      "appliesTo": ["run"]
+    },
+    {
       "id": "executable_path",
       "flag": "--executable-path",
       "type": "string",
