@@ -1201,6 +1201,11 @@ class ManulEngine(_DebugMixin, _ActionsMixin):
                 print("      🏁 MISSION ACCOMPLISHED")
                 _done = True
 
+            elif step_kind == "end_block":
+                # Explicit block terminator (ManulHeart style) — Engine blocks
+                # are indentation-based, so this is a tolerated no-op.
+                pass
+
             elif step_kind == "use_import":
                 raise RuntimeError(
                     f"Unresolved USE directive at runtime: {step!r}. "
@@ -1730,6 +1735,11 @@ class ManulEngine(_DebugMixin, _ActionsMixin):
                             elif step_kind == "done":
                                 print("    🏁 MISSION ACCOMPLISHED")
                                 done = True
+
+                            elif step_kind == "end_block":
+                                # Explicit block terminator (ManulHeart style) —
+                                # Engine blocks are indentation-based; tolerated no-op.
+                                pass
 
                             elif step_kind == "use_import":
                                 raise RuntimeError(

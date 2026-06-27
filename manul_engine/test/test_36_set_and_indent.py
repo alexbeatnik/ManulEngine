@@ -345,6 +345,15 @@ def _test_screenshot_step() -> None:
     _assert(extract_screenshot_name("2. SCREENSHOT cart.png") == "cart", "numbered + .png stripped")
 
 
+def _test_end_block_terminators() -> None:
+    """Explicit block terminators (ManulHeart style) tolerated as no-ops."""
+    print("\n  ── END block terminators ──────────────────────────────────────")
+    for term in ["END IF", "ENDIF", "END REPEAT", "END WHILE", "END FOR", "END FOR EACH", "  end if  "]:
+        _assert(classify_step(term) == "end_block", f"{term!r} classified as end_block")
+    _assert(classify_step("Click the 'End If' button") == "action", "'End If' label stays action")
+    _assert(classify_step("IF button 'X' exists:") == "if_block", "IF block not broken by END pattern")
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Entry point
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -376,6 +385,7 @@ async def run_suite() -> tuple[int, int]:
     _test_set_not_confused_with_labels()
     _test_print_step()
     _test_screenshot_step()
+    _test_end_block_terminators()
 
     total = _PASS + _FAIL
     print(f"\n  {'=' * 50}")
