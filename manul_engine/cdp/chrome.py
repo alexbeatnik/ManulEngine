@@ -108,9 +108,7 @@ def find_chrome(channel: str | None = None, executable_path: str | None = None) 
         found = shutil.which(cand)
         if found:
             return found
-    raise ChromeNotFoundError(
-        "Chrome/Chromium not found; install Google Chrome or set executable_path / MANUL_CHANNEL"
-    )
+    raise ChromeNotFoundError("Chrome/Chromium not found; install Google Chrome or set executable_path / MANUL_CHANNEL")
 
 
 def sys_is_darwin() -> bool:

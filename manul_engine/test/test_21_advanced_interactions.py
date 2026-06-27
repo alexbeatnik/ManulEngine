@@ -22,12 +22,13 @@ import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
+
 PlaywrightTimeoutError = TimeoutError  # CDP surfaces wait timeouts as builtin TimeoutError
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
-from manul_engine import prompts
-from manul_engine.helpers import classify_step, detect_mode
+from manul_engine import prompts  # noqa: E402  — import after sys.path.insert
+from manul_engine.helpers import classify_step, detect_mode  # noqa: E402
 
 # ── Test helpers ──────────────────────────────────────────────────────────────
 

@@ -15,12 +15,12 @@ ManulEngine resolves each setting through a fixed precedence chain (highest → 
 
 ## When to invoke
 
-- User wants to expose a new tunable: a timeout, a directory, a feature flag, a threshold, an LLM option, etc.
+- User wants to expose a new tunable: a timeout, a directory, a feature flag, a threshold, etc.
 - **Stop and ask first** if the setting needs to be a *new public constructor kwarg* on `ManulEngine`/`ManulSession` — CLAUDE.md lists new public ctor kwargs under "Ask first". Most settings need only the config/env path, not a ctor kwarg.
 
 ## Execution order
 
-1. **EngineConfig field.** Add the field with a typed default to the dataclass in `manul_engine/config.py` (the `model: str | None = None`, `timeout: int = 5000`, … block). Keep the type and default identical to what the contract will state.
+1. **EngineConfig field.** Add the field with a typed default to the dataclass in `manul_engine/config.py` (the `timeout: int = 5000`, `semantic_cache_enabled: bool = True`, … block). Keep the type and default identical to what the contract will state.
 2. **Construction in `from_file`.** Wire it in the `cls(...)` call in `config.py:from_file`, using the right helper:
    - string → `_optional_str("key", "MANUL_KEY")` (or `_str(...)` with a default)
    - int → `_optional_int(...)` / `_int(...)`
@@ -31,7 +31,7 @@ ManulEngine resolves each setting through a fixed precedence chain (highest → 
 4. **Consume it at `__init__`, never at runtime.** In `core.py.__init__` (or wherever it is used), read the value **once** — prefer `EngineConfig` when present, fall back to the `prompts.*` global — and store it on `self`. Do not read `prompts.X` or `os.getenv` at action time. (The one sanctioned exception is `prompts.lookup_page_name()`'s mtime cache — don't add new ones.)
 5. **Contract.** Add the key to `contracts/MANUL_CONFIG_CONTRACT.md`:
    - a config-file/EngineConfig setting → an entry in the `keys` array (with `key`, `envVar`, `type`, `default`, `description`, and `cliFlag` if any).
-   - an env-only transport knob with no JSON/EngineConfig home (like the `MANUL_LLM_*` family) → an entry in `environmentVariables.runtimeOnly` instead.
+   - an env-only knob with no JSON/EngineConfig home (like `MANUL_LOG_LEVEL` or `MANUL_PAGES_DIR`) → an entry in `environmentVariables.runtimeOnly` instead.
 6. **README.** Add a row to the "Configuration reference" table in `README.md` (and `README_DEV.md` if it has implementation notes).
 7. **CLI flag (only if asked).** If it should be settable from the CLI, add the flag in `manul_engine/cli.py` and document it in `contracts/MANUL_CLI_CONTRACT.md` with `cliFlag` on the config entry.
 8. **Test.** Add coverage to the config test (precedence: env beats JSON, JSON beats default; invalid value falls back to default). `test_*config*` / the `EngineConfig.from_file` tests are the template.

@@ -244,7 +244,7 @@ class _ActionsMixin:
                 print("    ❌ PRESS: could not resolve target element")
                 return False
             frame = self._frame_for(page, el)
-            loc = (await frame.query(f"xpath={el['xpath']}"))
+            loc = await frame.query(f"xpath={el['xpath']}")
             await loc.press(key_combo, timeout=self.timeout)
             print(f"    ⌨️  Pressed '{key_combo}' on '{self._fmt_el_name(el['name'])}'")
         else:
@@ -274,7 +274,7 @@ class _ActionsMixin:
             print("    ❌ RIGHT CLICK: could not resolve target element")
             return False
         frame = self._frame_for(page, el)
-        loc = (await frame.query(f"xpath={el['xpath']}"))
+        loc = await frame.query(f"xpath={el['xpath']}")
         is_shad = el.get("is_shadow")
         try:
             if not is_shad:
@@ -344,7 +344,7 @@ class _ActionsMixin:
             print("    ❌ UPLOAD: could not resolve target element")
             return False
         frame = self._frame_for(page, el)
-        loc = (await frame.query(f"xpath={el['xpath']}"))
+        loc = await frame.query(f"xpath={el['xpath']}")
         try:
             if not el.get("is_shadow"):
                 await loc.scroll_into_view_if_needed(timeout=2000)
@@ -358,7 +358,7 @@ class _ActionsMixin:
         if tag == "label":
             linked_id = str(el.get("html_id", ""))
             if linked_id:
-                linked_loc = (await frame.query(f"#{linked_id}"))
+                linked_loc = await frame.query(f"#{linked_id}")
                 try:
                     linked_tag = await linked_loc.evaluate("e => e.tagName.toLowerCase()")
                     linked_type = await linked_loc.evaluate("e => (e.type || '').toLowerCase()")
@@ -466,7 +466,7 @@ class _ActionsMixin:
             )
 
         frame = self._frame_for(page, el)
-        loc = (await frame.query(f"xpath={el['xpath']}"))
+        loc = await frame.query(f"xpath={el['xpath']}")
         locator_text = f"{element_type} '{target}' -> xpath={el['xpath']}"
         return loc, locator_text
 
@@ -535,7 +535,7 @@ class _ActionsMixin:
                 best = scored[0]
                 xpath = best["xpath"]
                 _cf = self._frame_for(page, best)
-                loc = (await _cf.query(f"xpath={xpath}"))
+                loc = await _cf.query(f"xpath={xpath}")
                 if _in_debug and not _debug_paused:
                     try:
                         if not best.get("is_shadow"):
@@ -948,7 +948,7 @@ class _ActionsMixin:
 
             if mode == "locate":
                 try:
-                    loc = (await frame.query(f"xpath={xpath}"))
+                    loc = await frame.query(f"xpath={xpath}")
                     if not is_shad:
                         await loc.scroll_into_view_if_needed(timeout=2000)
                         await self._highlight(page, loc)
@@ -962,7 +962,7 @@ class _ActionsMixin:
             if mode == "drag":
                 return await self._do_drag(page, step, expected, el)
 
-            loc = (await frame.query(f"xpath={xpath}"))
+            loc = await frame.query(f"xpath={xpath}")
             _in_debug = getattr(self, "debug_mode", False) or step_idx in getattr(self, "break_steps", set())
             try:
                 if not is_shad:
@@ -1058,7 +1058,7 @@ class _ActionsMixin:
                             try:
                                 opt_loc = await frame.query(
                                     f"xpath=(//*[@role='option' or @role='menuitem']"
-                                    f"[contains(normalize-space(.), \"{option_text}\")])[1]"
+                                    f'[contains(normalize-space(.), "{option_text}")])[1]'
                                 )
                                 if opt_loc is None:
                                     raise RuntimeError("role-based option not found")
@@ -1353,7 +1353,7 @@ class _ActionsMixin:
             return False
 
         frame = self._frame_for(page, el)
-        loc = (await frame.query(f"xpath={el['xpath']}"))
+        loc = await frame.query(f"xpath={el['xpath']}")
 
         # Take element screenshot
         try:

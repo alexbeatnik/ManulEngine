@@ -36,11 +36,32 @@ _NORMALISE = {
 _MODIFIER_BITS = {"alt": 1, "ctrl": 2, "control": 2, "meta": 4, "cmd": 4, "command": 4, "shift": 8}
 
 _VIRTUAL_CODES = {
-    "Enter": 13, "Tab": 9, "Escape": 27, "Backspace": 8, "Delete": 46,
-    "ArrowUp": 38, "ArrowDown": 40, "ArrowLeft": 37, "ArrowRight": 39,
-    "Home": 36, "End": 35, "PageUp": 33, "PageDown": 34, " ": 32,
-    "F1": 112, "F2": 113, "F3": 114, "F4": 115, "F5": 116, "F6": 117,
-    "F7": 118, "F8": 119, "F9": 120, "F10": 121, "F11": 122, "F12": 123,
+    "Enter": 13,
+    "Tab": 9,
+    "Escape": 27,
+    "Backspace": 8,
+    "Delete": 46,
+    "ArrowUp": 38,
+    "ArrowDown": 40,
+    "ArrowLeft": 37,
+    "ArrowRight": 39,
+    "Home": 36,
+    "End": 35,
+    "PageUp": 33,
+    "PageDown": 34,
+    " ": 32,
+    "F1": 112,
+    "F2": 113,
+    "F3": 114,
+    "F4": 115,
+    "F5": 116,
+    "F6": 117,
+    "F7": 118,
+    "F8": 119,
+    "F9": 120,
+    "F10": 121,
+    "F11": 122,
+    "F12": 123,
 }
 
 
@@ -75,8 +96,12 @@ def key_text(key: str) -> str:
 def key_code(key: str) -> str:
     """``KeyboardEvent.code`` for a canonical key value."""
     fixed = {
-        "Enter": "Enter", "Tab": "Tab", "Escape": "Escape", " ": "Space",
-        "Backspace": "Backspace", "Delete": "Delete",
+        "Enter": "Enter",
+        "Tab": "Tab",
+        "Escape": "Escape",
+        " ": "Space",
+        "Backspace": "Backspace",
+        "Delete": "Delete",
     }
     if key in fixed:
         return fixed[key]

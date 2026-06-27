@@ -231,9 +231,7 @@ def _compact_map(groups: dict, max_per_group: int, include_unlabeled: bool) -> d
 
 
 async def cmd_map(args: list[str]) -> int:
-    flags, _ = _parse_flags(
-        args, {"--cdp", "--tab", "--max-per-group"}, {"--include-unlabeled", "--json"}
-    )
+    flags, _ = _parse_flags(args, {"--cdp", "--tab", "--max-per-group"}, {"--include-unlabeled", "--json"})
     cdp_url = str(flags.get("--cdp") or DEFAULT_CDP)
     tab = str(flags.get("--tab") or "")
     try:
@@ -266,9 +264,7 @@ def _sanitize_text(raw: str) -> str:
         line = line.strip()
         if not line:
             continue
-        if line.startswith(("data:image/", "data:text/")) or (
-            len(line) > 80 and " " not in line and "-" not in line
-        ):
+        if line.startswith(("data:image/", "data:text/")) or (len(line) > 80 and " " not in line and "-" not in line):
             continue
         if line.startswith(("data-", "jsaction=", "jscontroller=", "jsuid=")):
             continue
@@ -288,9 +284,7 @@ def _truncate_text(text: str, max_chars: int) -> str:
 
 
 async def cmd_read(args: list[str]) -> int:
-    flags, positionals = _parse_flags(
-        args, {"--cdp", "--tab", "--selector", "--max-chars"}, {"--json"}
-    )
+    flags, positionals = _parse_flags(args, {"--cdp", "--tab", "--selector", "--max-chars"}, {"--json"})
     cdp_url = str(flags.get("--cdp") or DEFAULT_CDP)
     tab = str(flags.get("--tab") or "")
     selector = str(flags.get("--selector") or "")
@@ -419,7 +413,9 @@ async def _run_one(engine, page, step: str) -> dict:
     except Exception:
         url_after = url_before
 
-    reason = REASON_OK if ok else (REASON_VERIFY_FAILED if kind in ("verify", "verify_softly") else REASON_ACTION_FAILED)
+    reason = (
+        REASON_OK if ok else (REASON_VERIFY_FAILED if kind in ("verify", "verify_softly") else REASON_ACTION_FAILED)
+    )
 
     outcome: dict = {"ok": ok, "step": step, "action": _action_name(step, kind), "reason": reason}
     if value:

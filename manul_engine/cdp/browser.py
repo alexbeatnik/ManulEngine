@@ -100,9 +100,7 @@ class CDPBrowser:
         executable_path: str | None = None,
         extra_args: list[str] | None = None,
     ) -> CDPBrowser:
-        browser = cls(
-            headless=headless, channel=channel, executable_path=executable_path, extra_args=extra_args
-        )
+        browser = cls(headless=headless, channel=channel, executable_path=executable_path, extra_args=extra_args)
         await browser._ensure_started()
         return browser
 

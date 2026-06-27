@@ -74,7 +74,7 @@ ignore = [
     "S101",   # assert — used extensively in the custom test suite
     "S108",   # hardcoded-temp-file — /tmp paths in test HTML fixtures
     "S110",   # try-except-pass — intentional silent error handling in engine
-    "S324",   # hashlib-insecure — SHA1 used only for non-cryptographic cache keys
+    "S324",   # hashlib-insecure — SHA1 used only for non-cryptographic step-hash suffixes
     "S603",   # subprocess call: check for execution of untrusted input
     "S607",   # start process with a partial executable path
     "S608",   # sql-injection false positive — DSL string construction, not SQL

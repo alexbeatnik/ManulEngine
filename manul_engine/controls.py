@@ -3,7 +3,7 @@
 Custom Controls registry for ManulEngine.
 
 Maps ``(page_name, target_element)`` pairs to user Python handlers, bypassing
-the heuristic / AI element resolver for that one target on that one page.
+the heuristic element resolver for that one target on that one page.
 ``page_name`` is the human-readable label returned by ``lookup_page_name()``
 — i.e. whatever you mapped in the per-site fragments under ``<project>/pages/``.
 
@@ -14,14 +14,14 @@ Quickstart — drop a file under ``controls/`` in your project root::
 
     @custom_control(page="Login Page", target="Username")
     async def handle_username(ctx: ControlContext) -> None:
-        # ctx.page is a live Playwright Page.
+        # ctx.page is a live CDPPage.
         el = await ctx.page.query("#user")
         await el.fill(ctx.value or "")
 
 The handler receives a single :class:`ControlContext` argument with these
 attributes:
 
-  ``page``       — live Playwright ``Page`` (always present, never ``None``).
+  ``page``       — live ``CDPPage`` (always present, never ``None``).
   ``action``     — detected DSL mode: ``"input"``, ``"clickable"``, ``"select"``,
                    ``"hover"``, ``"drag"``, ``"locate"``.
   ``value``      — type/select value (``None`` for click/hover/locate).
@@ -59,7 +59,7 @@ class ControlContext:
     """Single argument passed to every ``@custom_control`` handler.
 
     Attributes:
-        page:      Live Playwright ``Page``. Use it like any Playwright page —
+        page:      Live ``CDPPage``. Use its CDP methods —
                    ``await page.query(...)``, ``page.evaluate(...)``, etc.
         action:    DSL mode — one of ``"input"``, ``"clickable"``, ``"select"``,
                    ``"hover"``, ``"drag"``, ``"locate"``.

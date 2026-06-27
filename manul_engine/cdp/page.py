@@ -255,7 +255,9 @@ class CDPKeyboard:
     async def press(self, combo: str) -> None:
         modifiers, key = _keys.parse_combo(combo)
         await self._page._send("Input.dispatchKeyEvent", _keys.key_event_params(key, modifiers=modifiers, is_down=True))
-        await self._page._send("Input.dispatchKeyEvent", _keys.key_event_params(key, modifiers=modifiers, is_down=False))
+        await self._page._send(
+            "Input.dispatchKeyEvent", _keys.key_event_params(key, modifiers=modifiers, is_down=False)
+        )
 
     async def type(self, text: str, *, delay: float = 0.0) -> None:
         for ch in text:

@@ -44,6 +44,7 @@ class _AsyncNull:
     async def __aexit__(self, *_exc: object) -> bool:
         return False
 
+
 from . import prompts
 from . import prompts as _prompts_mod  # alias for CUSTOM_CONTROLS_DIRS access
 from .actions import _ActionsMixin
@@ -1483,7 +1484,9 @@ class ManulEngine(_DebugMixin, _ActionsMixin):
                                 print(f"    🔴 BREAKPOINT at action {action_index}")
                                 await self._debug_prompt(page, step, action_index)
                             else:
-                                print(f"    🔴 BREAKPOINT at action {action_index} — pausing (live Chrome stays interactive)…")
+                                print(
+                                    f"    🔴 BREAKPOINT at action {action_index} — pausing (live Chrome stays interactive)…"
+                                )
                                 await page.pause()
                         elif not self.debug_mode and _should_break and not _is_system_step:
                             # Action step (click/fill/etc.) — inject into break_steps
