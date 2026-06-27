@@ -22,7 +22,7 @@ import time
 from pathlib import Path
 from typing import NamedTuple
 
-from .helpers import IfBlock, collect_ifblock_lines, parse_hunt_blocks
+from .helpers import IfBlock, collect_ifblock_lines, env_bool, parse_hunt_blocks
 from .hooks import RE_END_SETUP, RE_END_TEARDOWN, RE_SETUP, RE_TEARDOWN
 from .imports import (
     HuntImportError,
@@ -922,8 +922,8 @@ async def main() -> "int | None":
     json_out = "--json" in args
     jsonl_out = "--jsonl" in args
     # --disable-cache (ManulHeart parity): turn off the in-session semantic cache
-    # for a fully cold, deterministic run.
-    disable_cache = "--disable-cache" in args
+    # for a fully cold, deterministic run. Also honours MANUL_DISABLE_CACHE env.
+    disable_cache = "--disable-cache" in args or env_bool("MANUL_DISABLE_CACHE")
     args = [
         a
         for a in args
@@ -1014,7 +1014,9 @@ async def main() -> "int | None":
     # Extract --tags <tag1,tag2,...> filter
     filter_tags: set[str] = set()
     _tags_raw, args = _pop_flag(args, "--tags")
-    if _tags_raw is not None:
+    if _tags_raw is None:
+        _tags_raw = os.getenv("MANUL_TAGS")  # ManulHeart parity: env fallback for --tags
+    if _tags_raw:
         filter_tags = {t.strip() for t in _tags_raw.split(",") if t.strip()}
 
     # Extract --retries <N> flag
