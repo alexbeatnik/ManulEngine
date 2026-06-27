@@ -39,8 +39,12 @@ _AUTOMATION_FLAGS = [
     "--disable-sync",
     "--disable-translate",
     "--disable-search-engine-choice-screen",
-    "--disable-features=PasswordLeakDetection,PasswordManagerOnboarding,"
-    "AutofillServerCommunication,Translate,MediaRouter,GlobalMediaControls",
+    # Keep in sync with ManulHeart pkg/browser/chrome.go. PasswordCheck /
+    # ChromePasswordManagerUI / CredentialManager kill the password
+    # strength/leak check UI that otherwise interrupts form-fill automation.
+    "--disable-features=PasswordLeakDetection,PasswordManagerOnboarding,PasswordCheck,"
+    "ChromePasswordManagerUI,CredentialManager,AutofillServerCommunication,IdentityStatusDialog,"
+    "GlobalMediaControls,MediaRouter,Translate,OptimizationHints",
     "--no-service-autorun",
     "--password-store=basic",
     "--disable-save-password-bubble",
@@ -263,6 +267,7 @@ def _write_automation_prefs(user_data_dir: str) -> None:
         },
         "autofill": {"profile_enabled": False, "credit_card_enabled": False},
         "download": {"prompt_for_download": False},
+        "password_manager": {"enabled": False},
     }
     try:
         (default_dir / "Preferences").write_text(json.dumps(prefs))
