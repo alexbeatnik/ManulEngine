@@ -221,6 +221,7 @@ def test_key_map_expected_keys() -> None:
         "auto_annotate",
         "channel",
         "executable_path",
+        "cdp_endpoint",
         "retries",
         "screenshot",
         "html_report",
@@ -318,6 +319,32 @@ def test_verify_max_retries_env_garbage() -> None:
     _assert(val == 15, f"MANUL_VERIFY_MAX_RETRIES=abc falls back to 15", f"got {val}")
 
 
+# ── 11. cdp_endpoint plumbing (--cdp / MANUL_CDP_ENDPOINT) ────────────────────
+
+
+def test_cdp_endpoint_plumbing() -> None:
+    from manul_engine import ManulEngine
+    from manul_engine.config import EngineConfig
+
+    # kwarg path (mirrors channel/executable_path via **_kwargs)
+    e = ManulEngine(cdp_endpoint="http://127.0.0.1:9222")
+    _assert(e._cdp_endpoint == "http://127.0.0.1:9222", "cdp_endpoint kwarg → engine._cdp_endpoint")
+
+    # EngineConfig path
+    cfg = EngineConfig(cdp_endpoint="http://cfg:1")
+    _assert(ManulEngine(config=cfg)._cdp_endpoint == "http://cfg:1", "EngineConfig.cdp_endpoint → engine")
+
+    # default is None (launch, not attach)
+    _assert(ManulEngine()._cdp_endpoint is None, "no cdp_endpoint → None (launch path)")
+
+    # env → EngineConfig.from_file
+    with patch.dict(os.environ, {"MANUL_CDP_ENDPOINT": "http://env:2"}):
+        _assert(EngineConfig.from_file().cdp_endpoint == "http://env:2", "MANUL_CDP_ENDPOINT → from_file")
+
+    # blank kwarg normalises to None
+    _assert(ManulEngine(cdp_endpoint="   ")._cdp_endpoint is None, "blank cdp_endpoint → None")
+
+
 # ── Entry point ──────────────────────────────────────────────────────────────
 
 
@@ -362,6 +389,9 @@ async def run_suite() -> tuple[int, int]:
     test_verify_max_retries_env_override()
     test_verify_max_retries_env_floor()
     test_verify_max_retries_env_garbage()
+
+    print("\n  11. cdp_endpoint plumbing (--cdp / MANUL_CDP_ENDPOINT)")
+    test_cdp_endpoint_plumbing()
 
     total = _PASS + _FAIL
     print(f"\n{'=' * 50}")

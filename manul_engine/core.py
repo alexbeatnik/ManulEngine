@@ -132,6 +132,15 @@ class ManulEngine(_DebugMixin, _ActionsMixin):
         self.executable_path: str | None = (
             str(_ep) if _ep is not None else (_cfg.executable_path if _cfg else prompts.EXECUTABLE_PATH)
         )
+        # cdp_endpoint: attach to an already-running browser over CDP instead of
+        # launching (mirrors ManulHeart's --cdp). Accepted via **_kwargs / config
+        # / MANUL_CDP_ENDPOINT env, like channel/executable_path above.
+        _cdp = _kwargs.pop("cdp_endpoint", None)
+        self._cdp_endpoint: str | None = (
+            (str(_cdp).strip() or None)
+            if _cdp is not None
+            else (_cfg.cdp_endpoint if _cfg else getattr(prompts, "CDP_ENDPOINT", None))
+        )
         if self.channel is not None and self.browser != "chromium":
             raise ConfigurationError(
                 f"Playwright 'channel' is only supported for Chromium, "
@@ -527,6 +536,23 @@ class ManulEngine(_DebugMixin, _ActionsMixin):
         with status ``"fail"`` is returned as the first tuple element instead.
         The ``p`` parameter is unused (kept for call-site compatibility).
         """
+        # --cdp / MANUL_CDP_ENDPOINT: attach to a running browser instead of
+        # launching one. Generalises the Electron path to any CDP endpoint.
+        if self._cdp_endpoint:
+            try:
+                browser = await CDPBrowser.connect_over_cdp(self._cdp_endpoint)
+                page = await browser.first_page()
+            except Exception as _cdp_exc:
+                print(
+                    f"    ❌ Failed to attach over CDP at {self._cdp_endpoint}: {_cdp_exc}\n"
+                    f"    💡 Start the browser with --remote-debugging-port and pass --cdp <url>."
+                )
+                _fail = MissionResult(
+                    file=hunt_file or "", name=Path(hunt_file).name if hunt_file else "", status="fail"
+                )
+                return _fail, None, None
+            return browser, browser, page
+
         if self.browser == "electron":
             _cdp_port = _environ.get("MANUL_CDP_PORT", "9222")
             _cdp_url = f"http://localhost:{_cdp_port}"

@@ -107,6 +107,7 @@ Flags:
   --html-report              — generate a self-contained manul_report.html after the run
   --explain                  — print detailed heuristic score breakdown for each element resolution
   --executable-path <path>   — absolute path to a custom browser or Electron app executable
+  --cdp <url>                — attach to a running browser at this CDP endpoint (e.g. http://127.0.0.1:9222) instead of launching
 
 Pack/install flags:
   --output <dir>             — output directory for `manul pack` (default: current dir)
@@ -478,6 +479,7 @@ async def _run_hunt_file(
     global_vars: "dict[str, str] | None" = None,
     explain: bool = False,
     executable_path: "str | None" = None,
+    cdp_endpoint: "str | None" = None,
 ) -> MissionResult:
     filename = os.path.basename(path)
     print(f"\n{'=' * 60}")
@@ -553,6 +555,7 @@ async def _run_hunt_file(
         explain_mode=explain,
         required_controls=_required_controls or None,
         executable_path=executable_path,
+        cdp_endpoint=cdp_endpoint,
     )
     mission_result = MissionResult(file=path, name=filename, status="fail")
     # Feed global lifecycle vars and per-file @var: declarations as separate scopes
@@ -939,6 +942,17 @@ async def main() -> "int | None":
             sys.exit(1)
         os.environ["MANUL_EXECUTABLE_PATH"] = executable_path
 
+    # Extract --cdp <url> flag — attach to a running browser over CDP instead of
+    # launching. Set the env too so parallel-worker subprocesses inherit it.
+    cdp_endpoint: str | None = None
+    _cdp_raw, args = _pop_flag(args, "--cdp")
+    if _cdp_raw is not None:
+        cdp_endpoint = _cdp_raw.strip()
+        if not cdp_endpoint:
+            print("Error: --cdp value cannot be empty (expected an endpoint URL).", file=sys.stderr)
+            sys.exit(1)
+        os.environ["MANUL_CDP_ENDPOINT"] = cdp_endpoint
+
     # Extract --workers <n> flag
     # prompts.py (which maps JSON → env vars) hasn't been imported yet at this
     # point, so read 'workers' from the JSON config file directly.
@@ -1117,6 +1131,7 @@ async def main() -> "int | None":
                     global_vars=_lc_ctx.variables,
                     explain=explain,
                     executable_path=executable_path,
+                    cdp_endpoint=cdp_endpoint,
                 )
                 mission_result.tags = file_tags
                 # ── Retry loop ────────────────────────────────────────────
@@ -1133,6 +1148,7 @@ async def main() -> "int | None":
                             global_vars=_lc_ctx.variables,
                             explain=explain,
                             executable_path=executable_path,
+                            cdp_endpoint=cdp_endpoint,
                         )
                         mission_result.tags = file_tags
                         mission_result.attempts = attempt
@@ -1181,6 +1197,8 @@ async def main() -> "int | None":
                     flags += ["--browser", browser]
                 if executable_path:
                     flags += ["--executable-path", executable_path]
+                if cdp_endpoint:
+                    flags += ["--cdp", cdp_endpoint]
                 if retries:
                     flags += ["--retries", str(retries)]
                 if screenshot_mode is not None:

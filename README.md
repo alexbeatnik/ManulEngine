@@ -460,33 +460,6 @@ ManulEngine is alpha-stage and solo-developed. If deterministic, explainable bro
 - **`browser` is Chromium-only:** `firefox` / `webkit` are no longer accepted (CDP is Chrome's protocol). `browser` now selects launch mode — `chromium` (launch) or `electron` (attach to a running Chrome/Electron over CDP); choose the binary with `channel` / `executable_path`.
 - **Agent CLI commands for external LLM drivers:** new `manul schema` / `map` / `read` / `run-step` subcommands emit compact JSON (stdout) while engine logs stay on stderr, attaching to an already-running Chrome over CDP — the surface an external model uses to see the page, act, and read by human label. Mirrors ManulHeart's agent commands.
 
-<details>
-<summary>v0.0.9.32 — FULL SCAN, WAIT FOR SELECTOR, CSS-aware waits</summary>
-
-- **`FULL SCAN` DSL step:** groups every interactive control on the page by its nearest semantic landmark ancestor (`<form>`, `<nav>`, `<header>`, `<footer>`, `<dialog>`, `<section>`, ARIA roles) and prints a compact Markdown table per group. Designed for LLM-driven automation — paste the output into an LLM context window to decide what to interact with next. Shadow DOM trees are traversed recursively; controls inside custom elements appear under a `[shadow]`-suffixed group.
-- **`WAIT FOR SELECTOR '<css>'` DSL step:** explicit CSS-selector wait via `page.wait_for_selector()`. Solves the SPA / YouTube use case where there is no stable visible text, only a DOM tag (`ytd-video-renderer`, `mwc-button`, etc.).
-- **CSS-aware `WAIT FOR '…' TO BE VISIBLE`:** the existing step now auto-detects CSS selectors (starts with `#`, `.`, `[`, contains `-`, `>`, or `:`) and routes to `page.wait_for_selector()` instead of `get_by_text()`. Plain-text targets are unchanged.
-
-</details>
-
-<details>
-<summary>v0.0.9.31</summary>
-
-- **Page registry split into `pages/` directory (BREAKING):** page mappings now live as one JSON fragment per site under `<project>/pages/<safe_netloc>.json`. Run `manul pages migrate` once to split any pre-existing `pages.json`.
-- **`ControlContext` API for `@custom_control` (BREAKING):** handlers now accept a single `ControlContext` argument exposing `page`, `action`, `value`, `target`, `page_name`, `url`, and `step`. Replace `async def fn(page, action_type, value)` with `async def fn(ctx: ControlContext)`.
-- **`manul pages list` / `manul pages migrate` / `manul controls list` CLI commands.**
-- **Custom Controls miss-diagnostics** and **visible dispatch log** without `--debug`.
-
-</details>
-
-<details>
-<summary>v0.0.9.30</summary>
-
-- **Loop constructs (`REPEAT` / `FOR EACH` / `WHILE`):** iterative execution blocks. `REPEAT N TIMES:` for fixed counts, `FOR EACH {var} IN {collection}:` for data iteration, `WHILE <condition>:` for dynamic polling. Full nesting with conditionals, `{i}` auto-counter, WHILE safety limit (100 iterations). 129-assertion test suite.
-- **Complete user guide** — new `docs/` folder with structured documentation.
-
-</details>
-
 ## License
 
 **Version:** 0.1.0

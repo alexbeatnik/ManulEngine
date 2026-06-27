@@ -65,6 +65,7 @@ class EngineConfig:
     browser_args: tuple[str, ...] = ()
     channel: str | None = None
     executable_path: str | None = None
+    cdp_endpoint: str | None = None
     timeout: int = 5000
     nav_timeout: int = 30000
     semantic_cache_enabled: bool = True
@@ -203,6 +204,7 @@ class EngineConfig:
             browser_args=tuple(browser_args),
             channel=_optional_str("channel", "MANUL_CHANNEL"),
             executable_path=_optional_str("executable_path", "MANUL_EXECUTABLE_PATH"),
+            cdp_endpoint=_optional_str("cdp_endpoint", "MANUL_CDP_ENDPOINT"),
             timeout=_int("timeout", "MANUL_TIMEOUT", 5000),
             nav_timeout=_int("nav_timeout", "MANUL_NAV_TIMEOUT", 30000),
             semantic_cache_enabled=_bool("semantic_cache_enabled", "MANUL_SEMANTIC_CACHE_ENABLED", True),

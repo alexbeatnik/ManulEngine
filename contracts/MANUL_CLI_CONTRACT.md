@@ -278,6 +278,16 @@
       "appliesTo": ["run"]
     },
     {
+      "id": "cdp_endpoint",
+      "flag": "--cdp",
+      "type": "string",
+      "default": null,
+      "configKey": "cdp_endpoint",
+      "envVar": "MANUL_CDP_ENDPOINT",
+      "description": "Attach to a running browser at this CDP HTTP endpoint (e.g. http://127.0.0.1:9222) instead of launching Chrome. Mirrors ManulHeart's --cdp.",
+      "appliesTo": ["run"]
+    },
+    {
       "id": "output",
       "flag": "--output",
       "type": "string",
@@ -319,6 +329,7 @@
       { "key": "auto_annotate",          "envVar": "MANUL_AUTO_ANNOTATE",          "type": "boolean",       "default": "false" },
       { "key": "channel",                "envVar": "MANUL_CHANNEL",                "type": "string | null", "default": "null" },
       { "key": "executable_path",        "envVar": "MANUL_EXECUTABLE_PATH",        "type": "string | null", "default": "null" },
+      { "key": "cdp_endpoint",           "envVar": "MANUL_CDP_ENDPOINT",           "type": "string | null", "default": "null" },
       { "key": "retries",                "envVar": "MANUL_RETRIES",                "type": "integer",       "default": "0" },
       { "key": "screenshot",             "envVar": "MANUL_SCREENSHOT",             "type": "string",        "default": "on-fail" },
       { "key": "html_report",            "envVar": "MANUL_HTML_REPORT",            "type": "boolean",       "default": "false" },
