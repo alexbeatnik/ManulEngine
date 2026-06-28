@@ -184,7 +184,7 @@
       "default": "chromium",
       "configKey": "browser",
       "envVar": "MANUL_BROWSER",
-      "allowedValues": ["chromium", "firefox", "webkit"],
+      "allowedValues": ["chromium", "electron"],
       "description": "Browser engine to use.",
       "appliesTo": ["run", "scan", "record", "daemon"]
     },

@@ -97,15 +97,13 @@ Engine `EngineConfig`: `headless, browser, browser_args, channel, executable_pat
 **DONE:**
 - `EXTENSION_ENGINE_CONTRACT.md` is now in **all three** repos, byte-identical (framing updated for both runtimes).
 - Engine + Extension carry the full 8× `MANUL_*` set (synced; current — cdp/json/print/screenshot, no model/ai/cache).
-- **Heart adoption (in progress):** `MANUL_SCORING_CONTRACT.md` and `MANUL_REPORTING_CONTRACT.md` reconciled into Heart (Go paths, `CALL GO`, Heart "shared surface" header; behavioral shape verified identical).
+- **Heart adoption — DONE (5 reconciled):** `SCORING`, `REPORTING`, `CONFIG`, `CLI`, `DSL` reconciled into Heart (Go paths under `pkg/`/`cmd/manul`; `CALL GO` for `CALL PYTHON`; Engine-only items removed — `pack`/`install` from CLI, `FULL SCAN`/`SCAN PAGE`/`WAIT FOR SELECTOR` from DSL; stale `firefox`/`webkit` browser values fixed to `chromium`/`electron` in all 3 repos; "shared surface" header on each). All JSON blocks valid; behavioral surface verified identical.
 
-**Remaining Heart contracts (doc-grind — functional parity already complete):**
-- `MANUL_DSL` — reconcile verb set (`CALL GO`, add `OPEN APP`, drop Engine-only `FULL SCAN`/`SCAN PAGE`/`WAIT FOR SELECTOR`).
-- `MANUL_CLI` — `go install`/`make` instead of `pip`; flags already aligned.
-- `MANUL_CONFIG` — `pkg/config` paths; keys already aligned.
-- `MANUL_DEBUG` — Python What-If REPL internals (`ExplainNextDebugger`, `asyncio.Event`, `from manul_engine import`) need a Go rewrite, not path-subs.
-- `MANUL_HOOKS` — `CALL GO` + Go hook model.
-- `MANUL_API` — **write a Go embedding-API contract** (Heart's `pkg/agent`), not the Python `ManulSession` one.
+**Remaining Heart contracts (need genuine Go authoring vs Heart internals — not mechanical reconciliation):**
+- `MANUL_HOOKS` — Heart uses `[SETUP]`/`[TEARDOWN]` blocks + `RegisterGoCall`/`CALL GO` (no Python `@before_all` decorators). Needs a Go-hook rewrite.
+- `MANUL_DEBUG` — keep the shared stdin/stdout debug protocol; rewrite the Python What-If REPL internals (`ExplainNextDebugger`, `asyncio.Event`) for Go.
+- `MANUL_API` — **write fresh** for Heart's Go embedding API (`pkg/agent`: `Launch`/`Attach`/`Session`/`StepOutcome`/`RunOutcome`/`PageMap`), replacing the Python `ManulSession` contract.
+- These are the genuinely-different surfaces; rushing them risks inaccurate docs. Best authored carefully against `pkg/agent`/`pkg/runtime`.
 
 ## 7. Extension (`/ManulEngineExtension`) — Phase 2 (after parity)
 
