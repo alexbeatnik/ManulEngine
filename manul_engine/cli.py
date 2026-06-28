@@ -108,6 +108,7 @@ Flags:
   --explain                  — print detailed heuristic score breakdown for each element resolution
   --executable-path <path>   — absolute path to a custom browser or Electron app executable
   --cdp <url>                — attach to a running browser at this CDP endpoint (e.g. http://127.0.0.1:9222) instead of launching
+  --target url=<substr>      — with --cdp, drive the page whose URL contains <substr> (else the first page)
   --json                     — print the final run result as JSON to stdout (human logs go to stderr)
   --jsonl                    — stream per-step JSON Lines + a final summary line to stdout (human logs go to stderr)
   --disable-cache            — disable the in-session semantic cache for a fully cold, deterministic run
@@ -486,6 +487,7 @@ async def _run_hunt_file(
     explain: bool = False,
     executable_path: "str | None" = None,
     cdp_endpoint: "str | None" = None,
+    cdp_tab: "str | None" = None,
     disable_cache: bool = False,
 ) -> MissionResult:
     filename = os.path.basename(path)
@@ -563,6 +565,7 @@ async def _run_hunt_file(
         required_controls=_required_controls or None,
         executable_path=executable_path,
         cdp_endpoint=cdp_endpoint,
+        cdp_tab=cdp_tab,
         disable_cache=disable_cache,
     )
     mission_result = MissionResult(file=path, name=filename, status="fail")
@@ -973,6 +976,17 @@ async def main() -> "int | None":
             sys.exit(1)
         os.environ["MANUL_CDP_ENDPOINT"] = cdp_endpoint
 
+    # Extract --target <url=substr> flag — when attaching over --cdp, pick the page
+    # whose URL contains <substr> (mirrors ManulHeart; the 'url=' prefix is optional).
+    cdp_tab: str | None = None
+    _target_raw, args = _pop_flag(args, "--target")
+    if _target_raw is not None:
+        cdp_tab = _target_raw.strip()
+        if cdp_tab.lower().startswith("url="):
+            cdp_tab = cdp_tab[4:].strip()
+        if cdp_tab:
+            os.environ["MANUL_CDP_TAB"] = cdp_tab
+
     # Extract --workers <n> flag
     # prompts.py (which maps JSON → env vars) hasn't been imported yet at this
     # point, so read 'workers' from the JSON config file directly.
@@ -1173,6 +1187,7 @@ async def main() -> "int | None":
                             explain=explain,
                             executable_path=executable_path,
                             cdp_endpoint=cdp_endpoint,
+                            cdp_tab=cdp_tab,
                             disable_cache=disable_cache,
                         )
                         mission_result.tags = file_tags
@@ -1224,6 +1239,8 @@ async def main() -> "int | None":
                     flags += ["--executable-path", executable_path]
                 if cdp_endpoint:
                     flags += ["--cdp", cdp_endpoint]
+                if cdp_tab:
+                    flags += ["--target", f"url={cdp_tab}"]
                 if disable_cache:
                     flags.append("--disable-cache")
                 if retries:

@@ -33,6 +33,8 @@ DEFAULT_MAX_PER_GROUP = 8
 # Machine-readable outcome reasons (mirror ManulHeart's agent.Reason enum).
 REASON_OK = "ok"
 REASON_NOT_FOUND = "not_found"
+REASON_AMBIGUOUS = "ambiguous"
+REASON_TIMEOUT = "timeout"
 REASON_VERIFY_FAILED = "verify_failed"
 REASON_ACTION_FAILED = "action_failed"
 
@@ -155,6 +157,7 @@ def engine_schema() -> dict:
             "value": "string — value used/extracted (omitted when empty)",
             "url": "string — page URL after the step (omitted when unchanged)",
             "reason": "string — one of failure_reasons; 'ok' on success",
+            "score": "float 0..1 — confidence of the resolved element (omitted when no candidates)",
             "error": "string — raw error message (omitted on success)",
             "near": "array of {text, score} — top candidates on failure / low-confidence match",
         },
@@ -164,13 +167,20 @@ def engine_schema() -> dict:
             "element": "{label, role, editable?}",
             "ordering": "Page first, then content landmarks, then chrome (header/nav/footer).",
         },
-        "failure_reasons": [REASON_OK, REASON_NOT_FOUND, REASON_VERIFY_FAILED, REASON_ACTION_FAILED],
+        "failure_reasons": [
+            REASON_OK,
+            REASON_NOT_FOUND,
+            REASON_AMBIGUOUS,
+            REASON_TIMEOUT,
+            REASON_VERIFY_FAILED,
+            REASON_ACTION_FAILED,
+        ],
         "agent_commands": {
             "schema": "this contract",
             "map": "compact landmark-grouped page map → page_map JSON",
             "read": "read one labelled value (zero-scan) → {value, found, reason}",
             "read --selector": "sanitized region text → {text, selector}",
-            "run-step": "run one instruction → step_outcome JSON",
+            "run-step": "run one instruction → step_outcome JSON (--compact accepted; output is already compact)",
         },
     }
 
@@ -420,6 +430,9 @@ async def _run_one(engine, page, step: str) -> dict:
     reason = (
         REASON_OK if ok else (REASON_VERIFY_FAILED if kind in ("verify", "verify_softly") else REASON_ACTION_FAILED)
     )
+    # Distinguish a timeout from a generic action failure (ManulHeart parity).
+    if not ok and error and ("timeout" in error.lower() or "timed out" in error.lower()):
+        reason = REASON_TIMEOUT
 
     outcome: dict = {"ok": ok, "step": step, "action": _action_name(step, kind), "reason": reason}
     if value:
@@ -439,8 +452,13 @@ async def _run_one(engine, page, step: str) -> dict:
         if not ok:
             if near:
                 outcome["near"] = near
-            if reason == REASON_ACTION_FAILED and (not near or top < _LOW_CONFIDENCE):
-                outcome["reason"] = REASON_NOT_FOUND
+            # Refine a generic action failure: no candidates at all → not_found;
+            # candidates present but none confident → ambiguous (ManulHeart parity).
+            if reason == REASON_ACTION_FAILED:
+                if not near:
+                    outcome["reason"] = REASON_NOT_FOUND
+                elif top < _LOW_CONFIDENCE:
+                    outcome["reason"] = REASON_AMBIGUOUS
         elif top and top < _LOW_CONFIDENCE:
             outcome["near"] = near
     return outcome

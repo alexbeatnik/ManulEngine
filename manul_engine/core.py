@@ -142,6 +142,13 @@ class ManulEngine(_DebugMixin, _ActionsMixin):
             if _cdp is not None
             else (_cfg.cdp_endpoint if _cfg else getattr(prompts, "CDP_ENDPOINT", None))
         )
+        # cdp_tab: when attaching over CDP, pick the page whose URL contains this
+        # substring (mirrors ManulHeart's --target url=<substr>). Per-run selector,
+        # not persisted config.
+        _tab = _kwargs.pop("cdp_tab", None)
+        self._cdp_tab: str | None = (
+            (str(_tab).strip() or None) if _tab is not None else (os.getenv("MANUL_CDP_TAB", "").strip() or None)
+        )
         if self.channel is not None and self.browser != "chromium":
             raise ConfigurationError(
                 f"Playwright 'channel' is only supported for Chromium, "
@@ -542,7 +549,7 @@ class ManulEngine(_DebugMixin, _ActionsMixin):
         if self._cdp_endpoint:
             try:
                 browser = await CDPBrowser.connect_over_cdp(self._cdp_endpoint)
-                page = await browser.first_page()
+                page = await browser.page_matching(self._cdp_tab) if self._cdp_tab else await browser.first_page()
             except Exception as _cdp_exc:
                 print(
                     f"    ❌ Failed to attach over CDP at {self._cdp_endpoint}: {_cdp_exc}\n"

@@ -69,19 +69,22 @@ Engine `EngineConfig`: `headless, browser, browser_args, channel, executable_pat
 ## 4. Reporter & artifacts
 
 - Both have HTML reports + `run_history.json` (Engine `reporter.py`/`reporting.py`; Heart `pkg/report/{index,run_history}.go`).
-- **Action:** diff the **run_history.json record shape** and the **report JSON** field-by-field; align keys/semantics. HTML *markup* need not be byte-identical, but section structure + status/`flaky`/`warning` semantics must match. (Note: Engine just removed the `healed` field — Heart must not emit it either.) Pri: Med.
+- **DONE / verified aligned:** the shared, cross-consumed artifact **`run_history.json` is byte-shape identical** — both engines write exactly `{file, name, timestamp, status, duration_ms}` (no `healed` on either side), and the extension's `schedulerPanel.ts` reader consumes exactly those fields. ✅ No change needed.
+- HTML markup + `manul_report_state.json` are **engine-internal** report-generation artifacts (Python template vs Go template; report-session merge is Engine-only). They are not consumed cross-engine; acceptably divergent per the policy (structure/`flaky`/`warning` semantics already match). No action.
 
 ## 5. Agent CLI JSON shape (`schema`/`map`/`read`/`run-step`)
 
 - Engine `agent_cli.py`; Heart `pkg/agent/{agent,describe,render}.go` + `run-step`/`read`/`map`/`schema`.
 - **Diffed `manul schema` (no browser):** top-level keys **identical** (`agent_commands, engine, failure_reasons, hunt_rules, page_map, step_outcome, targeting, verbs, version`); `page_map` shape **identical**. ✅
 - **DONE:** Engine `verbs` list was missing its own `CHECK`/`UNCHECK`/`PRINT`/`SCREENSHOT` — added (Engine agent schema now matches its DSL).
-- ⚠️ **Remaining divergences (semantic — need decisions, do not guess):**
-  - **`verb` naming:** Engine uses DSL spaces (`DOUBLE CLICK`, `VERIFY SOFTLY`, `WAIT FOR`, `FOR EACH`); Heart uses enum form (`DOUBLE_CLICK`, `VERIFY_SOFT`, `WAIT_FOR`, `FOR_EACH`). Best-of = the human DSL form (what agents write) → normalize Heart's `verb` field to spaces.
-  - **`failure_reasons`:** Heart superset adds `ambiguous`, `timeout`. Engine only emits `ok/not_found/verify_failed/action_failed`. Advertising reasons Engine never emits is misleading → either Engine starts emitting them (resolver/action change, golden-test risk) or Heart documents them as Heart-only.
-  - **`step_outcome.score`:** Heart includes a numeric `score`; Engine's outcome omits it. Engine has the confidence internally → could add, but it's a run-step output-shape change.
-  - **`run-step --compact`:** Heart has it (compact StepOutcome); Engine `run-step` lacks `--compact`.
-  - Not yet diffed: `map`/`read`/`run-step` live JSON (need a fixture page on both). Pri: High but decision-gated.
+- **DONE (best-of):**
+  - **`verb` naming** normalized to the human DSL form in Heart (`DOUBLE CLICK`, `RIGHT CLICK`, `UPLOAD`, `VERIFY SOFTLY`, `WAIT FOR`, `WAIT FOR RESPONSE`, `FOR EACH`, `CALL GO`). ✅
+  - **`failure_reasons` now identical** in both: `ok, not_found, ambiguous, timeout, verify_failed, action_failed`. Engine's run-step now maps timeout errors → `timeout` and refines failures: no candidates → `not_found`, candidates-but-low-confidence → `ambiguous`. ✅
+  - **`step_outcome.score`** documented + emitted in both. ✅
+  - **`run-step --compact`** accepted by both (Engine output is already compact). ✅
+  - **`MOCK`** added to Heart's verbs (it supports `CmdMock`). ✅
+- **Intentional residual (not divergences):** `CALL PYTHON` (Engine) vs `CALL GO` (Heart) — per-runtime; `FULL SCAN`/`SCAN PAGE`/`WAIT FOR SELECTOR` are Engine-only features Heart doesn't implement.
+- Not exhaustively diffed: `map`/`read`/`run-step` *live* JSON on a fixture page (needs a running browser on both) — top-level schema shapes already match.
 
 ## 6. Contracts (the frozen shared surface) — biggest structural gap
 
@@ -91,7 +94,18 @@ Engine `EngineConfig`: `headless, browser, browser_args, channel, executable_pat
 | Heart | `EXTENSION_ENGINE_CONTRACT.md` | all 8× `MANUL_*_CONTRACT.md` |
 | Extension | vendors the 8× `MANUL_*_CONTRACT.md` | — |
 
-**Action (high value, low risk):** both engines should carry the **same full set** — the 8 `MANUL_*` contracts **and** `EXTENSION_ENGINE_CONTRACT.md`. Reconcile content where behavior diverges (e.g. `CALL GO` vs `CALL PYTHON`, no `controls_cache`/`model`/`healed`). The extension's `contracts/` then mirrors the reconciled set. Pri: High.
+**DONE:**
+- `EXTENSION_ENGINE_CONTRACT.md` is now in **all three** repos, byte-identical (framing updated for both runtimes).
+- Engine + Extension carry the full 8× `MANUL_*` set (synced; current — cdp/json/print/screenshot, no model/ai/cache).
+- **Heart adoption (in progress):** `MANUL_SCORING_CONTRACT.md` and `MANUL_REPORTING_CONTRACT.md` reconciled into Heart (Go paths, `CALL GO`, Heart "shared surface" header; behavioral shape verified identical).
+
+**Remaining Heart contracts (doc-grind — functional parity already complete):**
+- `MANUL_DSL` — reconcile verb set (`CALL GO`, add `OPEN APP`, drop Engine-only `FULL SCAN`/`SCAN PAGE`/`WAIT FOR SELECTOR`).
+- `MANUL_CLI` — `go install`/`make` instead of `pip`; flags already aligned.
+- `MANUL_CONFIG` — `pkg/config` paths; keys already aligned.
+- `MANUL_DEBUG` — Python What-If REPL internals (`ExplainNextDebugger`, `asyncio.Event`, `from manul_engine import`) need a Go rewrite, not path-subs.
+- `MANUL_HOOKS` — `CALL GO` + Go hook model.
+- `MANUL_API` — **write a Go embedding-API contract** (Heart's `pkg/agent`), not the Python `ManulSession` one.
 
 ## 7. Extension (`/ManulEngineExtension`) — Phase 2 (after parity)
 

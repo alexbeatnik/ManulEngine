@@ -318,6 +318,16 @@
       "appliesTo": ["run"]
     },
     {
+      "id": "target",
+      "flag": "--target",
+      "type": "string",
+      "default": null,
+      "configKey": null,
+      "envVar": "MANUL_CDP_TAB",
+      "description": "With --cdp, select the page whose URL contains the given substring (form: url=<substr>; the url= prefix is optional). Falls back to the first page. Mirrors ManulHeart's --target.",
+      "appliesTo": ["run"]
+    },
+    {
       "id": "output",
       "flag": "--output",
       "type": "string",
