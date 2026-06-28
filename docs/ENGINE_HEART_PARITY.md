@@ -97,13 +97,13 @@ Engine `EngineConfig`: `headless, browser, browser_args, channel, executable_pat
 **DONE:**
 - `EXTENSION_ENGINE_CONTRACT.md` is now in **all three** repos, byte-identical (framing updated for both runtimes).
 - Engine + Extension carry the full 8× `MANUL_*` set (synced; current — cdp/json/print/screenshot, no model/ai/cache).
-- **Heart adoption — DONE (5 reconciled):** `SCORING`, `REPORTING`, `CONFIG`, `CLI`, `DSL` reconciled into Heart (Go paths under `pkg/`/`cmd/manul`; `CALL GO` for `CALL PYTHON`; Engine-only items removed — `pack`/`install` from CLI, `FULL SCAN`/`SCAN PAGE`/`WAIT FOR SELECTOR` from DSL; stale `firefox`/`webkit` browser values fixed to `chromium`/`electron` in all 3 repos; "shared surface" header on each). All JSON blocks valid; behavioral surface verified identical.
-
-**Remaining Heart contracts (need genuine Go authoring vs Heart internals — not mechanical reconciliation):**
-- `MANUL_HOOKS` — Heart uses `[SETUP]`/`[TEARDOWN]` blocks + `RegisterGoCall`/`CALL GO` (no Python `@before_all` decorators). Needs a Go-hook rewrite.
-- `MANUL_DEBUG` — keep the shared stdin/stdout debug protocol; rewrite the Python What-If REPL internals (`ExplainNextDebugger`, `asyncio.Event`) for Go.
-- `MANUL_API` — **write fresh** for Heart's Go embedding API (`pkg/agent`: `Launch`/`Attach`/`Session`/`StepOutcome`/`RunOutcome`/`PageMap`), replacing the Python `ManulSession` contract.
-- These are the genuinely-different surfaces; rushing them risks inaccurate docs. Best authored carefully against `pkg/agent`/`pkg/runtime`.
+- **Heart adoption — DONE (9/9).** Heart now carries the full contract set, all JSON blocks valid, `go build ./...` green:
+  - *Mechanically reconciled (5):* `SCORING`, `REPORTING`, `CONFIG`, `CLI`, `DSL` — Go paths under `pkg/`/`cmd/manul`; `CALL GO` for `CALL PYTHON`; Engine-only items removed (`pack`/`install` from CLI; `FULL SCAN`/`SCAN PAGE`/`WAIT FOR SELECTOR` from DSL); stale `firefox`/`webkit` browser values fixed to `chromium`/`electron` in all 3 repos; "shared surface" header on each.
+  - *Authored against Heart internals (3):*
+    - `MANUL_HOOKS` — `[SETUP]`/`[TEARDOWN]` blocks + `RegisterGoCall`/`RegisterCustomControl` process-init registration + `GoCallInvocation` + 5-level `ScopedVariables`. Documents the absence of Python `@before_all`/`MANUL_GLOBAL_VARS`.
+    - `MANUL_DEBUG` — shared stdin/stdout wire protocol (pause/explain markers, commands, 1-based idx) cross-referencing `EXTENSION_ENGINE_CONTRACT`; `shouldPause` state; `explainNextPayload` (10 fields); notes Heart's `explain-next` is read-only (no `!execute` What-If injection).
+    - `MANUL_API` — Heart's Go embedding API (`pkg/agent`: `Options`/`Launch`/`Attach`/`Session.{Read,ReadText,Step,Run,Map,Close}` + `Value`/`StepOutcome`/`RunOutcome`/`PageMap`/`Reason`), replacing the Python `ManulSession` contract.
+  - `EXTENSION_ENGINE_CONTRACT` already present (×3 repos, identical).
 
 ## 7. Extension (`/ManulEngineExtension`) — Phase 2 (after parity)
 
