@@ -74,7 +74,14 @@ Engine `EngineConfig`: `headless, browser, browser_args, channel, executable_pat
 ## 5. Agent CLI JSON shape (`schema`/`map`/`read`/`run-step`)
 
 - Engine `agent_cli.py`; Heart `pkg/agent/{agent,describe,render}.go` + `run-step`/`read`/`map`/`schema`.
-- **Action:** capture JSON output of each command on a fixture page from both binaries and diff key-by-key (StepOutcome/`reason`/candidate shape, `--compact` mode). This is the highest-value machine-surface parity for external LLM drivers. Pri: High.
+- **Diffed `manul schema` (no browser):** top-level keys **identical** (`agent_commands, engine, failure_reasons, hunt_rules, page_map, step_outcome, targeting, verbs, version`); `page_map` shape **identical**. ✅
+- **DONE:** Engine `verbs` list was missing its own `CHECK`/`UNCHECK`/`PRINT`/`SCREENSHOT` — added (Engine agent schema now matches its DSL).
+- ⚠️ **Remaining divergences (semantic — need decisions, do not guess):**
+  - **`verb` naming:** Engine uses DSL spaces (`DOUBLE CLICK`, `VERIFY SOFTLY`, `WAIT FOR`, `FOR EACH`); Heart uses enum form (`DOUBLE_CLICK`, `VERIFY_SOFT`, `WAIT_FOR`, `FOR_EACH`). Best-of = the human DSL form (what agents write) → normalize Heart's `verb` field to spaces.
+  - **`failure_reasons`:** Heart superset adds `ambiguous`, `timeout`. Engine only emits `ok/not_found/verify_failed/action_failed`. Advertising reasons Engine never emits is misleading → either Engine starts emitting them (resolver/action change, golden-test risk) or Heart documents them as Heart-only.
+  - **`step_outcome.score`:** Heart includes a numeric `score`; Engine's outcome omits it. Engine has the confidence internally → could add, but it's a run-step output-shape change.
+  - **`run-step --compact`:** Heart has it (compact StepOutcome); Engine `run-step` lacks `--compact`.
+  - Not yet diffed: `map`/`read`/`run-step` live JSON (need a fixture page on both). Pri: High but decision-gated.
 
 ## 6. Contracts (the frozen shared surface) — biggest structural gap
 
