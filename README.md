@@ -214,7 +214,7 @@ Example output:
 
 ### Agent commands — drive the engine from an external LLM
 
-For agentic use, ManulEngine exposes a small set of **JSON-emitting CLI commands** (mirroring the Go sibling [ManulEngine (Go)](https://github.com/alexbeatnik/ManulEngine (Go))). They attach to an **already-running Chrome over CDP**, so an external model keeps one browser open and issues stateless calls against it. The JSON payload goes to **stdout**; all engine logs go to **stderr**, so a driver can pipe the output straight into a prompt.
+For agentic use, ManulEngine exposes a small set of **JSON-emitting CLI commands** (mirroring the Go sibling [ManulEngine (Go)](https://github.com/alexbeatnik/ManulEngineGo)). They attach to an **already-running Chrome over CDP**, so an external model keeps one browser open and issues stateless calls against it. The JSON payload goes to **stdout**; all engine logs go to **stderr**, so a driver can pipe the output straight into a prompt.
 
 ```bash
 # 1. start Chrome once with remote debugging
@@ -302,7 +302,11 @@ Why own the protocol layer:
 - **Per-frame execution contexts.** A selector is resolved once inside the owning frame's execution context, then every operation runs against that handle — so same-origin iframes (and OOPIF child targets) are first-class, not an afterthought.
 - **CDP is Chromium-only by design.** Because the protocol is Chrome's, the engine drives Chrome/Chromium only. Firefox/WebKit are intentionally not supported; pick the concrete binary with `channel` (`chrome`, `msedge`, `chromium`, …) or `executable_path`.
 
-This is the same philosophy as the Go sibling [ManulEngine (Go)](https://github.com/alexbeatnik/ManulEngine (Go)): plain-English `.hunt` files, deterministic heuristics, and a hand-written CDP layer instead of a heavyweight automation framework.
+This is the same philosophy as the Go sibling [ManulEngine (Go)](https://github.com/alexbeatnik/ManulEngineGo): plain-English `.hunt` files, deterministic heuristics, and a hand-written CDP layer instead of a heavyweight automation framework.
+
+### Parallel execution
+
+Run a directory of hunts concurrently with `--workers N` (or the `workers` config key). Because of the GIL, parallelism uses **subprocess workers** — each runs in its own process with its own Chrome instance, fully isolated, and the reporter merges their results. (The Go sibling reaches the same goal with native goroutines and a `WorkerPool`.)
 
 ### Dual-persona workflow
 
@@ -348,6 +352,37 @@ The same runtime and the same DSL serve four use cases:
 - **Lifecycle hooks** — `@before_all`, `@after_all`, `@before_group`, `@after_group` in `manul_hooks.py` for suite-wide setup and teardown.
 - **HTML reports** — `--html-report` generates a self-contained dark-themed report with accordions, screenshots, tag filters, and run-session merging across CLI invocations.
 - **Docker CI runner** — `ghcr.io/alexbeatnik/manul-engine:0.1.0` runs headless in CI with `dumb-init`, non-root user, and `MANUL_*` env overrides.
+
+---
+
+## Architecture
+
+```
+manul_engine/
+  __init__.py     public API (ManulEngine, ManulSession, custom_control, …)
+  api.py          ManulSession — high-level async context manager (Python-only users)
+  core.py         ManulEngine — the .hunt DSL runner; targeting pipeline + orchestration
+  actions.py      click / fill / select / hover / drag executors
+  debug.py        interactive debug pause + extension-protocol handshake
+  helpers.py      pure functions: parse_hunt_blocks, classify_step, substitute_memory, …
+  hooks.py        @before_all / @after_group lifecycle + CALL PYTHON
+  imports.py      @import / USE resolution for .hunt libraries
+  controls.py     @custom_control registry (page-scoped overrides)
+  scoring.py      deterministic DOMScorer (cache · semantics · text · attributes · proximity)
+  agent_cli.py    agent-facing CLI: schema / map / read / run-step (JSON for LLM drivers)
+  scanner.py      DOM snapshot → draft .hunt (manul scan <URL>)
+  recorder.py     interactive recorder (manul record <URL>)
+  reporter.py     HTML + JSON test reports
+  scheduler.py    daemon mode (@schedule:)
+  cdp/            native Chrome DevTools Protocol backend (conn / chrome / page /
+                  browser / protocol / keys) — replaces Playwright
+  variables.py    ScopedVariables (5 levels: row > step > mission > global > import)
+  prompts.py      global config (THRESHOLDS, BROWSER_ARGS, …)
+  config.py       EngineConfig dataclass (injectable)
+  cli.py          manul CLI entry point
+```
+
+See [docs/overview.md](docs/overview.md) for the deep-dive architecture walkthrough.
 
 ---
 
@@ -415,6 +450,24 @@ docker run --rm --shm-size=1g \
 ```
 
 Non-root (`manul`, UID 1000), `dumb-init` as PID 1, `--no-sandbox` baked in. A `docker-compose.yml` ships with `manul` and `manul-daemon` services.
+
+---
+
+## Embedding (Python API)
+
+To drive a browser from a Python program — an assistant, an agent, a custom tool — use `ManulSession`, an async context manager that routes every call through the full heuristic pipeline. ManulEngine owns the browser lifecycle; the consumer never touches CDP directly:
+
+```python
+from manul_engine import ManulSession
+
+async with ManulSession(headless=True) as session:
+    await session.navigate("https://example.com/login")
+    await session.fill("Username field", "admin")
+    await session.click("Log in button")
+    await session.verify("Welcome")
+```
+
+The same deterministic scorer that runs `.hunt` files resolves each call by human label — no selectors. For agentic use, the [agent commands](#agent-commands--drive-the-engine-from-an-external-llm) (`manul map` / `run-step` / `read` / `schema`) expose the same capabilities as compact JSON over a running Chrome, with typed failure reasons and `near` candidates on a miss.
 
 ---
 
