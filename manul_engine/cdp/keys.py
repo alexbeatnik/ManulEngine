@@ -1,7 +1,7 @@
 # manul_engine/cdp/keys.py
 """Keyboard name → ``Input.dispatchKeyEvent`` parameter mapping.
 
-Ported from ManulHeart's ``pkg/browser/cdp_backend.go`` key helpers. Maps the
+Ported from ManulEngine (Go)'s ``pkg/browser/cdp_backend.go`` key helpers. Maps the
 spellings agents/LLMs emit ("enter", "ESC", "ctrl+a") to the canonical DOM
 ``KeyboardEvent.key`` values and the Windows virtual-key codes Chrome wants.
 """

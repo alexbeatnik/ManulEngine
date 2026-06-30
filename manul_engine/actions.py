@@ -149,7 +149,7 @@ class _ActionsMixin:
     async def _handle_screenshot(self, page, step: str) -> "tuple[bool, str]":
         """Capture a full-page screenshot on demand (``SCREENSHOT [\"name\"]``).
 
-        Saves a PNG under ``screenshots/`` in the CWD. ManulHeart parity for the
+        Saves a PNG under ``screenshots/`` in the CWD. ManulEngine (Go) parity for the
         explicit ``SCREENSHOT`` DSL step. Returns ``(ok, path_or_error)``.
         """
         name = extract_screenshot_name(step)

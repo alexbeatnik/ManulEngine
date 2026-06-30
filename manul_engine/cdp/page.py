@@ -620,7 +620,7 @@ class CDPPage:
         await self.wait_for_load(state=wait_until, timeout=timeout)
 
     async def wait_for_load(self, *, state: str = "load", timeout: float = 30000) -> None:
-        """Poll ``document.readyState`` until ready (JS-poll, like ManulHeart) —
+        """Poll ``document.readyState`` until ready (JS-poll, like ManulEngine (Go)) —
         robust against missing load events on cached pages. ``timeout`` is in ms."""
         target = "complete" if state in ("load", "networkidle") else "interactive"
         deadline = asyncio.get_running_loop().time() + timeout / 1000.0

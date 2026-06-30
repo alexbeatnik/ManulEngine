@@ -1,7 +1,7 @@
-# ManulEngine ↔ ManulHeart — Parity Audit
+# ManulEngine ↔ ManulEngine (Go) — Parity Audit
 
 > Working document for bringing **ManulEngine** (Python, `/ManulEngine`) and
-> **ManulHeart** (Go, `/ManulHeart`) to identical functionality, and updating
+> **ManulEngine (Go)** (Go, `/ManulEngine (Go)`) to identical functionality, and updating
 > the **VS Code extension** (`/ManulEngineExtension`) to work with both.
 >
 > **Direction policy:** *best-of / case-by-case* — for each divergence the
@@ -111,7 +111,7 @@ Dual-runtime plumbing already exists (`runtimeDetector.ts` python/go, `CALL GO`/
 
 - ⚠️ **Dead persistent-cache surface** — Engine removed the on-disk controls cache and Heart never had one. Remove: `cacheTreeProvider.ts` (+ test), `manul.clearAllCache`/`clearSiteCache`/`refreshCache` commands, the Cache tree view, and `controls_cache_dir` reads in `configPanel.ts`. Pri: High.
 - **Config panel** — drop any removed keys (`model`, `ai_*`, `controls_cache_*`); keep `semantic_cache_enabled`. Pri: High.
-- **Min versions / version probe** — `MIN_MANUL_ENGINE_VERSION` (0.0.9.29) and `MIN_MANUL_HEART_VERSION` are stale vs Engine 0.1.0; align to the reconciled CLI surface. Pri: Med.
+- **Min versions / version probe** — `MIN_MANUL_ENGINE_VERSION` (0.0.9.29) and `MIN_MANUL_ENGINE_GO_VERSION` are stale vs Engine 0.1.0; align to the reconciled CLI surface. Pri: Med.
 - **Sync `contracts/`** with the reconciled §6 set; honor `EXTENSION_ENGINE_CONTRACT.md` as the wire spec. Pri: Med.
 - Verify every spawn path (run/debug/scan/record/daemon) against **both** reconciled CLIs.
 

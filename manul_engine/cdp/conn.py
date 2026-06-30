@@ -2,7 +2,7 @@
 """Low-level Chrome DevTools Protocol WebSocket transport.
 
 A thin async JSON-RPC client over a single Chrome DevTools WebSocket.
-Ported from ManulHeart's ``pkg/cdp/conn.go`` (Go) to Python/asyncio.
+Ported from ManulEngine (Go)'s ``pkg/cdp/conn.go`` (Go) to Python/asyncio.
 
 One :class:`Conn` owns one WebSocket. CDP multiplexes every target
 (page, iframe, worker) over that single socket using ``sessionId`` once

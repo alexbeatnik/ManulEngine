@@ -134,7 +134,7 @@ class ManulEngine(_DebugMixin, _ActionsMixin):
             str(_ep) if _ep is not None else (_cfg.executable_path if _cfg else prompts.EXECUTABLE_PATH)
         )
         # cdp_endpoint: attach to an already-running browser over CDP instead of
-        # launching (mirrors ManulHeart's --cdp). Accepted via **_kwargs / config
+        # launching (mirrors ManulEngine (Go)'s --cdp). Accepted via **_kwargs / config
         # / MANUL_CDP_ENDPOINT env, like channel/executable_path above.
         _cdp = _kwargs.pop("cdp_endpoint", None)
         self._cdp_endpoint: str | None = (
@@ -143,7 +143,7 @@ class ManulEngine(_DebugMixin, _ActionsMixin):
             else (_cfg.cdp_endpoint if _cfg else getattr(prompts, "CDP_ENDPOINT", None))
         )
         # cdp_tab: when attaching over CDP, pick the page whose URL contains this
-        # substring (mirrors ManulHeart's --target url=<substr>). Per-run selector,
+        # substring (mirrors ManulEngine (Go)'s --target url=<substr>). Per-run selector,
         # not persisted config.
         _tab = _kwargs.pop("cdp_tab", None)
         self._cdp_tab: str | None = (
@@ -1209,7 +1209,7 @@ class ManulEngine(_DebugMixin, _ActionsMixin):
                 _done = True
 
             elif step_kind == "end_block":
-                # Explicit block terminator (ManulHeart style) — Engine blocks
+                # Explicit block terminator (ManulEngine (Go) style) — Engine blocks
                 # are indentation-based, so this is a tolerated no-op.
                 pass
 
@@ -1744,7 +1744,7 @@ class ManulEngine(_DebugMixin, _ActionsMixin):
                                 done = True
 
                             elif step_kind == "end_block":
-                                # Explicit block terminator (ManulHeart style) —
+                                # Explicit block terminator (ManulEngine (Go) style) —
                                 # Engine blocks are indentation-based; tolerated no-op.
                                 pass
 

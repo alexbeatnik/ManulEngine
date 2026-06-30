@@ -320,7 +320,7 @@ def _test_set_not_confused_with_labels() -> None:
 
 
 def _test_print_step() -> None:
-    """PRINT classification + message extraction (ManulHeart CmdPrint parity)."""
+    """PRINT classification + message extraction (ManulEngine (Go) CmdPrint parity)."""
     from manul_engine.helpers import extract_print_message
 
     print("\n  ── PRINT step ─────────────────────────────────────────────────")
@@ -333,7 +333,7 @@ def _test_print_step() -> None:
 
 
 def _test_screenshot_step() -> None:
-    """SCREENSHOT classification + name extraction (ManulHeart parity)."""
+    """SCREENSHOT classification + name extraction (ManulEngine (Go) parity)."""
     from manul_engine.helpers import extract_screenshot_name
 
     print("\n  ── SCREENSHOT step ────────────────────────────────────────────")
@@ -346,7 +346,7 @@ def _test_screenshot_step() -> None:
 
 
 def _test_end_block_terminators() -> None:
-    """Explicit block terminators (ManulHeart style) tolerated as no-ops."""
+    """Explicit block terminators (ManulEngine (Go) style) tolerated as no-ops."""
     print("\n  ── END block terminators ──────────────────────────────────────")
     for term in ["END IF", "ENDIF", "END REPEAT", "END WHILE", "END FOR", "END FOR EACH", "  end if  "]:
         _assert(classify_step(term) == "end_block", f"{term!r} classified as end_block")

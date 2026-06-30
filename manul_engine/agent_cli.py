@@ -1,7 +1,7 @@
 # manul_engine/agent_cli.py
 """Agent-facing CLI commands for external LLM / assistant drivers.
 
-Mirrors ManulHeart's agent commands (`schema` / `map` / `read` / `run-step`):
+Mirrors ManulEngine (Go)'s agent commands (`schema` / `map` / `read` / `run-step`):
 each emits compact JSON to **stdout** (engine logs stay on stderr) so a driver
 can pipe the output straight into a prompt. The browser commands attach to an
 **already-running Chrome over CDP** (default ``http://127.0.0.1:9222``) — the
@@ -30,7 +30,7 @@ from .js_scripts import FULL_SCAN_JS
 DEFAULT_CDP = "http://127.0.0.1:9222"
 DEFAULT_MAX_PER_GROUP = 8
 
-# Machine-readable outcome reasons (mirror ManulHeart's agent.Reason enum).
+# Machine-readable outcome reasons (mirror ManulEngine (Go)'s agent.Reason enum).
 REASON_OK = "ok"
 REASON_NOT_FOUND = "not_found"
 REASON_AMBIGUOUS = "ambiguous"
@@ -430,7 +430,7 @@ async def _run_one(engine, page, step: str) -> dict:
     reason = (
         REASON_OK if ok else (REASON_VERIFY_FAILED if kind in ("verify", "verify_softly") else REASON_ACTION_FAILED)
     )
-    # Distinguish a timeout from a generic action failure (ManulHeart parity).
+    # Distinguish a timeout from a generic action failure (ManulEngine (Go) parity).
     if not ok and error and ("timeout" in error.lower() or "timed out" in error.lower()):
         reason = REASON_TIMEOUT
 
@@ -443,7 +443,7 @@ async def _run_one(engine, page, step: str) -> dict:
         outcome["error"] = error
 
     # Surface top candidates on failure OR on a low-confidence "success", so an
-    # agent can tell a fuzzy match landed on the wrong element (mirrors ManulHeart).
+    # agent can tell a fuzzy match landed on the wrong element (mirrors ManulEngine (Go)).
     if extract_quoted(step):
         near = await _near_candidates(engine, page, step)
         top = near[0]["score"] if near else 0.0
@@ -453,7 +453,7 @@ async def _run_one(engine, page, step: str) -> dict:
             if near:
                 outcome["near"] = near
             # Refine a generic action failure: no candidates at all → not_found;
-            # candidates present but none confident → ambiguous (ManulHeart parity).
+            # candidates present but none confident → ambiguous (ManulEngine (Go) parity).
             if reason == REASON_ACTION_FAILED:
                 if not near:
                     outcome["reason"] = REASON_NOT_FOUND

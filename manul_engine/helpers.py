@@ -68,7 +68,7 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
     ("debug_vars", re.compile(r"\bDEBUG\s+VARS\b")),
     ("debug", re.compile(r"\b(?:DEBUG|PAUSE)\b")),
     ("done", re.compile(r"\bDONE\b")),
-    # Explicit block terminators (ManulHeart style). Engine blocks are
+    # Explicit block terminators (ManulEngine (Go) style). Engine blocks are
     # indentation-based, so these are tolerated as no-ops for cross-engine
     # .hunt compatibility: END IF / ENDIF / END REPEAT / END WHILE / END FOR.
     ("end_block", re.compile(r"^\s*(?:\d+\.\s*)?END\s*(?:IF|REPEAT|WHILE|FOR(?:\s+EACH)?)\b", re.IGNORECASE)),
@@ -680,7 +680,7 @@ def extract_print_message(step: str) -> str:
     """Return the message of a ``PRINT`` step (text after the PRINT keyword).
 
     A single layer of matching surrounding quotes is stripped. The caller is
-    expected to have already substituted ``{variables}`` (mirrors ManulHeart's
+    expected to have already substituted ``{variables}`` (mirrors ManulEngine (Go)'s
     ``CmdPrint`` which resolves variables then logs the text).
     """
     msg = _RE_PRINT_PREFIX.sub("", step).strip()
@@ -698,7 +698,7 @@ def extract_screenshot_name(step: str) -> str:
 
     ``SCREENSHOT`` alone → ``""`` (caller auto-names). ``SCREENSHOT "after login"``
     → a filesystem-safe slug (``after_login``) without extension. Mirrors
-    ManulHeart's ``SCREENSHOT`` command which accepts an optional label.
+    ManulEngine (Go)'s ``SCREENSHOT`` command which accepts an optional label.
     """
     name = _RE_SCREENSHOT_PREFIX.sub("", step).strip()
     if len(name) >= 2 and name[0] in "\"'" and name[-1] == name[0]:

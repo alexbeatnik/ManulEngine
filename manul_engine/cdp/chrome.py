@@ -3,7 +3,7 @@
 
 Launches a system-installed Chrome/Chromium with remote debugging enabled
 and resolves its browser-level DevTools WebSocket endpoint. Ported from
-ManulHeart's ``pkg/browser/chrome.go``.
+ManulEngine (Go)'s ``pkg/browser/chrome.go``.
 
 Chrome is launched with ``--remote-debugging-port=0`` so it picks a free
 port and writes it to ``<user-data-dir>/DevToolsActivePort``; we read that
@@ -25,7 +25,7 @@ from pathlib import Path
 _log = logging.getLogger("manul_engine").getChild("cdp.chrome")
 
 # Flags that suppress Chrome dialogs/networking that interfere with automation
-# (mirrors ManulHeart's chrome.go arg list).
+# (mirrors ManulEngine (Go)'s chrome.go arg list).
 _AUTOMATION_FLAGS = [
     "--no-first-run",
     "--no-default-browser-check",
@@ -39,7 +39,7 @@ _AUTOMATION_FLAGS = [
     "--disable-sync",
     "--disable-translate",
     "--disable-search-engine-choice-screen",
-    # Keep in sync with ManulHeart pkg/browser/chrome.go. PasswordCheck /
+    # Keep in sync with ManulEngine (Go) pkg/browser/chrome.go. PasswordCheck /
     # ChromePasswordManagerUI / CredentialManager kill the password
     # strength/leak check UI that otherwise interrupts form-fill automation.
     "--disable-features=PasswordLeakDetection,PasswordManagerOnboarding,PasswordCheck,"

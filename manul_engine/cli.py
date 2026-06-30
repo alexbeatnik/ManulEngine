@@ -919,12 +919,12 @@ async def main() -> "int | None":
     debug = "--debug" in args
     html_report = "--html-report" in args
     explain = "--explain" in args
-    # Machine output (mirrors ManulHeart): --json prints the final RunSummary as
+    # Machine output (mirrors ManulEngine (Go)): --json prints the final RunSummary as
     # JSON; --jsonl streams per-step JSON Lines + a final summary line. Either
     # routes human logs to stderr so stdout carries only the payload.
     json_out = "--json" in args
     jsonl_out = "--jsonl" in args
-    # --disable-cache (ManulHeart parity): turn off the in-session semantic cache
+    # --disable-cache (ManulEngine (Go) parity): turn off the in-session semantic cache
     # for a fully cold, deterministic run. Also honours MANUL_DISABLE_CACHE env.
     disable_cache = "--disable-cache" in args or env_bool("MANUL_DISABLE_CACHE")
     args = [
@@ -977,7 +977,7 @@ async def main() -> "int | None":
         os.environ["MANUL_CDP_ENDPOINT"] = cdp_endpoint
 
     # Extract --target <url=substr> flag — when attaching over --cdp, pick the page
-    # whose URL contains <substr> (mirrors ManulHeart; the 'url=' prefix is optional).
+    # whose URL contains <substr> (mirrors ManulEngine (Go); the 'url=' prefix is optional).
     cdp_tab: str | None = None
     _target_raw, args = _pop_flag(args, "--target")
     if _target_raw is not None:
@@ -1029,7 +1029,7 @@ async def main() -> "int | None":
     filter_tags: set[str] = set()
     _tags_raw, args = _pop_flag(args, "--tags")
     if _tags_raw is None:
-        _tags_raw = os.getenv("MANUL_TAGS")  # ManulHeart parity: env fallback for --tags
+        _tags_raw = os.getenv("MANUL_TAGS")  # ManulEngine (Go) parity: env fallback for --tags
     if _tags_raw:
         filter_tags = {t.strip() for t in _tags_raw.split(",") if t.strip()}
 
@@ -1392,7 +1392,7 @@ def _emit_run_json(run_summary: "RunSummary", *, jsonl: bool) -> None:
     """Write the run result to stdout as JSON (``--json``) or JSON Lines
     (``--jsonl``: one object per step, then a final ``summary`` line).
 
-    Mirrors ManulHeart's machine-output routing. Base64 screenshots are
+    Mirrors ManulEngine (Go)'s machine-output routing. Base64 screenshots are
     stripped to keep the payload lean for LLM/CI consumers.
     """
     from dataclasses import asdict

@@ -215,7 +215,7 @@ Example output:
 
 ### Agent commands — drive the engine from an external LLM
 
-For agentic use, ManulEngine exposes a small set of **JSON-emitting CLI commands** (mirroring the Go sibling [ManulHeart](https://github.com/alexbeatnik/ManulHeart)). They attach to an **already-running Chrome over CDP**, so an external model keeps one browser open and issues stateless calls against it. The JSON payload goes to **stdout**; all engine logs go to **stderr**, so a driver can pipe the output straight into a prompt.
+For agentic use, ManulEngine exposes a small set of **JSON-emitting CLI commands** (mirroring the Go sibling [ManulEngine (Go)](https://github.com/alexbeatnik/ManulEngine (Go))). They attach to an **already-running Chrome over CDP**, so an external model keeps one browser open and issues stateless calls against it. The JSON payload goes to **stdout**; all engine logs go to **stderr**, so a driver can pipe the output straight into a prompt.
 
 ```bash
 # 1. start Chrome once with remote debugging
@@ -303,7 +303,7 @@ Why own the protocol layer:
 - **Per-frame execution contexts.** A selector is resolved once inside the owning frame's execution context, then every operation runs against that handle — so same-origin iframes (and OOPIF child targets) are first-class, not an afterthought.
 - **CDP is Chromium-only by design.** Because the protocol is Chrome's, the engine drives Chrome/Chromium only. Firefox/WebKit are intentionally not supported; pick the concrete binary with `channel` (`chrome`, `msedge`, `chromium`, …) or `executable_path`.
 
-This is the same philosophy as the Go sibling [ManulHeart](https://github.com/alexbeatnik/ManulHeart): plain-English `.hunt` files, deterministic heuristics, and a hand-written CDP layer instead of a heavyweight automation framework.
+This is the same philosophy as the Go sibling [ManulEngine (Go)](https://github.com/alexbeatnik/ManulEngine (Go)): plain-English `.hunt` files, deterministic heuristics, and a hand-written CDP layer instead of a heavyweight automation framework.
 
 ### Dual-persona workflow
 
@@ -458,7 +458,7 @@ ManulEngine is alpha-stage and solo-developed. If deterministic, explainable bro
 - **Ollama / in-process LLM removed (BREAKING):** ManulEngine is now purely deterministic — there is no in-engine model. The `model`, `ai_threshold`, `ai_always`, `ai_policy` settings (and `MANUL_MODEL` / `MANUL_AI_*` / `MANUL_LLM_*` env vars) are gone, along with the free-text task planner and the What-If *LLM* analysis (the deterministic explain-next dry-run stays). Intelligence now lives in the external agent that drives the engine via the agent commands.
 - **Playwright removed — native Chrome DevTools Protocol backend (BREAKING):** the entire browser layer is now ManulEngine's own CDP client in [`manul_engine/cdp/`](manul_engine/cdp/), driving system Chrome/Chromium over a raw WebSocket. The only runtime dependency is `websockets` (no Playwright, no Node.js, no bundled browser download). `ManulSession.page` is now a `manul_engine.cdp.CDPPage`; per-frame iframe routing uses real per-frame execution contexts. **Install requires a system Chrome/Chromium on `PATH`** (`playwright install` is gone).
 - **`browser` is Chromium-only:** `firefox` / `webkit` are no longer accepted (CDP is Chrome's protocol). `browser` now selects launch mode — `chromium` (launch) or `electron` (attach to a running Chrome/Electron over CDP); choose the binary with `channel` / `executable_path`.
-- **Agent CLI commands for external LLM drivers:** new `manul schema` / `map` / `read` / `run-step` subcommands emit compact JSON (stdout) while engine logs stay on stderr, attaching to an already-running Chrome over CDP — the surface an external model uses to see the page, act, and read by human label. Mirrors ManulHeart's agent commands.
+- **Agent CLI commands for external LLM drivers:** new `manul schema` / `map` / `read` / `run-step` subcommands emit compact JSON (stdout) while engine logs stay on stderr, attaching to an already-running Chrome over CDP — the surface an external model uses to see the page, act, and read by human label. Mirrors ManulEngine (Go)'s agent commands.
 
 ## License
 

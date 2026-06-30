@@ -274,7 +274,7 @@
       "default": false,
       "configKey": null,
       "envVar": null,
-      "description": "Print the final RunSummary as indented JSON to stdout; human logs are routed to stderr. Base64 screenshots are stripped. Mirrors ManulHeart's --json.",
+      "description": "Print the final RunSummary as indented JSON to stdout; human logs are routed to stderr. Base64 screenshots are stripped. Mirrors ManulEngine (Go)'s --json.",
       "appliesTo": ["run"]
     },
     {
@@ -284,7 +284,7 @@
       "default": false,
       "configKey": null,
       "envVar": null,
-      "description": "Stream per-step JSON Lines (one object per step, type=step) followed by a final type=summary line to stdout; human logs are routed to stderr. Mirrors ManulHeart's --jsonl.",
+      "description": "Stream per-step JSON Lines (one object per step, type=step) followed by a final type=summary line to stdout; human logs are routed to stderr. Mirrors ManulEngine (Go)'s --jsonl.",
       "appliesTo": ["run"]
     },
     {
@@ -294,7 +294,7 @@
       "default": false,
       "configKey": "semantic_cache_enabled",
       "envVar": "MANUL_SEMANTIC_CACHE_ENABLED",
-      "description": "Disable the in-session semantic cache (learned_elements) for a fully cold, deterministic run. Mirrors ManulHeart's --disable-cache. Inverse of semantic_cache_enabled.",
+      "description": "Disable the in-session semantic cache (learned_elements) for a fully cold, deterministic run. Mirrors ManulEngine (Go)'s --disable-cache. Inverse of semantic_cache_enabled.",
       "appliesTo": ["run"]
     },
     {
@@ -314,7 +314,7 @@
       "default": null,
       "configKey": "cdp_endpoint",
       "envVar": "MANUL_CDP_ENDPOINT",
-      "description": "Attach to a running browser at this CDP HTTP endpoint (e.g. http://127.0.0.1:9222) instead of launching Chrome. Mirrors ManulHeart's --cdp.",
+      "description": "Attach to a running browser at this CDP HTTP endpoint (e.g. http://127.0.0.1:9222) instead of launching Chrome. Mirrors ManulEngine (Go)'s --cdp.",
       "appliesTo": ["run"]
     },
     {
@@ -324,7 +324,7 @@
       "default": null,
       "configKey": null,
       "envVar": "MANUL_CDP_TAB",
-      "description": "With --cdp, select the page whose URL contains the given substring (form: url=<substr>; the url= prefix is optional). Falls back to the first page. Mirrors ManulHeart's --target.",
+      "description": "With --cdp, select the page whose URL contains the given substring (form: url=<substr>; the url= prefix is optional). Falls back to the first page. Mirrors ManulEngine (Go)'s --target.",
       "appliesTo": ["run"]
     },
     {

@@ -2,7 +2,7 @@
 
 This document specifies the runtime contract between the ManulEngine VS Code
 extension (TypeScript) and the backing CLI engine. It is implemented by **both**
-runtimes — ManulEngine (Python, `manul-engine`) and ManulHeart (Go, `ManulHeart`)
+runtimes — ManulEngine (Python, `manul-engine`) and ManulEngine (Go, `ManulEngineGo`)
 — which expose the same `manul` CLI surface, argv shapes, env vars,
 stdout/stdin debug protocol, and exit-code semantics. Kept in sync across both
 engine repos and the extension.
@@ -17,8 +17,8 @@ the engine deviates.
 The extension pins an exact minimum engine version:
 
 ```
-MIN_MANUL_ENGINE_VERSION = "0.0.9.30"   // src/shared/index.ts:5
-MIN_MANUL_HEART_VERSION  = "0.0.1.1"    // src/shared/index.ts:6
+MIN_MANUL_ENGINE_VERSION = "0.1.0"        // src/shared/index.ts:5
+MIN_MANUL_ENGINE_GO_VERSION  = "0.1.0"      // src/shared/index.ts:6
 ```
 
 The version-check path parses the first `\d+(?:\.\d+)+` run out of `manul --version`
@@ -178,7 +178,7 @@ via `terminal.sendText`:
 ### 1.9 Doctor (diagnostic probes — out of engine scope)
 
 File: [src/manulDoctor.ts](src/manulDoctor.ts). These probe the host Python
-install, not ManulHeart, but any Go rewrite that drops Python should update
+install, not ManulEngine (Go), but any Go rewrite that drops Python should update
 the diagnostic or it will show a misleading ⚠️:
 
 - `python3 -c "import sys; print(sys.version.split(' ')[0])"` (falls back to `python`)

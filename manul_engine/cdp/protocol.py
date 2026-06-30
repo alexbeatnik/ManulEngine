@@ -1,7 +1,7 @@
 # manul_engine/cdp/protocol.py
 """JavaScript building blocks for the CDP backend.
 
-These are the element-operation scripts ported from ManulHeart's
+These are the element-operation scripts ported from ManulEngine (Go)'s
 ``pkg/cdp/cdp.go`` (``SetInputValue``, ``SetChecked``, file-input resolution),
 adapted to run as ``Runtime.callFunctionOn`` function declarations that receive
 the target element as ``this`` instead of re-resolving it by id/xpath. The node

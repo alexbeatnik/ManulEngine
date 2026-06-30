@@ -322,7 +322,7 @@
       "uiText": "PRINT \"message {variable}\"",
       "snippet": "PRINT \"${1:message}\"",
       "regex": "^\\s*(?:\\d+\\.\\s*)?PRINT\\b",
-      "description": "Logs a message to the run output, with {placeholder} variables substituted and a single layer of surrounding quotes stripped. No element resolution. Mirrors ManulHeart's PRINT (CmdPrint).",
+      "description": "Logs a message to the run output, with {placeholder} variables substituted and a single layer of surrounding quotes stripped. No element resolution. Mirrors ManulEngine (Go)'s PRINT (CmdPrint).",
       "category": "utility"
     },
     {
@@ -331,7 +331,7 @@
       "uiText": "SCREENSHOT [\"name\"]",
       "snippet": "SCREENSHOT \"${1:name}\"",
       "regex": "^\\s*(?:\\d+\\.\\s*)?SCREENSHOT\\b",
-      "description": "Captures a full-page PNG on demand into screenshots/<name>.png under the CWD (auto-named when no label is given). Mirrors ManulHeart's SCREENSHOT command.",
+      "description": "Captures a full-page PNG on demand into screenshots/<name>.png under the CWD (auto-named when no label is given). Mirrors ManulEngine (Go)'s SCREENSHOT command.",
       "category": "utility"
     },
     {

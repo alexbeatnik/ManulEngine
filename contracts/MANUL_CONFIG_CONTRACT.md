@@ -81,7 +81,7 @@
       "envVar": "MANUL_CDP_ENDPOINT",
       "type": "string | null",
       "default": null,
-      "description": "Attach to an already-running browser at this CDP HTTP endpoint (e.g. http://127.0.0.1:9222) instead of launching a new Chrome. Mirrors ManulHeart's --cdp. When set, the engine connects via CDPBrowser.connect_over_cdp and drives the first existing page.",
+      "description": "Attach to an already-running browser at this CDP HTTP endpoint (e.g. http://127.0.0.1:9222) instead of launching a new Chrome. Mirrors ManulEngine (Go)'s --cdp. When set, the engine connects via CDPBrowser.connect_over_cdp and drives the first existing page.",
       "cliFlag": "--cdp"
     },
     {
