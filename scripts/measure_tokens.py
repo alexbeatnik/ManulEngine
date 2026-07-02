@@ -44,9 +44,9 @@ except ImportError:
 
     _TOK_NOTE = "≈ chars/4 estimate (install tiktoken for exact GPT-4 counts)"
 
-from manul_engine import agent_cli  # noqa: E402
-from manul_engine.cdp import CDPBrowser  # noqa: E402
-from manul_engine.cdp.chrome import launch_chrome  # noqa: E402
+from manul_engine import agent_cli
+from manul_engine.cdp import CDPBrowser
+from manul_engine.cdp.chrome import launch_chrome
 
 
 def _biggest_dom(modname: str) -> tuple[str, str]:

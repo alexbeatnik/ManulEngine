@@ -121,7 +121,7 @@ def bump(new_version: str, *, dry_run: bool = False) -> None:
     )
 
     if not dry_run and total_replacements > 0:
-        print(f"\nNext steps:")
+        print("\nNext steps:")
         print(f"  git add -A && git commit -m 'chore: bump version to {new_version}'")
         print(f"  git tag v{new_version}")
 
