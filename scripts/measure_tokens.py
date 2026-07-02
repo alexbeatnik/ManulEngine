@@ -37,6 +37,7 @@ try:
 
     _TOK_NOTE = "GPT-4 tokenizer (cl100k_base)"
 except ImportError:
+
     def toks(s: str) -> int:
         # Transparent fallback: ~4 chars/token BPE estimate.
         return max(1, round(len(s) / 4))
@@ -142,7 +143,14 @@ async def main() -> None:
             raw_html = await page.content()
             ax = await _ax_tree(page)
             await b.close()
-            rows.append({"page": f"{mod} ({name})", "raw": toks(raw_html), "ax": toks(ax), "map": toks(await _map_json(endpoint))})
+            rows.append(
+                {
+                    "page": f"{mod} ({name})",
+                    "raw": toks(raw_html),
+                    "ax": toks(ax),
+                    "map": toks(await _map_json(endpoint)),
+                }
+            )
     finally:
         await cp.close()
 

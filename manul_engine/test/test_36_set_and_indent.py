@@ -329,7 +329,9 @@ def _test_print_step() -> None:
     _assert(classify_step("Click the 'PRINT' button") == "action", "'PRINT' label stays action")
     _assert(extract_print_message('PRINT "hello {x}"') == "hello {x}", "double-quoted message extracted")
     _assert(extract_print_message("PRINT 'quoted'") == "quoted", "single-quoted message extracted")
-    _assert(extract_print_message("2. PRINT bare message") == "bare message", "bare message extracted (prefix stripped)")
+    _assert(
+        extract_print_message("2. PRINT bare message") == "bare message", "bare message extracted (prefix stripped)"
+    )
 
 
 def _test_screenshot_step() -> None:
