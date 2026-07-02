@@ -1,7 +1,7 @@
 # ManulEngine ↔ ManulEngine (Go) — Parity Audit
 
 > Working document for bringing **ManulEngine** (Python, `/ManulEngine`) and
-> **ManulEngine (Go)** (Go, `/ManulEngine (Go)`) to identical functionality, and updating
+> **ManulEngine (Go)** (Go, `/ManulEngineGo`) to identical functionality, and updating
 > the **VS Code extension** (`/ManulEngineExtension`) to work with both.
 >
 > **Direction policy:** *best-of / case-by-case* — for each divergence the
@@ -9,6 +9,9 @@
 > Per-runtime intentional splits (e.g. `CALL PYTHON` vs `CALL GO`) are **kept**.
 
 Status legend: ✅ aligned · ⚠️ divergent (fix) · ➖ intentional per-runtime split
+
+> Naming note: **"Heart"** below is historical shorthand for **ManulEngine (Go)**
+> (the project was renamed from *ManulHeart* during 0.1.0); "Engine" = ManulEngine (Python).
 
 ---
 

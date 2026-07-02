@@ -55,7 +55,7 @@ every spawn in the extension drives the process directly through pipes.
 ### 1.2 `manul --version`
 
 - `execFile(manulExe, ["--version"], { timeout: 5000 })` — [src/huntRunner.ts:37](src/huntRunner.ts#L37)
-- **Expected stdout**: a line matching `/(\d+(?:\.\d+)+)/`. First regex capture is treated as the installed version. Example: `manul 0.0.9.29`.
+- **Expected stdout**: a line matching `/(\d+(?:\.\d+)+)/`. First regex capture is treated as the installed version. Example: `manul 0.1.0`.
 - No stderr contract. A timeout or missing match is treated as "version unknown" (no warning shown).
 
 ### 1.3 Hunt-file runs (the core contract)
@@ -630,13 +630,15 @@ or flush on every `Println`).
 ## Appendix C — Engine Version Gate
 
 If `manul --version` reports a version whose dotted components are
-component-wise **less than** `0.0.9.29`, the extension raises a warning
-toast:
+component-wise **less than** the detected runtime's minimum
+(`MIN_MANUL_ENGINE_VERSION` for Python, `MIN_MANUL_ENGINE_GO_VERSION` for Go
+— both currently `0.1.0`), the extension raises a warning toast:
 
-> `v<installed> is installed but this extension requires exactly v0.0.9.29. Run: pip install --upgrade "manul-engine==0.0.9.29"`
+> `v<installed> is installed but this extension requires <ManulEngine | ManulEngine (Go)> >= v0.1.0.`
+> followed by `Run: pip install --upgrade "manul-engine==0.1.0"` (Python) or `Run: go build -o manul ./cmd/manul` (Go)
 
-([src/huntRunner.ts:35-58](src/huntRunner.ts#L35-L58)). A Go rewrite must
-continue to respond to `--version` on stdout with a parseable
-`\d+(?:\.\d+)+` token — and must report a version **≥ 0.0.9.29**, or
-bump the constant in [src/shared/index.ts:5](src/shared/index.ts#L5) in
+([src/huntRunner.ts:35-58](src/huntRunner.ts#L35-L58)). An engine
+implementation must continue to respond to `--version` on stdout with a
+parseable `\d+(?:\.\d+)+` token — and must report a version **≥ 0.1.0**, or
+bump the constants in [src/shared/index.ts:5-6](src/shared/index.ts#L5-L6) in
 lockstep.
