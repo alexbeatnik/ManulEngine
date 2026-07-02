@@ -1,6 +1,6 @@
 # Overview
 
-> **ManulEngine v0.0.9.29** — Deterministic, DSL-first Web & Desktop Automation Runtime
+> **ManulEngine 0.1.0** — Deterministic, DSL-first Web & Desktop Automation Runtime
 
 ## What Is ManulEngine?
 
@@ -38,7 +38,7 @@ Everything runs **locally**. No cloud APIs, no telemetry, and a single runtime d
          │              │
          ▼              ▼
    ┌──────────────────────────┐
-   │       Playwright         │   Browser interaction layer
+   │  Native CDP client (cdp/)  │   Browser interaction layer
    │  (Chromium / Firefox /   │   Async page actions
    │   WebKit / Electron)     │
    └──────────────────────────┘
@@ -54,7 +54,7 @@ Everything runs **locally**. No cloud APIs, no telemetry, and a single runtime d
 | **TreeWalker Snapshot** | `js_scripts.py` | JavaScript injected into each frame — walks the DOM, prunes non-interactive nodes, checks visibility |
 | **Actions Mixin** | `actions.py` | Click, fill, select, hover, drag, scroll, verify, extract, explicit waits |
 | **Semantic Cache** | `scoring.py`, `core.py` | In-session learned-elements cache — feeds the scorer as one channel (never bypasses scoring); resets each run |
-| **Custom Controls** | `controls.py` | `@custom_control` decorator to handle complex widgets with raw Playwright |
+| **Custom Controls** | `controls.py` | `@custom_control` decorator to handle complex widgets with raw CDP |
 | **Python Hooks** | `hooks.py` | `[SETUP]` / `[TEARDOWN]` block execution, `CALL PYTHON` inline steps |
 | **Lifecycle Hooks** | `lifecycle.py` | `@before_all` / `@after_all` / `@before_group` / `@after_group` global hooks |
 | **Import System** | `imports.py` | `@import` / `@export` / `USE` for sharing STEP blocks across `.hunt` files |
@@ -126,7 +126,7 @@ The same runtime and the same DSL serve four use cases:
 | **QA / E2E Testing** | Write plain-English flows, verify outcomes, attach HTML reports and screenshots. No selectors in the test source. |
 | **RPA Workflows** | Log into portals, fill forms, extract values, hand off to Python for backend or filesystem steps. |
 | **Synthetic Monitoring** | Pair `.hunt` files with `@schedule:` and `manul daemon` for recurring health checks. |
-| **AI Agent Targets** | Constrained DSL execution is safer than raw Playwright for external agents — the runtime still owns scoring, retries, and validation. |
+| **AI Agent Targets** | Constrained DSL execution is safer than raw CDP/scripting for external agents — the runtime still owns scoring, retries, and validation. |
 
 ## Project Status
 

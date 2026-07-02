@@ -1,6 +1,6 @@
 # Reports & Explainability
 
-> **ManulEngine v0.0.9.29**
+> **ManulEngine 0.1.0**
 
 ManulEngine provides multiple layers of observability: HTML reports with screenshots, per-channel scoring breakdowns, and an interactive What-If Analysis REPL.
 

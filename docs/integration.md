@@ -1,12 +1,12 @@
 # Integration
 
-> **ManulEngine v0.0.9.29**
+> **ManulEngine 0.1.0**
 
 This document covers integrating ManulEngine with Python code, CI/CD pipelines, Docker, and the companion MCP Server.
 
 ## Python API (`ManulSession`)
 
-`ManulSession` is an async context manager for pure-Python browser automation. It manages the Playwright lifecycle and routes every call through the full ManulEngine heuristic pipeline — no selectors needed.
+`ManulSession` is an async context manager for pure-Python browser automation. It manages the browser lifecycle (native CDP) and routes every call through the full ManulEngine heuristic pipeline — no selectors needed.
 
 ### Basic usage
 
@@ -77,7 +77,7 @@ async with ManulSession() as session:
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `session.page` | `Page` | Active Playwright Page object |
+| `session.page` | `CDPPage` | Active page object (native CDP) |
 | `session.engine` | `ManulEngine` | Underlying engine instance |
 | `session.memory` | `ScopedVariables` | Variable store |
 
@@ -195,8 +195,8 @@ jobs:
 
       - name: Install ManulEngine
         run: |
-          pip install manul-engine==0.0.9.29
-          playwright install --with-deps chromium
+          pip install manul-engine==0.1.0
+          # GitHub-hosted Ubuntu runners ship Google Chrome; otherwise install chromium via apt
 
       - name: Run tests
         run: manul --headless --html-report --screenshot on-fail tests/
@@ -216,7 +216,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/alexbeatnik/manul-engine:0.0.9.29
+      image: ghcr.io/alexbeatnik/manul-engine:0.1.0
       options: --shm-size=1g
     steps:
       - uses: actions/checkout@v4
@@ -258,13 +258,13 @@ export MANUL_BROWSER_ARGS="--no-sandbox --disable-dev-shm-usage"
 docker run --rm --shm-size=1g \
   -v $(pwd)/tests:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.29 \
+  ghcr.io/alexbeatnik/manul-engine:0.1.0 \
   --html-report --screenshot on-fail hunts/
 ```
 
 ### Image characteristics
 
-- **Multi-stage build**: `deps` (pip + Playwright browsers) → `runtime` (slim, no build tools)
+- **Multi-stage build**: `deps` (pip; system Chrome baked into the image) → `runtime` (slim, no build tools)
 - **Non-root user**: `manul` (UID 1000) — no `--privileged` needed
 - **PID 1**: `dumb-init` for proper signal handling and exit-code propagation
 - **CI defaults**: `MANUL_HEADLESS=true`, `MANUL_BROWSER_ARGS="--no-sandbox --disable-dev-shm-usage"`, `TZ=UTC`
@@ -286,7 +286,7 @@ The repo ships `docker-compose.yml` with two services:
 ```yaml
 services:
   manul:
-    image: ghcr.io/alexbeatnik/manul-engine:0.0.9.29
+    image: ghcr.io/alexbeatnik/manul-engine:0.1.0
     command: --html-report --screenshot on-fail hunts/
     volumes:
       - ./tests:/workspace/hunts:ro
@@ -294,7 +294,7 @@ services:
     shm_size: '1g'
 
   manul-daemon:
-    image: ghcr.io/alexbeatnik/manul-engine:0.0.9.29
+    image: ghcr.io/alexbeatnik/manul-engine:0.1.0
     command: daemon hunts/ --headless
     volumes:
       - ./tests:/workspace/hunts:ro

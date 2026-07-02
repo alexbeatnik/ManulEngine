@@ -1,6 +1,6 @@
 # DSL Syntax Reference
 
-> **ManulEngine v0.0.9.29**
+> **ManulEngine 0.1.0**
 
 This is the complete reference for the `.hunt` DSL — ManulEngine's plain-English automation language.
 
@@ -207,7 +207,7 @@ SELECT 'Option 1' from the 'Menu' dropdown
 SELECT 'United States' from the 'Country' dropdown
 ```
 
-For native `<select>` elements, uses Playwright's `select_option()`. For custom div/span dropdowns, falls back to click-based selection.
+For native `<select>` elements, uses native option selection over CDP. For custom div/span dropdowns, falls back to click-based selection.
 
 ---
 
@@ -308,7 +308,7 @@ WAIT 2                                  # hard sleep (seconds)
 WAIT FOR RESPONSE "api/data"            # wait for a network response
 ```
 
-Explicit waits use Playwright's `locator.wait_for()` — always prefer these over hard sleeps.
+Explicit waits poll element visibility over CDP — always prefer these over hard sleeps.
 
 ---
 
@@ -594,7 +594,7 @@ STEP 1: Adaptive login
 
 | Pattern | Example | What it checks |
 |---------|---------|----------------|
-| Element exists | `button 'Save' exists` | Playwright locator probe |
+| Element exists | `button 'Save' exists` | DOM probe |
 | Element not exists | `link 'Home' not exists` | Inverse locator probe |
 | Text present | `text 'Welcome' is present` | Visible text on page |
 | Text not present | `text 'Error' is not present` | Inverse text check |
@@ -1066,7 +1066,7 @@ async def handle_checkin(page, action_type: str, value: str | None) -> None:
 FILL 'Check-in Date' with '2026-12-25'
 ```
 
-The engine intercepts the step before DOM scoring — if a custom control matches `(page_name, target)`, it calls the handler directly with the Playwright `page` object.
+The engine intercepts the step before DOM scoring — if a custom control matches `(page_name, target)`, it calls the handler directly with the live `CDPPage` object.
 
 ### Handler signature
 
@@ -1075,7 +1075,7 @@ async def handler(page, action_type: str, value: str | None) -> None:
     ...
 ```
 
-- `page` — live Playwright `Page` object.
+- `page` — live `CDPPage` object.
 - `action_type` — detected mode: `"input"`, `"clickable"`, `"select"`, `"hover"`, `"drag"`, `"locate"`.
 - `value` — for `"input"` steps, the text to type; for `"select"`, the option; `None` for clicks and hovers.
 
@@ -1240,7 +1240,7 @@ MOCK POST "api/login" with 'mocks/login_response.json'
 
 - Supported methods: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`.
 - Mock file resolved relative to hunt file directory → CWD.
-- Uses Playwright's `page.route()` under the hood.
+- Uses CDP request interception under the hood.
 
 Wait for a specific network response:
 
@@ -1260,7 +1260,7 @@ UPLOAD 'avatar.png' to 'Profile Picture'
 
 - Both file path and target must be quoted.
 - File path is resolved relative to the `.hunt` file's directory first, then CWD.
-- Mapped to Playwright's `locator.set_input_files()`.
+- Mapped to `DOM.setFileInputFiles` over CDP.
 
 ---
 
@@ -1342,7 +1342,7 @@ manul --explain tests/login.hunt              # scoring breakdown
 manul --debug tests/login.hunt                # interactive debug
 manul --break-lines 5,10 tests/login.hunt     # breakpoint debug
 manul --workers 4 tests/                      # parallel execution
-manul --browser firefox tests/                # use Firefox
+MANUL_CHANNEL=msedge manul tests/               # pick a Chromium-family binary (chrome, msedge, chromium)
 manul scan https://example.com                # scan → draft hunt
 manul daemon tests/ --headless                # scheduled daemon
 ```

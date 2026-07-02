@@ -100,7 +100,8 @@ class _ActionsMixin:
             }
 
     async def _handle_navigate(self, page, step: str) -> bool:
-        url = re.search(r'(https?://[^\s\'"<>]+)', step)
+        # file:// is first-class (hermetic tests, local fixtures) — same as the Go engine.
+        url = re.search(r'((?:https?|file)://[^\s\'"<>]+)', step)
         if not url:
             return False
         await page.goto(url.group(1), wait_until="domcontentloaded", timeout=self.nav_timeout)

@@ -1,40 +1,29 @@
 # Installation
 
-> **ManulEngine v0.0.9.29**
+> **ManulEngine 0.1.0**
 
 ## Requirements
 
 | Requirement | Version | Notes |
 |-------------|---------|-------|
 | **Python** | 3.11+ | Python 3.12 also supported |
-| **Playwright** | 1.58+ | Installed automatically with `manul-engine` |
+| **Google Chrome / Chromium** | any recent | Must be on `PATH` (or set `channel` / `executable_path`) — the engine drives it directly over CDP |
 | **OS** | Linux, macOS, Windows | All three platforms supported |
+
+No Playwright, no Node.js, no bundled browser download — the only runtime dependency is `websockets`.
 
 **Optional:**
 
 | Tool | Purpose |
 |------|---------|
 | **VS Code** | For the companion Manul Engine Extension (Test Explorer, debug runner) |
-| **Docker** | For CI/CD runner image |
+| **Docker** | For the CI/CD runner image |
 
 ## Install from PyPI
 
 ```bash
-pip install manul-engine==0.0.9.29
-```
-
-Then install Playwright browsers:
-
-```bash
-playwright install
-```
-
-This installs Chromium by default. To install specific browsers:
-
-```bash
-playwright install chromium     # Chromium only (default)
-playwright install firefox      # Firefox
-playwright install webkit       # WebKit
+pip install manul-engine==0.1.0
+# Requires a system-installed Google Chrome / Chromium on PATH.
 ```
 
 ## Virtual Environment (Recommended)
@@ -44,8 +33,7 @@ python -m venv .venv
 source .venv/bin/activate       # Linux / macOS
 # .venv\Scripts\activate        # Windows
 
-pip install manul-engine==0.0.9.29
-playwright install
+pip install manul-engine==0.1.0
 ```
 
 ## Install from Source (Development)
@@ -96,6 +84,8 @@ The extension provides:
 - Interactive debug runner with gutter breakpoints
 - Hover-based explain tooltips during debug pauses
 
+It also supports the Go engine ([ManulEngineGo](https://github.com/alexbeatnik/ManulEngineGo)) out of the box — the runtime is auto-detected from the workspace.
+
 ## MCP Server for GitHub Copilot
 
 A separate extension turns ManulEngine into a native MCP server for Copilot Chat:
@@ -106,10 +96,10 @@ code --install-extension manul-engine.manul-mcp-server
 
 ## Docker (CI/CD)
 
-Pull the pre-built headless runner image:
+Pull the pre-built headless runner image (system Chrome baked in):
 
 ```bash
-docker pull ghcr.io/alexbeatnik/manul-engine:0.0.9.29
+docker pull ghcr.io/alexbeatnik/manul-engine:0.1.0
 ```
 
 Or use the provided `Dockerfile` for custom builds. See [Integration → Docker](integration.md#docker) for usage details.

@@ -87,7 +87,15 @@ Engine `EngineConfig`: `headless, browser, browser_args, channel, executable_pat
   - **`run-step --compact`** accepted by both (Engine output is already compact). ✅
   - **`MOCK`** added to Heart's verbs (it supports `CmdMock`). ✅
 - **Intentional residual (not divergences):** `CALL PYTHON` (Engine) vs `CALL GO` (Heart) — per-runtime; `FULL SCAN`/`SCAN PAGE`/`WAIT FOR SELECTOR` are Engine-only features Heart doesn't implement.
-- Not exhaustively diffed: `map`/`read`/`run-step` *live* JSON on a fixture page (needs a running browser on both) — top-level schema shapes already match.
+- **DONE — live-diffed on a shared fixture page (2026-07-02):** one headless Chrome, both engines attached over CDP:
+  - `map` — **byte-identical** after adding `editable` to Heart's `MapElement`. ✅
+  - `read` (targeted + `--selector`) — identical values and JSON shape; Heart now always emits JSON (was plain text by default). ✅
+  - `run-step` — Heart now defaults to the compact StepOutcome JSON (was human log; `--json` keeps the full ExecutionResult as a Go extra). Same element resolved by both. ✅
+  - **Fixed in Heart:** flags after positionals were silently ignored (`manul read 'X' --cdp …` connected to the default 9222) — Go's `flag` stops at the first non-flag; added interleaved parsing to `read`/`run-step`/`scan`/`record`/`daemon`. ✅
+  - **Fixed in Heart:** `VERIFY '<label>' has value|text|placeholder "<expected>"` parsed but was **unimplemented at runtime** (always failed with `target ''`) — implemented the attribute form. ✅
+  - **Fixed in Engine:** `NAVIGATE to file://…` was rejected (`https?://`-only regex) — file:// is now first-class, like Heart. ✅
+  - **E2E:** the same .hunt (NAVIGATE file:// → VERIFY present → FILL → VERIFY has value → CLICK → VERIFY → PRINT) **passes on both engines**, exit 0; `run_history.json` JSONL entries identical in shape. ✅
+- **Known residual divergence (open):** `run-step`/`Step` **`score` scale** — Engine emits `raw/SCALE` confidence (e.g. `0.837`), Heart emits the scorer's clamped total (`clamp(raw,0,1)` → `1.0` on strong matches). Same winner either way; align the mapping later (pick one presentation, update both contracts + tests).
 
 ## 6. Contracts (the frozen shared surface) — biggest structural gap
 
