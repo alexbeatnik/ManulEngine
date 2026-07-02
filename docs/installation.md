@@ -72,7 +72,7 @@ See [DSL Syntax Reference → Configuration](dsl-syntax.md#configuration-referen
 Install the companion Manul Engine Extension for VS Code from the Marketplace:
 
 ```bash
-code --install-extension manul-engine.manul-engine
+code --install-extension alexbeatnik.manul-engine-extension
 ```
 
 Or search for **"Manul Engine"** in the VS Code Extensions sidebar.

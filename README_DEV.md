@@ -882,12 +882,12 @@ The companion Manul Engine Extension for VS Code is published separately from th
 
 Marketplace page:
 
-- https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine
+- https://marketplace.visualstudio.com/items?itemName=alexbeatnik.manul-engine-extension
 
 Install from VS Code or via CLI:
 
 ```bash
-code --install-extension manul-engine.manul-engine
+code --install-extension alexbeatnik.manul-engine-extension
 ```
 
 The published extension provides:
