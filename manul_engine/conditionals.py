@@ -18,8 +18,7 @@ from .js_scripts import VISIBLE_TEXT_JS
 from .logging_config import logger
 
 if TYPE_CHECKING:
-    from playwright.async_api import Page
-
+    from .cdp import CDPPage as Page
     from .variables import ScopedVariables
 
 _log = logger.getChild("conditionals")
@@ -165,23 +164,43 @@ async def evaluate_condition(
     raise ValueError(f"Unrecognized condition syntax: {cond!r}")
 
 
+_ELEMENT_EXISTS_JS = """
+(target) => {
+    const t = (target || '').toLowerCase().trim();
+    if (!t) return false;
+    const visible = (el) => {
+        const r = el.getBoundingClientRect();
+        const s = getComputedStyle(el);
+        return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none';
+    };
+    const attr = (el, n) => ((el.getAttribute && el.getAttribute(n)) || '').toLowerCase();
+    for (const el of document.querySelectorAll('*')) {
+        const txt = (el.textContent || '').trim().toLowerCase();
+        // Only treat a TEXT hit as a match on the leaf-most element that owns
+        // it — otherwise a visible ancestor (body, wrapper div) whose
+        // textContent merely contains a hidden child's text would match.
+        const childHasText = Array.from(el.children).some(
+            (c) => (c.textContent || '').toLowerCase().includes(t)
+        );
+        const textMatch = (txt === t || txt.includes(t)) && !childHasText;
+        const attrMatch =
+            attr(el, 'aria-label') === t || attr(el, 'placeholder') === t ||
+            attr(el, 'title') === t || attr(el, 'name') === t || attr(el, 'value') === t;
+        if ((textMatch || attrMatch) && visible(el)) return true;
+    }
+    return false;
+}
+"""
+
+
 async def _element_exists(page: "Page", target: str) -> bool:
-    """Check whether an element matching *target* is visible on the page."""
+    """Check whether an element matching *target* is visible on the page.
+
+    Replaces Playwright's get_by_text/role/label/placeholder strategies with a
+    single DOM scan covering visible text plus aria-label/placeholder/title/name.
+    """
     try:
-        # Use a broad locator strategy: text, role, label, placeholder
-        for strategy in [
-            page.get_by_text(target, exact=False),
-            page.get_by_role("button", name=target),
-            page.get_by_role("link", name=target),
-            page.get_by_label(target),
-            page.get_by_placeholder(target),
-        ]:
-            count = await strategy.count()
-            if count > 0:
-                first = strategy.first
-                if await first.is_visible():
-                    return True
-        return False
+        return bool(await page.evaluate(_ELEMENT_EXISTS_JS, target))
     except Exception:
         return False
 
@@ -192,9 +211,7 @@ async def _text_present(page: "Page", target: str) -> bool:
         visible_text = await page.evaluate(VISIBLE_TEXT_JS)
         if target.lower() in str(visible_text).lower():
             return True
-        # Fallback: direct locator
-        loc = page.get_by_text(target, exact=False)
-        count = await loc.count()
-        return count > 0 and await loc.first.is_visible()
+        # Fallback: broad DOM scan for a visible element matching the text.
+        return await _element_exists(page, target)
     except Exception:
         return False

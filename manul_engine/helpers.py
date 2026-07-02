@@ -63,9 +63,15 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
     ("scan_page", re.compile(r"\bSCAN\s+PAGE\b")),
     ("call_python", re.compile(r"\bCALL\s+PYTHON\b")),
     ("set_var", re.compile(r"^\s*(?:\d+\.\s*)?SET\b")),
+    ("print", re.compile(r"^\s*(?:\d+\.\s*)?PRINT\b")),
+    ("screenshot", re.compile(r"^\s*(?:\d+\.\s*)?SCREENSHOT\b")),
     ("debug_vars", re.compile(r"\bDEBUG\s+VARS\b")),
     ("debug", re.compile(r"\b(?:DEBUG|PAUSE)\b")),
     ("done", re.compile(r"\bDONE\b")),
+    # Explicit block terminators (ManulEngine (Go) style). Engine blocks are
+    # indentation-based, so these are tolerated as no-ops for cross-engine
+    # .hunt compatibility: END IF / ENDIF / END REPEAT / END WHILE / END FOR.
+    ("end_block", re.compile(r"^\s*(?:\d+\.\s*)?END\s*(?:IF|REPEAT|WHILE|FOR(?:\s+EACH)?)\b", re.IGNORECASE)),
     ("use_import", re.compile(r"^\s*(?:\d+\.\s*)?USE\b")),
     ("if_block", re.compile(r"^\s*(?:\d+\.\s*)?IF\b.+:\s*$", re.IGNORECASE)),
     ("elif_block", re.compile(r"^\s*(?:\d+\.\s*)?ELIF\b.+:\s*$", re.IGNORECASE)),
@@ -78,7 +84,7 @@ _STEP_PATTERNS: list[tuple[str, "re.Pattern[str]"]] = [
 # Legacy pre-compiled system-step pattern kept for backwards compatibility.
 # Prefer classify_step() for step classification.
 RE_SYSTEM_STEP = re.compile(
-    r"""\b(?:STEP\s*\d*\s*:|WAIT\s+FOR\s+(?:"[^"]+"|'[^']+')\s+TO\s+(?:BE\s+(?:VISIBLE|HIDDEN)|DISAPPEAR)|NAVIGATE|OPEN\s+APP|MOCK\s+(?:GET|POST|PUT|PATCH|DELETE)|WAIT\s+FOR\s+RESPONSE|WAIT|SCROLL|EXTRACT|VERIFY\s+VISUAL|VERIFY\s+SOFTLY|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|SET|DEBUG\s+VARS|DEBUG|PAUSE|DONE|USE|IF\b.+:|ELIF\b.+:|ELSE\s*:|REPEAT\s+\d+\s+TIMES\s*:|FOR\s+EACH\b.+\bIN\b.+:|WHILE\b.+:)(?:\b|$)""",
+    r"""\b(?:STEP\s*\d*\s*:|WAIT\s+FOR\s+(?:"[^"]+"|'[^']+')\s+TO\s+(?:BE\s+(?:VISIBLE|HIDDEN)|DISAPPEAR)|NAVIGATE|OPEN\s+APP|MOCK\s+(?:GET|POST|PUT|PATCH|DELETE)|WAIT\s+FOR\s+RESPONSE|WAIT|SCROLL|EXTRACT|VERIFY\s+VISUAL|VERIFY\s+SOFTLY|VERIFY|PRESS|RIGHT\s+CLICK|UPLOAD|SCAN\s+PAGE|CALL\s+PYTHON|SET|PRINT|SCREENSHOT|DEBUG\s+VARS|DEBUG|PAUSE|DONE|END\s*(?:IF|REPEAT|WHILE|FOR)|USE|IF\b.+:|ELIF\b.+:|ELSE\s*:|REPEAT\s+\d+\s+TIMES\s*:|FOR\s+EACH\b.+\bIN\b.+:|WHILE\b.+:)(?:\b|$)""",
     re.IGNORECASE,
 )
 
@@ -644,7 +650,7 @@ def classify_step(step: str) -> str:
     ``"extract"``, ``"verify_visual"``, ``"verify_softly"``,
     ``"verify"``, ``"press_enter"``, ``"press"``, ``"right_click"``,
     ``"upload"``, ``"full_scan"``, ``"scan_page"``, ``"call_python"``, ``"set_var"``,
-    ``"debug_vars"``, ``"debug"``, ``"done"``, ``"use_import"``,
+    ``"print"``, ``"screenshot"``, ``"debug_vars"``, ``"debug"``, ``"done"``, ``"end_block"``, ``"use_import"``,
     ``"if_block"``, ``"elif_block"``, ``"else_block"``,
     ``"repeat_loop"``, ``"for_each_loop"``, ``"while_loop"``,
     or ``"action"``.
@@ -665,6 +671,42 @@ def classify_step(step: str) -> str:
         if pattern.search(s_up):
             return kind
     return "action"
+
+
+_RE_PRINT_PREFIX = re.compile(r"^\s*(?:\d+\.\s*)?PRINT\s+", re.IGNORECASE)
+
+
+def extract_print_message(step: str) -> str:
+    """Return the message of a ``PRINT`` step (text after the PRINT keyword).
+
+    A single layer of matching surrounding quotes is stripped. The caller is
+    expected to have already substituted ``{variables}`` (mirrors ManulEngine (Go)'s
+    ``CmdPrint`` which resolves variables then logs the text).
+    """
+    msg = _RE_PRINT_PREFIX.sub("", step).strip()
+    if len(msg) >= 2 and msg[0] in "\"'" and msg[-1] == msg[0]:
+        msg = msg[1:-1]
+    return msg
+
+
+_RE_SCREENSHOT_PREFIX = re.compile(r"^\s*(?:\d+\.\s*)?SCREENSHOT\b\s*", re.IGNORECASE)
+_RE_SCREENSHOT_SLUG = re.compile(r"[^A-Za-z0-9._-]+")
+
+
+def extract_screenshot_name(step: str) -> str:
+    """Return the optional file-name of a ``SCREENSHOT`` step.
+
+    ``SCREENSHOT`` alone → ``""`` (caller auto-names). ``SCREENSHOT "after login"``
+    → a filesystem-safe slug (``after_login``) without extension. Mirrors
+    ManulEngine (Go)'s ``SCREENSHOT`` command which accepts an optional label.
+    """
+    name = _RE_SCREENSHOT_PREFIX.sub("", step).strip()
+    if len(name) >= 2 and name[0] in "\"'" and name[-1] == name[0]:
+        name = name[1:-1].strip()
+    if name.lower().endswith(".png"):
+        name = name[:-4]
+    name = _RE_SCREENSHOT_SLUG.sub("_", name).strip("_")
+    return name
 
 
 # ── Pure helpers ──────────────────────────────────────────────────────────────

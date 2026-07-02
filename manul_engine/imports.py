@@ -32,15 +32,6 @@ class ImportDirective(NamedTuple):
     aliases: dict[str, str]  # {"Login": "AuthLogin"} when 'as' syntax used
 
 
-class ResolvedImport(NamedTuple):
-    """A single resolved imported block ready for USE expansion."""
-
-    block_name: str
-    actions: list[str]
-    source_file: str
-    original_vars: dict[str, str]
-
-
 # ── @import: header regex ────────────────────────────────────────────────────
 # Matches:
 #   @import: Login from lib/auth.hunt

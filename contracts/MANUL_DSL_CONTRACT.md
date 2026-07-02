@@ -6,7 +6,7 @@
 
 ```json
 {
-  "version": "0.0.9.33",
+  "version": "0.1.0",
   "generatedFrom": "manul_engine/helpers.py :: classify_step(), detect_mode(), parse_contextual_hint(); manul_engine/core.py :: run_mission(); manul_engine/cli.py :: parse_hunt_file(); manul_engine/actions.py :: _ActionsMixin; manul_engine/scoring.py :: DOMScorer contextual proximity rules; manul_engine/js_scripts.py :: SNAPSHOT_JS geometry export; manul_engine/imports.py :: parse_import_directive(), resolve_imports(), expand_use_directives()",
   "casePolicy": {
     "canonical": "ALL_UPPERCASE",
@@ -317,6 +317,24 @@
       "category": "data"
     },
     {
+      "id": "print",
+      "label": "PRINT",
+      "uiText": "PRINT \"message {variable}\"",
+      "snippet": "PRINT \"${1:message}\"",
+      "regex": "^\\s*(?:\\d+\\.\\s*)?PRINT\\b",
+      "description": "Logs a message to the run output, with {placeholder} variables substituted and a single layer of surrounding quotes stripped. No element resolution. Mirrors ManulEngine (Go)'s PRINT (CmdPrint).",
+      "category": "utility"
+    },
+    {
+      "id": "screenshot",
+      "label": "SCREENSHOT",
+      "uiText": "SCREENSHOT [\"name\"]",
+      "snippet": "SCREENSHOT \"${1:name}\"",
+      "regex": "^\\s*(?:\\d+\\.\\s*)?SCREENSHOT\\b",
+      "description": "Captures a full-page PNG on demand into screenshots/<name>.png under the CWD (auto-named when no label is given). Mirrors ManulEngine (Go)'s SCREENSHOT command.",
+      "category": "utility"
+    },
+    {
       "id": "debug",
       "label": "DEBUG",
       "uiText": "DEBUG",
@@ -468,7 +486,7 @@
       "label": "@context:",
       "uiText": "@context: description",
       "snippet": "@context: ${1:description}",
-      "description": "Strategic context passed to the engine and LLM planner. Placed at the top of the file."
+      "description": "Strategic context for the mission (documentation / agent hint). Placed at the top of the file."
     },
     {
       "id": "title",
@@ -550,7 +568,7 @@
       "id": "drag",
       "triggers": ["drag", "drop"],
       "triggerRule": "Both 'drag' AND 'drop' must be present as word-boundary tokens.",
-      "description": "Drag-and-drop interaction via Playwright or manual mouse events."
+      "description": "Drag-and-drop interaction via CDP Input mouse events."
     },
     {
       "id": "select",

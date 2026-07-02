@@ -5,7 +5,6 @@
 # ManulEngine
 
 [![PyPI](https://img.shields.io/pypi/v/manul-engine?label=PyPI&logo=pypi)](https://pypi.org/project/manul-engine/)
-[![PyPI Downloads](https://static.pepy.tech/personalized-badge/manul-engine?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/manul-engine)
 [![Manul Engine Extension](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-engine?label=Manul%20Engine%20Extension&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-engine)
 [![Manul Engine Extension (Open VSX)](https://img.shields.io/open-vsx/v/manul-engine/manul-engine?label=Open%20VSX&logo=eclipse-ide)](https://open-vsx.org/extension/manul-engine/manul-engine)
 [![MCP Server](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manul-mcp-server?label=MCP%20Server&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manul-mcp-server)
@@ -13,11 +12,30 @@
 [![ManulAI Local Agent](https://img.shields.io/visual-studio-marketplace/v/manul-engine.manulai-local-agent?label=ManulAI%20Local%20Agent&logo=visualstudiocode)](https://marketplace.visualstudio.com/items?itemName=manul-engine.manulai-local-agent)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-d97706)](#status)
 
-Write browser automation in plain English. ManulEngine interprets `.hunt` files through deterministic DOM heuristics on top of Playwright — no selectors, no cloud APIs, no AI required.
+**A deterministic automation runtime for both humans and LLM agents.** Write (or generate) `.hunt` files in plain English; ManulEngine resolves every element with deterministic DOM heuristics and drives Chrome directly over the Chrome DevTools Protocol (CDP) — no Playwright, no selectors, no cloud APIs, no AI required.
+
+The same runtime serves two drivers from one artifact:
+
+- **Humans** author readable `.hunt` steps (`Click the 'Login' button`) — QA tests, RPA, synthetic monitors. No selectors to maintain.
+- **LLM agents** drive it through JSON CLI commands (`manul map` / `run-step` / `read` / `schema`) that target elements by human label, never CSS/XPath.
+
+### Built for agents — and it's measurably cheaper on tokens
+
+An agent has to *see* a page before it can act. A browser driver like Playwright or Selenium doesn't help here — it gives *code* access to the page, not the model. An LLM agent built on one still has to serialize the page into the prompt, and the usual ways are `page.content()` (**raw HTML**) or the **accessibility snapshot** — both expensive. `manul map` instead emits a compact, landmark-grouped view of just the labelled, interactive elements. Measured with the GPT-4 tokenizer (`cl100k_base`) on representative pages:
+
+| What an agent feeds the model to perceive a page | Tokens | vs `manul map` |
+| --- | --- | --- |
+| Raw HTML (`page.content()`) | 2,216 – 2,241 | **4–8× more** |
+| Accessibility tree (role + name) | 1,384 – 1,912 | **3.6–5× more** |
+| **`manul map` (compact JSON)** | **278 – 528** | **1×** |
+
+So the perception step that every browser-agent pays on *every* turn costs **~4–8× fewer tokens** with ManulEngine than dumping HTML, and **~3.6–5× fewer** than the a11y tree. These are clean synthetic pages — real-world HTML is far more bloated, so the gap widens in practice. (Reproduce: `python scripts/measure_tokens.py`.)
+
+Authoring is also leaner and far more durable: the same checkout flow written as a `.hunt` file is a touch smaller than the equivalent Playwright script (175 vs 204 tokens) but — the real point — carries **zero CSS/XPath selectors** to break when the markup shifts.
 
 > **Status: Alpha.** Solo-developed, actively battle-tested. Bugs are expected, APIs may evolve, and there are no promises about stability or production readiness. The core claim is transparency: when a step works, you can see exactly why; when it fails, you get the scoring breakdown to diagnose it.
 
-> **📖 Full Documentation:** [Overview](docs/overview.md) · [Installation](docs/installation.md) · [Getting Started](docs/getting-started.md) · [DSL Syntax](docs/dsl-syntax.md) · [Reports & Explainability](docs/reports.md) · [Integration](docs/integration.md)
+> **📖 Full Documentation:** [Overview](docs/overview.md) · [Installation](docs/installation.md) · [Getting Started](docs/getting-started.md) · [DSL Syntax](docs/dsl-syntax.md) · [DSL for LLMs](docs/dsl-for-llms.md) · [Reports & Explainability](docs/reports.md) · [Integration](docs/integration.md) · [Extensions](docs/extensions.md) · [Loops & Pages](docs/loops-and-pages.md)
 
 ---
 
@@ -163,7 +181,7 @@ VERIFY "Save" button has text "Save Changes"
 VERIFY "Search" input has placeholder "Type to search..."
 ```
 
-Explicit waits use Playwright's `locator.wait_for()` instead of hardcoded sleeps. Strict assertions resolve the element through heuristics and compare exact text, value, or placeholder with `==`.
+Explicit waits poll element visibility over CDP instead of hardcoded sleeps. Strict assertions resolve the element through heuristics and compare exact text, value, or placeholder with `==`.
 
 `WAIT FOR SELECTOR 'css'` waits for a CSS selector to appear (useful for custom elements like `ytd-video-renderer` that have no stable visible text). The `WAIT FOR 'target' TO BE VISIBLE` form also accepts CSS selectors — if the quoted target looks like a CSS selector it routes to `page.wait_for_selector()` automatically.
 
@@ -193,6 +211,24 @@ Example output:
 ```
 
 `SCAN PAGE` remains available for generating draft `.hunt` files from a live page.
+
+### Agent commands — drive the engine from an external LLM
+
+For agentic use, ManulEngine exposes a small set of **JSON-emitting CLI commands** (mirroring the Go sibling [ManulEngine (Go)](https://github.com/alexbeatnik/ManulEngineGo)). They attach to an **already-running Chrome over CDP**, so an external model keeps one browser open and issues stateless calls against it. The JSON payload goes to **stdout**; all engine logs go to **stderr**, so a driver can pipe the output straight into a prompt.
+
+```bash
+# 1. start Chrome once with remote debugging
+google-chrome --remote-debugging-port=9222 &
+
+# 2. let the model see the page, act, and read — by human label, never CSS/XPath
+manul schema                                   # DSL grammar + agent JSON shapes (no browser)
+manul map --tab example.com                    # compact landmark-grouped page map → JSON
+manul run-step "Click the 'Login' button"      # run one instruction → step-outcome JSON
+manul read 'Order total'                       # read one labelled value → {value, found, reason}
+manul read --selector '#cart'                  # sanitized region text → {text, selector}
+```
+
+Shared flags: `--cdp <url>` (default `http://127.0.0.1:9222`) and `--tab <url-substr>` to pick a tab. `run-step` returns a non-zero exit code when the step fails, and surfaces `near` candidates (with `0.0–1.0` scores) on a failed or low-confidence match so the agent can retarget without a re-scan. `manul schema` is the machine-readable contract a driver pins instead of stuffing full docs into every prompt.
 
 ### Shared libraries and scheduling
 
@@ -255,26 +291,30 @@ When `--explain` is enabled, every resolved step prints a per-channel breakdown 
 └─ Decision: selected "Login" with score 0.593
 ```
 
+### Native CDP, no Playwright
+
+ManulEngine talks to the browser through its **own** Chrome DevTools Protocol client — a thin async WebSocket transport in [`manul_engine/cdp/`](manul_engine/cdp/) with a single runtime dependency (`websockets`). There is no Playwright, no Node.js, and no bundled browser download: the engine launches the Chrome/Chromium you already have on `PATH` (or attaches to a running one) and drives it directly.
+
+Why own the protocol layer:
+
+- **One small dependency, fully inspectable.** The whole browser driver is a handful of readable Python files (`conn.py` transport, `chrome.py` launcher, `page.py` page/frame/element model) rather than a large vendored toolchain. What the engine sends to Chrome is exactly what you can read.
+- **Trusted input by default.** Clicks and keystrokes are dispatched via CDP `Input.*` events at real coordinates, and form values go through the native value setter so React/Vue/Angular state updates fire — no `force` hacks needed.
+- **Per-frame execution contexts.** A selector is resolved once inside the owning frame's execution context, then every operation runs against that handle — so same-origin iframes (and OOPIF child targets) are first-class, not an afterthought.
+- **CDP is Chromium-only by design.** Because the protocol is Chrome's, the engine drives Chrome/Chromium only. Firefox/WebKit are intentionally not supported; pick the concrete binary with `channel` (`chrome`, `msedge`, `chromium`, …) or `executable_path`.
+
+This is the same philosophy as the Go sibling [ManulEngine (Go)](https://github.com/alexbeatnik/ManulEngineGo): plain-English `.hunt` files, deterministic heuristics, and a hand-written CDP layer instead of a heavyweight automation framework.
+
+### Parallel execution
+
+Run a directory of hunts concurrently with `--workers N` (or the `workers` config key). Because of the GIL, parallelism uses **subprocess workers** — each runs in its own process with its own Chrome instance, fully isolated, and the reporter merges their results. (The Go sibling reaches the same goal with native goroutines and a `WorkerPool`.)
+
 ### Dual-persona workflow
 
 Manual QA writes plain-English `.hunt` steps — no code required. SDETs extend the same files with Python hooks (`[SETUP]` / `[TEARDOWN]`, `CALL PYTHON`), lifecycle orchestration (`@before_all` / `@after_all`), and `@custom_control` handlers for complex widgets. Both personas work on the same artifact.
 
-### Optional AI, off by default
+### No AI in the loop — fully deterministic
 
-`"model": null` is the recommended default. When a local Ollama model is enabled, it acts as a last-resort fallback for genuinely ambiguous elements. The engine is not AI-powered — it is heuristics-first with an optional AI safety net.
-
-When the LLM safety net *is* engaged, the transport is tuned for the same determinism the heuristics promise:
-
-- **Pinned sampling** — every Ollama call sends `temperature=0` (override with `MANUL_LLM_TEMPERATURE`), so the same page yields the same element pick run-to-run.
-- **Retry-once on malformed JSON** — small local models occasionally emit a stray token or a truncated object; one retry (tune with `MANUL_LLM_RETRIES`) recovers most of those, while a genuinely down server fails fast with an actionable *"is `ollama serve` running?"* hint instead of a silent miss.
-- **Sanitized prompts** — page prose handed to the model is stripped of base64 blobs, `data-*` attribute dumps and SVG path noise, then bounded by a character budget, keeping prompts cheap and on-topic.
-
-| Env var | Default | Purpose |
-| --- | --- | --- |
-| `MANUL_LLM_TEMPERATURE` | `0.0` | Sampling temperature (0 = deterministic). |
-| `MANUL_LLM_NUM_CTX` | `0` | Context-window override (0 = model default). |
-| `MANUL_LLM_RETRIES` | `1` | Extra attempts on empty/unparseable replies. |
-| `MANUL_LLM_KEEP_ALIVE` | _(server default)_ | Ollama `keep_alive` (e.g. `5m`, `-1`). |
+ManulEngine has **no LLM inside it**. Element resolution is 100% the deterministic `DOMScorer` — same page state + same step ⇒ same result, every run, with no model to install, no temperature to pin, and no network calls. The *intelligence* lives in the external agent that drives the engine via the [agent commands](#agent-commands--drive-the-engine-from-an-external-llm) (`map` / `run-step` / `read` / `schema`); the runtime itself stays a predictable execution layer. (An optional in-process Ollama fallback existed in early development — it was removed in favour of this clean split.)
 
 ---
 
@@ -287,7 +327,7 @@ The same runtime and the same DSL serve four use cases:
 | **QA / E2E testing** | Write plain-English flows, verify outcomes, attach HTML reports and screenshots. No selectors in the test source. |
 | **RPA workflows** | Log into portals, fill forms, extract values, hand off to Python for backend or filesystem steps. |
 | **Synthetic monitoring** | Pair `.hunt` files with `@schedule:` and `manul daemon` for recurring health checks. |
-| **AI agent targets** | Constrained DSL execution is safer than raw Playwright for external agents — the runtime still owns scoring, retries, and validation. |
+| **AI agent targets** | Constrained DSL execution is safer than raw CDP/scripting for external agents — the runtime still owns scoring, retries, and validation. |
 
 ---
 
@@ -308,10 +348,41 @@ The same runtime and the same DSL serve four use cases:
       await session.verify("Welcome")
   ```
 - **Smart recorder** — Captures semantic intent (e.g., `Select 'Option' from 'Dropdown'`) instead of brittle pointer events.
-- **Custom controls** — `@custom_control(page, target)` decorator lets SDETs handle complex widgets (datepickers, virtual tables, canvas elements) with raw Playwright while the hunt file keeps a single readable step. Handlers receive a typed `ControlContext` (`ctx.page` / `ctx.action` / `ctx.value` / `ctx.target` / `ctx.page_name` / `ctx.url` / `ctx.step`); `manul controls list` shows the registry; misses against a sibling page print a one-line hint.
+- **Custom controls** — `@custom_control(page, target)` decorator lets SDETs handle complex widgets (datepickers, virtual tables, canvas elements) with raw CDP while the hunt file keeps a single readable step. Handlers receive a typed `ControlContext` (`ctx.page` / `ctx.action` / `ctx.value` / `ctx.target` / `ctx.page_name` / `ctx.url` / `ctx.step`); `manul controls list` shows the registry; misses against a sibling page print a one-line hint.
 - **Lifecycle hooks** — `@before_all`, `@after_all`, `@before_group`, `@after_group` in `manul_hooks.py` for suite-wide setup and teardown.
 - **HTML reports** — `--html-report` generates a self-contained dark-themed report with accordions, screenshots, tag filters, and run-session merging across CLI invocations.
-- **Docker CI runner** — `ghcr.io/alexbeatnik/manul-engine:0.0.9.33` runs headless in CI with `dumb-init`, non-root user, and `MANUL_*` env overrides.
+- **Docker CI runner** — `ghcr.io/alexbeatnik/manul-engine:0.1.0` runs headless in CI with `dumb-init`, non-root user, and `MANUL_*` env overrides.
+
+---
+
+## Architecture
+
+```
+manul_engine/
+  __init__.py     public API (ManulEngine, ManulSession, custom_control, …)
+  api.py          ManulSession — high-level async context manager (Python-only users)
+  core.py         ManulEngine — the .hunt DSL runner; targeting pipeline + orchestration
+  actions.py      click / fill / select / hover / drag executors
+  debug.py        interactive debug pause + extension-protocol handshake
+  helpers.py      pure functions: parse_hunt_blocks, classify_step, substitute_memory, …
+  hooks.py        @before_all / @after_group lifecycle + CALL PYTHON
+  imports.py      @import / USE resolution for .hunt libraries
+  controls.py     @custom_control registry (page-scoped overrides)
+  scoring.py      deterministic DOMScorer (cache · semantics · text · attributes · proximity)
+  agent_cli.py    agent-facing CLI: schema / map / read / run-step (JSON for LLM drivers)
+  scanner.py      DOM snapshot → draft .hunt (manul scan <URL>)
+  recorder.py     interactive recorder (manul record <URL>)
+  reporter.py     HTML + JSON test reports
+  scheduler.py    daemon mode (@schedule:)
+  cdp/            native Chrome DevTools Protocol backend (conn / chrome / page /
+                  browser / protocol / keys) — replaces Playwright
+  variables.py    ScopedVariables (5 levels: row > step > mission > global > import)
+  prompts.py      global config (THRESHOLDS, BROWSER_ARGS, …)
+  config.py       EngineConfig dataclass (injectable)
+  cli.py          manul CLI entry point
+```
+
+See [docs/overview.md](docs/overview.md) for the deep-dive architecture walkthrough.
 
 ---
 
@@ -320,15 +391,8 @@ The same runtime and the same DSL serve four use cases:
 ### Install
 
 ```bash
-pip install manul-engine==0.0.9.33
-playwright install
-```
-
-Optional local AI fallback (not required):
-
-```bash
-pip install "manul-engine[ai]==0.0.9.33"
-ollama pull qwen2.5:0.5b && ollama serve
+pip install manul-engine==0.1.0
+# Requires a system-installed Google Chrome / Chromium on PATH.
 ```
 
 ### Configure
@@ -337,9 +401,7 @@ Create `manul_engine_configuration.json` in the workspace root. All keys are opt
 
 ```json
 {
-  "model": null,
   "browser": "chromium",
-  "controls_cache_enabled": true,
   "semantic_cache_enabled": true
 }
 ```
@@ -358,30 +420,24 @@ manul --headless --html-report tests/            # CI mode with reports
 
 | Key | Default | Description |
 |---|---|---|
-| `model` | `null` | Ollama model name. `null` = heuristics-only. |
 | `headless` | `false` | Hide the browser window. |
-| `browser` | `"chromium"` | `chromium`, `firefox`, or `webkit`. |
+| `browser` | `"chromium"` | `chromium` (launch system Chrome) or `electron` (attach to a running Chrome/Electron over CDP). |
 | `browser_args` | `[]` | Extra browser launch flags. |
-| `ai_threshold` | auto | Score threshold before LLM fallback. |
-| `ai_always` | `false` | Always invoke LLM picker (requires `model`). |
-| `ai_policy` | `"prior"` | Heuristic score as prior hint or strict constraint. |
-| `controls_cache_enabled` | `true` | Persistent per-site controls cache. |
-| `controls_cache_dir` | `"cache"` | Cache directory (relative or absolute). |
-| `semantic_cache_enabled` | `true` | In-session semantic cache (+200k score boost). |
+| `semantic_cache_enabled` | `true` | In-session semantic cache (+200k score boost; feeds the scorer, never bypasses it). |
 | `custom_controls_dirs` | `["controls"]` | Directories scanned for `@custom_control` modules. |
 | `timeout` | `5000` | Action timeout (ms). |
 | `nav_timeout` | `30000` | Navigation timeout (ms). |
 | `workers` | `1` | Max parallel hunt files. |
 | `tests_home` | `"tests"` | Default output for new hunts and scans. |
 | `auto_annotate` | `false` | Insert `# 📍 Auto-Nav:` comments on URL changes. |
-| `channel` | `null` | Installed browser channel (`chrome`, `msedge`). |
-| `executable_path` | `null` | Path to Electron or custom browser executable. |
+| `channel` | `null` | Chrome/Chromium binary to launch (`chrome`, `msedge`, `chromium`, …). |
+| `executable_path` | `null` | Explicit path to a Chrome/Chromium (or Electron) executable. |
 | `retries` | `0` | Retry failed hunts N times. |
 | `screenshot` | `"on-fail"` | `none`, `on-fail`, or `always`. |
 | `html_report` | `false` | Generate `reports/manul_report.html`. |
 | `explain_mode` | `false` | Per-channel scoring breakdown in output. |
 
-Environment variables (`MANUL_HEADLESS`, `MANUL_BROWSER`, `MANUL_MODEL`, `MANUL_WORKERS`, etc.) always override JSON config.
+Environment variables (`MANUL_HEADLESS`, `MANUL_BROWSER`, `MANUL_CHANNEL`, `MANUL_WORKERS`, etc.) always override JSON config.
 
 ### Docker
 
@@ -389,11 +445,29 @@ Environment variables (`MANUL_HEADLESS`, `MANUL_BROWSER`, `MANUL_MODEL`, `MANUL_
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.33 \
+  ghcr.io/alexbeatnik/manul-engine:0.1.0 \
   --html-report --screenshot on-fail hunts/
 ```
 
 Non-root (`manul`, UID 1000), `dumb-init` as PID 1, `--no-sandbox` baked in. A `docker-compose.yml` ships with `manul` and `manul-daemon` services.
+
+---
+
+## Embedding (Python API)
+
+To drive a browser from a Python program — an assistant, an agent, a custom tool — use `ManulSession`, an async context manager that routes every call through the full heuristic pipeline. ManulEngine owns the browser lifecycle; the consumer never touches CDP directly:
+
+```python
+from manul_engine import ManulSession
+
+async with ManulSession(headless=True) as session:
+    await session.navigate("https://example.com/login")
+    await session.fill("Username field", "admin")
+    await session.click("Log in button")
+    await session.verify("Welcome")
+```
+
+The same deterministic scorer that runs `.hunt` files resolves each call by human label — no selectors. For agentic use, the [agent commands](#agent-commands--drive-the-engine-from-an-external-llm) (`manul map` / `run-step` / `read` / `schema`) expose the same capabilities as compact JSON over a running Chrome, with typed failure reasons and `near` candidates on a miss.
 
 ---
 
@@ -413,7 +487,7 @@ git clone https://github.com/alexbeatnik/ManulEngine.git
 cd ManulEngine
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-playwright install
+# Requires a system-installed Google Chrome / Chromium on PATH.
 
 python run_tests.py                              # synthetic + unit suite
 python demo/run_demo.py                          # integration hunts (needs network)
@@ -426,47 +500,20 @@ python demo/benchmarks/run_benchmarks.py         # adversarial DOM fixtures
 
 ManulEngine is alpha-stage and solo-developed. If deterministic, explainable browser automation interests you:
 
-- Try it: `pip install manul-engine==0.0.9.33 && playwright install`
+- Try it: `pip install manul-engine==0.1.0` (needs system Chrome/Chromium)
 - File issues: [github.com/alexbeatnik/ManulEngine/issues](https://github.com/alexbeatnik/ManulEngine/issues)
 
 ---
 
-## What's New in v0.0.9.33
+## What's New in v0.1.0
 
-- **Deterministic LLM transport:** every Ollama call now pins `temperature=0` (override via `MANUL_LLM_TEMPERATURE`) so the optional AI safety net resolves the same element the same way run-to-run — matching the determinism the heuristic resolver already guarantees. New `MANUL_LLM_NUM_CTX` / `MANUL_LLM_RETRIES` / `MANUL_LLM_KEEP_ALIVE` knobs round out the transport config.
-- **Retry-once + actionable errors:** a malformed or truncated JSON reply from a small local model is retried once before giving up, while a genuinely unreachable server fails fast with an *"is `ollama serve` running?"* hint instead of a silent miss.
-- **Sanitized LLM prompts:** page prose fed to the model (e.g. the Explain-Next What-If analysis) is stripped of base64 blobs, `data-*` dumps and SVG path noise and bounded by a character budget — cheaper, on-topic prompts (`sanitize_for_llm` / `truncate_for_llm`, ported from the ManulHeart agent layer).
-- **Robustness fixes:** the planner no longer char-splits a string `steps` reply into garbage, and the JSON extractor returns `None` instead of raising on non-object output.
-
-<details>
-<summary>v0.0.9.32 — FULL SCAN, WAIT FOR SELECTOR, CSS-aware waits</summary>
-
-- **`FULL SCAN` DSL step:** groups every interactive control on the page by its nearest semantic landmark ancestor (`<form>`, `<nav>`, `<header>`, `<footer>`, `<dialog>`, `<section>`, ARIA roles) and prints a compact Markdown table per group. Designed for LLM-driven automation — paste the output into an LLM context window to decide what to interact with next. Shadow DOM trees are traversed recursively; controls inside custom elements appear under a `[shadow]`-suffixed group.
-- **`WAIT FOR SELECTOR '<css>'` DSL step:** explicit CSS-selector wait via `page.wait_for_selector()`. Solves the SPA / YouTube use case where there is no stable visible text, only a DOM tag (`ytd-video-renderer`, `mwc-button`, etc.).
-- **CSS-aware `WAIT FOR '…' TO BE VISIBLE`:** the existing step now auto-detects CSS selectors (starts with `#`, `.`, `[`, contains `-`, `>`, or `:`) and routes to `page.wait_for_selector()` instead of `get_by_text()`. Plain-text targets are unchanged.
-
-</details>
-
-<details>
-<summary>v0.0.9.31</summary>
-
-- **Page registry split into `pages/` directory (BREAKING):** page mappings now live as one JSON fragment per site under `<project>/pages/<safe_netloc>.json`. Run `manul pages migrate` once to split any pre-existing `pages.json`.
-- **`ControlContext` API for `@custom_control` (BREAKING):** handlers now accept a single `ControlContext` argument exposing `page`, `action`, `value`, `target`, `page_name`, `url`, and `step`. Replace `async def fn(page, action_type, value)` with `async def fn(ctx: ControlContext)`.
-- **`manul pages list` / `manul pages migrate` / `manul controls list` CLI commands.**
-- **Custom Controls miss-diagnostics** and **visible dispatch log** without `--debug`.
-
-</details>
-
-<details>
-<summary>v0.0.9.30</summary>
-
-- **Loop constructs (`REPEAT` / `FOR EACH` / `WHILE`):** iterative execution blocks. `REPEAT N TIMES:` for fixed counts, `FOR EACH {var} IN {collection}:` for data iteration, `WHILE <condition>:` for dynamic polling. Full nesting with conditionals, `{i}` auto-counter, WHILE safety limit (100 iterations). 129-assertion test suite.
-- **Complete user guide** — new `docs/` folder with structured documentation.
-
-</details>
+- **Ollama / in-process LLM removed (BREAKING):** ManulEngine is now purely deterministic — there is no in-engine model. The `model`, `ai_threshold`, `ai_always`, `ai_policy` settings (and `MANUL_MODEL` / `MANUL_AI_*` / `MANUL_LLM_*` env vars) are gone, along with the free-text task planner and the What-If *LLM* analysis (the deterministic explain-next dry-run stays). Intelligence now lives in the external agent that drives the engine via the agent commands.
+- **Playwright removed — native Chrome DevTools Protocol backend (BREAKING):** the entire browser layer is now ManulEngine's own CDP client in [`manul_engine/cdp/`](manul_engine/cdp/), driving system Chrome/Chromium over a raw WebSocket. The only runtime dependency is `websockets` (no Playwright, no Node.js, no bundled browser download). `ManulSession.page` is now a `manul_engine.cdp.CDPPage`; per-frame iframe routing uses real per-frame execution contexts. **Install requires a system Chrome/Chromium on `PATH`** (`playwright install` is gone).
+- **`browser` is Chromium-only:** `firefox` / `webkit` are no longer accepted (CDP is Chrome's protocol). `browser` now selects launch mode — `chromium` (launch) or `electron` (attach to a running Chrome/Electron over CDP); choose the binary with `channel` / `executable_path`.
+- **Agent CLI commands for external LLM drivers:** new `manul schema` / `map` / `read` / `run-step` subcommands emit compact JSON (stdout) while engine logs stay on stderr, attaching to an already-running Chrome over CDP — the surface an external model uses to see the page, act, and read by human label. Mirrors ManulEngine (Go)'s agent commands.
 
 ## License
 
-**Version:** 0.0.9.33
+**Version:** 0.1.0
 
 Apache-2.0.

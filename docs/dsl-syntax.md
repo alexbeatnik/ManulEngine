@@ -1,6 +1,6 @@
 # DSL Syntax Reference
 
-> **ManulEngine v0.0.9.29**
+> **ManulEngine 0.1.0**
 
 This is the complete reference for the `.hunt` DSL — ManulEngine's plain-English automation language.
 
@@ -207,7 +207,7 @@ SELECT 'Option 1' from the 'Menu' dropdown
 SELECT 'United States' from the 'Country' dropdown
 ```
 
-For native `<select>` elements, uses Playwright's `select_option()`. For custom div/span dropdowns, falls back to click-based selection.
+For native `<select>` elements, uses native option selection over CDP. For custom div/span dropdowns, falls back to click-based selection.
 
 ---
 
@@ -308,7 +308,7 @@ WAIT 2                                  # hard sleep (seconds)
 WAIT FOR RESPONSE "api/data"            # wait for a network response
 ```
 
-Explicit waits use Playwright's `locator.wait_for()` — always prefer these over hard sleeps.
+Explicit waits poll element visibility over CDP — always prefer these over hard sleeps.
 
 ---
 
@@ -594,7 +594,7 @@ STEP 1: Adaptive login
 
 | Pattern | Example | What it checks |
 |---------|---------|----------------|
-| Element exists | `button 'Save' exists` | Playwright locator probe |
+| Element exists | `button 'Save' exists` | DOM probe |
 | Element not exists | `link 'Home' not exists` | Inverse locator probe |
 | Text present | `text 'Welcome' is present` | Visible text on page |
 | Text not present | `text 'Error' is not present` | Inverse text check |
@@ -1066,7 +1066,7 @@ async def handle_checkin(page, action_type: str, value: str | None) -> None:
 FILL 'Check-in Date' with '2026-12-25'
 ```
 
-The engine intercepts the step before DOM scoring — if a custom control matches `(page_name, target)`, it calls the handler directly with the Playwright `page` object.
+The engine intercepts the step before DOM scoring — if a custom control matches `(page_name, target)`, it calls the handler directly with the live `CDPPage` object.
 
 ### Handler signature
 
@@ -1075,7 +1075,7 @@ async def handler(page, action_type: str, value: str | None) -> None:
     ...
 ```
 
-- `page` — live Playwright `Page` object.
+- `page` — live `CDPPage` object.
 - `action_type` — detected mode: `"input"`, `"clickable"`, `"select"`, `"hover"`, `"drag"`, `"locate"`.
 - `value` — for `"input"` steps, the text to type; for `"select"`, the option; `None` for clicks and hovers.
 
@@ -1204,8 +1204,7 @@ Set `executable_path` in the configuration and use `OPEN APP` instead of `NAVIGA
 **`manul_engine_configuration.json`:**
 ```json
 {
-  "model": null,
-  "browser": "chromium",
+  "browser": "electron",
   "executable_path": "/path/to/electron-app"
 }
 ```
@@ -1241,7 +1240,7 @@ MOCK POST "api/login" with 'mocks/login_response.json'
 
 - Supported methods: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`.
 - Mock file resolved relative to hunt file directory → CWD.
-- Uses Playwright's `page.route()` under the hood.
+- Uses CDP request interception under the hood.
 
 Wait for a specific network response:
 
@@ -1261,7 +1260,7 @@ UPLOAD 'avatar.png' to 'Profile Picture'
 
 - Both file path and target must be quoted.
 - File path is resolved relative to the `.hunt` file's directory first, then CWD.
-- Mapped to Playwright's `locator.set_input_files()`.
+- Mapped to `DOM.setFileInputFiles` over CDP.
 
 ---
 
@@ -1293,20 +1292,14 @@ Pauses execution at that point. In `--debug` mode, highlights the resolved eleme
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `model` | `null` | Ollama model name. `null` = heuristics-only (no AI). |
 | `headless` | `false` | Hide the browser window. |
-| `browser` | `"chromium"` | Browser engine: `chromium`, `firefox`, or `webkit`. |
+| `browser` | `"chromium"` | Launch mode: `chromium` (launch system Chrome) or `electron` (attach over CDP). |
 | `browser_args` | `[]` | Extra launch flags (array of strings). |
-| `channel` | `null` | Installed browser channel: `"chrome"`, `"chrome-beta"`, `"msedge"`. |
-| `executable_path` | `null` | Path to Electron or custom browser executable. |
+| `channel` | `null` | Chrome/Chromium binary: `"chrome"`, `"chrome-beta"`, `"msedge"`, `"chromium"`. |
+| `executable_path` | `null` | Path to a Chrome/Chromium (or Electron) executable. |
 | `timeout` | `5000` | Default action timeout (ms). |
 | `nav_timeout` | `30000` | Navigation timeout (ms). |
-| `ai_threshold` | auto | Score threshold before LLM fallback. |
-| `ai_always` | `false` | Always invoke the LLM picker (requires `model`). |
-| `ai_policy` | `"prior"` | Heuristic score treatment: `"prior"` (hint) or `"strict"` (force). |
-| `controls_cache_enabled` | `true` | Persistent per-site controls cache (file-based). |
-| `controls_cache_dir` | `"cache"` | Cache directory (relative or absolute). |
-| `semantic_cache_enabled` | `true` | In-session semantic cache (+200k score boost). |
+| `semantic_cache_enabled` | `true` | In-session semantic cache (+200k score boost; feeds the scorer, never bypasses it). |
 | `custom_controls_dirs` | `["controls"]` | Directories scanned for `@custom_control` modules. |
 | `tests_home` | `"tests"` | Default directory for new hunts and scans. |
 | `auto_annotate` | `false` | Insert `# 📍 Auto-Nav:` comments on URL changes. |
@@ -1315,7 +1308,7 @@ Pauses execution at that point. In `--debug` mode, highlights the resolved eleme
 | `html_report` | `false` | Generate `reports/manul_report.html`. |
 | `explain_mode` | `false` | Per-channel scoring breakdown in output. |
 | `log_name_maxlen` | `0` | Truncate element names in logs (0 = no limit). |
-| `log_thought_maxlen` | `0` | Truncate LLM thought strings (0 = no limit). |
+| `log_thought_maxlen` | `0` | Truncate verbose diagnostic strings in logs (0 = no limit). |
 
 ### Environment Variable Overrides
 
@@ -1323,7 +1316,6 @@ Environment variables (`MANUL_*`) always override JSON values:
 
 | Variable | Overrides |
 |----------|-----------|
-| `MANUL_MODEL` | `model` |
 | `MANUL_HEADLESS` | `headless` |
 | `MANUL_BROWSER` | `browser` |
 | `MANUL_BROWSER_ARGS` | `browser_args` (comma/space-separated) |
@@ -1333,19 +1325,6 @@ Environment variables (`MANUL_*`) always override JSON values:
 | `MANUL_EXPLAIN` | `explain_mode` |
 | `MANUL_CUSTOM_CONTROLS_DIRS` | `custom_controls_dirs` (comma-separated) |
 | `MANUL_LOG_LEVEL` | Logging verbosity |
-
-### AI threshold auto-calculation
-
-When `model` is set but `ai_threshold` is not:
-
-| Model size | Threshold |
-|------------|-----------|
-| < 1B params | 500 |
-| 1–4B | 750 |
-| 5–9B | 1000 |
-| 10–19B | 1500 |
-| 20B+ | 2000 |
-| `null` (no model) | 0 |
 
 ---
 
@@ -1363,7 +1342,7 @@ manul --explain tests/login.hunt              # scoring breakdown
 manul --debug tests/login.hunt                # interactive debug
 manul --break-lines 5,10 tests/login.hunt     # breakpoint debug
 manul --workers 4 tests/                      # parallel execution
-manul --browser firefox tests/                # use Firefox
+MANUL_CHANNEL=msedge manul tests/               # pick a Chromium-family binary (chrome, msedge, chromium)
 manul scan https://example.com                # scan → draft hunt
 manul daemon tests/ --headless                # scheduled daemon
 ```

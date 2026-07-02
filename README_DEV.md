@@ -2,13 +2,13 @@
   <img src="https://raw.githubusercontent.com/alexbeatnik/ManulEngine/main/images/manul.png" alt="ManulEngine mascot" width="180" />
 </p>
 
-# 😼 ManulEngine v0.0.9.33 — Deterministic Web & Desktop Automation Runtime
+# 😼 ManulEngine v0.1.0 — Deterministic Web & Desktop Automation Runtime
 
 **ManulEngine — Deterministic Web & Desktop Automation Runtime.**
-Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics and Playwright. Automate Chromium, Firefox, WebKit — and desktop apps via Electron.
+Write deterministic automation scripts in plain-English Hunt DSL. Run E2E tests, RPA workflows, synthetic monitoring, and AI-agent actions — powered by blazing-fast JS heuristics over the Chrome DevTools Protocol (CDP). Automate system Chrome/Chromium — and desktop apps via Electron over CDP.
 
 No CSS selectors. No XPath fragility. No cloud API bills.
-ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed runtime that resolves DOM elements with a mathematically sound `DOMScorer` (normalised `0.0–1.0` float scoring across 20+ signals) and a native JavaScript `TreeWalker`. Deterministic, reproducible, and fast enough to run anywhere.
+ManulEngine is an interpreter for the `.hunt` DSL — a CDP-backed runtime that resolves DOM elements with a mathematically sound `DOMScorer` (normalised `0.0–1.0` float scoring across 20+ signals) and a native JavaScript `TreeWalker`. Deterministic, reproducible, and fast enough to run anywhere.
 
 > The Manul goes hunting and never returns without its prey.
 
@@ -27,13 +27,13 @@ ManulEngine/
 ├── run_tests.py                      Synthetic DOM test suite runner (dev only)
 ├── bump_version.py                   Version bumper — updates all 18 files from pyproject.toml
 ├── manul_engine_configuration.json   Project configuration (JSON)
-├── pyproject.toml                    Build config — package: manul-engine 0.0.9.33
+├── pyproject.toml                    Build config — package: manul-engine 0.1.0
 ├── requirements.txt                  Python dependencies
 ├── manul_engine/                     Core automation engine package
 │   ├── __init__.py                   Public API — exports ManulEngine, ManulSession, EngineConfig, all exception classes
 │   ├── exceptions.py                Structured exception hierarchy (ManulEngineError base, 7 concrete subclasses)
 │   ├── _types.py                    Shared type definitions — ElementSnapshot TypedDict
-│   ├── api.py                        ManulSession — public Python API facade (async context manager, Playwright lifecycle)
+│   ├── api.py                        ManulSession — public Python API facade (async context manager, CDP lifecycle)
 │   ├── config.py                     EngineConfig frozen dataclass — injectable configuration; validate() method checks invariants
 │   ├── cli.py                        Installed CLI entry point (`manul` command + `manul scan` + `manul record` + `manul daemon` subcommands)
 │   ├── lifecycle.py                  Global Lifecycle Hook Registry (@before_all, @after_all, @before_group, @after_group)
@@ -48,10 +48,9 @@ ManulEngine/
 │   ├── scoring.py                    Heuristic element-scoring algorithm (20+ rules)
 │   ├── scanner.py                    Smart Page Scanner: scan_page(), build_hunt(), scan_main()
 │   ├── core.py                       ManulEngine class (resolution, mission runner)
-│   ├── cache.py                      Persistent per-site controls cache mixin
 │   ├── debug.py                      _DebugMixin (element highlighting, debug prompt, breakpoint protocol, What-If REPL integration)
-│   ├── explain_next.py               ExplainNextDebugger — interactive What-If Analysis REPL (PageContext, WhatIfResult, heuristic pre-check, LLM dry-run)
-│   ├── llm.py                        LLMProvider protocol + OllamaProvider / NullProvider
+│   ├── explain_next.py               ExplainNextDebugger — interactive What-If dry-run REPL (PageContext, WhatIfResult, heuristic pre-check; deterministic, no LLM)
+│   ├── agent_cli.py                  Agent CLI: schema/map/read/run-step (JSON for external LLM drivers)
 │   ├── logging_config.py             Centralized logging hierarchy (stderr, MANUL_LOG_LEVEL)
 │   ├── actions.py                    Action execution mixin (click, type, select, hover, drag, scan_page)
 │   ├── reporting.py                  StepResult, MissionResult, RunSummary dataclasses; run_history + report-session state persistence
@@ -63,47 +62,44 @@ ManulEngine/
 │       ├── test_00_engine.py         Engine micro-suite (synthetic DOM via local HTML)
 │       ├── test_01_ecommerce.py      Scenario pack: ecommerce
 │       ├── ...
-│       ├── test_12_ai_modes.py       Unit: Always-AI/strict/rejection
-│       ├── test_13_controls_cache.py Unit: persistent controls cache
-│       ├── test_14_qa_classics.py    Unit: legacy HTML patterns, tables, fieldsets
-│       ├── test_15_facebook_final_boss.py
-│       ├── test_16_hooks.py          Unit: [SETUP]/[TEARDOWN] hooks (56 assertions, no browser)
-│       ├── test_17_frontend_hell.py  Unit: frontend anti-patterns (overlays, z-index traps, React portals)
-│       ├── test_18_disambiguation.py Unit: ambiguous element targeting
-│       ├── test_19_custom_controls.py Unit: Custom Controls registry + engine interception (28 assertions, no browser)
-│       ├── test_20_variables.py      Unit: @var: static variable declaration + @script alias parsing (23 assertions, no browser)
-│       ├── test_21_dynamic_vars.py   Unit: CALL PYTHON ... into {var} dynamic variable capture
-│       ├── test_22_tags.py           Unit: @tags: / --tags CLI filter (20 assertions, no browser)
-│       ├── test_23_advanced_interactions.py  Unit: PRESS/RIGHT CLICK/UPLOAD/explicit waits (58 assertions, no browser)
-│       ├── test_24_reporting.py      Unit: StepResult/MissionResult/RunSummary dataclasses (67 assertions)
-│       ├── test_25_reporter.py       Unit: HTML report generator (70 assertions, no browser)
-│       ├── test_26_wikipedia_search.py Unit: name_attr heuristic scoring (20 assertions, no browser)
-│       ├── test_27_lifecycle_hooks.py  Unit: Global Lifecycle Hook system (57 assertions, no browser)
-│       ├── test_28_logical_steps.py    Unit: Logical STEP ordering and parser (58 assertions, no browser)
-│       ├── test_29_iframe_routing.py   Synthetic: Cross-frame element resolution (25 assertions)
-│       ├── test_30_heuristic_weights.py Synthetic+Unit: DOMScorer priority hierarchy (32 assertions)
-│       ├── test_31_visibility_treewalker.py Synthetic+Unit: TreeWalker PRUNE/checkVisibility (20 assertions)
-│       ├── test_32_verify_enabled.py Synthetic: VERIFY ENABLED/DISABLED state verification (20 assertions)
-│       ├── test_33_call_python_args.py Unit: CALL PYTHON with positional arguments + unresolved @script alias handling (50 assertions, no browser)
-│       ├── test_34_verify_checked.py Synthetic: VERIFY checked/NOT checked (20 assertions)
-│       ├── test_35_scanner.py       Synthetic+Unit: Smart Page Scanner build_hunt() (44 assertions)
-│       ├── test_36_scoring_math.py   Unit: exact numerical scoring validation (29 assertions, no browser)
-│       ├── test_37_enterprise_dsl.py Unit: Enterprise DSL — @data:, MOCK, VERIFY VISUAL/SOFTLY, explicit waits, reporter warnings (75 assertions, no browser)
-│       ├── test_38_set_and_indent.py Unit: SET command & indentation robustness (v0.0.9.2)
-│       ├── test_39_open_app.py       Unit: OPEN APP command — classify_step, RE_SYSTEM_STEP, _handle_open_app (41 assertions, no browser)
-│       ├── test_40_self_healing_cache.py Unit: Self-Healing Controls Cache — stale detection, HEALED logging, cache auto-update (16 assertions)
-│       ├── test_41_recorder.py      Unit: Semantic Test Recorder — JS bridge, DSL generator, step aggregation (no browser)
-│       ├── test_42_scheduler.py     Unit: Built-in Scheduler — parse_schedule, next_run_delay, ParsedHunt integration (51 assertions, no browser)
-│       ├── test_43_scoped_variables.py Unit: ScopedVariables 5-level hierarchy, scope isolation, dict compat (44 assertions, no browser)
-│       ├── test_44_explain_mode.py   Unit: DOMScorer explain output, channel breakdown, --explain CLI flag (33 assertions, no browser)
-│       ├── test_45_api.py            Unit: ManulSession public Python API facade (50 assertions, no browser)
-│       ├── test_46_attribute_semantic.py Unit: attribute-semantic icon matching, camelCase dev attrs, cart badges, false-positive resistance (34 assertions, no browser)
-│       ├── test_47_contextual_proximity.py Unit: contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser rules (67 assertions, no browser)
-│       ├── test_48_prompts_config.py  Unit: Configuration loading, threshold derivation, page-name lookup, _KEY_MAP, env_bool (83 assertions, no browser)
-│       ├── test_50_imports.py         Unit: @import/@export/USE directive system (84 assertions, no browser)
-│       ├── test_51_packager.py        Unit: Pack/install .huntlib archives and lockfile (21 assertions, no browser)
-│       ├── test_52_exports.py         Unit: @export validation, wildcard exports, access control (19 assertions, no browser)
-│       └── test_53_explain_next.py    Unit: ExplainNextDebugger What-If Analysis REPL + debug protocol (112 assertions, no browser)
+│       ├── test_12_qa_classics.py    Unit: legacy HTML patterns, tables, fieldsets
+│       ├── test_13_facebook_final_boss.py
+│       ├── test_14_hooks.py          Unit: [SETUP]/[TEARDOWN] hooks (56 assertions, no browser)
+│       ├── test_15_frontend_hell.py  Unit: frontend anti-patterns (overlays, z-index traps, React portals)
+│       ├── test_16_disambiguation.py Unit: ambiguous element targeting
+│       ├── test_17_custom_controls.py Unit: Custom Controls registry + engine interception (28 assertions, no browser)
+│       ├── test_18_variables.py      Unit: @var: static variable declaration + @script alias parsing (23 assertions, no browser)
+│       ├── test_19_dynamic_vars.py   Unit: CALL PYTHON ... into {var} dynamic variable capture
+│       ├── test_20_tags.py           Unit: @tags: / --tags CLI filter (20 assertions, no browser)
+│       ├── test_21_advanced_interactions.py  Unit: PRESS/RIGHT CLICK/UPLOAD/explicit waits (58 assertions, no browser)
+│       ├── test_22_reporting.py      Unit: StepResult/MissionResult/RunSummary dataclasses (67 assertions)
+│       ├── test_23_reporter.py       Unit: HTML report generator (70 assertions, no browser)
+│       ├── test_24_wikipedia_search.py Unit: name_attr heuristic scoring (20 assertions, no browser)
+│       ├── test_25_lifecycle_hooks.py  Unit: Global Lifecycle Hook system (57 assertions, no browser)
+│       ├── test_26_logical_steps.py    Unit: Logical STEP ordering and parser (58 assertions, no browser)
+│       ├── test_27_iframe_routing.py   Synthetic: Cross-frame element resolution (25 assertions)
+│       ├── test_28_heuristic_weights.py Synthetic+Unit: DOMScorer priority hierarchy (32 assertions)
+│       ├── test_29_visibility_treewalker.py Synthetic+Unit: TreeWalker PRUNE/checkVisibility (20 assertions)
+│       ├── test_30_verify_enabled.py Synthetic: VERIFY ENABLED/DISABLED state verification (20 assertions)
+│       ├── test_31_call_python_args.py Unit: CALL PYTHON with positional arguments + unresolved @script alias handling (50 assertions, no browser)
+│       ├── test_32_verify_checked.py Synthetic: VERIFY checked/NOT checked (20 assertions)
+│       ├── test_33_scanner.py       Synthetic+Unit: Smart Page Scanner build_hunt() (44 assertions)
+│       ├── test_34_scoring_math.py   Unit: exact numerical scoring validation (29 assertions, no browser)
+│       ├── test_35_enterprise_dsl.py Unit: Enterprise DSL — @data:, MOCK, VERIFY VISUAL/SOFTLY, explicit waits, reporter warnings (75 assertions, no browser)
+│       ├── test_36_set_and_indent.py Unit: SET command & indentation robustness (v0.0.9.2)
+│       ├── test_37_open_app.py       Unit: OPEN APP command — classify_step, RE_SYSTEM_STEP, _handle_open_app (41 assertions, no browser)
+│       ├── test_38_recorder.py      Unit: Semantic Test Recorder — JS bridge, DSL generator, step aggregation (no browser)
+│       ├── test_39_scheduler.py     Unit: Built-in Scheduler — parse_schedule, next_run_delay, ParsedHunt integration (51 assertions, no browser)
+│       ├── test_40_scoped_variables.py Unit: ScopedVariables 5-level hierarchy, scope isolation, dict compat (44 assertions, no browser)
+│       ├── test_41_explain_mode.py   Unit: DOMScorer explain output, channel breakdown, --explain CLI flag (33 assertions, no browser)
+│       ├── test_42_api.py            Unit: ManulSession public Python API facade (50 assertions, no browser)
+│       ├── test_43_attribute_semantic.py Unit: attribute-semantic icon matching, camelCase dev attrs, cart badges, false-positive resistance (34 assertions, no browser)
+│       ├── test_44_contextual_proximity.py Unit: contextual NEAR / HEADER / FOOTER / INSIDE scoring and parser rules (67 assertions, no browser)
+│       ├── test_45_prompts_config.py  Unit: Configuration loading, threshold derivation, page-name lookup, _KEY_MAP, env_bool (83 assertions, no browser)
+│       ├── test_46_imports.py         Unit: @import/@export/USE directive system (84 assertions, no browser)
+│       ├── test_47_packager.py        Unit: Pack/install .huntlib archives and lockfile (21 assertions, no browser)
+│       ├── test_48_exports.py         Unit: @export validation, wildcard exports, access control (19 assertions, no browser)
+│       └── test_49_explain_next.py    Unit: ExplainNextDebugger What-If Analysis REPL + debug protocol (112 assertions, no browser)
 ├── demo/                             Integration demo hunts and supporting assets
 │   ├── run_demo.py                   Runner script (sets CWD, calls manul CLI)
 │   ├── manul_engine_configuration.json Demo-specific config (heuristics-only)
@@ -150,7 +146,7 @@ Companion Manul Engine Extension for VS Code source is maintained separately and
 
 ## 🏛️ Architecture — ManulEngine as a Runtime
 
-ManulEngine is not a test library bolted onto Playwright. It is a **runtime** — an interpreter for the `.hunt` DSL that sits between human-authored (or AI-generated) automation scripts and the browser.
+ManulEngine is not a test library bolted onto a browser driver. It is a **runtime** — an interpreter for the `.hunt` DSL that sits between human-authored (or AI-generated) automation scripts and the browser.
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -175,20 +171,20 @@ ManulEngine is not a test library bolted onto Playwright. It is a **runtime** �
             │                     │                     │
             ▼                     ▼                     ▼
 ┌────────────────┐  ┌───────────────────┐  ┌───────────────────┐
-│ Custom Controls │  │ Python Hooks       │  │ Persistent Cache  │
-│ (controls.py)   │  │ [SETUP]/[TEARDOWN] │  │ (cache.py)        │
-│ @custom_control │  │ CALL PYTHON        │  │ Per-site storage  │
+│ Custom Controls │  │ Python Hooks       │  │ Semantic Cache    │
+│ (controls.py)   │  │ [SETUP]/[TEARDOWN] │  │ (scoring.py)      │
+│ @custom_control │  │ CALL PYTHON        │  │ In-session reuse  │
 └────────────────┘  │ @before_all        │  └───────────────────┘
                     └───────────────────┘
                                   │
                                   ▼
 ┌──────────────────────────────────────────────────────────────────────────┐
-│  Playwright (async)                                                     │
+│  CDP backend (manul_engine.cdp — raw WebSocket DevTools Protocol)       │
 │  Chromium · Firefox · WebKit · Electron                                 │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-This architecture is what makes ManulEngine a **true runtime** rather than just a test library. The `.hunt` DSL is the instruction set. The parser and engine are the interpreter. Playwright is the I/O layer. Users write scripts — QA tests, RPA workflows, synthetic monitors, or AI-agent actions — in the same deterministic DSL, and the runtime executes them identically.
+This architecture is what makes ManulEngine a **true runtime** rather than just a test library. The `.hunt` DSL is the instruction set. The parser and engine are the interpreter. The CDP backend is the I/O layer. Users write scripts — QA tests, RPA workflows, synthetic monitors, or AI-agent actions — in the same deterministic DSL, and the runtime executes them identically.
 
 ### Previous Engine Overhaul
 
@@ -196,7 +192,7 @@ This architecture is what makes ManulEngine a **true runtime** rather than just 
 
 * **Normalised Heuristic Scoring (DOMScorer):** Scoring engine rewritten with `0.0–1.0` float arithmetic. Five weighted channels — `cache` (2.0), `semantics` (0.60), `text` (0.45), `attributes` (0.25), `proximity` (0.10) — combined via `WEIGHTS` dict and multiplied by `SCALE=177,778` for integer thresholds. `data-qa` exact match is the single strongest heuristic signal (+1.0 text). Penalties are clean multipliers: disabled ×0.0, hidden ×0.1. Pre-compiled regex patterns loaded once at module import; per-element strings normalised in a single `_preprocess()` pass.
 * **TreeWalker-Based DOM Scanner:** `SNAPSHOT_JS` now walks the DOM with `document.createTreeWalker()` and a `PRUNE` set (`SCRIPT, STYLE, SVG, NOSCRIPT, TEMPLATE, META, PATH, G, BR, HR`). Subtrees rejected in one hop — zero wasted traversal. Visibility checked via `checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })` with `offsetWidth/offsetHeight` fallback. No `getComputedStyle` in the hot loop.
-* **Safe iframe Support:** `_snapshot()` iterates `page.frames`, injects `SNAPSHOT_JS` per frame, tags elements with `frame_index`. `_frame_for(page, el)` routes `locator()`/`evaluate()` to the correct Playwright `Frame`. Cross-origin frames silently skipped; stale indices fall back to main frame. All 12+ locator call-sites in `actions.py` route through `frame`.
+* **Safe iframe Support:** `_snapshot()` iterates `page.frames`, injects `SNAPSHOT_JS` per frame, tags elements with `frame_index`. `_frame_for(page, el)` routes `query()`/`evaluate()` to the correct CDP `CDPFrame`. Cross-origin frames silently skipped; stale indices fall back to main frame. All 12+ locator call-sites in `actions.py` route through `frame`.
 * **Clean, Unnumbered DSL:** Scripts read like plain English (`NAVIGATE to url` instead of `1. NAVIGATE to url`).
 * **Logical STEP Grouping:** `STEP [optional number]: [Description]` metadata blocks map manual QA cases directly into `.hunt` files.
 * **Interactive Enterprise HTML Reporter:** Dual-mode, zero-dependency reporter with native HTML5 accordions, auto-expanding failures, Flexbox layout, **"Show Only Failed" toggle**, **tag filter chips**, and a visible **Run Session / Merged invocations** banner for recent cross-invocation report aggregation.
@@ -217,7 +213,7 @@ Most "AI testing" tools are cloud-dependent wrappers that trade speed and reliab
 
 **Dual Persona Workflow — Testing for Humans, Power for Engineers.** QA engineers write `.hunt` files in a plain-English DSL — no programming required. SDETs extend the same files with Python hooks, Custom Controls, and data-driven parameters. Both personas work on the same artifact.
 
-**Optional AI Fallback — Off by Default.** AI (Ollama / local micro-LLMs) is **turned off by default** (`"model": null`). When enabled, it acts as a self-healing fallback — only invoked when heuristic confidence drops below a threshold. No cloud calls. No per-click charges. No flaky non-determinism in your CI pipeline.
+**Fully Deterministic — No In-Engine AI.** Element resolution is 100% the `DOMScorer` heuristic; there is no in-process model. No cloud calls, no per-click charges, no non-determinism in CI. LLM-driven automation happens *outside* the engine via the agent CLI (`manul map`/`run-step`/`read`/`schema`).
 
 ### 🔍 Explainability Layers
 
@@ -309,7 +305,7 @@ def seed_smoke(ctx: GlobalContext) -> None:
 - **Parallel workers:** `ctx.variables` is serialised as JSON into the `MANUL_GLOBAL_VARS` env var before worker subprocesses are spawned. Workers call `deserialize_global_vars()` at startup to inherit the shared state. `{placeholder}` substitution works identically in parallel and sequential modes.
 - `registry.clear()` is called at the start of each `main()` invocation to prevent stale registrations from a previous run (important for the test runner).
 
-Unit tests: `manul_engine/test/test_27_lifecycle_hooks.py` (57 assertions, no browser).
+Unit tests: `manul_engine/test/test_25_lifecycle_hooks.py` (57 assertions, no browser).
 
 ### 🧹 [SETUP] / [TEARDOWN] Hooks and Inline `CALL PYTHON` Steps
 
@@ -401,13 +397,13 @@ CALL PYTHON api_helpers.fetch_otp into {dynamic_otp}
 Fill 'Security Code' with '{dynamic_otp}'
 ```
 
-`execute_hook_line` captures the return value from `func()`, converts it to a string, and stores it in `HookResult.return_value`. `run_mission` then writes it to `self.memory[var_name]`, making it available for `{placeholder}` substitution in every subsequent step — exactly like `EXTRACT` or `@var:` variables. Both `into` and `to` are accepted as the keyword. Dynamic-variable unit tests live in `manul_engine/test/test_21_dynamic_vars.py`.
+`execute_hook_line` captures the return value from `func()`, converts it to a string, and stores it in `HookResult.return_value`. `run_mission` then writes it to `self.memory[var_name]`, making it available for `{placeholder}` substitution in every subsequent step — exactly like `EXTRACT` or `@var:` variables. Both `into` and `to` are accepted as the keyword. Dynamic-variable unit tests live in `manul_engine/test/test_19_dynamic_vars.py`.
 
 When a hook helper returns a dict such as `{"tenant_id": 42, "otp": 123456}`, `bind_hook_result()` flattens it into shared variables. That makes both `{tenant_id}` and `{otp}` available immediately to later hook lines and to the browser mission without additional glue code.
 
 `parse_hunt_file()` in `cli.py` returns a **12-field `ParsedHunt` NamedTuple** `(mission, context, title, step_file_lines, setup_lines, teardown_lines, parsed_vars, tags, data_file, schedule, exports, imports)`. It also strips header-only `@script:` declarations, validates that they use dotted Python import paths, and rewrites `CALL PYTHON {alias}.func` usages to their real module paths before returning the mission and hook lines. `parse_hunt_file()` also resolves `@import:` directives via `resolve_imports()` and expands `USE` directives via `expand_use_directives()` before returning the mission text. `_run_hunt_file()` calls `run_hooks` before and after the mission with the correct `finally` semantics, and passes `hunt_dir` to `run_mission()` so that inline `CALL PYTHON` steps in the mission body can resolve modules from the same search roots.
 
-The full hook unit test suite (`56 tests, no browser`) lives in `manul_engine/test/test_16_hooks.py`.
+The full hook unit test suite (`56 tests, no browser`) lives in `manul_engine/test/test_14_hooks.py`.
 
 ### 📋 Static Variable Declaration (`@var:`) and Script Aliases (`@script:`)
 
@@ -432,7 +428,7 @@ CALL PYTHON {issue_login_token} into {login_token_2}
 
 **Design rule:** When generating or suggesting `.hunt` test files, **never** hardcode test data (emails, passwords, usernames, search queries, IDs, etc.) directly into `Fill` or `Type` steps. Always declare them at the top via `@var:` and reference them via `{placeholder}`. This keeps test logic separate from test data.
 
-Unit tests: `manul_engine/test/test_20_variables.py` (23 assertions, no browser).
+Unit tests: `manul_engine/test/test_18_variables.py` (23 assertions, no browser).
 
 ### 🏷️ Arbitrary Tags (`@tags:`) and `--tags` CLI Filter
 
@@ -459,7 +455,7 @@ manul path/to/hunts/ --tags smoke,critical      # OR logic — run files with ei
 
 **How it works:** `parse_hunt_file()` now extracts `@tags:` into the `tags: list[str]` field. The CLI also exposes `_read_tags(path)` — a fast header-only scanner that stops at the first action or STEP header line — used to pre-filter files in `main()` without running the full parse twice. Tag filtering prints a one-line summary (`🏷️ --tags '...': N skipped, M matched.`) before the run starts.
 
-Unit tests: `manul_engine/test/test_22_tags.py` (20 assertions, no browser).
+Unit tests: `manul_engine/test/test_20_tags.py` (20 assertions, no browser).
 
 ### 🎛️ Custom Controls & Page Object Model
 
@@ -477,7 +473,7 @@ from manul_engine import ControlContext, custom_control
 @custom_control(page="Checkout Page", target="React Datepicker")
 async def handle_datepicker(ctx: ControlContext) -> None:
     """
-    ctx.page       — live Playwright Page (use ctx.page.locator(...) etc.)
+    ctx.page       — live CDPPage (use await ctx.page.query(...) etc.)
     ctx.action     — "input" | "clickable" | "select" | "hover" | "drag" | "locate"
     ctx.value      — typed/selected value, or None for click/hover/locate
     ctx.target     — quoted target from the step (e.g. "React Datepicker")
@@ -541,7 +537,7 @@ DONE.
 
 ### 🐍 Public Python API (`ManulSession`)
 
-`ManulSession` is a high-level async context manager for programmatic browser automation in pure Python. It manages its own Playwright lifecycle and routes all element-resolution calls through the full ManulEngine pipeline (cache → heuristics → optional LLM fallback). Callers never need to think about selectors.
+`ManulSession` is a high-level async context manager for programmatic browser automation in pure Python. It manages its own Chrome/CDP lifecycle and routes all element-resolution calls through the full ManulEngine pipeline (cache → heuristics → optional LLM fallback). Callers never need to think about selectors.
 
 ```python
 from manul_engine import ManulSession
@@ -563,31 +559,15 @@ Core methods: `navigate`, `click`, `fill`, `select`, `hover`, `drag`, `right_cli
 
 ### 🛡️ Ironclad JS Fallbacks
 
-Modern websites love to hide elements behind invisible overlays, custom dropdowns, and zero-pixel traps. Manul primarily uses Playwright interactions with `force=True` plus retries/self-healing; for Shadow DOM elements it falls back to direct JS helpers (`window.manulClick`, `window.manulType`) to keep execution moving.
+Modern websites love to hide elements behind invisible overlays, custom dropdowns, and zero-pixel traps. Manul primarily uses CDP trusted-input interactions plus retries/self-healing; for Shadow DOM elements it falls back to direct JS helpers (`window.manulClick`, `window.manulType`) to keep execution moving.
 
 ### 🪢 Shadow DOM & iframe Awareness
 
-The DOM snapshotter walks shadow roots via `TreeWalker` and scans same-origin iframes by iterating `page.frames`. Every element dict carries a `frame_index`; `_frame_for(page, el)` routes all downstream Playwright calls to the correct `Frame`. Cross-origin frames are silently skipped with retry logic (3 attempts, 1.5s backoff on `closed` errors).
+The DOM snapshotter walks shadow roots via `TreeWalker` and scans same-origin iframes by iterating `page.frames` (per-frame CDP execution contexts). Every element dict carries a `frame_index`; `_frame_for(page, el)` routes all downstream CDP calls to the correct `CDPFrame`. Cross-origin frames are silently skipped with retry logic (3 attempts, 1.5s backoff on `closed` errors).
 
-### 👻 Anti-Phantom Guard & AI Rejection
+### 🧠 Deterministic resolution — no LLM in the loop
 
-When the optional AI fallback is enabled, strict protection against LLM hallucinations is enforced. If the model is unsure it returns `{"id": null}`; the engine treats that as a rejection, blacklists the candidates, and retries with self-healing.
-
-### 🤖 Optional AI Fallback (Ollama)
-
-When enabled via `"model": "qwen2.5:0.5b"` in config, the local LLM acts purely as a self-healing safety net — only invoked when heuristic confidence drops below a configurable threshold. The heuristic `score` is passed as a **prior** (hint) — the model can override only with a clear reason.
-
-If `ai_threshold` is `null` (default) and a model is set, Manul auto-calculates from the model size:
-
-| Model size | Auto threshold |
-| --- | --- |
-| `< 1b` | `500` |
-| `1b – 4b` | `750` |
-| `5b – 9b` | `1000` |
-| `10b – 19b` | `1500` |
-| `20b+` | `2000` |
-
-Set `"model": null` (the default) to run in **heuristics-only mode** — no Ollama, no AI, fully deterministic. This is the recommended mode for CI pipelines.
+ManulEngine has no in-engine model. Element resolution is 100% the `DOMScorer`: the highest-confidence heuristic gate wins, otherwise the top-ranked candidate is used. Same page state + same step ⇒ same result, every run — ideal for CI. Agentic intelligence lives in the *external* LLM that drives the engine via the agent commands (`manul map` / `run-step` / `read` / `schema`). (An optional in-process Ollama fallback existed in early development and was removed.)
 
 ---
 
@@ -609,23 +589,15 @@ git clone https://github.com/alexbeatnik/ManulEngine.git
 cd ManulEngine
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
-pip install playwright==1.58.0
-playwright install chromium
+pip install websockets
+# Requires system Google Chrome / Chromium on PATH
 ```
 
 ### From wheel (packaged)
 
 ```bash
-pip install manul-engine==0.0.9.33
-playwright install chromium
-```
-
-Optional — local LLM via Ollama:
-
-```bash
-pip install ollama==0.6.1
-ollama pull qwen2.5:0.5b
-ollama serve
+pip install manul-engine==0.1.0
+# Requires system Google Chrome / Chromium on PATH
 ```
 
 ## ⚙️ Configuration (manul_engine_configuration.json)
@@ -637,17 +609,11 @@ The public README is expected to keep the full current runtime surface area plus
 
 ```json
 {
-  "model": "qwen2.5:0.5b",
   "headless": false,
   "browser": "chromium",
   "browser_args": [],
   "timeout": 5000,
   "nav_timeout": 30000,
-  "ai_always": false,
-  "ai_policy": "prior",
-  "ai_threshold": null,
-  "controls_cache_enabled": true,
-  "controls_cache_dir": "cache",
   "semantic_cache_enabled": true,
   "custom_controls_dirs": ["controls"],
   "log_name_maxlen": 0,
@@ -663,22 +629,13 @@ The public README is expected to keep the full current runtime surface area plus
 }
 ```
 
-> Set `"model": null` (or omit) → heuristics-only mode, no Ollama needed.
+The only cache is the in-session **semantic cache** (`learned_elements`): it remembers
+elements resolved earlier in the same run and feeds the scorer as one channel — it never
+bypasses scoring, so it cannot return a stale element, and it resets on every run. There is
+no persistent on-disk cache.
 
-Cache layout:
-
-```text
-cache/
-    example.com/
-        root/
-            controls.json
-        text-box/
-            controls.json
-```
-
-Relative `controls_cache_dir` is resolved against CWD (the directory where you invoke `manul`), not the package installation path.
-
-Synthetic tests (`python run_tests.py`) disable cache by default for deterministic, side-effect-free results.
+Synthetic tests (`python run_tests.py`) disable the semantic cache by default for
+deterministic, side-effect-free results.
 
 ---
 
@@ -723,7 +680,7 @@ manul path/to/hunts/ --screenshot always --html-report
 # Synthetic DOM test suite (dev only, no install needed)
 python run_tests.py
 
-# Integration demo hunts (needs network + Playwright browsers)
+# Integration demo hunts (needs network + system Chrome)
 python demo/run_demo.py
 python demo/run_demo.py tests/saucedemo.hunt
 python demo/run_demo.py --headless
@@ -739,12 +696,12 @@ ManulEngine ships a multi-stage `Dockerfile` that packages the engine as a headl
 docker run --rm --shm-size=1g \
   -v $(pwd)/hunts:/workspace/hunts:ro \
   -v $(pwd)/reports:/workspace/reports \
-  ghcr.io/alexbeatnik/manul-engine:0.0.9.33 \
+  ghcr.io/alexbeatnik/manul-engine:0.1.0 \
   --html-report --screenshot on-fail hunts/
 ```
 
 **Image characteristics:**
-* Two-stage build: `deps` (pip install + Playwright browsers) → `runtime` (slim, no build tools or pip cache).
+* Two-stage build: `deps` (pip install + system Chrome) → `runtime` (slim, no build tools or pip cache).
 * Non-root user `manul` (UID 1000). No `--privileged` needed.
 * `dumb-init` as PID 1 for proper signal handling and exit-code propagation.
 * CI defaults baked in: `MANUL_HEADLESS=true`, `MANUL_BROWSER_ARGS="--no-sandbox --disable-dev-shm-usage"`, `TZ=UTC`, `LANG=C.UTF-8`.
@@ -813,7 +770,7 @@ manul my_mission.hunt
 
 *Note: You can append `if exists` or `optional` to the end of any step (outside quoted text) to make it non-blocking, e.g. `CLICK 'Close Ad' if exists`.*
 
-`disappear` is an alias for Playwright's `hidden` state. The runtime routes these explicit waits through `locator.wait_for()` instead of using hard sleeps.
+`disappear` is an alias for the `hidden` state. The runtime routes these explicit waits through CDP visibility polling instead of hard sleeps.
 
 ### Strict Assertions
 
@@ -840,55 +797,48 @@ VERIFY "Notes" element has value "treasure map"
 The engine is battle-tested with **3228** synthetic DOM/unit tests across 55 test suites covering the web's most annoying UI patterns — including iframe routing, DOMScorer weight hierarchies, TreeWalker filtering, visibility edge cases, attribute-semantic icon matching, camelCase developer attributes, contextual UI disambiguation across repeated controls, conditional branching logic, and loop constructs.
 
 * **Synthetic DOM packs:** scenario suites under `manul_engine/test/`.
-* **Controls cache regression suite:** `manul_engine/test/test_13_controls_cache.py`.
-* **AI modes regression suite:** `manul_engine/test/test_12_ai_modes.py`.
-* **QA Classics regression suite:** `manul_engine/test/test_14_qa_classics.py`.
-* **Custom Controls unit suite:** `manul_engine/test/test_19_custom_controls.py`.
-* **Static Variables unit suite:** `manul_engine/test/test_20_variables.py`.
-* **Dynamic Variables unit suite:** `manul_engine/test/test_21_dynamic_vars.py`.
-* **Tags unit suite:** `manul_engine/test/test_22_tags.py`.
-* **Advanced interactions unit suite:** `manul_engine/test/test_23_advanced_interactions.py`.
-* **Reporting unit suite:** `manul_engine/test/test_24_reporting.py`.
-* **HTML reporter unit suite:** `manul_engine/test/test_25_reporter.py`.
-* **Wikipedia Search Input unit suite:** `manul_engine/test/test_26_wikipedia_search.py`.
-* **Lifecycle Hooks unit suite:** `manul_engine/test/test_27_lifecycle_hooks.py`.
-* **Logical Steps unit suite:** `manul_engine/test/test_28_logical_steps.py`.
-* **iframe Routing synthetic suite:** `manul_engine/test/test_29_iframe_routing.py`.
-* **Heuristic Weights synthetic+unit suite:** `manul_engine/test/test_30_heuristic_weights.py`.
-* **Visibility & TreeWalker synthetic+unit suite:** `manul_engine/test/test_31_visibility_treewalker.py`.
-* **VERIFY ENABLED/DISABLED synthetic suite:** `manul_engine/test/test_32_verify_enabled.py`.
-* **CALL PYTHON with arguments unit suite:** `manul_engine/test/test_33_call_python_args.py`.
-* **VERIFY checked/NOT checked synthetic suite:** `manul_engine/test/test_34_verify_checked.py`.
-* **Smart Page Scanner synthetic+unit suite:** `manul_engine/test/test_35_scanner.py`.
-* **Scoring Math unit suite:** `manul_engine/test/test_36_scoring_math.py`.
-* **Enterprise DSL unit suite:** `manul_engine/test/test_37_enterprise_dsl.py`.
-* **SET & Indentation unit suite:** `manul_engine/test/test_38_set_and_indent.py`.
-* **OPEN APP unit suite:** `manul_engine/test/test_39_open_app.py`.
-* **Self-Healing Cache unit suite:** `manul_engine/test/test_40_self_healing_cache.py`.
-* **Recorder unit suite:** `manul_engine/test/test_41_recorder.py`.
-* **Scheduler unit suite:** `manul_engine/test/test_42_scheduler.py`.
-* **Scoped Variables unit suite:** `manul_engine/test/test_43_scoped_variables.py`.
-* **Explain Mode unit suite:** `manul_engine/test/test_44_explain_mode.py`.
-* **Public Python API unit suite:** `manul_engine/test/test_45_api.py`.
-* **Attribute-semantic heuristic suite:** `manul_engine/test/test_46_attribute_semantic.py`.
-* **Contextual navigator unit suite:** `manul_engine/test/test_47_contextual_proximity.py`.
-* **Prompts & Config unit suite:** `manul_engine/test/test_48_prompts_config.py`.
-* **Imports unit suite:** `manul_engine/test/test_50_imports.py`.
-* **Packager unit suite:** `manul_engine/test/test_51_packager.py`.
-* **Exports unit suite:** `manul_engine/test/test_52_exports.py`.
-* **Explain Next unit suite:** `manul_engine/test/test_53_explain_next.py`.
-* **Conditionals unit suite:** `manul_engine/test/test_54_conditionals.py`.
-* **Loops unit suite:** `manul_engine/test/test_55_loops.py`.
-* **Integration hunts:** Real-site E2E flows under `demo/tests/*.hunt` — run with `python demo/run_demo.py` (requires Playwright + network).
+* **QA Classics regression suite:** `manul_engine/test/test_12_qa_classics.py`.
+* **Custom Controls unit suite:** `manul_engine/test/test_17_custom_controls.py`.
+* **Static Variables unit suite:** `manul_engine/test/test_18_variables.py`.
+* **Dynamic Variables unit suite:** `manul_engine/test/test_19_dynamic_vars.py`.
+* **Tags unit suite:** `manul_engine/test/test_20_tags.py`.
+* **Advanced interactions unit suite:** `manul_engine/test/test_21_advanced_interactions.py`.
+* **Reporting unit suite:** `manul_engine/test/test_22_reporting.py`.
+* **HTML reporter unit suite:** `manul_engine/test/test_23_reporter.py`.
+* **Wikipedia Search Input unit suite:** `manul_engine/test/test_24_wikipedia_search.py`.
+* **Lifecycle Hooks unit suite:** `manul_engine/test/test_25_lifecycle_hooks.py`.
+* **Logical Steps unit suite:** `manul_engine/test/test_26_logical_steps.py`.
+* **iframe Routing synthetic suite:** `manul_engine/test/test_27_iframe_routing.py`.
+* **Heuristic Weights synthetic+unit suite:** `manul_engine/test/test_28_heuristic_weights.py`.
+* **Visibility & TreeWalker synthetic+unit suite:** `manul_engine/test/test_29_visibility_treewalker.py`.
+* **VERIFY ENABLED/DISABLED synthetic suite:** `manul_engine/test/test_30_verify_enabled.py`.
+* **CALL PYTHON with arguments unit suite:** `manul_engine/test/test_31_call_python_args.py`.
+* **VERIFY checked/NOT checked synthetic suite:** `manul_engine/test/test_32_verify_checked.py`.
+* **Smart Page Scanner synthetic+unit suite:** `manul_engine/test/test_33_scanner.py`.
+* **Scoring Math unit suite:** `manul_engine/test/test_34_scoring_math.py`.
+* **Enterprise DSL unit suite:** `manul_engine/test/test_35_enterprise_dsl.py`.
+* **SET & Indentation unit suite:** `manul_engine/test/test_36_set_and_indent.py`.
+* **OPEN APP unit suite:** `manul_engine/test/test_37_open_app.py`.
+* **Recorder unit suite:** `manul_engine/test/test_38_recorder.py`.
+* **Scheduler unit suite:** `manul_engine/test/test_39_scheduler.py`.
+* **Scoped Variables unit suite:** `manul_engine/test/test_40_scoped_variables.py`.
+* **Explain Mode unit suite:** `manul_engine/test/test_41_explain_mode.py`.
+* **Public Python API unit suite:** `manul_engine/test/test_42_api.py`.
+* **Attribute-semantic heuristic suite:** `manul_engine/test/test_43_attribute_semantic.py`.
+* **Contextual navigator unit suite:** `manul_engine/test/test_44_contextual_proximity.py`.
+* **Prompts & Config unit suite:** `manul_engine/test/test_45_prompts_config.py`.
+* **Imports unit suite:** `manul_engine/test/test_46_imports.py`.
+* **Packager unit suite:** `manul_engine/test/test_47_packager.py`.
+* **Exports unit suite:** `manul_engine/test/test_48_exports.py`.
+* **Explain Next unit suite:** `manul_engine/test/test_49_explain_next.py`.
+* **Conditionals unit suite:** `manul_engine/test/test_50_conditionals.py`.
+* **Loops unit suite:** `manul_engine/test/test_51_loops.py`.
+* **Integration hunts:** Real-site E2E flows under `demo/tests/*.hunt` — run with `python demo/run_demo.py` (requires system Chrome + network).
 
 Run the synthetic suite:
 
 ```bash
-# From repo root (dev mode)
-python run_tests.py
-
-# Heuristics-only (no Ollama), deterministic:
-# Set "model": null in manul_engine_configuration.json
+# From repo root (dev mode) — fully deterministic, no external services
 python run_tests.py
 ```
 
@@ -946,8 +896,7 @@ The published extension provides:
 | --- | --- |
 | **Hunt language support** | Syntax highlighting, bracket matching, and comment toggling for `.hunt` files |
 | **Test Explorer integration** | Hunt files appear in VS Code's native Test Explorer; **real-time** step-level pass/fail reporting while the hunt is running |
-| **Config sidebar** | Webview panel to edit `manul_engine_configuration.json` visually; **Workers** combobox; **Add Default Prompts** button; live Ollama model discovery via `localhost:11434` |
-| **Cache browser** | Tree-view sidebar showing the controls cache hierarchy (`site → page → controls.json`) |
+| **Config sidebar** | Webview panel to edit `manul_engine_configuration.json` visually; **Workers** combobox |
 | **Run commands** | `ManulEngine: Run Hunt File` (output panel) and `ManulEngine: Run Hunt File in Terminal` (raw CLI) |
 | **Debug run profile** | Test Explorer exposes a **Debug** run profile alongside the normal one; places gutter breakpoints (red dots) in `.hunt` files, pauses at each with a floating QuickPick overlay — **⏭ Next Step** / **▶ Continue All**. The Test Explorer **Stop** button aborts the run cleanly. |
 | **Step Builder** | Sidebar buttons for every step type including **Open App**, **Set Variable**, **Verify Softly**, **Verify Visual**, **Mock Request**, **Wait Response**, **Wait Visible / Hidden**, **Debug / Pause**, **CALL PYTHON into {var}**, and **Live Page Scanner** |
@@ -981,7 +930,7 @@ Covered files: `pyproject.toml`, `Dockerfile`, `docker-compose.yml`, `README.md`
 
 ---
 
-## Release Notes: v0.0.9.33
+## Release Notes: v0.1.0
 
 - **Page registry split into per-site fragments under `pages/` (BREAKING):** the monolithic `<project>/pages.json` file is no longer read or written. The canonical location is `<project>/pages/<safe_netloc>.json`, one JSON fragment per site. Each fragment uses either the lean form `{ "site": "https://…/", "Domain": "…", "<pattern>": "<name>" }` or the wrapped form `{ "https://…/": { "Domain": "…", … } }` (auto-detected by `_normalise_fragment()` in `manul_engine/prompts.py`). `_load_pages_dir()` merges every fragment on every `lookup_page_name()` call so manual edits are visible within the same session. `_auto_populate_registry()` writes to `pages/<safe_netloc>.json` instead of growing one shared file. `pages_registry_mtime()` returns the most recent mtime across all fragments. Override the directory via `MANUL_PAGES_DIR` (absolute or CWD-relative). The legacy `_PAGES_WRITE_PATH` / `_PAGES_READ_PATH` symbols are removed; downstream callers should use `_PAGES_DIR_PATH`. Existing repo + demo fixtures were migrated as part of this change. **Migration:** `manul pages migrate` reads any leftover `pages.json`, fans it out into per-site fragments, and renames the original to `pages.json.bak`.
 - **`manul pages list` / `manul pages migrate` CLI subcommands:** routed in `cli.py:main()` next to `controls`. `list` prints `site → pattern → label` for every fragment; `migrate` performs the one-shot split. New top-level `import json` and `from pathlib import Path` in `cli.py` (previously imported via the standard preamble).
@@ -989,11 +938,11 @@ Covered files: `pyproject.toml`, `Dockerfile`, `docker-compose.yml`, `README.md`
 - **Custom Controls miss-diagnostics:** new `diagnose_custom_control_miss(page_name, target_name)` in `manul_engine/controls.py` consults the new `_REGISTRY_META` map (populated alongside `_CUSTOM_CONTROLS` at registration) and returns a one-line hint when the same `target` is registered for a *different* `page` label. Both dispatch sites print the hint just before falling through to `_execute_step()`. Eliminates the most common "my @custom_control isn't firing" debugging session by surfacing the likely `pages.json` ↔ `@custom_control(page=…)` mismatch immediately.
 - **`list_custom_controls()` API + `manul controls list` CLI:** new public function returning `[{page, target, handler, source}, …]` sorted by `(page, target)`. New CLI subcommand routed in `cli.py:main()` after `install`; eagerly calls `load_custom_controls()` against CWD and prints a fixed-width table (PAGE / TARGET / HANDLER / SOURCE).
 - **Visible dispatch log:** the dispatch log line in both executors now reads `🎛️  [CUSTOM CONTROL] '<target>' on '<page_name>' (<action>) → <handler.__qualname__>`; previously the conditional-branch path omitted both `<page_name>` and the handler name, making routing invisible without `--debug`.
-- **`test_19_custom_controls.py` rewritten:** legacy 3-arg signatures across registry / interception / lazy-load tests migrated to the new shape; added Section 4 covering signature rejection (TypeError contents, registry not mutated), `diagnose_custom_control_miss()` (sibling-page hit, no-sibling miss returns `None`, target-on-current-page returns `None`), and `list_custom_controls()` (count, sort, full metadata). Total assertions in this file ≈ 35.
+- **`test_17_custom_controls.py` rewritten:** legacy 3-arg signatures across registry / interception / lazy-load tests migrated to the new shape; added Section 4 covering signature rejection (TypeError contents, registry not mutated), `diagnose_custom_control_miss()` (sibling-page hit, no-sibling miss returns `None`, target-on-current-page returns `None`), and `list_custom_controls()` (count, sort, full metadata). Total assertions in this file ≈ 35.
 - **Internal hygiene in `core.py`:** lifted 6× `import sys as _sys` and 2× `import base64 as _b64` from per-call function-locals to module-level `import sys` / `import base64`; collapsed the import-after-statement block (`from . import prompts as _prompts_mod` and three siblings placed after `_log = logger.getChild("core")`) into a single PEP-8 import section. The `_DebugMixin._debug_prompt()` `finally` block now `await`s the cancelled `abort_poll_task` and swallows `CancelledError` — silences a stray `Task was destroyed but it is pending!` warning when a debug pause is aborted via the in-browser modal. The `_Tee` wrapper in `cli.py` now reports an `encoding` attribute and returns the byte count from `write()` so it satisfies the `IO[str]` protocol cleanly.
-- **Loop constructs (`REPEAT` / `FOR EACH` / `WHILE`):** (carried over from 0.0.9.29) New iterative execution blocks with indentation-based bodies. `REPEAT N TIMES:` for fixed iterations, `FOR EACH {var} IN {collection}:` for comma-separated data iteration, `WHILE <condition>:` for condition-driven loops with 100-iteration safety limit. Automatic `{i}` counter (1-based) on every iteration. Full nesting: loops inside conditionals, conditionals inside loops, loops inside loops. Parser in `helpers.py` (`LoopBlock` dataclass, `_consume_loop_block()`), executor in `core.py` (`_execute_loop()`, `_run_loop_body()`). 129-assertion test suite (`test_55_loops.py`).
-- **Conditional blocks (`IF` / `ELIF` / `ELSE`):** Block-style branching based on element existence, visible text, variable comparisons, contains checks, and truthy evaluation. Indentation-based body detection. Nested conditionals supported. Parser in `helpers.py` (`IfBlock`, `ConditionalBranch`), evaluator in `conditionals.py` (`evaluate_condition()`), executor in `core.py` (`_evaluate_conditional()`). 97-assertion test suite (`test_54_conditionals.py`).
-- **What-If Analysis REPL (`ExplainNextDebugger`):** New `explain_next.py` module with interactive debug REPL for hypothetical step evaluation. During a debug pause, type `w` (terminal) to enter the REPL or `e` / send `explain-next` (extension protocol) for one-shot evaluation. Combines DOMScorer heuristic scoring with optional LLM analysis to produce a 0–10 confidence rating, element match info, risk assessment, and corrective suggestions. The best heuristic match is highlighted with a persistent magenta outline on the live page via the engine's `_debug_highlight` / `_clear_debug_highlight` methods. Classes: `PageContext` (read-only snapshot), `WhatIfResult` (structured result with `confidence_label` property and `format_report()`), `_HeuristicHit` (best candidate from scoring), `ExplainNextDebugger` (REPL controller). REPL commands: `!execute [N]`, `!history`, `!context`, `!quit`. Extension protocol: `explain-next` token emits `\x00MANUL_EXPLAIN_NEXT\x00{json}` marker with serialized `WhatIfResult` via `_result_to_dict()`; the `what-if` interactive REPL is disabled in extension protocol mode (stdin reserved for control tokens). Hooked into `debug.py` via `_get_explain_next()` lazy factory and `_what_if_execute_step` attribute in `core.py`. 112-assertion test suite (`test_53_explain_next.py`).
+- **Loop constructs (`REPEAT` / `FOR EACH` / `WHILE`):** (carried over from 0.0.9.29) New iterative execution blocks with indentation-based bodies. `REPEAT N TIMES:` for fixed iterations, `FOR EACH {var} IN {collection}:` for comma-separated data iteration, `WHILE <condition>:` for condition-driven loops with 100-iteration safety limit. Automatic `{i}` counter (1-based) on every iteration. Full nesting: loops inside conditionals, conditionals inside loops, loops inside loops. Parser in `helpers.py` (`LoopBlock` dataclass, `_consume_loop_block()`), executor in `core.py` (`_execute_loop()`, `_run_loop_body()`). 129-assertion test suite (`test_51_loops.py`).
+- **Conditional blocks (`IF` / `ELIF` / `ELSE`):** Block-style branching based on element existence, visible text, variable comparisons, contains checks, and truthy evaluation. Indentation-based body detection. Nested conditionals supported. Parser in `helpers.py` (`IfBlock`, `ConditionalBranch`), evaluator in `conditionals.py` (`evaluate_condition()`), executor in `core.py` (`_evaluate_conditional()`). 97-assertion test suite (`test_50_conditionals.py`).
+- **What-If Analysis REPL (`ExplainNextDebugger`):** New `explain_next.py` module with interactive debug REPL for hypothetical step evaluation. During a debug pause, type `w` (terminal) to enter the REPL or `e` / send `explain-next` (extension protocol) for one-shot evaluation. Combines DOMScorer heuristic scoring with optional LLM analysis to produce a 0–10 confidence rating, element match info, risk assessment, and corrective suggestions. The best heuristic match is highlighted with a persistent magenta outline on the live page via the engine's `_debug_highlight` / `_clear_debug_highlight` methods. Classes: `PageContext` (read-only snapshot), `WhatIfResult` (structured result with `confidence_label` property and `format_report()`), `_HeuristicHit` (best candidate from scoring), `ExplainNextDebugger` (REPL controller). REPL commands: `!execute [N]`, `!history`, `!context`, `!quit`. Extension protocol: `explain-next` token emits `\x00MANUL_EXPLAIN_NEXT\x00{json}` marker with serialized `WhatIfResult` via `_result_to_dict()`; the `what-if` interactive REPL is disabled in extension protocol mode (stdin reserved for control tokens). Hooked into `debug.py` via `_get_explain_next()` lazy factory and `_what_if_execute_step` attribute in `core.py`. 112-assertion test suite (`test_49_explain_next.py`).
 - **What-If execute bug fixes:** `_execute_step()` recursive call for What-If replacement now passes `strategic_context` and `step_idx` by keyword (was misordered as positional args, breaking debug/breakpoint behavior). Injected What-If steps in `core.py` now run through `substitute_memory()` so `{var}` placeholders are resolved before execution.
 - **LLM JSON fence-stripping:** `_parse_llm_json()` in `llm.py` now strips markdown code fences (```` ``` ````) before JSON parsing, improving robustness with models that wrap JSON responses in triple-backtick blocks.
 
@@ -1015,7 +964,7 @@ Covered files: `pyproject.toml`, `Dockerfile`, `docker-compose.yml`, `README.md`
 
 </details>
 
-**Version:** 0.0.9.33
+**Version:** 0.1.0
 
 **Codename:** Containerised Manul
 

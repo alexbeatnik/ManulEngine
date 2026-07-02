@@ -6,8 +6,9 @@ Provides a high-level async context manager that owns the Playwright
 lifecycle and exposes clean methods (``navigate``, ``click``, ``fill``,
 ``verify``, ``extract``, etc.) for use in pure Python scripts.
 
-Each method internally routes through the full ManulEngine smart-resolution
-pipeline: Controls Cache → DOM Heuristics → optional LLM fallback.
+Each method internally routes through the full ManulEngine deterministic
+resolution pipeline: DOM snapshot → heuristic scoring (with in-session
+semantic cache) → trusted CDP action.
 
 Usage::
 
@@ -27,8 +28,7 @@ import os
 import re
 from typing import Any
 
-from playwright.async_api import Browser, BrowserContext, Page, Playwright, async_playwright
-
+from .cdp import CDPBrowser, CDPPage
 from .core import ManulEngine
 from .exceptions import ConfigurationError, SessionError
 from .helpers import classify_step, substitute_memory
@@ -64,54 +64,39 @@ class ManulSession:
 
     def __init__(
         self,
-        model: str | None = None,
         headless: bool | None = None,
         browser: str | None = None,
         browser_args: list[str] | None = None,
-        ai_threshold: int | None = None,
         disable_cache: bool = False,
         semantic_cache: bool | None = None,
         channel: str | None = None,
         executable_path: str | None = None,
     ) -> None:
         self._engine = ManulEngine(
-            model=model,
             headless=headless,
             browser=browser,
             browser_args=browser_args,
-            ai_threshold=ai_threshold,
             disable_cache=disable_cache,
             semantic_cache=semantic_cache,
             channel=channel,
             executable_path=executable_path,
         )
-        # Playwright objects — initialised by ``start()`` / ``__aenter__``.
-        self._pw: Playwright | None = None
-        self._browser: Browser | None = None
-        self._context: BrowserContext | None = None
-        self._page: Page | None = None
-        self._pw_cm: Any = None  # async_playwright() context manager
+        # CDP objects — initialised by ``start()`` / ``__aenter__``.
+        self._browser: CDPBrowser | None = None
+        self._page: CDPPage | None = None
 
     # ── Lifecycle ─────────────────────────────────────────────────────────
 
     async def start(self) -> ManulSession:
         """Launch the browser and open a page.  Called by ``__aenter__``."""
         eng = self._engine
-        self._pw_cm = async_playwright()
-        self._pw = await self._pw_cm.__aenter__()
-        p = self._pw
-
-        # Playwright 'channel' is only supported for Chromium.
-        if eng.channel and eng.browser != "chromium":
-            raise ConfigurationError(
-                f"Playwright 'channel' is only supported for browser='chromium'; got browser={eng.browser!r}"
-            )
 
         if eng.browser == "electron":
             _cdp_port = os.environ.get("MANUL_CDP_PORT", "9222")
             _cdp_url = f"http://localhost:{_cdp_port}"
             try:
-                self._browser = await p.chromium.connect_over_cdp(_cdp_url)
+                self._browser = await CDPBrowser.connect_over_cdp(_cdp_url)
+                self._page = await self._browser.first_page()
             except Exception as exc:
                 raise SessionError(
                     f"Failed to connect to Electron app over CDP at {_cdp_url}. "
@@ -119,51 +104,31 @@ class ManulSession:
                     f"'--remote-debugging-port={_cdp_port}' enabled and that "
                     f"the port is accessible. Original error: {exc}"
                 ) from exc
-            if self._browser.contexts:
-                self._context = self._browser.contexts[0]
-                self._page = self._context.pages[0] if self._context.pages else await self._context.new_page()
-            else:
-                self._context = await self._browser.new_context()
-                self._page = await self._context.new_page()
         else:
-            _launch_args = ["--no-sandbox", "--start-maximized"] if eng.browser == "chromium" else []
-            _launch_args = _launch_args + [a for a in eng.browser_args if a not in _launch_args]
-            _launch_opts: dict[str, Any] = dict(
-                headless=eng.headless,
-                args=_launch_args,
-            )
-            if eng.channel:
-                _launch_opts["channel"] = eng.channel
-            if eng.executable_path:
-                _launch_opts["executable_path"] = eng.executable_path
-
-            self._browser = await getattr(p, eng.browser).launch(**_launch_opts)
-            if eng.headless:
-                self._context = await self._browser.new_context(
-                    viewport={"width": 1920, "height": 1080},
+            _extra_args = [a for a in eng.browser_args if a not in ("--no-sandbox", "--start-maximized")]
+            if "--no-sandbox" not in _extra_args:
+                _extra_args.insert(0, "--no-sandbox")
+            try:
+                self._browser = await CDPBrowser.launch(
+                    headless=eng.headless,
+                    channel=eng.channel,
+                    executable_path=eng.executable_path,
+                    extra_args=_extra_args,
                 )
-            else:
-                self._context = await self._browser.new_context(no_viewport=True)
-            self._page = await self._context.new_page()
+            except Exception as exc:
+                raise ConfigurationError(f"Failed to launch Chrome via CDP: {exc}") from exc
+            self._page = await self._browser.new_page()
 
         return self
 
     async def close(self) -> None:
-        """Close the browser and tear down Playwright."""
+        """Close the browser and the underlying Chrome process."""
         if self._browser:
             try:
                 await self._browser.close()
             except Exception:
                 pass
             self._browser = None
-        if self._pw_cm:
-            try:
-                await self._pw_cm.__aexit__(None, None, None)
-            except Exception:
-                pass
-            self._pw = None
-            self._pw_cm = None
-        self._context = None
         self._page = None
 
     async def __aenter__(self) -> ManulSession:
@@ -176,8 +141,8 @@ class ManulSession:
     # ── Properties ────────────────────────────────────────────────────────
 
     @property
-    def page(self) -> Page:
-        """The active Playwright ``Page``.  Useful for advanced one-offs."""
+    def page(self) -> CDPPage:
+        """The active :class:`~manul_engine.cdp.CDPPage`.  Useful for advanced one-offs."""
         if self._page is None:
             raise SessionError(
                 "ManulSession has no active page.  Use 'async with ManulSession() as s:' or call start() first."
@@ -208,7 +173,7 @@ class ManulSession:
     async def click(self, target: str, *, double: bool = False) -> bool:
         """Click an element described in plain English.
 
-        Internally runs: Controls Cache → DOM Heuristics → LLM fallback.
+        Internally runs: DOM snapshot → heuristic scoring → trusted CDP click.
 
         Args:
             target: Plain-English description (e.g. ``"Log in button"``).

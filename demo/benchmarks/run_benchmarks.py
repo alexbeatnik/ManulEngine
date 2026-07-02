@@ -17,20 +17,20 @@ from __future__ import annotations
 
 import asyncio
 import http.server
-import os
 import sys
 import threading
 import time
 from pathlib import Path
 
 # Ensure the package is importable when running from the repo root.
-_REPO_ROOT = Path(__file__).resolve().parents[1]
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_REPO_ROOT))
 
-from playwright.async_api import async_playwright
-from manul_engine.scoring import score_elements
-from manul_engine.js_scripts import SNAPSHOT_JS
-from manul_engine.helpers import detect_mode, extract_quoted
+from playwright.async_api import async_playwright  # noqa: E402
+
+from manul_engine.helpers import detect_mode, extract_quoted  # noqa: E402
+from manul_engine.js_scripts import SNAPSHOT_JS  # noqa: E402
+from manul_engine.scoring import score_elements  # noqa: E402
 
 # ── Fixtures directory ────────────────────────────────────────────────────────
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
@@ -62,7 +62,7 @@ def _start_server(directory: str, port: int) -> http.server.HTTPServer:
 class Task:
     """A single resolution task to benchmark."""
 
-    __slots__ = ("fixture", "step", "pw_locator", "expected_tag", "expected_text")
+    __slots__ = ("expected_tag", "expected_text", "fixture", "pw_locator", "step")
 
     def __init__(
         self,
@@ -310,7 +310,7 @@ async def main() -> None:
     server = _start_server(str(FIXTURES_DIR), port)
     base_url = f"http://127.0.0.1:{port}"
 
-    print(f"🐾 ManulEngine Benchmark Suite")
+    print("🐾 ManulEngine Benchmark Suite")
     print(f"   Fixtures served at {base_url}")
     print(f"   Tasks: {len(TASKS)}\n")
 

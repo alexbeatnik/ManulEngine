@@ -5,7 +5,7 @@
 
 ```json
 {
-  "version": "0.0.9.33",
+  "version": "0.1.0",
   "generatedFrom": "manul_engine/cli.py :: main(), _run_hunt_file(), parse_hunt_file(), sync_main(); manul_engine/prompts.py :: _KEY_MAP, global config constants; manul_engine/scanner.py :: scan_main(); manul_engine/recorder.py :: record_main(); manul_engine/scheduler.py :: daemon_main(); manul_engine/packager.py :: pack(), install()",
   "entryPoints": {
     "console_script": "manul",
@@ -128,6 +128,42 @@
           "description": "Either 'list' (default) or 'migrate'. Any other value exits 1."
         }
       ]
+    },
+    {
+      "id": "schema",
+      "syntax": "manul schema [--json]",
+      "description": "Agent command. Emits the DSL grammar + agent JSON shapes (verbs, hunt_rules, step_outcome, page_map, failure_reasons, agent_commands) as a compact JSON contract for an external LLM driver. No browser needed; payload on stdout, logs on stderr. --json is accepted for symmetry (output is always JSON).",
+      "positionalArgs": []
+    },
+    {
+      "id": "map",
+      "syntax": "manul map [--cdp <url>] [--tab <url-substr>] [--max-per-group <n>] [--include-unlabeled]",
+      "description": "Agent command. Attaches to an already-running Chrome over CDP (default http://127.0.0.1:9222) and emits a compact, landmark-grouped JSON map of the open page ({url, groups:[{name, elements:[{label, role, editable?}], truncated?}]}), deduped and per-group capped (default 8). Groups are ordered Page → content landmarks → chrome.",
+      "positionalArgs": []
+    },
+    {
+      "id": "read",
+      "syntax": "manul read '<label>' [--cdp <url>] [--tab <url-substr>] [--selector '<css>'] [--max-chars <n>]",
+      "description": "Agent command. Attaches over CDP and reads off the open page without a full scan. Targeted form resolves a human label and extracts its value → {value, found, reason}. With --selector, returns the sanitized visible text of that CSS region → {text, selector}, optionally truncated to --max-chars.",
+      "positionalArgs": [
+        {
+          "name": "label",
+          "required": false,
+          "description": "Human-visible label to read; omit when using --selector."
+        }
+      ]
+    },
+    {
+      "id": "run-step",
+      "syntax": "manul run-step '<instruction>' [--cdp <url>] [--tab <url-substr>] [--compact]",
+      "description": "Agent command. Attaches over CDP and runs one plain-English DSL instruction against the open page, emitting a compact step-outcome JSON {ok, step, action, value?, url?, reason, error?, score?, near?}. Exit code is non-zero when ok is false. 'near' lists top candidates on failure or a low-confidence (<0.35) match.",
+      "positionalArgs": [
+        {
+          "name": "instruction",
+          "required": true,
+          "description": "One DSL line, e.g. \"Click the 'Login' button\"."
+        }
+      ]
     }
   ],
   "flags": [
@@ -148,7 +184,7 @@
       "default": "chromium",
       "configKey": "browser",
       "envVar": "MANUL_BROWSER",
-      "allowedValues": ["chromium", "firefox", "webkit"],
+      "allowedValues": ["chromium", "electron"],
       "description": "Browser engine to use.",
       "appliesTo": ["run", "scan", "record", "daemon"]
     },
@@ -232,6 +268,36 @@
       "appliesTo": ["run"]
     },
     {
+      "id": "json",
+      "flag": "--json",
+      "type": "boolean",
+      "default": false,
+      "configKey": null,
+      "envVar": null,
+      "description": "Print the final RunSummary as indented JSON to stdout; human logs are routed to stderr. Base64 screenshots are stripped. Mirrors ManulEngine (Go)'s --json.",
+      "appliesTo": ["run"]
+    },
+    {
+      "id": "jsonl",
+      "flag": "--jsonl",
+      "type": "boolean",
+      "default": false,
+      "configKey": null,
+      "envVar": null,
+      "description": "Stream per-step JSON Lines (one object per step, type=step) followed by a final type=summary line to stdout; human logs are routed to stderr. Mirrors ManulEngine (Go)'s --jsonl.",
+      "appliesTo": ["run"]
+    },
+    {
+      "id": "disable_cache",
+      "flag": "--disable-cache",
+      "type": "boolean",
+      "default": false,
+      "configKey": "semantic_cache_enabled",
+      "envVar": "MANUL_SEMANTIC_CACHE_ENABLED",
+      "description": "Disable the in-session semantic cache (learned_elements) for a fully cold, deterministic run. Mirrors ManulEngine (Go)'s --disable-cache. Inverse of semantic_cache_enabled.",
+      "appliesTo": ["run"]
+    },
+    {
       "id": "executable_path",
       "flag": "--executable-path",
       "type": "string",
@@ -239,6 +305,26 @@
       "configKey": "executable_path",
       "envVar": "MANUL_EXECUTABLE_PATH",
       "description": "Absolute path to a custom browser or Electron app executable. Use with OPEN APP command in .hunt files for desktop automation.",
+      "appliesTo": ["run"]
+    },
+    {
+      "id": "cdp_endpoint",
+      "flag": "--cdp",
+      "type": "string",
+      "default": null,
+      "configKey": "cdp_endpoint",
+      "envVar": "MANUL_CDP_ENDPOINT",
+      "description": "Attach to a running browser at this CDP HTTP endpoint (e.g. http://127.0.0.1:9222) instead of launching Chrome. Mirrors ManulEngine (Go)'s --cdp.",
+      "appliesTo": ["run"]
+    },
+    {
+      "id": "target",
+      "flag": "--target",
+      "type": "string",
+      "default": null,
+      "configKey": null,
+      "envVar": "MANUL_CDP_TAB",
+      "description": "With --cdp, select the page whose URL contains the given substring (form: url=<substr>; the url= prefix is optional). Falls back to the first page. Mirrors ManulEngine (Go)'s --target.",
       "appliesTo": ["run"]
     },
     {
@@ -269,17 +355,11 @@
     "resolution": "CWD first, then package root fallback",
     "overrideSetting": "manulEngine.configFile (VS Code extension setting)",
     "keys": [
-      { "key": "model",                  "envVar": "MANUL_MODEL",                  "type": "string | null", "default": "null" },
       { "key": "headless",               "envVar": "MANUL_HEADLESS",               "type": "boolean",       "default": "false" },
       { "key": "browser",                "envVar": "MANUL_BROWSER",                "type": "string",        "default": "chromium" },
       { "key": "browser_args",           "envVar": "MANUL_BROWSER_ARGS",           "type": "string[]",      "default": "[]" },
       { "key": "timeout",                "envVar": "MANUL_TIMEOUT",                "type": "integer",       "default": "5000" },
       { "key": "nav_timeout",            "envVar": "MANUL_NAV_TIMEOUT",            "type": "integer",       "default": "30000" },
-      { "key": "ai_threshold",           "envVar": "MANUL_AI_THRESHOLD",           "type": "integer | null","default": "auto" },
-      { "key": "ai_always",              "envVar": "MANUL_AI_ALWAYS",              "type": "boolean",       "default": "false" },
-      { "key": "ai_policy",              "envVar": "MANUL_AI_POLICY",              "type": "string",        "default": "prior" },
-      { "key": "controls_cache_enabled", "envVar": "MANUL_CONTROLS_CACHE_ENABLED", "type": "boolean",       "default": "true" },
-      { "key": "controls_cache_dir",     "envVar": "MANUL_CONTROLS_CACHE_DIR",     "type": "string",        "default": "cache" },
       { "key": "semantic_cache_enabled",  "envVar": "MANUL_SEMANTIC_CACHE_ENABLED", "type": "boolean",       "default": "true" },
       { "key": "custom_controls_dirs",   "envVar": "MANUL_CUSTOM_CONTROLS_DIRS",   "type": "string[]",      "default": "[\"controls\"]" },
       { "key": "log_name_maxlen",        "envVar": "MANUL_LOG_NAME_MAXLEN",        "type": "integer",       "default": "0" },
@@ -289,6 +369,7 @@
       { "key": "auto_annotate",          "envVar": "MANUL_AUTO_ANNOTATE",          "type": "boolean",       "default": "false" },
       { "key": "channel",                "envVar": "MANUL_CHANNEL",                "type": "string | null", "default": "null" },
       { "key": "executable_path",        "envVar": "MANUL_EXECUTABLE_PATH",        "type": "string | null", "default": "null" },
+      { "key": "cdp_endpoint",           "envVar": "MANUL_CDP_ENDPOINT",           "type": "string | null", "default": "null" },
       { "key": "retries",                "envVar": "MANUL_RETRIES",                "type": "integer",       "default": "0" },
       { "key": "screenshot",             "envVar": "MANUL_SCREENSHOT",             "type": "string",        "default": "on-fail" },
       { "key": "html_report",            "envVar": "MANUL_HTML_REPORT",            "type": "boolean",       "default": "false" },

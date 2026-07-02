@@ -36,5 +36,5 @@ if __name__ == "__main__":
     if not any(a.endswith(".hunt") or os.path.isdir(a) or a == "." for a in args):
         args.append("tests")
 
-    sys.argv = ["manul"] + args
+    sys.argv = ["manul", *args]
     sync_main()

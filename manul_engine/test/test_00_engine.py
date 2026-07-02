@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 
 import asyncio
 import re
-from playwright.async_api import async_playwright
+from manul_engine.cdp import CDPBrowser
 from manul_engine import ManulEngine
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1094,7 +1094,7 @@ async def run_laboratory():
 
     manul = ManulEngine(headless=True, disable_cache=True)
 
-    async with async_playwright() as p:
+    async with CDPBrowser(headless=True) as p:
         browser = await p.chromium.launch()
         page = await browser.new_page()
         await page.set_content(MONSTER_DOM)
@@ -1169,19 +1169,19 @@ async def run_laboratory():
                     verify_ok = True
                     verify_detail = ""
                     if t.get("verify_checked") is not None:
-                        actual = await page.locator(f"#{t['expected']}").is_checked()
+                        actual = await (await page.query(f"#{t['expected']}")).is_checked()
                         if actual != t["verify_checked"]:
                             verify_ok = False
                         verify_detail = f"checked={actual}"
                     elif t.get("verify_attr"):
                         va = t["verify_attr"]
-                        actual = await page.locator(va["selector"]).get_attribute(va["attr"])
+                        actual = await (await page.query(va["selector"])).get_attribute(va["attr"])
                         if actual != va["value"]:
                             verify_ok = False
                         verify_detail = f"{va['attr']}='{actual}'"
                     elif t.get("verify_select"):
                         vs = t["verify_select"]
-                        actual = await page.locator(vs["selector"]).evaluate(
+                        actual = await (await page.query(vs["selector"])).evaluate(
                             "sel => sel.options[sel.selectedIndex].text.trim()"
                         )
                         if actual != vs["value"]:
@@ -1189,7 +1189,7 @@ async def run_laboratory():
                         verify_detail = f"selected='{actual}'"
                     elif t.get("verify_value"):
                         vv = t["verify_value"]
-                        actual = await page.locator(vv["selector"]).input_value()
+                        actual = await (await page.query(vv["selector"])).input_value()
                         if actual != vv["value"]:
                             verify_ok = False
                         verify_detail = f"value='{actual}'"

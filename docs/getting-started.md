@@ -1,6 +1,6 @@
 # Getting Started
 
-> **ManulEngine v0.0.9.29**
+> **ManulEngine 0.1.0**
 
 This guide walks you through creating your first `.hunt` test, running it, and viewing the results.
 
@@ -9,8 +9,8 @@ This guide walks you through creating your first `.hunt` test, running it, and v
 Make sure you have completed the [installation](installation.md):
 
 ```bash
-pip install manul-engine==0.0.9.29
-playwright install
+pip install manul-engine==0.1.0
+# Requires a system-installed Google Chrome / Chromium on PATH.
 ```
 
 ## Your First Hunt File
@@ -184,10 +184,9 @@ my-project/
 │   └── datepicker.py                  # Custom control handlers
 ├── scripts/
 │   └── db_helpers.py                  # Python helpers for CALL PYTHON
-├── reports/
-│   ├── manul_report.html              # Generated HTML report
-│   └── run_history.json               # Run history (JSON Lines)
-└── cache/                             # Persistent controls cache (auto-generated)
+└── reports/
+    ├── manul_report.html              # Generated HTML report
+    └── run_history.json               # Run history (JSON Lines)
 ```
 
 ## Next Steps

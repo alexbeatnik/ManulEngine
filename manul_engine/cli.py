@@ -22,7 +22,7 @@ import time
 from pathlib import Path
 from typing import NamedTuple
 
-from .helpers import IfBlock, collect_ifblock_lines, parse_hunt_blocks
+from .helpers import IfBlock, collect_ifblock_lines, env_bool, parse_hunt_blocks
 from .hooks import RE_END_SETUP, RE_END_TEARDOWN, RE_SETUP, RE_TEARDOWN
 from .imports import (
     HuntImportError,
@@ -88,9 +88,16 @@ Usage:
   manul pages list           — list every site → pattern → label mapping under pages/
   manul pages migrate        — split a legacy pages.json into pages/<site>.json fragments
 
+Agent commands (emit JSON for an external LLM driver; attach to a running Chrome over CDP):
+  manul schema               — the DSL grammar + agent JSON shapes (no browser needed)
+  manul map [--tab S]        — compact landmark-grouped map of the open page → JSON
+  manul read '<label>'       — read one labelled value (or --selector '<css>' region text) → JSON
+  manul run-step '<step>'    — run one DSL instruction against the open page → step-outcome JSON
+                               (shared flags: --cdp <url> [default http://127.0.0.1:9222], --tab <url-substr>)
+
 Flags:
   --headless                 — run browser in headless mode
-  --browser <name>           — browser to use: chromium (default), firefox, webkit
+  --browser <name>           — chromium (default) or electron (attach to a running Chrome/Electron over CDP)
   --workers <n>              — max hunt files to run in parallel (default: 1)
   --tags <tag1,tag2,...>     — only run hunt files whose @tags: header contains at least one matching tag
   --debug                    — interactive step-by-step mode with visual element highlighting
@@ -100,6 +107,11 @@ Flags:
   --html-report              — generate a self-contained manul_report.html after the run
   --explain                  — print detailed heuristic score breakdown for each element resolution
   --executable-path <path>   — absolute path to a custom browser or Electron app executable
+  --cdp <url>                — attach to a running browser at this CDP endpoint (e.g. http://127.0.0.1:9222) instead of launching
+  --target url=<substr>      — with --cdp, drive the page whose URL contains <substr> (else the first page)
+  --json                     — print the final run result as JSON to stdout (human logs go to stderr)
+  --jsonl                    — stream per-step JSON Lines + a final summary line to stdout (human logs go to stderr)
+  --disable-cache            — disable the in-session semantic cache for a fully cold, deterministic run
 
 Pack/install flags:
   --output <dir>             — output directory for `manul pack` (default: current dir)
@@ -123,8 +135,7 @@ Examples:
   manul tests/hunt_example.hunt
   manul tests/my_script.hunt
   manul --headless tests/
-  manul --browser firefox tests/
-  manul --headless --browser webkit tests/hunt_example.hunt
+  manul --browser chromium tests/
   manul --workers 4 tests/
   manul --tags smoke tests/
   manul --tags smoke,regression tests/
@@ -133,7 +144,7 @@ Examples:
   manul record https://example.com
   manul record https://example.com tests/my_test.hunt
   manul daemon tests/ --headless
-  manul daemon tests/ --headless --browser firefox --screenshot on-fail
+  manul daemon tests/ --headless --browser chromium --screenshot on-fail
 
 Notes:
   Any file with the .hunt extension is accepted.
@@ -147,18 +158,21 @@ Notes:
 
 # ── Tee stdout → log file ─────────────────────────────────────────────────────
 class _Tee:
-    def __init__(self, path: str) -> None:
-        self._term = sys.stdout
+    def __init__(self, path: str, mirror: "object | None" = None) -> None:
+        self._term = sys.stdout  # real stdout — used for isatty + restore
+        # Where human-readable output is mirrored. In --json/--jsonl mode this is
+        # sys.stderr so the real stdout stays clean for the machine payload.
+        self._mirror = mirror if mirror is not None else self._term
         self._file = open(path, "w", encoding="utf-8")
         self.encoding: str = getattr(self._term, "encoding", "utf-8")
 
     def write(self, msg: str) -> int:
-        n = self._term.write(msg)
+        n = self._mirror.write(msg)
         self._file.write(msg)
         return n
 
     def flush(self) -> None:
-        self._term.flush()
+        self._mirror.flush()
         self._file.flush()
 
     def isatty(self) -> bool:
@@ -472,6 +486,9 @@ async def _run_hunt_file(
     global_vars: "dict[str, str] | None" = None,
     explain: bool = False,
     executable_path: "str | None" = None,
+    cdp_endpoint: "str | None" = None,
+    cdp_tab: "str | None" = None,
+    disable_cache: bool = False,
 ) -> MissionResult:
     filename = os.path.basename(path)
     print(f"\n{'=' * 60}")
@@ -547,6 +564,9 @@ async def _run_hunt_file(
         explain_mode=explain,
         required_controls=_required_controls or None,
         executable_path=executable_path,
+        cdp_endpoint=cdp_endpoint,
+        cdp_tab=cdp_tab,
+        disable_cache=disable_cache,
     )
     mission_result = MissionResult(file=path, name=filename, status="fail")
     # Feed global lifecycle vars and per-file @var: declarations as separate scopes
@@ -796,6 +816,16 @@ async def main() -> "int | None":
         print(f"📦 Installed to: {dest}")
         return
 
+    # ── Agent-facing commands (JSON for external LLM drivers) ─────────────────
+    if _non_flag_args and _non_flag_args[0] in ("schema", "map", "read", "run-step"):
+        from manul_engine.agent_cli import agent_main
+
+        _agent_cmd = _non_flag_args[0]
+        _agent_idx = args.index(_agent_cmd)
+        _agent_args = args[_agent_idx + 1 :]
+        _code = await agent_main(_agent_cmd, _agent_args)
+        sys.exit(_code)
+
     if _non_flag_args and _non_flag_args[0] == "pages":
         from . import prompts as _prompts_pages
 
@@ -889,7 +919,19 @@ async def main() -> "int | None":
     debug = "--debug" in args
     html_report = "--html-report" in args
     explain = "--explain" in args
-    args = [a for a in args if a not in ("--headless", "--debug", "--html-report", "--explain")]
+    # Machine output (mirrors ManulEngine (Go)): --json prints the final RunSummary as
+    # JSON; --jsonl streams per-step JSON Lines + a final summary line. Either
+    # routes human logs to stderr so stdout carries only the payload.
+    json_out = "--json" in args
+    jsonl_out = "--jsonl" in args
+    # --disable-cache (ManulEngine (Go) parity): turn off the in-session semantic cache
+    # for a fully cold, deterministic run. Also honours MANUL_DISABLE_CACHE env.
+    disable_cache = "--disable-cache" in args or env_bool("MANUL_DISABLE_CACHE")
+    args = [
+        a
+        for a in args
+        if a not in ("--headless", "--debug", "--html-report", "--explain", "--json", "--jsonl", "--disable-cache")
+    ]
 
     # Extract --break-lines <n,n,...> flag (gutter breakpoints from VS Code).
     break_lines: set[int] = set()
@@ -901,14 +943,15 @@ async def main() -> "int | None":
             print("Error: --break-lines values must be integers.", file=sys.stderr)
             sys.exit(1)
 
-    # Extract --browser <name> flag
-    _VALID_BROWSERS = {"chromium", "firefox", "webkit"}
+    # Extract --browser <name> flag. The CDP backend always drives Chrome/Chromium;
+    # 'electron' attaches to a running Chrome/Electron over CDP instead of launching.
+    _VALID_BROWSERS = {"chromium", "electron"}
     browser: str | None = None
     _browser_raw, args = _pop_flag(args, "--browser")
     if _browser_raw is not None:
         candidate = _browser_raw.strip().lower()
         if candidate not in _VALID_BROWSERS:
-            print(f"Error: unsupported browser '{_browser_raw}'. Allowed: chromium, firefox, webkit.", file=sys.stderr)
+            print(f"Error: unsupported browser '{_browser_raw}'. Allowed: chromium, electron.", file=sys.stderr)
             sys.exit(1)
         browser = candidate
 
@@ -921,6 +964,28 @@ async def main() -> "int | None":
             print("Error: --executable-path value cannot be empty.", file=sys.stderr)
             sys.exit(1)
         os.environ["MANUL_EXECUTABLE_PATH"] = executable_path
+
+    # Extract --cdp <url> flag — attach to a running browser over CDP instead of
+    # launching. Set the env too so parallel-worker subprocesses inherit it.
+    cdp_endpoint: str | None = None
+    _cdp_raw, args = _pop_flag(args, "--cdp")
+    if _cdp_raw is not None:
+        cdp_endpoint = _cdp_raw.strip()
+        if not cdp_endpoint:
+            print("Error: --cdp value cannot be empty (expected an endpoint URL).", file=sys.stderr)
+            sys.exit(1)
+        os.environ["MANUL_CDP_ENDPOINT"] = cdp_endpoint
+
+    # Extract --target <url=substr> flag — when attaching over --cdp, pick the page
+    # whose URL contains <substr> (mirrors ManulEngine (Go); the 'url=' prefix is optional).
+    cdp_tab: str | None = None
+    _target_raw, args = _pop_flag(args, "--target")
+    if _target_raw is not None:
+        cdp_tab = _target_raw.strip()
+        if cdp_tab.lower().startswith("url="):
+            cdp_tab = cdp_tab[4:].strip()
+        if cdp_tab:
+            os.environ["MANUL_CDP_TAB"] = cdp_tab
 
     # Extract --workers <n> flag
     # prompts.py (which maps JSON → env vars) hasn't been imported yet at this
@@ -963,7 +1028,9 @@ async def main() -> "int | None":
     # Extract --tags <tag1,tag2,...> filter
     filter_tags: set[str] = set()
     _tags_raw, args = _pop_flag(args, "--tags")
-    if _tags_raw is not None:
+    if _tags_raw is None:
+        _tags_raw = os.getenv("MANUL_TAGS")  # ManulEngine (Go) parity: env fallback for --tags
+    if _tags_raw:
         filter_tags = {t.strip() for t in _tags_raw.split(",") if t.strip()}
 
     # Extract --retries <N> flag
@@ -1002,7 +1069,8 @@ async def main() -> "int | None":
     _reports_dir = os.path.join(os.getcwd(), "reports")
     os.makedirs(_reports_dir, exist_ok=True)
     log_file = os.path.join(_reports_dir, "last_run.log")
-    tee = _Tee(log_file)
+    _json_mode = json_out or jsonl_out
+    tee = _Tee(log_file, mirror=(sys.stderr if _json_mode else None))
     sys.stdout = tee
 
     run_summary: RunSummary | None = None
@@ -1100,6 +1168,8 @@ async def main() -> "int | None":
                     global_vars=_lc_ctx.variables,
                     explain=explain,
                     executable_path=executable_path,
+                    cdp_endpoint=cdp_endpoint,
+                    disable_cache=disable_cache,
                 )
                 mission_result.tags = file_tags
                 # ── Retry loop ────────────────────────────────────────────
@@ -1116,6 +1186,9 @@ async def main() -> "int | None":
                             global_vars=_lc_ctx.variables,
                             explain=explain,
                             executable_path=executable_path,
+                            cdp_endpoint=cdp_endpoint,
+                            cdp_tab=cdp_tab,
+                            disable_cache=disable_cache,
                         )
                         mission_result.tags = file_tags
                         mission_result.attempts = attempt
@@ -1164,6 +1237,12 @@ async def main() -> "int | None":
                     flags += ["--browser", browser]
                 if executable_path:
                     flags += ["--executable-path", executable_path]
+                if cdp_endpoint:
+                    flags += ["--cdp", cdp_endpoint]
+                if cdp_tab:
+                    flags += ["--target", f"url={cdp_tab}"]
+                if disable_cache:
+                    flags.append("--disable-cache")
                 if retries:
                     flags += ["--retries", str(retries)]
                 if screenshot_mode is not None:
@@ -1303,6 +1382,43 @@ async def main() -> "int | None":
 
         sys.stdout = tee._term
         tee.close()
+
+        # ── Machine output (stdout reserved for the payload) ───────────────
+        if _json_mode and run_summary is not None:
+            _emit_run_json(run_summary, jsonl=jsonl_out)
+
+
+def _emit_run_json(run_summary: "RunSummary", *, jsonl: bool) -> None:
+    """Write the run result to stdout as JSON (``--json``) or JSON Lines
+    (``--jsonl``: one object per step, then a final ``summary`` line).
+
+    Mirrors ManulEngine (Go)'s machine-output routing. Base64 screenshots are
+    stripped to keep the payload lean for LLM/CI consumers.
+    """
+    from dataclasses import asdict
+
+    payload = asdict(run_summary)
+    for _m in payload.get("missions", []):
+        for _s in _m.get("steps", []):
+            _s.pop("screenshot", None)
+        for _b in _m.get("blocks", []):
+            for _a in _b.get("actions", []):
+                _a.pop("screenshot", None)
+
+    out = sys.stdout
+    if jsonl:
+        for _m in payload.get("missions", []):
+            for _s in _m.get("steps", []):
+                out.write(json.dumps({"type": "step", "mission": _m.get("name", ""), **_s}, ensure_ascii=False) + "\n")
+        summary = {k: v for k, v in payload.items() if k != "missions"}
+        summary["type"] = "summary"
+        summary["missions"] = [
+            {k: v for k, v in _m.items() if k not in ("steps", "blocks")} for _m in payload.get("missions", [])
+        ]
+        out.write(json.dumps(summary, ensure_ascii=False) + "\n")
+    else:
+        out.write(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+    out.flush()
 
 
 def sync_main() -> None:

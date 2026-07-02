@@ -36,7 +36,6 @@ class _DebugMixin:
         current_last_xpath = getattr(self, "last_xpath", None)
         if self._explain_next_debugger is None:
             self._explain_next_debugger = ExplainNextDebugger(
-                llm=self._llm,  # type: ignore[attr-defined]
                 learned_elements=getattr(self, "learned_elements", None),
                 last_xpath=current_last_xpath,
                 engine=self,
@@ -327,9 +326,13 @@ class _DebugMixin:
                             pass
                         continue  # re-show the prompt without advancing
                     elif user_in == "pause":
-                        print("    🔎 Opening Playwright Inspector…")
-                        await page.pause()
-                        continue  # re-show the prompt after closing Inspector
+                        # The CDP backend has no Playwright Inspector; the browser
+                        # window itself stays open and interactive while paused here.
+                        print(
+                            "    🔎 No external Inspector in CDP mode — the live Chrome window "
+                            "is interactive. Use the browser DevTools, then resume here."
+                        )
+                        continue  # re-show the prompt
                     elif user_in in ("e", "explain-next"):
                         try:
                             dbg = self._get_explain_next()

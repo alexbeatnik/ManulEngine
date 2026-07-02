@@ -199,11 +199,11 @@ cython_debug/
 #  Cursor is an AI-powered code editor. `.cursorignore` specifies files/directories to
 #  exclude from AI features like autocomplete and code analysis. Recommended for sensitive data
 
-# Manul persistent control cache
-cache/
-
 # Manul runtime artifacts (reports, logs)
 reports/
+
+# SCREENSHOT step output (manul writes PNGs here under CWD)
+screenshots/
 
 # Accidentally generated stdlib-shadowing files
 os

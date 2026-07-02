@@ -1,6 +1,6 @@
 # Reports & Explainability
 
-> **ManulEngine v0.0.9.29**
+> **ManulEngine 0.1.0**
 
 ManulEngine provides multiple layers of observability: HTML reports with screenshots, per-channel scoring breakdowns, and an interactive What-If Analysis REPL.
 
@@ -100,7 +100,7 @@ For each resolved element, explain mode prints a per-channel breakdown:
 
 | Channel | Weight | What it measures |
 |---------|--------|------------------|
-| **cache** | 2.0 | Semantic cache reuse (in-session learned elements) and persistent controls cache match |
+| **cache** | 2.0 | Semantic cache reuse (in-session learned elements) and blind-context reuse |
 | **semantics** | 0.60 | Element type alignment, dev naming conventions, checkbox/radio strictness |
 | **text** | 0.45 | Text content match: `data-qa`, `aria-label`, `placeholder`, visible text, `name` attribute |
 | **attributes** | 0.25 | HTML `id`, class names, structural attributes |
@@ -230,5 +230,5 @@ The engine scrolls, blacklists bad candidates, re-snapshots the DOM, and retries
 |---------|---------------|
 | Wrong element clicked | Run with `--explain` to see scoring breakdown. Add a type hint (`button`, `link`) or contextual qualifier (`NEAR`, `INSIDE`) |
 | Element not found | Verify the text matches what's visible on the page. Try `WAIT FOR 'Element' to be visible` before the action |
-| Flaky results | Check if the page has animations or lazy loading. Add explicit waits. Consider using the controls cache |
-| Slow resolution | Enable `controls_cache_enabled` and `semantic_cache_enabled` in config |
+| Flaky results | Check if the page has animations or lazy loading. Add explicit waits |
+| Slow resolution | Keep `semantic_cache_enabled` on in config; reduce snapshot scope with contextual qualifiers (`NEAR`, `INSIDE`) |

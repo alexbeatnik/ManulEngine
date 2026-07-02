@@ -48,4 +48,4 @@ Adding a step kind in only one of them is the most common silent regression in t
 - Conditional-branch dispatch: `manul_engine/core.py:_dispatch_step`
 - Action handlers: `manul_engine/actions.py:_ActionsMixin`
 - DSL contract: `contracts/MANUL_DSL_CONTRACT.md`
-- Test conventions: `manul_engine/test/test_28_logical_steps.py` is a good template for control-flow keywords; `test_39_open_app.py` for action keywords.
+- Test conventions: `manul_engine/test/test_26_logical_steps.py` is a good template for control-flow keywords; `test_37_open_app.py` for action keywords.

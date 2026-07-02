@@ -5,7 +5,7 @@
 
 ```json
 {
-  "version": "0.0.9.33",
+  "version": "0.1.0",
   "generatedFrom": "manul_engine/reporting.py :: StepResult, BlockResult, MissionResult, RunSummary, append_run_history(), load_report_state(), save_report_state(), merge_report_summaries(), recompute_summary(); manul_engine/reporter.py :: generate_report()",
 
   "statusValues": {
@@ -25,8 +25,7 @@
         { "name": "duration_ms",  "type": "float",          "default": 0.0,                      "description": "Execution time in milliseconds." },
         { "name": "error",        "type": "str | null",     "default": null,                     "description": "Error message or traceback on failure." },
         { "name": "screenshot",   "type": "str | null",     "default": null,                     "description": "Base64-encoded PNG screenshot (controlled by screenshot_mode)." },
-        { "name": "logical_step", "type": "str | null",     "default": null,                     "description": "Active STEP label when this action ran (e.g. 'STEP 2: Login')." },
-        { "name": "healed",       "type": "bool",           "default": false,                    "description": "True when a stale cache entry was re-resolved via self-healing." }
+        { "name": "logical_step", "type": "str | null",     "default": null,                     "description": "Active STEP label when this action ran (e.g. 'STEP 2: Login')." }
       ]
     },
 

@@ -42,7 +42,7 @@ The eight files under `contracts/` describe the **frozen public surface** of Man
 
 ## What is NOT a contract change
 
-- Internal helpers in `helpers.py`, `cache.py`, `scoring.py` private functions, `_DebugMixin` private methods (anything `_underscore`-prefixed).
+- Internal helpers in `helpers.py`, `scoring.py` private functions, `_DebugMixin` private methods (anything `_underscore`-prefixed).
 - Refactors that preserve public names and behavior.
 - Bug fixes that align code with what the contract already says — the contract was right, the code was wrong.
 

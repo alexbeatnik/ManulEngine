@@ -2,11 +2,11 @@
 """
 🎬 Semantic Test Recorder — `manul record <URL>`
 
-Launches a headed Playwright browser, injects event listeners that capture
+Launches a headed Chrome over CDP, injects event listeners that capture
 user interactions (clicks, typing, selects, Enter), translates them into
 plain-English Hunt DSL steps, and saves the result to a `.hunt` file.
 
-Unlike Playwright codegen, no CSS/XPath selectors are generated — only
+Unlike Playwright/Chrome codegen, no CSS/XPath selectors are generated — only
 semantic labels extracted from the DOM (data-qa, aria-label, placeholder,
 name, visible text).
 """
@@ -327,14 +327,14 @@ async def record_session(
         Absolute or relative path for the generated .hunt file.
         When *None*, defaults to ``tests_home/recorded_mission.hunt``.
     browser:
-        Playwright browser engine: ``chromium``, ``firefox``, or ``webkit``.
+        Kept for CLI compatibility; the CDP backend always drives Chrome/Chromium.
 
     Returns
     -------
     str
         Absolute path to the saved .hunt file.
     """
-    from playwright.async_api import async_playwright
+    from .cdp import CDPBrowser
 
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
@@ -376,22 +376,15 @@ async def record_session(
     print(f"   Browser: {browser} | Output: {output_abs}")
     print("   Interact with the page. Close the browser or press Ctrl+C to finish.\n")
 
-    async with async_playwright() as pw:
-        launcher = getattr(pw, browser)
-        b = await launcher.launch(headless=False)
-        context = await b.new_context()
+    b = await CDPBrowser.launch(headless=False)
+    page = await b.new_page()
 
-        # Inject the recorder script into every new page/frame automatically.
-        await context.add_init_script(_RECORDER_JS)
+    # Expose the Python bridge so JS can call window.recordManulEvent(), then
+    # inject the recorder script into every new document automatically.
+    await page.expose_binding("recordManulEvent", on_event)
+    await page.add_init_script(_RECORDER_JS)
 
-        page = await context.new_page()
-
-        # Expose the Python bridge so JS can call window.recordManulEvent().
-        await page.expose_function("recordManulEvent", on_event)
-
-        # Re-inject on navigations (add_init_script covers new documents,
-        # but expose_function bindings persist across navigations in the
-        # same page automatically in Playwright).
+    try:
         try:
             await page.goto(url, wait_until="domcontentloaded", timeout=30_000)
         except Exception as exc:
@@ -403,11 +396,11 @@ async def record_session(
             await _wait_for_close(page)
         except (KeyboardInterrupt, asyncio.CancelledError):
             print("\n⏹  Recording stopped by user.")
-        finally:
-            try:
-                await b.close()
-            except Exception:
-                pass
+    finally:
+        try:
+            await b.close()
+        except Exception:
+            pass
 
     # ── Write the .hunt file ──────────────────────────────────────────────
     _write_hunt_file(output_abs, url, recorded_lines)
@@ -424,7 +417,7 @@ async def _wait_for_close(page) -> None:
         if not closed.done():
             closed.set_result(True)
 
-    page.on("close", _on_close)
+    page.on_close(_on_close)
     try:
         await closed
     except asyncio.CancelledError:
@@ -457,7 +450,7 @@ def _write_hunt_file(path: str, url: str, lines: list[str]) -> None:
 async def record_main(args: list[str]) -> None:
     """Async entry point called from ``cli.main()`` when subcommand is ``record``."""
 
-    _VALID_BROWSERS = {"chromium", "firefox", "webkit"}
+    _VALID_BROWSERS = {"chromium"}
     browser = "chromium"
     if "--browser" in args:
         idx = args.index("--browser")
@@ -470,12 +463,12 @@ async def record_main(args: list[str]) -> None:
                 sys.exit(1)
             args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
         else:
-            print("Error: --browser requires a value (chromium|firefox|webkit).", file=sys.stderr)
+            print("Error: --browser requires a value (only 'chromium' is supported).", file=sys.stderr)
             sys.exit(1)
 
     if not args:
         print(
-            "Usage: manul record <URL> [output.hunt] [--browser chromium|firefox|webkit]",
+            "Usage: manul record <URL> [output.hunt] [--browser chromium]",
             file=sys.stderr,
         )
         sys.exit(1)

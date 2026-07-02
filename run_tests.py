@@ -18,7 +18,7 @@ import sys
 # Make manul_engine importable from the repo root without an editable install.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from manul_engine._test_runner import run_tests  # noqa: E402
+from manul_engine._test_runner import run_tests
 
 
 def main() -> None:

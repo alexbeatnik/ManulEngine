@@ -12,9 +12,9 @@ does not interfere with the structured stdout output that tests
 and the VS Code extension depend on.
 
 Log levels:
-    DEBUG   — internal diagnostics (frame routing, cache lookups)
-    INFO    — noteworthy events (LLM calls, cache hits, self-healing)
-    WARNING — recoverable problems (stale cache, frame detach)
+    DEBUG   — internal diagnostics (frame routing, snapshot building)
+    INFO    — noteworthy events (semantic cache hits, element resolution)
+    WARNING — recoverable problems (retry exhausted, frame detach)
     ERROR   — action failures, config issues
 """
 

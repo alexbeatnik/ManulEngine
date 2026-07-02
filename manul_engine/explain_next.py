@@ -33,55 +33,38 @@ from typing import TYPE_CHECKING
 
 from .helpers import classify_step, detect_mode, extract_quoted
 from .js_scripts import SNAPSHOT_JS
-from .llm import LLMProvider, sanitize_for_llm, truncate_for_llm
 from .logging_config import logger
 from .scoring import SCALE, score_elements
 
 if TYPE_CHECKING:
-    from playwright.async_api import Page
+    from .cdp import CDPPage as Page
 
 _log = logger.getChild("explain_next")
 
 
-# ── LLM prompt template ──────────────────────────────────────────────────────
+# ── Text helpers (deterministic; no LLM) ──────────────────────────────────────
 
-WHAT_IF_SYSTEM_PROMPT: str = textwrap.dedent("""\
-    You are an expert Web Automation Analyst for the ManulEngine framework.
-    Your task is to evaluate a HYPOTHETICAL browser action WITHOUT executing it.
 
-    You will receive:
-    1. The current page URL.
-    2. A simplified DOM snapshot listing visible, interactive elements
-       (tag, text, aria-label, placeholder, id, data-qa, role, disabled state).
-    3. The last successfully executed step (for context continuity).
-    4. A hypothetical next step the user wants to evaluate.
+def _truncate(text: str, max_chars: int) -> str:
+    """Cap *text* to *max_chars* with a short marker (no-op when within budget)."""
+    if max_chars <= 0 or len(text) <= max_chars:
+        return text
+    return text[:max_chars].rstrip() + f"… (+{len(text) - max_chars} chars)"
 
-    Your job:
-    - Determine whether the hypothetical step CAN be performed on the
-      current page state (is a matching target element present and enabled?).
-    - Estimate the CONFIDENCE that this step would succeed (0–10 scale):
-        0  = impossible (target element does not exist on the page)
-        1–3 = low confidence (ambiguous target, multiple candidates, or
-               the element is likely disabled/hidden)
-        4–6 = moderate (plausible target exists, but there is some
-               ambiguity or the action might have side effects)
-        7–9 = high confidence (clear, unique target element found,
-               action type matches element type)
-        10 = certain (exact unique match, no ambiguity at all)
-    - Explain what would LIKELY happen if the step were executed:
-      page navigation, form state change, modal appearance, error, etc.
-    - If the step would fail, explain WHY and suggest a corrected step.
 
-    Respond ONLY with a JSON object (no markdown fences, no extra text):
-    {
-      "score": <int 0–10>,
-      "target_found": <bool>,
-      "target_element": "<brief description of the matched element or null>",
-      "explanation": "<what would happen if this step executes>",
-      "risk": "<potential side effects or failure modes>",
-      "suggestion": "<improved step phrasing if score < 7, else null>"
-    }
-""")
+def _sanitize(text: str) -> str:
+    """Collapse whitespace and drop markup noise from raw page text."""
+    if not text:
+        return ""
+    out: list[str] = []
+    for line in text.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        if out and out[-1] == line:
+            continue
+        out.append(line)
+    return "\n".join(out)
 
 
 # ── Data classes ──────────────────────────────────────────────────────────────
@@ -101,7 +84,7 @@ class PageContext:
         lines: list[str] = [
             f"URL: {self.url}",
             f"Title: {self.title}",
-            f"Visible text (truncated): {truncate_for_llm(self.visible_text_snippet, 500)}",
+            f"Visible text (truncated): {_truncate(self.visible_text_snippet, 500)}",
             "",
             f"Interactive elements ({min(len(self.elements), max_elements)} of {len(self.elements)} shown):",
         ]
@@ -254,7 +237,7 @@ async def capture_page_context(page: Page) -> PageContext:
         url=url,
         title=title,
         elements=elements,
-        visible_text_snippet=sanitize_for_llm(str(visible_text))[:2000],
+        visible_text_snippet=_sanitize(str(visible_text))[:2000],
     )
 
 
@@ -316,17 +299,13 @@ def _heuristic_pre_check(
 
 
 class ExplainNextDebugger:
-    """Interactive What-If Analysis REPL for debug sessions.
+    """Interactive "What-If" dry-run REPL for debug sessions.
 
-    Evaluates hypothetical steps against the live browser state using
-    a combination of deterministic heuristic scoring and LLM analysis —
-    all without executing any actions on the page.
+    Evaluates a hypothetical step against the live browser state using
+    deterministic heuristic scoring only — no LLM, no actions executed.
 
     Parameters
     ----------
-    llm : LLMProvider
-        The LLM provider to use for analysis (``OllamaProvider`` or
-        ``NullProvider`` for heuristics-only evaluation).
     learned_elements : dict
         The engine's semantic cache (read-only access for scoring context).
     last_xpath : str | None
@@ -335,12 +314,10 @@ class ExplainNextDebugger:
 
     def __init__(
         self,
-        llm: LLMProvider,
         learned_elements: dict | None = None,
         last_xpath: str | None = None,
         engine: object | None = None,
     ) -> None:
-        self._llm = llm
         self._learned_elements = learned_elements or {}
         self._last_xpath = last_xpath
         self._engine = engine  # _DebugMixin ref for highlight calls
@@ -429,38 +406,15 @@ class ExplainNextDebugger:
         h_score = hit.score if hit else None
         h_match = hit.name if hit else None
 
-        # Build the LLM user prompt
-        user_prompt = (
-            f"CURRENT PAGE STATE:\n{ctx.to_prompt_text()}\n\n"
-            f"LAST EXECUTED STEP: {last_step or '(none)'}\n\n"
-            f"HYPOTHETICAL NEXT STEP: {hypothetical_step}\n"
+        # Deterministic dry-run: build the result from heuristic scoring alone.
+        what_if = self._heuristic_only_result(
+            hypothetical_step,
+            step_class,
+            ctx,
+            search_texts,
+            h_score,
+            h_match,
         )
-
-        # Query LLM for analysis
-        result = await self._llm.call_json(WHAT_IF_SYSTEM_PROMPT, user_prompt)
-
-        if result and isinstance(result, dict):
-            what_if = WhatIfResult(
-                step=hypothetical_step,
-                score=max(0, min(10, int(result.get("score", 0)))),
-                target_found=bool(result.get("target_found", False)),
-                target_element=result.get("target_element"),
-                explanation=str(result.get("explanation", "")),
-                risk=str(result.get("risk", "")),
-                suggestion=result.get("suggestion"),
-                heuristic_score=h_score,
-                heuristic_match=h_match,
-            )
-        else:
-            # LLM unavailable — build result from heuristics alone
-            what_if = self._heuristic_only_result(
-                hypothetical_step,
-                step_class,
-                ctx,
-                search_texts,
-                h_score,
-                h_match,
-            )
 
         # Highlight the best-matched element on the live page
         await self._highlight_match(page, hit)
@@ -487,9 +441,10 @@ class ExplainNextDebugger:
             await eng._clear_debug_highlight(page)  # type: ignore[attr-defined]
             frames = page.frames
             frame = frames[hit.frame_index] if 0 <= hit.frame_index < len(frames) else page
-            loc = frame.locator(f"xpath={hit.xpath}").first
-            await loc.scroll_into_view_if_needed(timeout=2000)
-            await eng._debug_highlight(page, loc)  # type: ignore[attr-defined]
+            loc = await frame.query(f"xpath={hit.xpath}")
+            if loc is not None:
+                await loc.scroll_into_view_if_needed(timeout=2000)
+                await eng._debug_highlight(page, loc)  # type: ignore[attr-defined]
         except Exception as exc:
             _log.debug("highlight_match: could not highlight element: %s", exc)
 

@@ -3,7 +3,7 @@
 Custom Controls registry for ManulEngine.
 
 Maps ``(page_name, target_element)`` pairs to user Python handlers, bypassing
-the heuristic / AI element resolver for that one target on that one page.
+the heuristic element resolver for that one target on that one page.
 ``page_name`` is the human-readable label returned by ``lookup_page_name()``
 — i.e. whatever you mapped in the per-site fragments under ``<project>/pages/``.
 
@@ -14,13 +14,14 @@ Quickstart — drop a file under ``controls/`` in your project root::
 
     @custom_control(page="Login Page", target="Username")
     async def handle_username(ctx: ControlContext) -> None:
-        # ctx.page is a live Playwright Page.
-        await ctx.page.locator("#user").fill(ctx.value or "")
+        # ctx.page is a live CDPPage.
+        el = await ctx.page.query("#user")
+        await el.fill(ctx.value or "")
 
 The handler receives a single :class:`ControlContext` argument with these
 attributes:
 
-  ``page``       — live Playwright ``Page`` (always present, never ``None``).
+  ``page``       — live ``CDPPage`` (always present, never ``None``).
   ``action``     — detected DSL mode: ``"input"``, ``"clickable"``, ``"select"``,
                    ``"hover"``, ``"drag"``, ``"locate"``.
   ``value``      — type/select value (``None`` for click/hover/locate).
@@ -49,7 +50,7 @@ from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from playwright.async_api import Page
+    from .cdp import CDPPage as Page
 
 
 # ── Public context object passed to every handler ────────────────────────────
@@ -58,8 +59,8 @@ class ControlContext:
     """Single argument passed to every ``@custom_control`` handler.
 
     Attributes:
-        page:      Live Playwright ``Page``. Use it like any Playwright page —
-                   ``page.locator(...)``, ``page.evaluate(...)``, etc.
+        page:      Live ``CDPPage``. Use its CDP methods —
+                   ``await page.query(...)``, ``page.evaluate(...)``, etc.
         action:    DSL mode — one of ``"input"``, ``"clickable"``, ``"select"``,
                    ``"hover"``, ``"drag"``, ``"locate"``.
         value:     Type/select value (``None`` for click/hover/locate).
@@ -104,7 +105,8 @@ def custom_control(page: str, target: str) -> Callable:
 
         @custom_control(page="Login Page", target="Username")
         async def handle_username(ctx: ControlContext) -> None:
-            await ctx.page.locator("#user").fill(ctx.value or "")
+            el = await ctx.page.query("#user")
+        await el.fill(ctx.value or "")
     """
     page_key = page.strip().lower()
     target_key = target.strip().lower()
@@ -142,7 +144,7 @@ def _validate_handler_signature(func: Callable, *, page: str, target: str) -> No
         f"@custom_control(page={page!r}, target={target!r}): handler "
         f"{func.__qualname__!r} must accept exactly one ControlContext argument. "
         f"The legacy 3-arg signature (page, action_type, value) was removed in 0.0.9.30. "
-        f"Migration: `async def fn(ctx): await ctx.page.locator(...).fill(ctx.value or '')`."
+        f"Migration: `async def fn(ctx): el = await ctx.page.query(...); await el.fill(ctx.value or '')`."
     )
 
 

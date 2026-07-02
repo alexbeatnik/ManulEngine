@@ -17,7 +17,6 @@ drag-and-drop, click/type/select/hover via _execute_step).
 import asyncio
 import base64
 import inspect
-import json
 import os
 import re
 import sys
@@ -27,17 +26,28 @@ from os import environ as _environ
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from playwright.async_api import async_playwright
+from .cdp import CDPBrowser
 
 if TYPE_CHECKING:
-    from playwright.async_api import BrowserContext, Frame, Page  # noqa: F401
-
     from ._types import ElementSnapshot  # noqa: F401
+    from .cdp import CDPBrowser as BrowserContext
+    from .cdp import CDPFrame as Frame  # noqa: F401 — name kept for annotations
+    from .cdp import CDPPage as Page
+
+
+class _AsyncNull:
+    """Trivial async context manager (replaces the old async_playwright scope)."""
+
+    async def __aenter__(self) -> None:
+        return None
+
+    async def __aexit__(self, *_exc: object) -> bool:
+        return False
+
 
 from . import prompts
 from . import prompts as _prompts_mod  # alias for CUSTOM_CONTROLS_DIRS access
 from .actions import _ActionsMixin
-from .cache import _ControlsCacheMixin
 from .config import EngineConfig
 from .controls import ControlContext, diagnose_custom_control_miss, get_custom_control, load_custom_controls
 from .debug import _DebugMixin
@@ -51,6 +61,7 @@ from .helpers import (
     classify_step,
     compact_log_field,
     detect_mode,
+    extract_print_message,
     extract_quoted,
     parse_explicit_wait,
     parse_hunt_blocks,
@@ -58,7 +69,6 @@ from .helpers import (
 )
 from .hooks import bind_hook_result, execute_hook_line
 from .js_scripts import SNAPSHOT_JS
-from .llm import create_provider
 from .logging_config import logger
 from .reporting import BlockResult, MissionResult, StepResult
 from .scoring import SCALE, score_elements
@@ -82,14 +92,12 @@ def _confidence(score: int) -> float:
     return score / SCALE
 
 
-class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
+class ManulEngine(_DebugMixin, _ActionsMixin):
     def __init__(
         self,
-        model: "str | None" = None,
         headless: "bool | None" = None,
         browser: "str | None" = None,
         browser_args: "list[str] | None" = None,
-        ai_threshold: "int | None" = None,
         debug_mode: bool = False,
         break_steps: "set[int] | None" = None,
         break_file_lines: "set[int] | None" = None,
@@ -105,10 +113,10 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         # Priority: explicit kwargs > EngineConfig > prompts module globals.
         _cfg = config
 
-        # None model → heuristics-only mode (AI fully disabled)
-        self.model = model if model is not None else (_cfg.model if _cfg else prompts.DEFAULT_MODEL)
         self.headless = headless if headless is not None else (_cfg.headless if _cfg else prompts.HEADLESS_MODE)
-        _VALID_BROWSERS = ("chromium", "firefox", "webkit", "electron")
+        # The CDP backend always drives Chrome/Chromium; 'electron' attaches to a
+        # running Chrome/Electron over CDP instead of launching a fresh browser.
+        _VALID_BROWSERS = ("chromium", "electron")
         _b = (browser or (_cfg.browser if _cfg else prompts.BROWSER)).strip().lower()
         self.browser: str = _b if _b in _VALID_BROWSERS else "chromium"
         self.browser_args: list[str] = (
@@ -125,6 +133,22 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         self.executable_path: str | None = (
             str(_ep) if _ep is not None else (_cfg.executable_path if _cfg else prompts.EXECUTABLE_PATH)
         )
+        # cdp_endpoint: attach to an already-running browser over CDP instead of
+        # launching (mirrors ManulEngine (Go)'s --cdp). Accepted via **_kwargs / config
+        # / MANUL_CDP_ENDPOINT env, like channel/executable_path above.
+        _cdp = _kwargs.pop("cdp_endpoint", None)
+        self._cdp_endpoint: str | None = (
+            (str(_cdp).strip() or None)
+            if _cdp is not None
+            else (_cfg.cdp_endpoint if _cfg else getattr(prompts, "CDP_ENDPOINT", None))
+        )
+        # cdp_tab: when attaching over CDP, pick the page whose URL contains this
+        # substring (mirrors ManulEngine (Go)'s --target url=<substr>). Per-run selector,
+        # not persisted config.
+        _tab = _kwargs.pop("cdp_tab", None)
+        self._cdp_tab: str | None = (
+            (str(_tab).strip() or None) if _tab is not None else (os.getenv("MANUL_CDP_TAB", "").strip() or None)
+        )
         if self.channel is not None and self.browser != "chromium":
             raise ConfigurationError(
                 f"Playwright 'channel' is only supported for Chromium, "
@@ -134,13 +158,9 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         self.last_xpath: str | None = None
         self.learned_elements: dict = {}  # semantic cache: cache_key → {name, tag}
 
-        if disable_cache:
-            self._controls_cache_enabled = False
-        elif _cfg:
-            self._controls_cache_enabled = _cfg.controls_cache_enabled
-        else:
-            self._controls_cache_enabled = bool(getattr(prompts, "CONTROLS_CACHE_ENABLED", True))
-
+        # Semantic cache (in-memory, per-session): feeds the scorer as one
+        # channel — it never bypasses scoring, so it cannot return a stale
+        # element. ``disable_cache`` turns it off.
         if semantic_cache is not None:
             self._semantic_cache_enabled = semantic_cache
         elif disable_cache:
@@ -150,17 +170,6 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         else:
             self._semantic_cache_enabled = bool(getattr(prompts, "SEMANTIC_CACHE_ENABLED", True))
 
-        _default_cache_dir = str(Path(__file__).resolve().parents[1] / "cache")
-        if _cfg:
-            _cache_dir = _cfg.controls_cache_dir
-        else:
-            _cache_dir = str(getattr(prompts, "CONTROLS_CACHE_DIR", _default_cache_dir))
-        self._controls_cache_root = Path(_cache_dir)
-        self._controls_cache_site: str | None = None
-        self._controls_cache_url: str | None = None
-        self._controls_cache_path: Path | None = None
-        self._controls_cache_data: dict[str, dict] = {}
-
         # ── Timeouts ──────────────────────────────────────────────────────
         self.timeout: int = _cfg.timeout if _cfg else prompts.TIMEOUT
         self.nav_timeout: int = _cfg.nav_timeout if _cfg else prompts.NAV_TIMEOUT
@@ -168,22 +177,10 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             _cfg.verify_max_retries if _cfg else int(getattr(prompts, "VERIFY_MAX_RETRIES", 15))
         )
 
-        # ── AI settings (stored per-instance, not read from module globals at runtime) ──
-        _ai_always_default = _cfg.ai_always if _cfg else bool(getattr(prompts, "AI_ALWAYS", False))
-        self._ai_always: bool = _kwargs.pop("ai_always", _ai_always_default)
-        _ai_policy_default = _cfg.ai_policy if _cfg else str(getattr(prompts, "AI_POLICY", "prior"))
-        self._ai_policy: str = _kwargs.pop("ai_policy", _ai_policy_default)
-
         # ── Auto-annotate ─────────────────────────────────────────────────
         _auto_annotate_default = _cfg.auto_annotate if _cfg else prompts.AUTO_ANNOTATE
         self._auto_annotate: bool = _kwargs.pop("auto_annotate", _auto_annotate_default)
 
-        # Resolve model-specific settings once at construction time.
-        # get_threshold returns 0 when self.model is None → AI is disabled.
-        _ai_thr = ai_threshold if ai_threshold is not None else (_cfg.ai_threshold if _cfg else None)
-        self._threshold = prompts.get_threshold(self.model, _ai_thr)
-        self._executor_prompt = prompts.get_executor_prompt(self.model)
-        self._planner_prompt = prompts.PLANNER_SYSTEM_PROMPT
         self.debug_mode = debug_mode
         if explain_mode is not None:
             self.explain_mode = explain_mode
@@ -200,9 +197,6 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         # Tracks how many annotation lines have been inserted into the hunt file
         # during this run, so subsequent NAVIGATE steps can offset their line numbers.
         self._annotate_line_offset: int = 0
-        # Self-healing flag: set by _resolve_element when a stale cache entry
-        # is detected and the element is re-resolved via heuristics.
-        self._last_step_healed: bool = False
         # Deferred @custom_control loading: stored here, applied on first run_mission().
         self._required_controls: set[str] | None = required_controls
         # Custom controls directories (prefer EngineConfig, fallback to prompts).
@@ -211,13 +205,9 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             if _cfg
             else list(getattr(_prompts_mod, "CUSTOM_CONTROLS_DIRS", ["controls"]))
         )
-        # LLM provider (delegates to Ollama or no-op for heuristics-only mode).
-        self._llm = create_provider(self.model)
         # What-if REPL: when the debugger's Explain Next session chooses a step
         # to execute, it is stored here and injected into the mission flow.
         self._what_if_execute_step: str | None = None
-        if self.model is None:
-            print("    ℹ️  No model configured — running in heuristics-only mode (AI disabled).")
         if self.debug_mode:
             print("    🐛 Debug mode ON — engine will pause before each step.")
 
@@ -232,140 +222,6 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         self.learned_elements.clear()
         self.last_xpath = None
         self._annotate_line_offset = 0
-
-    # ── Persistent controls cache ─────────────────────────────────────
-    # All cache methods live in engine/cache.py (_ControlsCacheMixin).
-
-    # ── LLM helpers ───────────────────────────
-
-    def _passes_anti_phantom_guard(
-        self,
-        *,
-        mode: str,
-        is_blind: bool,
-        search_texts: list[str],
-        target_field: str | None,
-        ai_choice: dict,
-    ) -> bool:
-        if mode not in ("input", "select") or is_blind:
-            return True
-
-        search_terms = [t.lower() for t in search_texts]
-        if target_field:
-            search_terms.append(target_field.lower())
-
-        guard_words = set(re.findall(r"\b[a-z0-9]{2,}\b", " ".join(search_terms)))
-        element_text = (
-            f"{ai_choice.get('name', '')} "
-            f"{ai_choice.get('html_id', '')} "
-            f"{ai_choice.get('data_qa', '')} "
-            f"{ai_choice.get('aria_label', '')} "
-            f"{ai_choice.get('placeholder', '')}"
-        ).lower()
-
-        if not guard_words or any(w in element_text for w in guard_words):
-            return True
-
-        missing = search_texts[0] if search_texts else target_field
-        compact_name = compact_log_field(ai_choice.get("name", ""), "MANUL_LOG_NAME_MAXLEN")
-
-        print(f"    👻 ANTI-PHANTOM GUARD: AI chose '{compact_name}', but target '{missing}' is missing. Rejecting.")
-        return False
-
-    async def _llm_json(self, system: str, user: str) -> dict | None:
-        """Send a system+user prompt to the local LLM and parse JSON response.
-
-        Delegates to the configured LLMProvider (Ollama or NullProvider).
-        """
-        return await self._llm.call_json(system, user)
-
-    async def _llm_plan(self, task: str) -> list[str]:
-        """Ask the LLM to decompose a free-text task into numbered steps."""
-        print("    🧠 AI PLANNER: Generating mission steps...")
-        obj = await self._llm_json(self._planner_prompt, task)
-        if not obj:
-            return []
-        steps = obj.get("steps", [])
-        # Small models sometimes return steps as a single newline-joined string
-        # (or a bare scalar) instead of a list; normalise so the caller's
-        # "\n".join() never char-splits a string into garbage.
-        if isinstance(steps, str):
-            return [ln for ln in (s.strip() for s in steps.splitlines()) if ln]
-        if isinstance(steps, list):
-            return [str(s) for s in steps if str(s).strip()]
-        return []
-
-    async def _llm_select_element(
-        self, step: str, mode: str, candidates: list[dict], strategic_context: str
-    ) -> "int | None":
-        """Ask the LLM to pick the best element from scored candidates."""
-        payload = [
-            {
-                "id": el["id"],
-                "score": int(el.get("score", 0)),
-                "name": el["name"],
-                "tag": el.get("tag_name", ""),
-                "input_type": el.get("input_type", ""),
-                "role": el.get("role", ""),
-                "data_qa": el.get("data_qa", ""),
-                "html_id": el.get("html_id", ""),
-                "class_name": el.get("class_name", ""),
-                "icon_classes": el.get("icon_classes", ""),
-                "aria_label": el.get("aria_label", ""),
-                "placeholder": el.get("placeholder", ""),
-                "disabled": el.get("disabled", False),
-                "aria_disabled": el.get("aria_disabled", ""),
-                "is_select": el.get("is_select", False),
-                "is_shadow": el.get("is_shadow", False),
-                "contenteditable": el.get("is_contenteditable", False),
-            }
-            for el in candidates
-        ]
-        prompt = f"STEP: {step}\nMODE: {mode.upper()}\nELEMENTS:\n{json.dumps(payload, ensure_ascii=False)}"
-        system = self._executor_prompt.replace("{strategic_context}", strategic_context)
-        obj = await self._llm_json(system, prompt)
-        if not obj or not isinstance(obj, dict):
-            # In pure-AI mode we must not silently fall back to heuristics.
-            return None if self._ai_always else 0
-
-        raw_id = obj.get("id", None)
-        if raw_id is None:  # fallback for generic keys
-            for key in ["id", '"id"', "ID"]:
-                if key in obj:
-                    raw_id = obj[key]
-                    break
-
-        if raw_id is None or str(raw_id).lower() == "null":
-            thought = obj.get("thought", "No matching element found.")
-            print(f"    🚫 AI REJECTED CANDIDATES: '{thought}'")
-            return None
-
-        try:
-            chosen_id = int(raw_id) if raw_id is not None else None
-        except (TypeError, ValueError):
-            chosen_id = None
-
-        thought = obj.get("thought", "")
-        if chosen_id is not None:
-            idx = next((i for i, el in enumerate(candidates) if el["id"] == chosen_id), 0)
-        else:
-            idx = 0
-
-        # Optional deterministic guard for id-strict synthetic tests.
-        # When MANUL_AI_POLICY=strict, enforce best score even if the LLM picked a neighbor.
-        if self._ai_always and self._ai_policy == "strict" and candidates:
-            best_idx = max(range(len(candidates)), key=lambda i: int(candidates[i].get("score", 0)))
-            if int(candidates[idx].get("score", 0)) < int(candidates[best_idx].get("score", 0)):
-                print(
-                    f"    🧷 AI OVERRIDE (strict): enforcing best score (ai={candidates[idx].get('score', 0)} "
-                    f"< best={candidates[best_idx].get('score', 0)})"
-                )
-                idx = best_idx
-        compact_name = compact_log_field(candidates[idx].get("name", ""), "MANUL_LOG_NAME_MAXLEN")
-        compact_thought = compact_log_field(thought, "MANUL_LOG_THOUGHT_MAXLEN")
-
-        print(f"    🎯 AI DECISION: '{compact_name}' — {compact_thought}")
-        return idx
 
     # ── Visual feedback & debug prompt ────────
     # All debug methods (_highlight, _debug_highlight, _clear_debug_highlight,
@@ -508,7 +364,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             anchor_rect=anchor_rect,
             container_elements=container_elements,
             viewport_height=viewport_height,
-            early_exit_score=self._threshold if self._threshold > 0 else None,
+            early_exit_score=None,
         )
 
     # ── Element resolution ────────────────────
@@ -540,8 +396,6 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         """
         _skip = failed_ids or set()
         is_blind = not search_texts and not target_field
-        self._last_step_healed = False
-        _had_stale_cache = False
 
         els = []
         for attempt in range(5):
@@ -563,25 +417,6 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     if attempt < 4:
                         await self._scroll_and_wait(page)
                     continue
-
-            cached_control = self._resolve_from_control_cache(
-                page=page,
-                mode=mode,
-                search_texts=search_texts,
-                target_field=target_field,
-                contextual_hint=contextual_hint,
-                candidates=els,
-            )
-            if cached_control is not None:
-                is_disabled = bool(cached_control.get("disabled"))
-                aria_disabled_raw = str(cached_control.get("aria_disabled", "")).strip().lower()
-                is_aria_disabled = aria_disabled_raw == "true"
-                if not (is_disabled or is_aria_disabled):
-                    return cached_control
-            elif self._controls_cache_enabled:
-                _cache_key = self._control_cache_key(mode, search_texts, target_field, contextual_hint)
-                if _cache_key in self._controls_cache_data:
-                    _had_stale_cache = True
 
             # Quick exact-match pass
             exact = []
@@ -636,104 +471,22 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
         if self.explain_mode and top:
             self._print_explain(step, search_texts, top[:3])
 
-        # Self-healing: stale cache entry detected — flag for heuristic paths below.
-        # The cache is updated by _remember_resolved_control after the action succeeds.
         _conf = _confidence(best_score)
-        if _had_stale_cache:
-            print(f"    🔄 STALE CACHE: Entry invalidated — re-resolving (confidence {_conf:.3f})")
 
-        # Pure-AI mode: usually asks the LLM, but fast-tracks if there is only 1 candidate.
-        # Guard: ai_always has no effect without a model — fall through to heuristics.
-        if self._ai_always and self.model is not None:
-            if len(scored) == 1:
-                print("    ⚡ FAST-TRACK: Found exactly 1 candidate, bypassing AI.")
-                idx = 0
-            else:
-                print(f"    🧠 AI AGENT: Always-AI enabled, analysing {len(top)} candidates…")
-                idx = await self._llm_select_element(step, mode, top, strategic_context)
-
-            if idx is None:
-                self._last_step_healed = False
-                if failed_ids is not None:
-                    for c in top:
-                        failed_ids.add((c.get("frame_index", 0), c["id"]))
-                return None
-            ai_choice = top[idx]
-
-            if not self._passes_anti_phantom_guard(
-                mode=mode,
-                is_blind=is_blind,
-                search_texts=search_texts,
-                target_field=target_field,
-                ai_choice=ai_choice,
-            ):
-                self._last_step_healed = False
-                return None
-
-            return ai_choice
-
+        # ── Deterministic resolution (no LLM in the loop) ────────────────
+        # Resolution is purely heuristic: the highest-confidence gate that
+        # matches wins; otherwise the top-ranked candidate is used.
         if _conf >= THRESHOLD_SEMANTIC_CACHE:
             print(f"    🧠 SEMANTIC CACHE: Reusing learned element (confidence {_conf:.3f})")
-            if _had_stale_cache:
-                self._last_step_healed = True
             return top[0]
 
         if _conf >= THRESHOLD_CONTEXT_REUSE:
             label = "High confidence" if _conf >= THRESHOLD_HIGH_CONFIDENCE else "Context reuse"
             print(f"    ⚙️  DOM HEURISTICS: {label} match (confidence {_conf:.3f})")
-            if _had_stale_cache:
-                self._last_step_healed = True
             return top[0]
 
-        if best_score >= self._threshold:
-            label = "High confidence" if best_score >= self._threshold * 2 else "Keyword"
-            print(f"    ⚙️  DOM HEURISTICS: {label} match (confidence {_conf:.3f})")
-            if _had_stale_cache:
-                self._last_step_healed = True
-            return top[0]
-
-        # Explicit AI disable switch: threshold <= 0 means "never call the LLM".
-        # (Useful for deterministic runs and environments without Ollama.)
-        if self._threshold <= 0:
-            print(f"    ⚙️  DOM HEURISTICS: AI disabled; using best candidate (confidence {_conf:.3f})")
-            if _had_stale_cache:
-                self._last_step_healed = True
-            return top[0]
-
-        # Genuinely ambiguous → ask the LLM, unless there's only 1 candidate left
-        if len(scored) == 1:
-            print("    ⚡ FAST-TRACK: Found exactly 1 candidate, bypassing AI.")
-            idx = 0
-        else:
-            print(f"    🧠 AI AGENT: Ambiguity detected, analysing {len(top)} candidates…")
-            try:
-                idx = await self._llm_select_element(step, mode, top, strategic_context)
-            except Exception as exc:
-                print(
-                    f"    ⚠️  LLM selection failed ({type(exc).__name__}: {exc}), falling back to top heuristic candidate"
-                )
-                idx = 0
-
-        if idx is None:
-            self._last_step_healed = False
-            if failed_ids is not None:
-                for c in top:
-                    failed_ids.add((c.get("frame_index", 0), c["id"]))
-            return None
-
-        ai_choice = top[idx]
-
-        if not self._passes_anti_phantom_guard(
-            mode=mode,
-            is_blind=is_blind,
-            search_texts=search_texts,
-            target_field=target_field,
-            ai_choice=ai_choice,
-        ):
-            self._last_step_healed = False
-            return None
-
-        return ai_choice
+        print(f"    ⚙️  DOM HEURISTICS: best candidate (confidence {_conf:.3f})")
+        return top[0]
 
     # ── Mission runner ────────────────────────
 
@@ -784,17 +537,36 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             print(f"    ⚠️  Auto-Nav: {_ann_exc}")
 
     async def _launch_browser(self, p, hunt_file: str | None = None):
-        """Launch browser via Playwright and return ``(browser, ctx, page)``.
+        """Launch Chrome via the native CDP backend and return ``(browser, page, page)``.
 
-        Handles Electron CDP connections, per-OS sandbox flags, ``channel``
-        and ``executable_path`` options.  On Electron failure a
-        ``MissionResult`` with status ``"fail"`` is returned instead.
+        Handles Electron CDP connections, sandbox flags, ``channel`` and
+        ``executable_path`` options.  On Electron failure a ``MissionResult``
+        with status ``"fail"`` is returned as the first tuple element instead.
+        The ``p`` parameter is unused (kept for call-site compatibility).
         """
+        # --cdp / MANUL_CDP_ENDPOINT: attach to a running browser instead of
+        # launching one. Generalises the Electron path to any CDP endpoint.
+        if self._cdp_endpoint:
+            try:
+                browser = await CDPBrowser.connect_over_cdp(self._cdp_endpoint)
+                page = await browser.page_matching(self._cdp_tab) if self._cdp_tab else await browser.first_page()
+            except Exception as _cdp_exc:
+                print(
+                    f"    ❌ Failed to attach over CDP at {self._cdp_endpoint}: {_cdp_exc}\n"
+                    f"    💡 Start the browser with --remote-debugging-port and pass --cdp <url>."
+                )
+                _fail = MissionResult(
+                    file=hunt_file or "", name=Path(hunt_file).name if hunt_file else "", status="fail"
+                )
+                return _fail, None, None
+            return browser, browser, page
+
         if self.browser == "electron":
             _cdp_port = _environ.get("MANUL_CDP_PORT", "9222")
             _cdp_url = f"http://localhost:{_cdp_port}"
             try:
-                browser = await p.chromium.connect_over_cdp(_cdp_url)
+                browser = await CDPBrowser.connect_over_cdp(_cdp_url)
+                page = await browser.first_page()
             except Exception as _cdp_exc:
                 print(
                     f"    ❌ Failed to connect to Electron via CDP at {_cdp_url}: {_cdp_exc}\n"
@@ -805,42 +577,33 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                     file=hunt_file or "", name=Path(hunt_file).name if hunt_file else "", status="fail"
                 )
                 return _fail, None, None
-            if browser.contexts:
-                ctx = browser.contexts[0]
-                page = ctx.pages[0] if ctx.pages else await ctx.new_page()
-            else:
-                ctx = await browser.new_context()
-                page = await ctx.new_page()
-            return browser, ctx, page
+            return browser, browser, page
 
-        _launch_args: list[str] = ["--start-maximized"] if self.browser == "chromium" else []
+        if self.channel and self.browser != "chromium":
+            raise ConfigurationError(
+                f"'channel' is only supported for Chromium; got browser={self.browser!r}, channel={self.channel!r}"
+            )
+        _extra_args: list[str] = ["--start-maximized"] if self.browser == "chromium" else []
         _is_root = hasattr(os, "getuid") and os.getuid() == 0
         if self.browser == "chromium" and (_is_root or os.path.exists("/.dockerenv")):
-            _launch_args.insert(0, "--no-sandbox")
-        _launch_args = _launch_args + [a for a in self.browser_args if a not in _launch_args]
-        _launch_opts: dict = dict(headless=self.headless, args=_launch_args)
-        if self.channel:
-            if self.browser != "chromium":
-                raise ConfigurationError(
-                    f"'channel' is only supported for Chromium; got browser={self.browser!r}, channel={self.channel!r}"
-                )
-            _launch_opts["channel"] = self.channel
-        if self.executable_path:
-            _launch_opts["executable_path"] = self.executable_path
-        browser = await getattr(p, self.browser).launch(**_launch_opts)
-        ctx = (
-            await browser.new_context(no_viewport=True)
-            if not self.headless
-            else await browser.new_context(viewport={"width": 1920, "height": 1080})
+            _extra_args.insert(0, "--no-sandbox")
+        _extra_args = _extra_args + [a for a in self.browser_args if a not in _extra_args]
+        browser = await CDPBrowser.launch(
+            headless=self.headless,
+            channel=self.channel,
+            executable_path=self.executable_path,
+            extra_args=_extra_args,
         )
-        page = await ctx.new_page()
-        return browser, ctx, page
+        page = await browser.new_page()
+        return browser, browser, page
 
     async def _parse_task(self, task: str) -> str:
         """Detect task format and produce executable step text.
 
-        Handles STEP-grouped, numbered, and free-text formats.
-        Free-text tasks are decomposed by the LLM planner.
+        Handles STEP-grouped, numbered, and unnumbered action-line formats.
+        Free-text natural-language tasks are not decomposed — ManulEngine is
+        deterministic and has no planner; author explicit `.hunt` steps (or
+        let an external LLM generate them).
         """
         _has_step_markers = bool(re.search(r"^\s*STEP\s*\d*\s*:", task, re.MULTILINE | re.IGNORECASE))
         _is_numbered = bool(re.match(r"^\s*\d+\.", task))
@@ -849,12 +612,11 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             return task
         if _is_numbered:
             return "\n".join(s.strip() for s in re.split(r"(?=\b\d+\.\s)", task) if s.strip())
-        parsed_task = "\n".join(await self._llm_plan(task))
-        if not parsed_task:
-            print(
-                "    ❌ No plan produced. If you're running without Ollama, provide a numbered or unnumbered step list."
-            )
-        return parsed_task
+        print(
+            "    ❌ No recognizable steps. ManulEngine has no free-text planner — "
+            "provide STEP blocks, a numbered list, or unnumbered action lines."
+        )
+        return ""
 
     async def _evaluate_conditional(
         self,
@@ -964,7 +726,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                         print(f"    🔴 BREAKPOINT at line {ba_line}")
                         await self._debug_prompt(page, ba, action_index)
                     elif step_kind != "action":
-                        print(f"    🔴 BREAKPOINT at line {ba_line} — opening Playwright Inspector…")
+                        print(f"    🔴 BREAKPOINT at line {ba_line} — pausing (live Chrome stays interactive)…")
                         await page.pause()
                     else:
                         # Action step (click/fill/etc.) — inject into break_steps
@@ -1238,7 +1000,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                         print(f"    🔴 BREAKPOINT at line {ba_line}")
                         await self._debug_prompt(page, ba, action_index)
                     elif step_kind != "action":
-                        print(f"    🔴 BREAKPOINT at line {ba_line} — opening Playwright Inspector…")
+                        print(f"    🔴 BREAKPOINT at line {ba_line} — pausing (live Chrome stays interactive)…")
                         await page.pause()
                     else:
                         if self.break_steps is None:
@@ -1350,6 +1112,11 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             elif step_kind == "scroll":
                 await self._handle_scroll(page, step)
 
+            elif step_kind == "screenshot":
+                _ss_ok, _ss_info = await self._handle_screenshot(page, step)
+                if not _ss_ok:
+                    _step_error = _ss_info
+
             elif step_kind == "extract":
                 if not await self._handle_extract(page, step):
                     _step_error = "Extract failed"
@@ -1426,17 +1193,25 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                 print("      📋 DEBUG VARS — current variable state:")
                 print(self.memory.dump())
 
+            elif step_kind == "print":
+                print(f"      📢 PRINT: {extract_print_message(step)}")
+
             elif step_kind == "debug":
                 if not sys.stdin.isatty():
                     print("      🔎 DEBUG/PAUSE step (conditional branch)")
                     await self._debug_prompt(page, step, action_index)
                 else:
-                    print("      🔎 DEBUG/PAUSE step — opening Playwright Inspector…")
+                    print("      🔎 DEBUG/PAUSE step — pausing (live Chrome stays interactive)…")
                     await page.pause()
 
             elif step_kind == "done":
                 print("      🏁 MISSION ACCOMPLISHED")
                 _done = True
+
+            elif step_kind == "end_block":
+                # Explicit block terminator (ManulEngine (Go) style) — Engine blocks
+                # are indentation-based, so this is a tolerated no-op.
+                pass
 
             elif step_kind == "use_import":
                 raise RuntimeError(
@@ -1537,7 +1312,6 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             _sr_status = "fail"
             print(f"    [❌ ACTION FAIL] {_step_error}")
 
-        _healed = self._last_step_healed
         _step_result = StepResult(
             index=action_index,
             text=re.sub(r"^\s*\d+\.\s*", "", step),
@@ -1546,11 +1320,9 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             error=_step_error,
             screenshot=_ss_b64,
             logical_step=getattr(block, "block_name", ""),
-            healed=_healed,
         )
         _step_results.append(_step_result)
         block_steps.append(_step_result)
-        self._last_step_healed = False
 
         return _step_ok, page, _step_error, _done
 
@@ -1575,8 +1347,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
 
         Returns a :class:`MissionResult` (truthy when status != "fail").
         """
-        mode_label = f"[{self.model}]  — Transparent AI" if self.model else "— Heuristics-only (no AI)"
-        print(f"\n🐾 ManulEngine {mode_label}  |  browser: {self.browser}")
+        print(f"\n🐾 ManulEngine — deterministic heuristics  |  browser: {self.browser}")
 
         # ── Ensure @custom_control handlers required for this mission are loaded ──
         load_custom_controls(
@@ -1585,7 +1356,7 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
             custom_modules_dirs=self._custom_controls_dirs,
         )
 
-        async with async_playwright() as p:
+        async with _AsyncNull() as p:
             browser, ctx, page = await self._launch_browser(p, hunt_file)
             # Electron CDP failure returns (MissionResult, None, None).
             if ctx is None or page is None:
@@ -1760,7 +1531,9 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                 print(f"    🔴 BREAKPOINT at action {action_index}")
                                 await self._debug_prompt(page, step, action_index)
                             else:
-                                print(f"    🔴 BREAKPOINT at action {action_index} — opening Playwright Inspector…")
+                                print(
+                                    f"    🔴 BREAKPOINT at action {action_index} — pausing (live Chrome stays interactive)…"
+                                )
                                 await page.pause()
                         elif not self.debug_mode and _should_break and not _is_system_step:
                             # Action step (click/fill/etc.) — inject into break_steps
@@ -1848,6 +1621,12 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
 
                             elif step_kind == "scroll":
                                 await self._handle_scroll(page, step)
+
+                            elif step_kind == "screenshot":
+                                _ss_ok, _ss_info = await self._handle_screenshot(page, step)
+                                if not _ss_ok:
+                                    _step_error = _ss_info
+                                    _step_ok = False
 
                             elif step_kind == "extract":
                                 if not await self._handle_extract(page, step):
@@ -1948,18 +1727,26 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                 print("    📋 DEBUG VARS — current variable state:")
                                 print(self.memory.dump())
 
+                            elif step_kind == "print":
+                                print(f"    📢 PRINT: {extract_print_message(step)}")
+
                             elif step_kind == "debug":
                                 if not self.debug_mode:
                                     if not sys.stdin.isatty():
                                         print("    🔎 DEBUG/PAUSE step")
                                         await self._debug_prompt(page, step, action_index)
                                     else:
-                                        print("    🔎 DEBUG/PAUSE step — opening Playwright Inspector…")
+                                        print("    🔎 DEBUG/PAUSE step — pausing (live Chrome stays interactive)…")
                                         await page.pause()
 
                             elif step_kind == "done":
                                 print("    🏁 MISSION ACCOMPLISHED")
                                 done = True
+
+                            elif step_kind == "end_block":
+                                # Explicit block terminator (ManulEngine (Go) style) —
+                                # Engine blocks are indentation-based; tolerated no-op.
+                                pass
 
                             elif step_kind == "use_import":
                                 raise RuntimeError(
@@ -2048,7 +1835,6 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                 _sr_status = "warning"
                             else:
                                 _sr_status = "fail"
-                            _healed = self._last_step_healed
                             _step_result = StepResult(
                                 index=action_index,
                                 text=_RE_NUMBERED_PREFIX.sub("", step),
@@ -2057,11 +1843,9 @@ class ManulEngine(_DebugMixin, _ControlsCacheMixin, _ActionsMixin):
                                 error=_step_error,
                                 screenshot=_ss_b64,
                                 logical_step=block.block_name,
-                                healed=_healed,
                             )
                             _step_results.append(_step_result)
                             block_steps.append(_step_result)
-                            self._last_step_healed = False
 
                             if _sr_status == "pass":
                                 if _step_success_message is not None:

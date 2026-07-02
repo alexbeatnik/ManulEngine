@@ -1,12 +1,12 @@
 # Overview
 
-> **ManulEngine v0.0.9.29** — Deterministic, DSL-first Web & Desktop Automation Runtime
+> **ManulEngine 0.1.0** — Deterministic, DSL-first Web & Desktop Automation Runtime
 
 ## What Is ManulEngine?
 
-ManulEngine is an interpreter for the `.hunt` DSL — a Playwright-backed engine that runs E2E tests, RPA workflows, synthetic monitors, and AI-agent actions. It drives Chromium (and optionally Firefox or WebKit) via Playwright, resolves DOM elements with a mathematically sound `DOMScorer` (normalised 0.0–1.0 float scoring across 20+ heuristic signals and a native JavaScript `TreeWalker`), and optionally falls back to a local LLM (Ollama) as a self-healing safety net when the heuristics are genuinely ambiguous.
+ManulEngine is an interpreter for the `.hunt` DSL — a deterministic runtime that runs E2E tests, RPA workflows, synthetic monitors, and AI-agent actions. It drives system Chrome/Chromium directly over the Chrome DevTools Protocol (CDP) and resolves DOM elements with a mathematically sound `DOMScorer` (normalised 0.0–1.0 float scoring across 20+ heuristic signals and a native JavaScript `TreeWalker`). There is no in-engine LLM: resolution is fully deterministic, and LLM-driven automation is done by an *external* agent via the agent CLI (`manul map`/`run-step`/`read`/`schema`).
 
-Everything runs **locally**. No cloud APIs, no telemetry, no external dependencies beyond Playwright.
+Everything runs **locally**. No cloud APIs, no telemetry, and a single runtime dependency (`websockets`) — it drives the Chrome you already have installed.
 
 ## Architecture
 
@@ -38,7 +38,7 @@ Everything runs **locally**. No cloud APIs, no telemetry, no external dependenci
          │              │
          ▼              ▼
    ┌──────────────────────────┐
-   │       Playwright         │   Browser interaction layer
+   │  Native CDP client (cdp/)  │   Browser interaction layer
    │  (Chromium / Firefox /   │   Async page actions
    │   WebKit / Electron)     │
    └──────────────────────────┘
@@ -53,8 +53,8 @@ Everything runs **locally**. No cloud APIs, no telemetry, no external dependenci
 | **DOMScorer** | `scoring.py` | Normalised 0.0–1.0 heuristic scoring across five weighted channels: `cache`, `semantics`, `text`, `attributes`, `proximity` |
 | **TreeWalker Snapshot** | `js_scripts.py` | JavaScript injected into each frame — walks the DOM, prunes non-interactive nodes, checks visibility |
 | **Actions Mixin** | `actions.py` | Click, fill, select, hover, drag, scroll, verify, extract, explicit waits |
-| **Controls Cache** | `cache.py` | Persistent per-site element resolution cache — avoids re-scoring known elements |
-| **Custom Controls** | `controls.py` | `@custom_control` decorator to handle complex widgets with raw Playwright |
+| **Semantic Cache** | `scoring.py`, `core.py` | In-session learned-elements cache — feeds the scorer as one channel (never bypasses scoring); resets each run |
+| **Custom Controls** | `controls.py` | `@custom_control` decorator to handle complex widgets with raw CDP |
 | **Python Hooks** | `hooks.py` | `[SETUP]` / `[TEARDOWN]` block execution, `CALL PYTHON` inline steps |
 | **Lifecycle Hooks** | `lifecycle.py` | `@before_all` / `@after_all` / `@before_group` / `@after_group` global hooks |
 | **Import System** | `imports.py` | `@import` / `@export` / `USE` for sharing STEP blocks across `.hunt` files |
@@ -66,7 +66,8 @@ Everything runs **locally**. No cloud APIs, no telemetry, no external dependenci
 | **Recorder** | `recorder.py` | Semantic test recorder that captures intent, not pointer events |
 | **Python API** | `api.py` | `ManulSession` — async context manager for pure-Python automation |
 | **Config** | `config.py` | `EngineConfig` frozen dataclass — injectable, environment-overlay-aware |
-| **LLM Provider** | `llm.py` | `OllamaProvider` / `NullProvider` — optional AI fallback |
+| **CDP backend** | `cdp/` | Native Chrome DevTools Protocol client (WebSocket transport, launcher, page/frame/element) |
+| **Agent CLI** | `agent_cli.py` | `schema`/`map`/`read`/`run-step` — JSON surface for external LLM drivers |
 
 ### Companion Tools
 
@@ -81,7 +82,7 @@ Everything runs **locally**. No cloud APIs, no telemetry, no external dependenci
 
 ### Local-First
 
-ManulEngine runs entirely on your machine. Element resolution is done by local heuristic scoring. No internet connection is needed beyond what your test targets require. The optional AI fallback uses Ollama — a local model runner — never a cloud API.
+ManulEngine runs entirely on your machine. Element resolution is done by local heuristic scoring — there is no model and no cloud API. No internet connection is needed beyond what your test targets require.
 
 ### Determinism Over Prompt Variance
 
@@ -112,9 +113,9 @@ When a step fails, you get the scoring data to diagnose exactly why.
 
 Manual QA writes plain-English `.hunt` steps — no code required. SDETs extend the same files with Python hooks, lifecycle orchestration, and custom control handlers for complex widgets. Both personas work on the same artifact.
 
-### Optional AI, Off by Default
+### No AI in the Engine
 
-`"model": null` is the recommended default. The engine is not AI-powered — it is heuristics-first with an optional local AI safety net for genuinely ambiguous elements.
+The engine is not AI-powered — element resolution is 100% deterministic heuristic scoring, with no in-process model. LLM-driven automation is done by an external agent through the agent CLI; the runtime stays a predictable execution layer.
 
 ## Four Automation Pillars
 
@@ -125,7 +126,7 @@ The same runtime and the same DSL serve four use cases:
 | **QA / E2E Testing** | Write plain-English flows, verify outcomes, attach HTML reports and screenshots. No selectors in the test source. |
 | **RPA Workflows** | Log into portals, fill forms, extract values, hand off to Python for backend or filesystem steps. |
 | **Synthetic Monitoring** | Pair `.hunt` files with `@schedule:` and `manul daemon` for recurring health checks. |
-| **AI Agent Targets** | Constrained DSL execution is safer than raw Playwright for external agents — the runtime still owns scoring, retries, and validation. |
+| **AI Agent Targets** | Constrained DSL execution is safer than raw CDP/scripting for external agents — the runtime still owns scoring, retries, and validation. |
 
 ## Project Status
 

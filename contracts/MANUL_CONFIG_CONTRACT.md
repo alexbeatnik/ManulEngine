@@ -5,7 +5,7 @@
 
 ```json
 {
-  "version": "0.0.9.33",
+  "version": "0.1.0",
   "generatedFrom": "manul_engine/prompts.py :: _KEY_MAP, _CFG, get_threshold(), lookup_page_name(); manul_engine/variables.py :: ScopedVariables; manul_engine/helpers.py :: env_bool()",
 
   "configFile": {
@@ -34,15 +34,6 @@
 
   "keys": [
     {
-      "key": "model",
-      "envVar": "MANUL_MODEL",
-      "type": "string | null",
-      "default": null,
-      "description": "Ollama model name for LLM fallback. null = heuristics-only mode (AI fully disabled, threshold forced to 0). No Ollama dependency needed when null.",
-      "examples": [null, "qwen2.5:0.5b", "llama3.2:1b"],
-      "validation": "Free-form string or null. Model must be pulled locally via `ollama pull <model>` before use."
-    },
-    {
       "key": "headless",
       "envVar": "MANUL_HEADLESS",
       "type": "boolean",
@@ -55,8 +46,8 @@
       "envVar": "MANUL_BROWSER",
       "type": "string",
       "default": "chromium",
-      "allowedValues": ["chromium", "firefox", "webkit", "electron"],
-      "description": "Playwright browser engine. `electron` is a legacy/runtime-config-only value still accepted via JSON config or MANUL_BROWSER for CDP/Electron compatibility, but the CLI `--browser` flag remains limited to `chromium`, `firefox`, or `webkit`. For Electron/desktop automation, prefer `executable_path` with the OPEN APP command.",
+      "allowedValues": ["chromium", "electron"],
+      "description": "Launch mode for the CDP backend, which always drives Chrome/Chromium. `chromium` launches a fresh system Chrome; `electron` attaches to an already-running Chrome/Electron over CDP (MANUL_CDP_PORT). Firefox/WebKit are no longer supported (CDP is Chromium-only). Use `channel`/`executable_path` to pick which Chrome binary to launch. Unknown values fall back to `chromium`.",
       "cliFlag": "--browser"
     },
     {
@@ -73,9 +64,9 @@
       "envVar": "MANUL_CHANNEL",
       "type": "string | null",
       "default": null,
-      "description": "Playwright browser channel — use an installed browser instead of the bundled one.",
+      "description": "Chrome/Chromium channel — selects an installed browser binary (chrome, msedge, chromium, ...).",
       "examples": [null, "chrome", "chrome-beta", "msedge"],
-      "validation": "Must be a valid Playwright channel identifier or null."
+      "validation": "Must be a valid Chrome channel identifier (chrome/chrome-beta/msedge/chromium/...) or null."
     },
     {
       "key": "executable_path",
@@ -84,6 +75,14 @@
       "default": null,
       "description": "Absolute path to a custom browser or Electron app executable. Used with OPEN APP command for desktop automation.",
       "cliFlag": "--executable-path"
+    },
+    {
+      "key": "cdp_endpoint",
+      "envVar": "MANUL_CDP_ENDPOINT",
+      "type": "string | null",
+      "default": null,
+      "description": "Attach to an already-running browser at this CDP HTTP endpoint (e.g. http://127.0.0.1:9222) instead of launching a new Chrome. Mirrors ManulEngine (Go)'s --cdp. When set, the engine connects via CDPBrowser.connect_over_cdp and drives the first existing page.",
+      "cliFlag": "--cdp"
     },
     {
       "key": "timeout",
@@ -104,68 +103,11 @@
       "minimum": 0
     },
     {
-      "key": "ai_threshold",
-      "envVar": "MANUL_AI_THRESHOLD",
-      "type": "integer | null",
-      "default": null,
-      "description": "Score threshold (scaled integer) below which the LLM fallback is triggered. null = auto-derive from model size. Ignored when model is null.",
-      "autoCalculation": {
-        "function": "_threshold_for_model(model_name)",
-        "rules": [
-          { "modelSize": "null (no model)",      "threshold": 0 },
-          { "modelSize": "< 1B parameters",      "threshold": 500 },
-          { "modelSize": "1B – 4B parameters",   "threshold": 750 },
-          { "modelSize": "5B – 9B parameters",   "threshold": 1000 },
-          { "modelSize": "10B – 19B parameters",  "threshold": 1500 },
-          { "modelSize": "20B+ parameters",       "threshold": 2000 }
-        ],
-        "sizeExtraction": "Regex on model name — extracts first number before 'b' (e.g., qwen2.5:0.5b → 0.5)"
-      },
-      "resolutionOrder": [
-        "Explicit ManulEngine constructor parameter (custom_threshold)",
-        "MANUL_AI_THRESHOLD env var or config key",
-        "Auto-calculated from model name",
-        "0 when model is null"
-      ]
-    },
-    {
-      "key": "ai_always",
-      "envVar": "MANUL_AI_ALWAYS",
-      "type": "boolean",
-      "default": false,
-      "description": "Force LLM picker for every element resolution (bypasses heuristic short-circuits). Has no effect and is forced to false when model is null.",
-      "guard": "VS Code config panel forces false when model field is empty."
-    },
-    {
-      "key": "ai_policy",
-      "envVar": "MANUL_AI_POLICY",
-      "type": "string",
-      "default": "prior",
-      "allowedValues": ["prior", "strict"],
-      "description": "How to treat heuristic score in the LLM picker. 'prior' = score as a hint. 'strict' = force max-score element."
-    },
-    {
-      "key": "controls_cache_enabled",
-      "envVar": "MANUL_CONTROLS_CACHE_ENABLED",
-      "type": "boolean",
-      "default": true,
-      "description": "Enable persistent per-site controls cache. File-based, survives between runs. Stored in controls_cache_dir.",
-      "uiLabel": "Persistent Controls Cache"
-    },
-    {
-      "key": "controls_cache_dir",
-      "envVar": "MANUL_CONTROLS_CACHE_DIR",
-      "type": "string",
-      "default": "cache",
-      "description": "Directory for persistent controls cache files. Relative to CWD or absolute path.",
-      "structure": "cache/<site_hash>/<page_hash>/controls.json"
-    },
-    {
       "key": "semantic_cache_enabled",
       "envVar": "MANUL_SEMANTIC_CACHE_ENABLED",
       "type": "boolean",
       "default": true,
-      "description": "Enable in-session semantic cache (learned_elements). Provides +200,000 scaled score boost within a single run. Resets when ManulEngine instance is destroyed.",
+      "description": "Enable in-session semantic cache (learned_elements). Feeds the scorer as one channel (never bypasses scoring); provides a +200,000 scaled score boost within a single run. Resets when the ManulEngine instance is destroyed.",
       "uiLabel": "Semantic Cache"
     },
     {
@@ -192,7 +134,7 @@
       "envVar": "MANUL_LOG_THOUGHT_MAXLEN",
       "type": "integer",
       "default": 0,
-      "description": "If > 0, truncates LLM 'thought' strings in console log output.",
+      "description": "If > 0, truncates verbose 'thought'/diagnostic strings in console log output.",
       "minimum": 0
     },
     {
@@ -378,30 +320,6 @@
         "type": "integer (seconds)",
         "default": 1800,
         "description": "TTL for HTML report session state merging. Older sessions start fresh."
-      },
-      {
-        "var": "MANUL_LLM_TEMPERATURE",
-        "type": "float",
-        "default": 0.0,
-        "description": "Ollama sampling temperature for the element-picker/planner. 0 = greedy/deterministic (recommended — the engine's contract is reproducible picks). Read once at OllamaProvider construction (manul_engine/llm.py)."
-      },
-      {
-        "var": "MANUL_LLM_NUM_CTX",
-        "type": "integer",
-        "default": 0,
-        "description": "Ollama context-window override (num_ctx). 0 = use the model's default. Read once at OllamaProvider construction."
-      },
-      {
-        "var": "MANUL_LLM_RETRIES",
-        "type": "integer",
-        "default": 1,
-        "description": "Extra attempts after the first when the LLM returns an empty/unparseable reply. A refused connection fails fast (no retry). Read once at OllamaProvider construction."
-      },
-      {
-        "var": "MANUL_LLM_KEEP_ALIVE",
-        "type": "string",
-        "default": "",
-        "description": "Ollama keep_alive (e.g. '5m', '-1'). Empty = server default. Read once at OllamaProvider construction."
       }
     ]
   }

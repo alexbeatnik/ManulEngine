@@ -1,55 +1,48 @@
 # ============================================================================
 # ManulEngine CI/CD Runner — Multi-stage Dockerfile
 # Image: ghcr.io/alexbeatnik/manul-engine
+#
+# ManulEngine drives a system-installed Chrome/Chromium directly over the
+# Chrome DevTools Protocol (CDP) — there is no Playwright and no bundled
+# browser download. The runtime image installs Debian's `chromium` package.
 # ============================================================================
 
 # ---------------------------------------------------------------------------
 # Build args
 # ---------------------------------------------------------------------------
 ARG PYTHON_VERSION=3.12
-ARG MANUL_VERSION=0.0.9.33
-ARG BROWSERS=chromium
+ARG MANUL_VERSION=0.1.0
 
 # ===========================================================================
-# Stage 1: builder — install Python packages + Playwright browsers
+# Stage 1: builder — install the Python package (pure-Python; one dep: websockets)
 # ===========================================================================
 FROM python:${PYTHON_VERSION}-slim-bookworm AS builder
 
 ARG MANUL_VERSION
-ARG BROWSERS
-
-ENV PLAYWRIGHT_BROWSERS_PATH=/home/manul/.cache/ms-playwright
 
 # Install ManulEngine (no pip cache to keep layer small)
 RUN pip install --no-cache-dir manul-engine==${MANUL_VERSION}
 
-# Install Playwright browser(s) — downloads binaries + system deps
-RUN playwright install --with-deps ${BROWSERS}
-
 # ===========================================================================
-# Stage 2: runtime — slim final image
+# Stage 2: runtime — slim final image with system Chromium
 # ===========================================================================
 FROM python:${PYTHON_VERSION}-slim-bookworm AS runtime
 
 ARG MANUL_VERSION
-ARG BROWSERS
 
 # Copy installed Python packages from builder stage.
 # Use a staging copy so the path is robust regardless of whether
 # PYTHON_VERSION is major.minor (3.12) or a patch version (3.12.3).
 COPY --from=builder /usr/local/lib/ /tmp/builder-lib/
 COPY --from=builder /usr/local/bin/manul /usr/local/bin/manul
-COPY --from=builder /usr/local/bin/playwright /usr/local/bin/playwright
 RUN PY_SITELIB="/usr/local/lib/python$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')/site-packages" \
     && BUILDER_SITELIB=$(ls -d /tmp/builder-lib/python*/site-packages | head -1) \
     && cp -a "${BUILDER_SITELIB}/." "${PY_SITELIB}/" \
     && rm -rf /tmp/builder-lib
 
-# Install runtime system deps for Playwright browsers + fonts + PID 1
-# Using playwright install-deps ensures the dep list stays in sync with
-# the Playwright version rather than a hand-maintained apt list.
+# Install system Chromium (the CDP target) + fonts + PID 1 init.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        dumb-init fonts-liberation fonts-noto-color-emoji \
+        chromium dumb-init fonts-liberation fonts-noto-color-emoji \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # ---------------------------------------------------------------------------
@@ -58,19 +51,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN groupadd --gid 1000 manul \
     && useradd --uid 1000 --gid manul --shell /bin/bash --create-home manul
 
-# Copy Playwright browser binaries from builder stage
-ENV PLAYWRIGHT_BROWSERS_PATH=/home/manul/.cache/ms-playwright
-COPY --from=builder /home/manul/.cache/ms-playwright /home/manul/.cache/ms-playwright
-RUN chown -R manul:manul /home/manul/.cache
-
-# Install OS-level deps required by copied browsers (must run as root, before USER)
-RUN playwright install-deps ${BROWSERS}
-
 # ---------------------------------------------------------------------------
 # Working directory
 # ---------------------------------------------------------------------------
 WORKDIR /workspace
-RUN mkdir -p /workspace/reports /workspace/cache \
+RUN mkdir -p /workspace/reports \
     && chown -R manul:manul /workspace
 
 # ---------------------------------------------------------------------------
@@ -78,11 +63,11 @@ RUN mkdir -p /workspace/reports /workspace/cache \
 # ---------------------------------------------------------------------------
 ENV MANUL_HEADLESS=true \
     MANUL_BROWSER=chromium \
+    MANUL_CHANNEL=chromium \
     MANUL_SCREENSHOT=on-fail \
     MANUL_HTML_REPORT=true \
     MANUL_WORKERS=1 \
     MANUL_BROWSER_ARGS="--no-sandbox --disable-dev-shm-usage" \
-    PLAYWRIGHT_BROWSERS_PATH=/home/manul/.cache/ms-playwright \
     TZ=UTC \
     LANG=C.UTF-8 \
     PYTHONUNBUFFERED=1

@@ -2,7 +2,7 @@
 """
 🔍 Smart Page Scanner — `manul scan <URL>`
 
-Opens a URL with Playwright, scans for interactive elements (including Shadow DOM),
+Opens a URL in system Chrome over CDP, scans for interactive elements (including Shadow DOM),
 and writes a draft `.hunt` file with ManulEngine-compatible steps.
 """
 
@@ -119,7 +119,7 @@ def build_hunt(url: str, elements: list[dict]) -> str:
     return "\n".join(lines) + "\n"
 
 
-# ── Playwright execution ───────────────────────────────────────────────────────
+# ── CDP execution ──────────────────────────────────────────────────────────────
 
 
 async def scan_page(
@@ -129,7 +129,7 @@ async def scan_page(
     browser: str = "chromium",
 ) -> None:
     """
-    Open *url* in a Playwright browser, run the DOM scanner, and write a
+    Open *url* in system Chrome over CDP, run the DOM scanner, and write a
     draft .hunt file to *output_file*.
 
     Parameters
@@ -141,9 +141,9 @@ async def scan_page(
     headless:
         Run the browser headless (default: False so user can watch).
     browser:
-        Playwright browser engine: 'chromium', 'firefox', or 'webkit'.
+        Kept for CLI compatibility; the CDP backend always drives Chrome/Chromium.
     """
-    from playwright.async_api import async_playwright
+    from .cdp import CDPBrowser
 
     # ── Normalise URL ─────────────────────────────────────────────────────────
     if not url.startswith(("http://", "https://")):
@@ -158,11 +158,9 @@ async def scan_page(
     print(f"\n🔍 Manul Scanner — scanning {url}")
     print("   Browser:", browser, "| Headless:", headless)
 
-    async with async_playwright() as pw:
-        launcher = getattr(pw, browser)
-        b = await launcher.launch(headless=headless)
-        page = await b.new_page()
-
+    b = await CDPBrowser.launch(headless=headless)
+    page = await b.new_page()
+    try:
         try:
             print("   Navigating …")
             await page.goto(url, wait_until="networkidle", timeout=30_000)
@@ -179,6 +177,7 @@ async def scan_page(
 
         print("   Running DOM scanner …")
         raw = await page.evaluate(SCAN_JS)
+    finally:
         await b.close()
 
     elements: list[dict] = json.loads(raw)
@@ -225,7 +224,7 @@ async def scan_main(args: list[str]) -> None:
     headless = True if "--headless" in args else _prompts_scan.HEADLESS_MODE
     args = [a for a in args if a != "--headless"]
 
-    _VALID_BROWSERS = {"chromium", "firefox", "webkit"}
+    _VALID_BROWSERS = {"chromium"}
     browser = "chromium"
     if "--browser" in args:
         idx = args.index("--browser")
@@ -238,7 +237,7 @@ async def scan_main(args: list[str]) -> None:
                 sys.exit(1)
             args = [a for i, a in enumerate(args) if i not in (idx, idx + 1)]
         else:
-            print("Error: --browser requires a value (chromium|firefox|webkit).", file=sys.stderr)
+            print("Error: --browser requires a value (only 'chromium' is supported).", file=sys.stderr)
             sys.exit(1)
 
     output_file = _default_output()
@@ -253,7 +252,7 @@ async def scan_main(args: list[str]) -> None:
 
     if not args:
         print(
-            "Usage: manul scan <URL> [output.hunt] [--output output.hunt] [--headless] [--browser chromium|firefox|webkit]",
+            "Usage: manul scan <URL> [output.hunt] [--output output.hunt] [--headless] [--browser chromium]",
             file=sys.stderr,
         )
         sys.exit(1)
